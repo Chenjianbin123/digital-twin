@@ -46,9 +46,9 @@ import {
   getHospitalCorridorEntranceScreenOrder,
   getHospitalCorridorEntranceScreenMaterialIndex,
   getHospitalCorridorEntranceScreenAspect,
-  getHospitalCorridorEntranceScreenBounds,
   fitHospitalCorridorEntranceScreenGeometry,
   shouldDepthTestHospitalCorridorScreen,
+  getHospitalCorridorDisplayScreenOrder,
   getWardCorridorScreenPresentation,
   normalizeHospitalCorridorModelTransform,
   shouldUseWardCorridorModel,
@@ -2177,19 +2177,7 @@ export class AreaScene {
 
   private bindCorridorModelDisplays(nodes: readonly THREE.Object3D[]) {
     this.disposeCorridorModelDisplays();
-    const displayNodes = nodes
-      .filter(node => /^走廊屏[12]$/.test(node.name))
-      .flatMap(node => {
-        if (node instanceof THREE.Mesh)
-          return [node];
-        const meshes: THREE.Mesh[] = [];
-        node.traverse(child => {
-          if (child instanceof THREE.Mesh)
-            meshes.push(child);
-        });
-        return meshes;
-      })
-      .sort((left, right) => left.name.localeCompare(right.name, 'zh-Hans'));
+    const displayNodes = getHospitalCorridorDisplayScreenOrder(nodes);
 
     displayNodes.slice(0, 2).forEach((screen, index) => {
       const mode: CorridorModelDisplay['mode'] = index === 0 ? 'area' : 'clock';
@@ -2198,40 +2186,44 @@ export class AreaScene {
         mode,
       });
       const materialIndex = getHospitalCorridorEntranceScreenMaterialIndex(screen);
-      const screenBounds = materialIndex >= 0
-        ? getHospitalCorridorEntranceScreenBounds(screen, materialIndex)
-        : (() => {
-          if (!screen.geometry.boundingBox)
-            screen.geometry.computeBoundingBox();
-          return screen.geometry.boundingBox?.clone() ?? new THREE.Box3();
-        })();
-      const size = screenBounds.getSize(new THREE.Vector3());
-      const center = screenBounds.getCenter(new THREE.Vector3());
-      screen.updateWorldMatrix(true, false);
-      const worldCenter = screen.localToWorld(center.clone());
-      const worldXEdge = screen.localToWorld(center.clone().add(new THREE.Vector3(size.x, 0, 0)));
-      const worldZEdge = screen.localToWorld(center.clone().add(new THREE.Vector3(0, 0, size.z)));
+      const overlayGeometry = screen.geometry.clone();
+      const targetGroups = materialIndex >= 0
+        ? overlayGeometry.groups.filter(group => group.materialIndex === materialIndex)
+        : [];
+      overlayGeometry.clearGroups();
+      if (targetGroups.length) {
+        targetGroups.forEach(group => {
+          overlayGeometry.addGroup(group.start, group.count, 0);
+        });
+      }
+      else {
+        overlayGeometry.addGroup(0, overlayGeometry.index?.count ?? overlayGeometry.getAttribute('position').count, 0);
+      }
+
       const overlay = new THREE.Mesh(
-        new THREE.PlaneGeometry(
-          Math.max(worldCenter.distanceTo(worldXEdge), 0.1),
-          Math.max(worldCenter.distanceTo(worldZEdge), 0.1),
-        ),
+        overlayGeometry,
         new THREE.MeshBasicMaterial({
         map: texture,
         side: THREE.DoubleSide,
         toneMapped: false,
-        // 走廊屏的显示面被模型外壳包在后面，必须作为顶层贴图显示。
         depthTest: false,
         depthWrite: false,
         }),
       );
-      overlay.name = `${screen.name}-dynamic-overlay`;
-      overlay.position.copy(worldCenter);
-      overlay.quaternion.copy(screen.getWorldQuaternion(new THREE.Quaternion()));
-      overlay.rotateX(-Math.PI / 2);
-      overlay.renderOrder = 1000;
+      overlay.name = `${screen.name}-dynamic-display`;
+      overlay.renderOrder = 10000;
+      overlay.frustumCulled = false;
       overlay.userData.generatedCorridorDisplayOverlay = true;
-      this.scene.add(overlay);
+      screen.add(overlay);
+      screen.visible = true;
+      console.info('[CorridorDisplay] bind', {
+        name: screen.name,
+        mode,
+        materialIndex,
+        materialCount: Array.isArray(screen.material) ? screen.material.length : 1,
+        groups: screen.geometry.groups,
+        targetGroups,
+      });
       this.corridorModelDisplays.push({ screen, overlay, texture, mode });
     });
   }
@@ -2254,7 +2246,7 @@ export class AreaScene {
       display.texture.dispose();
       display.overlay.geometry.dispose();
       (display.overlay.material as THREE.Material).dispose();
-      this.scene.remove(display.overlay);
+      display.screen.remove(display.overlay);
     }
     this.corridorModelDisplays = [];
   }

@@ -17,6 +17,7 @@ import {
   getHospitalCorridorDoorOrder,
   getHospitalCorridorEntranceDeviceOrder,
   getHospitalCorridorEntranceScreenOrder,
+  getHospitalCorridorDisplayScreenOrder,
   getHospitalCorridorEntranceScreenMaterialIndex,
   getHospitalCorridorEntranceScreenAspect,
   getHospitalCorridorEntranceScreenBounds,
@@ -136,6 +137,19 @@ test('recognizes every mesh carrying the 门口机内 material', () => {
   assert.deepEqual(
     getHospitalCorridorEntranceScreenOrder([screenA, screenB, bodyOnly]),
     [screenB, screenA],
+  );
+});
+
+test('recognizes the two corridor displays before using material fallback', () => {
+  const first = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  first.name = '走廊屏1';
+  const second = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  second.name = '走廊屏2';
+  const other = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  other.name = '门口机1';
+  assert.deepEqual(
+    getHospitalCorridorDisplayScreenOrder([other, second, first]).map(node => node.name),
+    ['走廊屏2', '走廊屏1'],
   );
 });
 

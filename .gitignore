@@ -2,6 +2,8 @@ node_modules
 dist
 *.local
 .env.db-adapter
+.env.development
+.env.production
 .DS_Store
 .superpowers
 artifacts

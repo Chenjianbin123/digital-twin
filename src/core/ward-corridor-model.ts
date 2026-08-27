@@ -85,6 +85,36 @@ export function getHospitalCorridorEntranceScreenOrder(
     });
 }
 
+/** 识别模型中的两块走廊屏，优先按节点名，兼容节点为 Group 的导出结果。 */
+export function getHospitalCorridorDisplayScreenOrder(
+  nodes: readonly THREE.Object3D[],
+) {
+  const namedMeshes: THREE.Mesh[] = [];
+  nodes
+    .filter(node => /^走廊屏[12]$/.test(node.name))
+    .forEach(node => {
+      if (node instanceof THREE.Mesh) {
+        namedMeshes.push(node);
+        return;
+      }
+      node.traverse(child => {
+        if (child instanceof THREE.Mesh)
+          namedMeshes.push(child);
+      });
+    });
+  if (namedMeshes.length)
+    return namedMeshes.slice(0, 2);
+
+  return nodes
+    .filter((node): node is THREE.Mesh => {
+      if (!(node instanceof THREE.Mesh) || /^门口机\d+$/.test(node.name))
+        return false;
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      return materials.some(material => material.name.includes('门口机内'));
+    })
+    .slice(0, 2);
+}
+
 export function getHospitalCorridorEntranceScreenMaterialIndex(mesh: THREE.Mesh) {
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   return materials.findIndex(material =>
