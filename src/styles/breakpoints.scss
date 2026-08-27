@@ -1,0 +1,26 @@
+// 智慧病房数字孪生 — 响应式断点
+// 大屏 ≥1600 | 桌面 ≥1280 | 小屏 ≥1024 | 平板 ≥768 | 手机 <768
+
+$bp-xl: 1600px;
+$bp-lg: 1280px;
+$bp-md: 1024px;
+$bp-sm: 768px;
+$bp-xs: 480px;
+
+@mixin up($width) {
+  @media (min-width: $width) {
+    @content;
+  }
+}
+
+@mixin down($width) {
+  @media (max-width: #{$width - 1px}) {
+    @content;
+  }
+}
+
+@mixin between($min, $max) {
+  @media (min-width: $min) and (max-width: #{$max - 1px}) {
+    @content;
+  }
+}

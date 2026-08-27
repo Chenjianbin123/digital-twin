@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>护士站医院融合版预览</title>
+  <script>
+    if (new URLSearchParams(location.search).has('mobile'))
+      document.documentElement.classList.add('mobile-preview');
+  </script>
+  <script type="importmap">
+    {"imports":{"three":"/files/three.module.js"}}
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #cbd8d3; }
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      overflow: auto;
+      font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
+      color: #16343b;
+    }
+    .stage {
+      position: relative;
+      width: min(100vw, 1776px);
+      aspect-ratio: 1776 / 1400;
+      overflow: hidden;
+      background: #dfe9e6;
+    }
+    #scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .scene-wash {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(225, 237, 233, 0.3) 0, transparent 28%),
+        linear-gradient(180deg, transparent 72%, rgba(36, 89, 91, 0.14) 100%);
+    }
+    .header {
+      position: absolute;
+      inset: 0 0 auto;
+      height: 112px;
+      pointer-events: none;
+      background: rgba(247, 251, 249, 0.93);
+      border-top: 4px solid #2b8584;
+      border-bottom: 1px solid rgba(38, 96, 97, 0.24);
+      box-shadow: 0 8px 28px rgba(34, 74, 75, 0.1);
+    }
+    .title {
+      position: absolute;
+      top: 26px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      color: #173c42;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+    .title::after {
+      content: "";
+      display: block;
+      width: 46px;
+      height: 3px;
+      margin: 12px auto 0;
+      background: #38a0a0;
+    }
+    .area-label {
+      position: absolute;
+      top: 27px;
+      left: 30px;
+      padding-left: 14px;
+      border-left: 4px solid #36a3a0;
+      color: #1b4c51;
+    }
+    .area-label strong { display: block; font-size: 18px; }
+    .area-label small { display: block; margin-top: 4px; color: #668187; font-size: 11px; }
+    .quiet-label {
+      position: absolute;
+      top: 35px;
+      right: 30px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #436b6e;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .quiet-label::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #57a96b;
+      box-shadow: 0 0 0 4px rgba(87, 169, 107, 0.14);
+    }
+    .location {
+      position: absolute;
+      left: 34px;
+      bottom: 92px;
+      padding: 9px 0 9px 13px;
+      border-left: 3px solid #2f9997;
+      color: #214b50;
+      text-shadow: 0 1px 5px rgba(255, 255, 255, 0.8);
+    }
+    .location span { display: block; color: #477a7d; font-size: 10px; font-weight: 800; }
+    .location strong { display: block; margin-top: 3px; font-size: 20px; }
+    .bottom-nav {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: repeat(3, 92px);
+      height: 62px;
+      border: 1px solid rgba(54, 111, 112, 0.22);
+      border-radius: 6px;
+      background: rgba(250, 253, 251, 0.94);
+      box-shadow: 0 10px 30px rgba(29, 66, 67, 0.14);
+    }
+    .nav-item {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 5px;
+      color: #688286;
+      font-size: 11px;
+    }
+    .nav-item b {
+      display: block;
+      width: 17px;
+      height: 17px;
+      border: 2px solid currentColor;
+      border-radius: 50%;
+    }
+    .nav-item.active { color: #247f7e; background: rgba(52, 153, 150, 0.08); }
+    .nav-item.active b { background: #399e9a; box-shadow: inset 0 0 0 4px #eef8f5; }
+    .loading {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: #dfe9e6;
+      color: #547477;
+      font-size: 13px;
+      z-index: 20;
+    }
+    .loading.hidden { display: none; }
+    .mobile-preview .stage { width: 390px; height: 844px; aspect-ratio: auto; }
+    .mobile-preview .header { height: 82px; }
+    .mobile-preview .title { top: 20px; font-size: 15px; }
+    .mobile-preview .title::after { width: 28px; height: 2px; margin-top: 8px; }
+    .mobile-preview .area-label, .mobile-preview .quiet-label { display: none; }
+    .mobile-preview .location { left: 18px; bottom: 69px; padding: 6px 0 6px 9px; }
+    .mobile-preview .location strong { font-size: 14px; }
+    .mobile-preview .bottom-nav { bottom: 8px; grid-template-columns: repeat(3, 68px); height: 52px; }
+    .mobile-preview .nav-item { gap: 3px; font-size: 9px; }
+    .mobile-preview .nav-item b { width: 14px; height: 14px; }
+    @media (max-width: 760px) {
+      .header { height: 82px; }
+      .title { top: 20px; font-size: 15px; }
+      .title::after { width: 28px; height: 2px; margin-top: 8px; }
+      .area-label, .quiet-label { display: none; }
+      .location { left: 18px; bottom: 69px; padding: 6px 0 6px 9px; }
+      .location strong { font-size: 14px; }
+      .bottom-nav { bottom: 8px; grid-template-columns: repeat(3, 68px); height: 52px; }
+      .nav-item { gap: 3px; font-size: 9px; }
+      .nav-item b { width: 14px; height: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage" id="stage">
+    <canvas id="scene" aria-label="护士站医院融合版预览"></canvas>
+    <div class="scene-wash"></div>
+    <div class="header"></div>
+    <div class="title">数字孪生智慧医院管理平台</div>
+    <div class="area-label"><strong>心内病区</strong><small>CARDIOLOGY WARD</small></div>
+    <div class="quiet-label">请保持安静 · 安全通行</div>
+    <div class="location"><span>NURSE STATION</span><strong>心内病区护士站</strong></div>
+    <nav class="bottom-nav" aria-label="场景导航">
+      <div class="nav-item active"><b></b>护士站</div>
+      <div class="nav-item"><b></b>病区</div>
+      <div class="nav-item"><b></b>病房内</div>
+    </nav>
+    <div class="loading" id="loading">正在生成医院融合版护士站...</div>
+  </main>
+
+  <script type="module" src="./station-modeler-v4.js"></script>
+</body>
+</html>

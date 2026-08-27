@@ -1,0 +1,71 @@
+// 数字孪生大屏 — 共享视觉变量与 mixin
+
+$dash-cyan: #4deaff;
+$dash-cyan-dim: rgba(77, 208, 255, 0.75);
+$dash-panel-bg: linear-gradient(180deg, rgba(10, 25, 41, 0.72) 0%, rgba(8, 20, 36, 0.82) 100%);
+$dash-glass-border: rgba(77, 208, 255, 0.28);
+
+@mixin dash-glass-panel {
+  background: $dash-panel-bg;
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid $dash-glass-border;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(77, 208, 255, 0.08);
+}
+
+@mixin dash-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+@mixin dash-section-mark {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid $dash-cyan;
+  filter: drop-shadow(0 0 6px rgba(77, 208, 255, 0.95));
+  flex-shrink: 0;
+}
+
+@mixin dash-section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #fff;
+  white-space: nowrap;
+  text-shadow: 0 0 12px rgba(77, 208, 255, 0.25);
+}
+
+@mixin dash-section-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, $dash-cyan-dim, rgba(0, 120, 200, 0.15) 75%, transparent);
+  box-shadow: 0 0 10px rgba(77, 208, 255, 0.35);
+}
+
+@mixin dash-metric-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 11px;
+  background: linear-gradient(135deg, rgba(8, 32, 58, 0.72), rgba(6, 22, 42, 0.55));
+  border: 1px solid rgba(77, 208, 255, 0.2);
+  border-radius: 6px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: rgba(77, 208, 255, 0.42);
+    box-shadow: 0 0 16px rgba(0, 140, 255, 0.14);
+  }
+}
+
+@mixin dash-glow-text {
+  color: $dash-cyan;
+  text-shadow: 0 0 14px rgba(77, 208, 255, 0.45);
+}

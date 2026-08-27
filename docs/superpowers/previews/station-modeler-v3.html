@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>护士站空间优化预览</title>
+  <script>window.__classicPreviewProbe = true;</script>
+  <script type="importmap">
+    {"imports":{"three":"/files/three.module.js"}}
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #03080d; }
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      overflow: auto;
+      font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
+      color: #e8f9ff;
+    }
+    .stage {
+      position: relative;
+      width: min(100vw, 1776px);
+      aspect-ratio: 1776 / 1400;
+      overflow: hidden;
+      border: 1px solid rgba(111, 220, 246, 0.2);
+      border-radius: 7px;
+      background: #0a151c;
+    }
+    #scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .scene-wash {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(4, 14, 24, 0.48) 0, rgba(4, 14, 24, 0.08) 18%, transparent 35%),
+        linear-gradient(180deg, transparent 68%, rgba(3, 18, 29, 0.38) 100%);
+    }
+    .header {
+      position: absolute;
+      inset: 0 0 auto;
+      height: 124px;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(4, 16, 29, 0.96), rgba(4, 16, 29, 0.7) 70%, transparent);
+      border-top: 3px solid rgba(237, 251, 255, 0.9);
+    }
+    .title {
+      position: absolute;
+      top: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      white-space: nowrap;
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-shadow: 0 0 18px rgba(85, 220, 251, 0.45);
+    }
+    .title::before, .title::after {
+      content: "";
+      width: 78px;
+      height: 1px;
+      background: #4edbff;
+      box-shadow: 0 0 9px rgba(78, 219, 255, 0.8);
+    }
+    .area-pill {
+      position: absolute;
+      top: 31px;
+      left: 30px;
+      min-width: 132px;
+      padding: 11px 15px;
+      border: 1px solid rgba(82, 217, 250, 0.65);
+      border-radius: 6px;
+      background: rgba(5, 31, 46, 0.78);
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .status-pill {
+      position: absolute;
+      top: 87px;
+      left: 30px;
+      padding: 5px 10px;
+      border: 1px solid rgba(96, 219, 122, 0.42);
+      border-radius: 4px;
+      background: rgba(33, 111, 57, 0.2);
+      color: #8deb9f;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .frame {
+      position: absolute;
+      inset: 96px 18px 80px;
+      pointer-events: none;
+      border: 1px solid rgba(72, 207, 240, 0.22);
+    }
+    .room-marker {
+      position: absolute;
+      top: 25%;
+      left: 12%;
+      width: 150px;
+      padding: 10px 12px;
+      border: 1px solid rgba(97, 222, 251, 0.72);
+      border-radius: 6px;
+      background: rgba(4, 45, 66, 0.88);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+    .room-marker::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 100%;
+      width: 1px;
+      height: 28px;
+      background: rgba(112, 225, 249, 0.72);
+    }
+    .room-marker strong { display: block; font-size: 16px; }
+    .room-marker small { display: block; margin-top: 5px; color: rgba(214, 240, 248, 0.7); font-size: 11px; }
+    .caption {
+      position: absolute;
+      left: 44px;
+      bottom: 104px;
+      padding: 10px 15px;
+      border-left: 2px solid #70e0fa;
+      background: rgba(3, 20, 31, 0.56);
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.58);
+    }
+    .caption span { display: block; color: #76def7; font-size: 10px; font-weight: 800; }
+    .caption strong { display: block; margin-top: 4px; font-size: 20px; }
+    .caption small { display: block; margin-top: 4px; color: rgba(214, 240, 248, 0.7); font-size: 11px; }
+    .bottom-nav {
+      position: absolute;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: repeat(3, 86px);
+      padding: 8px 12px;
+      border: 1px solid rgba(78, 207, 239, 0.42);
+      border-radius: 46px;
+      background: rgba(3, 24, 38, 0.88);
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
+    }
+    .nav-item { padding: 8px 0; text-align: center; color: rgba(205, 234, 243, 0.72); font-size: 12px; }
+    .nav-item b { display: block; width: 23px; height: 23px; margin: 0 auto 5px; border: 1px solid #4edbff; border-radius: 50%; }
+    .nav-item.active { color: #58dcff; }
+    .nav-item.active b { background: rgba(40, 185, 230, 0.54); box-shadow: 0 0 18px rgba(62, 207, 249, 0.42); }
+    .loading {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: #08151d;
+      color: rgba(217, 245, 252, 0.72);
+      font-size: 13px;
+      z-index: 20;
+    }
+    .loading.hidden { display: none; }
+    @media (max-width: 760px) {
+      .header { height: 88px; }
+      .title { top: 20px; font-size: 15px; gap: 7px; }
+      .title::before, .title::after { width: 28px; }
+      .area-pill, .status-pill { display: none; }
+      .frame { inset: 72px 10px 58px; }
+      .room-marker { top: 24%; left: 9%; width: 104px; padding: 7px 8px; }
+      .room-marker strong { font-size: 12px; }
+      .room-marker small { font-size: 9px; }
+      .caption { left: 20px; bottom: 74px; padding: 7px 10px; }
+      .caption strong { font-size: 14px; }
+      .bottom-nav { bottom: 8px; grid-template-columns: repeat(3, 66px); padding: 5px 8px; }
+      .nav-item { padding: 4px 0; font-size: 9px; }
+      .nav-item b { width: 18px; height: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage" id="stage">
+    <canvas id="scene" aria-label="护士站建模效果预览"></canvas>
+    <div class="scene-wash"></div>
+    <div class="header"></div>
+    <div class="title">数字孪生智慧医院管理平台</div>
+    <div class="area-pill">心内病区</div>
+    <div class="status-pill">实时数据</div>
+    <div class="frame"></div>
+    <div class="room-marker"><strong>103房</strong><small>运行正常 · 1/1</small></div>
+    <div class="caption"><span>NURSE STATION</span><strong>心内病区</strong><small>病区实时工作台</small></div>
+    <nav class="bottom-nav" aria-label="场景导航">
+      <div class="nav-item active"><b></b>护士站</div>
+      <div class="nav-item"><b></b>病房</div>
+      <div class="nav-item"><b></b>病房内</div>
+    </nav>
+    <div class="loading" id="loading">正在生成护士站空间...</div>
+  </main>
+
+  <script type="module" src="./station-modeler-v3.js">
+    import * as THREE from '/files/three.module.js';
+    import { GLTFLoader } from '/files/GLTFLoader.js';
+
+    const canvas = document.querySelector('#scene');
+    const stage = document.querySelector('#stage');
+    const loading = document.querySelector('#loading');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a151c);
+    const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 100);
+    camera.position.set(0, 1.46, 5.75);
+    const target = new THREE.Vector3(0, 0.88, -0.2);
+
+    scene.add(new THREE.HemisphereLight(0xf2fbff, 0x6e8489, 1.22));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+    const key = new THREE.DirectionalLight(0xfffdf3, 2.1);
+    key.position.set(-4.5, 7.5, 5.5);
+    key.castShadow = true;
+    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.camera.left = -7;
+    key.shadow.camera.right = 7;
+    key.shadow.camera.top = 6;
+    key.shadow.camera.bottom = -4;
+    scene.add(key);
+
+    const fillLight = new THREE.DirectionalLight(0x8edfff, 0.9);
+    fillLight.position.set(5, 4, 2);
+    scene.add(fillLight);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(22, 18),
+      new THREE.MeshStandardMaterial({ color: 0x0b6474, roughness: 0.76, metalness: 0.03 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(0, -0.025, 1.8);
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const architecture = new THREE.Group();
+    const panelMaterial = new THREE.MeshStandardMaterial({ color: 0xc5ced0, roughness: 0.86, metalness: 0.02 });
+    const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0xe9eef0, roughness: 0.9, metalness: 0.01, side: THREE.DoubleSide });
+    const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x7f9297, roughness: 0.72, metalness: 0.04 });
+
+    const upperWall = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.68, 0.12), panelMaterial);
+    upperWall.position.set(0, 2.62, -2.38);
+    upperWall.receiveShadow = true;
+    architecture.add(upperWall);
+
+    const ceilingReturn = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.1, 1.18), ceilingMaterial);
+    ceilingReturn.position.set(0, 2.94, -1.84);
+    ceilingReturn.receiveShadow = true;
+    architecture.add(ceilingReturn);
+
+    const frontTrim = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.16, 0.18), trimMaterial);
+    frontTrim.position.set(0, 2.88, -1.23);
+    architecture.add(frontTrim);
+
+    for (const x of [-3.05, -1.52, 0, 1.52, 3.05]) {
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.58, 0.024), trimMaterial);
+      seam.position.set(x, 2.62, -2.31);
+      architecture.add(seam);
+    }
+
+    const lightMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0xe9fbff,
+      emissiveIntensity: 4.2,
+      roughness: 0.24,
+    });
+    for (const x of [-2.75, 0, 2.75]) {
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.025, 0.31), lightMaterial);
+      panel.position.set(x, 2.875, -1.62);
+      architecture.add(panel);
+
+      const glow = new THREE.PointLight(0xd9f7ff, 0.8, 4.2, 2);
+      glow.position.set(x, 2.62, -1.3);
+      architecture.add(glow);
+    }
+    scene.add(architecture);
+
+    const loader = new GLTFLoader();
+    try {
+      const gltf = await loader.loadAsync('/files/station-v3.glb');
+      const model = gltf.scene;
+      model.traverse((object) => {
+        if (!object.isMesh) return;
+        object.castShadow = true;
+        object.receiveShadow = true;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if ('envMapIntensity' in material) material.envMapIntensity = 0.62;
+        }
+      });
+
+      model.updateMatrixWorld(true);
+      const initialBox = new THREE.Box3().setFromObject(model);
+      const initialSize = initialBox.getSize(new THREE.Vector3());
+      const scale = Math.min(8.748 / initialSize.x, 2.3895 / initialSize.y, 4.7385 / initialSize.z);
+      model.scale.multiplyScalar(scale);
+      model.scale.y *= 1.1;
+      model.updateMatrixWorld(true);
+
+      const fittedBox = new THREE.Box3().setFromObject(model);
+      const center = fittedBox.getCenter(new THREE.Vector3());
+      model.position.set(-center.x, -fittedBox.min.y + 0.03, -center.z);
+      scene.add(model);
+
+      loading.classList.add('hidden');
+      window.__previewReady = true;
+      window.dispatchEvent(new Event('preview-ready'));
+    }
+    catch (error) {
+      loading.textContent = '护士站模型加载失败';
+      window.__previewError = String(error);
+      console.error(error);
+    }
+
+    function render() {
+      const rect = stage.getBoundingClientRect();
+      const width = Math.max(Math.round(rect.width), 1);
+      const height = Math.max(Math.round(rect.height), 1);
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.lookAt(target);
+      camera.updateProjectionMatrix();
+      renderer.render(scene, camera);
+    }
+
+    new ResizeObserver(render).observe(stage);
+    render();
+    window.addEventListener('preview-ready', render, { once: true });
+  </script>
+</body>
+</html>

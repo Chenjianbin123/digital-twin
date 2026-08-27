@@ -1,0 +1,11 @@
+node_modules
+dist
+*.local
+.env.db-adapter
+.DS_Store
+.superpowers
+artifacts
+recordings
+*.log
+tsconfig.tsbuildinfo
+public/models/hospital-corridor/source/hospital-in-copy.glb

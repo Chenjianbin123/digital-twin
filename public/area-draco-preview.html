@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Draco 走廊模型预览</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #101820; }
+    #status { position: fixed; z-index: 2; left: 16px; top: 14px; color: #d8f3ff; font: 14px system-ui; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="status">正在加载 Draco 走廊模型…</div>
+  <script type="module">
+    import * as THREE from '/node_modules/three/build/three.module.js';
+    import { OrbitControls } from '/node_modules/three/examples/jsm/controls/OrbitControls.js';
+    import { GLTFLoader } from '/node_modules/three/examples/jsm/loaders/GLTFLoader.js';
+    import { DRACOLoader } from '/node_modules/three/examples/jsm/loaders/DRACOLoader.js';
+
+    const status = document.querySelector('#status');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x101820);
+    const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.01, 100000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    document.body.appendChild(renderer.domElement);
+
+    scene.add(new THREE.HemisphereLight(0xd9f0ff, 0x203040, 2.2));
+    const key = new THREE.DirectionalLight(0xffffff, 3.0);
+    key.position.set(5, 8, 6);
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0x88b8ff, 1.4);
+    fill.position.set(-6, 3, -4);
+    scene.add(fill);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    const draco = new DRACOLoader();
+    draco.setDecoderPath('/draco/');
+    const loader = new GLTFLoader();
+    loader.setDRACOLoader(draco);
+    loader.load('/models/hospital-corridor/area-draco-preview.glb?v=20260826-draco-preview-v1', (gltf) => {
+      const model = gltf.scene;
+      scene.add(model);
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      camera.position.copy(center).add(new THREE.Vector3(maxDim * 0.9, maxDim * 0.65, maxDim * 1.1));
+      camera.near = Math.max(maxDim / 10000, 0.001);
+      camera.far = maxDim * 100;
+      camera.updateProjectionMatrix();
+      controls.target.copy(center);
+      controls.maxDistance = maxDim * 8;
+      controls.minDistance = Math.max(maxDim / 100, 0.01);
+      status.textContent = `Draco 走廊模型 · ${size.x.toFixed(2)} × ${size.y.toFixed(2)} × ${size.z.toFixed(2)} · 可拖拽旋转`;
+    }, undefined, (error) => {
+      status.textContent = `加载失败：${error.message || error}`;
+    });
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+    renderer.setAnimationLoop(() => {
+      controls.update();
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>
