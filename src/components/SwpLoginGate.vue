@@ -123,7 +123,7 @@ onMounted(() => {
   <main class="swp-login">
     <img
       class="swp-login__scene"
-      src="/images/smart-ward-nurse-station/login-bg.png"
+      src="/images/smart-ward-nurse-station/login-bg.jpg"
       alt="智慧病房护士站"
     />
     <div class="swp-login__shade" aria-hidden="true" />
