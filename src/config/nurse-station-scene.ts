@@ -44,7 +44,7 @@ export interface NurseStationSceneConfig {
 /** 护士站模型、构图和交互限制。调整护士站外观时优先修改这里。 */
 export const nurseStationSceneConfig: NurseStationSceneConfig = {
   model: {
-    url: '/models/smart-ward-nurse-station/1-v1.glb?v=20260827-nurse-station-1-v1',
+    url: '/models/smart-ward-nurse-station/1-1.glb?v=20260831-nurse-station-1-1',
     maxSize: { x: 11.04, y: 2.3895, z: 5.102 },
   },
   position: { x: 0, z: 14 },

@@ -26,12 +26,12 @@ assert.doesNotMatch(app.match(/<DashboardHeader[\s\S]*?\/>/)?.[0] ?? '', /:compa
 assert.match(app, /&__main--station:not\(&__main--panels-hidden\) :deep\(\.dash-bottom\)/);
 assert.match(app, /transform: translateX\(-50%\) scale\(0\.9\);/);
 assert.match(app, /&__main--station &__panel-toggle:not\(&__panel-toggle--hidden\)/);
-assert.match(app, /bottom: calc\(42vh \+ 120px\);/);
+assert.match(app, /bottom: calc\(var\(--mobile-panel-height\) \+ 100px \+ env\(safe-area-inset-bottom\)\);/);
 assert.match(visual, /modelState: AreaModelState/);
 assert.match(areaComponent, /modelState: \[state: AreaModelState\]/);
 assert.match(areaScene, /onModelState\?: \(state: AreaModelState\) => void/);
 assert.match(areaScene, /this\.onModelState\?\.\('fallback'\)/);
-assert.match(sceneConfig, /1-v1\.glb\?v=20260827-nurse-station-1-v1/);
+assert.match(sceneConfig, /1-1\.glb\?v=20260831-nurse-station-1-1/);
 assert.match(sceneConfig, /deskFov: \d+(?:\.\d+)?/);
 assert.match(sceneConfig, /target: \{ x: -?\d+(?:\.\d+)?, y: -?\d+(?:\.\d+)?, z: -?\d+(?:\.\d+)? \}/);
 assert.match(sceneConfig, /initialDistance: \d+(?:\.\d+)?/);

@@ -89,6 +89,11 @@ const visible = computed(() => props.rooms.length > 1);
     width: min(980px, calc(100vw - var(--scene-panel-width, 500px) - 80px));
   }
 
+  @media (min-width: 1280px) and (max-width: 1599px) {
+    left: 42%;
+    width: min(760px, calc(100vw - var(--scene-panel-width, 400px) - 72px));
+  }
+
   @include between($bp-md, $bp-lg) {
     width: min(620px, calc(100vw - var(--scene-panel-width, 400px) - 48px));
   }

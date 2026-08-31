@@ -733,6 +733,8 @@ onBeforeUnmount(() => {
 
   height: 100%;
 
+  min-height: 100svh;
+
   min-height: 100dvh;
 
   background: #060e1a;
@@ -740,6 +742,9 @@ onBeforeUnmount(() => {
   color: #e0e6ed;
 
   overflow: hidden;
+
+  --mobile-panel-height: min(45vh, 520px);
+  --mobile-control-gap: calc(12px + env(safe-area-inset-bottom));
 
 
 
@@ -1086,18 +1091,19 @@ onBeforeUnmount(() => {
     overflow: hidden;
 
     &--station {
-      --scene-panel-width: 420px;
+      --scene-panel-width: clamp(340px, 26vw, 460px);
+      --mobile-panel-height: min(42vh, 500px);
     }
 
     &--ward {
-      --scene-panel-width: 400px;
+      --scene-panel-width: clamp(340px, 24vw, 430px);
 
       @include up($bp-xl) {
         --scene-panel-width: 430px;
       }
 
       @include between($bp-md, $bp-lg) {
-        --scene-panel-width: 360px;
+        --scene-panel-width: clamp(320px, 31vw, 380px);
       }
     }
   }
@@ -1143,7 +1149,7 @@ onBeforeUnmount(() => {
 
     @include down($bp-md) {
       right: 12px;
-      bottom: calc(186px + env(safe-area-inset-bottom));
+      bottom: calc(var(--mobile-panel-height) + 88px + env(safe-area-inset-bottom));
       min-height: 36px;
       padding: 0 12px 0 10px;
     }
@@ -1153,7 +1159,7 @@ onBeforeUnmount(() => {
     bottom: 154px;
 
     @include down($bp-md) {
-      bottom: calc(186px + env(safe-area-inset-bottom));
+      bottom: calc(var(--mobile-panel-height) + 88px + env(safe-area-inset-bottom));
     }
   }
 
@@ -1217,7 +1223,7 @@ onBeforeUnmount(() => {
     opacity: 0.9;
 
     @include down($bp-md) {
-      bottom: calc(42vh + 10px);
+      bottom: calc(var(--mobile-panel-height) + 10px + env(safe-area-inset-bottom));
     }
   }
 
@@ -1226,9 +1232,28 @@ onBeforeUnmount(() => {
     bottom: 15px;
 
     @include down($bp-md) {
-      bottom: calc(42vh + 120px);
+      bottom: calc(var(--mobile-panel-height) + 100px + env(safe-area-inset-bottom));
       min-height: 34px;
       padding: 0 10px;
+    }
+  }
+
+  &__main--ward:not(&__main--panels-hidden) :deep(.dash-bottom),
+  &__main--interior:not(&__main--panels-hidden) :deep(.dash-bottom) {
+    @include down($bp-md) {
+      bottom: calc(var(--mobile-panel-height) + 10px + env(safe-area-inset-bottom));
+    }
+  }
+
+  &__main--panels-hidden :deep(.dash-bottom) {
+    @include down($bp-md) {
+      bottom: calc(10px + env(safe-area-inset-bottom));
+    }
+  }
+
+  &__main--panels-hidden &__panel-toggle {
+    @include down($bp-md) {
+      bottom: calc(14px + env(safe-area-inset-bottom));
     }
   }
 
@@ -1303,7 +1328,7 @@ onBeforeUnmount(() => {
 
       @include down($bp-md) {
         width: 100%;
-        max-height: 42vh;
+        max-height: var(--mobile-panel-height);
         background: rgba(8, 18, 32, 0.5);
       }
     }
@@ -1382,7 +1407,7 @@ onBeforeUnmount(() => {
 
       width: 100%;
 
-      max-height: 45vh;
+      max-height: var(--mobile-panel-height);
 
       padding-top: 0;
 

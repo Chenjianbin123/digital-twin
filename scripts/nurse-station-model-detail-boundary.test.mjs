@@ -22,6 +22,6 @@ assert.match(exportScript, /Detail_Floor_Guideline_/);
 assert.match(exportScript, /def hide_plant_objects\(\) -> None:/);
 assert.match(exportScript, /plant|potted|pot|foliage/i);
 assert.match(exportScript, /bpy\.ops\.wm\.save_as_mainfile\(filepath=str\(BLEND_PATH\)\)/);
-assert.match(sceneConfig, /1-v1\.glb\?v=20260827-nurse-station-1-v1/);
+assert.match(sceneConfig, /1-1\.glb\?v=20260831-nurse-station-1-1/);
 
 console.log('Nurse-station model detail boundary checks passed.');

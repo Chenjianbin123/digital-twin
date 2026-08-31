@@ -144,6 +144,16 @@ interface NurseStationBoardDisplay {
   video?: HTMLVideoElement;
 }
 
+type NurseStationWorkstationKind = 'taskQueue' | 'wardStatus' | 'bedMonitor' | 'deviceHealth';
+
+interface NurseStationWorkstationDisplay {
+  kind: NurseStationWorkstationKind;
+  workstationName: string;
+  mesh: THREE.Mesh;
+  root: THREE.Object3D;
+  displayRegion: THREE.Box3;
+}
+
 interface CorridorModelDisplay {
   screen: THREE.Mesh;
   overlay: THREE.Mesh;
@@ -1581,141 +1591,174 @@ export class AreaScene {
     const info = this.getNurseStationDisplayInfo();
     const now = new Date();
     const time = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const dashboardPadding = 22;
+    const headerHeight = 116;
+    const columnGap = 16;
+    const columnTop = headerHeight;
+    const columnHeight = 640 - headerHeight - dashboardPadding;
+    const columnWidth = (1200 - dashboardPadding * 2 - columnGap * 2) / 3;
     const bg = ctx.createLinearGradient(0, 0, 1200, 640);
     bg.addColorStop(0, '#06141f');
     bg.addColorStop(1, '#10313a');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, 1200, 640);
     this.drawTechGrid(ctx, 1200, 640, '#57e5ff');
-    ctx.fillStyle = '#153b49';
-    ctx.fillRect(0, 0, 1200, 132);
+    ctx.fillStyle = 'rgba(8, 29, 40, 0.96)';
+    ctx.fillRect(0, 0, 1200, headerHeight);
     ctx.fillStyle = '#7bdff2';
-    ctx.fillRect(0, 128, 1200, 4);
+    ctx.fillRect(0, headerHeight - 4, 1200, 4);
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#e7fbff';
-    ctx.font = 'bold 48px "Microsoft YaHei", sans-serif';
-    ctx.fillText('病区态势', 36, 78);
-    ctx.fillStyle = '#9ccfd8';
-    ctx.font = '28px "Microsoft YaHei", sans-serif';
-    this.drawTruncatedText(ctx, info.areaName ?? '智慧病区', 264, 80, 560);
+    ctx.font = 'bold 46px "Microsoft YaHei", sans-serif';
+    ctx.fillText('病区态势', dashboardPadding + 12, 56);
+    this.drawBoardPill(ctx, info.areaName ?? '智慧病区', 226, 31, 300, 48, {
+      bg: 'rgba(77, 208, 225, 0.14)',
+      fg: '#bdeff7',
+      stroke: 'rgba(123, 223, 242, 0.52)',
+      fontSize: 25,
+    });
     ctx.textAlign = 'right';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 46px "Consolas", "Microsoft YaHei", monospace';
-    ctx.fillText(time, 1164, 78);
+    ctx.font = 'bold 42px "Consolas", "Microsoft YaHei", monospace';
+    ctx.fillText(time, 1200 - dashboardPadding - 10, 56);
 
-    const columnGap = 8;
-    const columnWidth = (1200 - columnGap * 2) / 3;
-    const columnTop = 132;
-    const columnHeight = 508;
-    const leftX = 0;
+    const leftX = dashboardPadding;
     const centerX = leftX + columnWidth + columnGap;
     const rightX = centerX + columnWidth + columnGap;
-    const drawColumn = (x: number, title: string, accent: string) => {
-      ctx.fillStyle = 'rgba(255,255,255,0.065)';
-      this.drawBoardRoundRect(ctx, x, columnTop, columnWidth, columnHeight, 12);
+    const drawColumn = (
+      x: number,
+      title: string,
+      accent: string,
+      content: (contentX: number, contentY: number, contentW: number, contentH: number) => void,
+    ) => {
+      const contentX = x + 18;
+      const contentY = columnTop + 66;
+      const contentW = columnWidth - 36;
+      const contentH = columnHeight - 82;
+      ctx.fillStyle = 'rgba(255,255,255,0.075)';
+      this.drawBoardRoundRect(ctx, x, columnTop, columnWidth, columnHeight, 14);
       ctx.fill();
       ctx.strokeStyle = `${accent}88`;
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.fillStyle = accent;
-      ctx.fillRect(x, columnTop, columnWidth, 8);
+      ctx.fillRect(x, columnTop, columnWidth, 7);
       ctx.fillStyle = '#dff8ff';
-      ctx.font = 'bold 28px "Microsoft YaHei", sans-serif';
+      ctx.font = 'bold 27px "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(title, x + 24, columnTop + 42);
+      ctx.fillText(title, x + 22, columnTop + 37);
+      // 每一栏独立裁剪，保证动态数据永远不会穿出屏幕或压到相邻栏目。
+      ctx.save();
+      this.drawBoardRoundRect(ctx, contentX, contentY, contentW, contentH, 8);
+      ctx.clip();
+      content(contentX, contentY, contentW, contentH);
+      ctx.restore();
     };
 
     // 左栏：病区概览
-    drawColumn(leftX, '病区概览', '#7bdff2');
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 68px "Microsoft YaHei", sans-serif';
-    ctx.fillText(`${stats.occupiedBeds}/${stats.totalBeds}`, leftX + 22, 252);
-    ctx.fillStyle = '#9ccfd8';
-    ctx.font = '26px "Microsoft YaHei", sans-serif';
-    ctx.fillText('在床患者', leftX + 24, 292);
-    const overviewMetrics: Array<[string, string, string]> = [
-      ['待处理呼叫', `${stats.callingCount}`, '#ff5c8a'],
-      ['输液巡视', `${stats.infusingCount}`, '#ffb74d'],
-      ['设备在线率', stats.onlineRate == null ? '暂无数据' : `${stats.onlineRate}%`, '#80cbc4'],
-    ];
-    overviewMetrics.forEach(([label, value, color], index) => {
-      const y = 326 + index * 72;
-      ctx.fillStyle = color;
-      ctx.fillRect(leftX + 24, y - 18, 8, 36);
-      ctx.fillStyle = '#c6e4ea';
-      ctx.font = '24px "Microsoft YaHei", sans-serif';
-      ctx.fillText(label, leftX + 50, y);
+    drawColumn(leftX, '病区概览', '#7bdff2', (x, y, w) => {
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 30px "Microsoft YaHei", sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(value, leftX + columnWidth - 24, y);
+      ctx.font = 'bold 64px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${stats.occupiedBeds}/${stats.totalBeds}`, x + 4, y + 88);
+      ctx.fillStyle = '#9ccfd8';
+      ctx.font = '24px "Microsoft YaHei", sans-serif';
+      ctx.fillText('在床患者', x + 7, y + 124);
+
+      const overviewMetrics: Array<[string, string, string]> = [
+        ['待处理呼叫', `${stats.callingCount}`, '#ff5c8a'],
+        ['输液巡视', `${stats.infusingCount}`, '#ffb74d'],
+        ['设备在线率', stats.onlineRate == null ? '暂无数据' : `${stats.onlineRate}%`, '#80cbc4'],
+      ];
+      overviewMetrics.forEach(([label, value, color], index) => {
+        const rowY = y + 170 + index * 72;
+        ctx.fillStyle = color;
+        ctx.fillRect(x + 4, rowY - 18, 8, 36);
+        ctx.fillStyle = '#c6e4ea';
+        ctx.font = '23px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(label, x + 30, rowY);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 29px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'right';
+        this.drawTruncatedText(ctx, value, x + w - 4 - Math.min(120, w / 2), rowY, Math.min(120, w / 2));
+      });
       ctx.textAlign = 'left';
     });
 
     // 中栏：患者动态
-    drawColumn(centerX, '患者动态', '#4dd0e1');
     const priorityRooms = [...this.summaries]
       .sort((left, right) => right.callingCount - left.callingCount || right.occupiedBeds - left.occupiedBeds)
       .slice(0, 4);
-    const patientCardHeight = 72;
-    priorityRooms.forEach((room, index) => {
-      const y = columnTop + 88 + index * 84;
-      ctx.fillStyle = 'rgba(255,255,255,0.07)';
-      this.drawBoardRoundRect(ctx, centerX + 16, y, columnWidth - 32, patientCardHeight, 14);
-      ctx.fill();
-      ctx.fillStyle = room.accentColor;
-      ctx.fillRect(centerX + 32, y + 14, 7, patientCardHeight - 28);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px "Microsoft YaHei", sans-serif';
-      this.drawTruncatedText(ctx, room.sickroomName, centerX + 52, y + 24, 150);
-      ctx.fillStyle = '#9ccfd8';
-      ctx.font = '18px "Microsoft YaHei", sans-serif';
-      ctx.fillText(`${room.occupiedBeds}/${room.totalBeds} 在床`, centerX + 52, y + 54);
-      ctx.fillStyle = room.accentColor;
-      ctx.font = 'bold 19px "Microsoft YaHei", sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(room.statusText, centerX + columnWidth - 24, y + 40);
+    drawColumn(centerX, '患者动态', '#4dd0e1', (x, y, w, h) => {
+      const patientCardHeight = 84;
+      const patientCardGap = 13;
+      priorityRooms.forEach((room, index) => {
+        const cardY = y + 8 + index * (patientCardHeight + patientCardGap);
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        this.drawBoardRoundRect(ctx, x, cardY, w, patientCardHeight, 14);
+        ctx.fill();
+        ctx.strokeStyle = `${room.accentColor}66`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = room.accentColor;
+        ctx.fillRect(x + 14, cardY + 14, 7, patientCardHeight - 28);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 23px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'left';
+        this.drawTruncatedText(ctx, room.sickroomName, x + 38, cardY + 29, Math.max(110, w - 166));
+        ctx.fillStyle = '#9ccfd8';
+        ctx.font = '18px "Microsoft YaHei", sans-serif';
+        ctx.fillText(`${room.occupiedBeds}/${room.totalBeds} 在床`, x + 38, cardY + 61);
+        this.drawBoardPill(ctx, room.statusText, x + w - 126, cardY + 22, 112, 38, {
+          bg: `${room.accentColor}28`,
+          fg: '#ffffff',
+          stroke: `${room.accentColor}88`,
+          fontSize: 17,
+        });
+      });
+      if (!priorityRooms.length) {
+        ctx.fillStyle = '#9ccfd8';
+        ctx.font = '24px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('暂无患者数据', x + w / 2, y + h / 2);
+      }
       ctx.textAlign = 'left';
     });
-    if (!priorityRooms.length) {
-      ctx.fillStyle = '#9ccfd8';
-      ctx.font = '24px "Microsoft YaHei", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('暂无患者数据', centerX + columnWidth / 2, columnTop + 220);
-      ctx.textAlign = 'left';
-    }
 
     // 右栏：设备状态
-    drawColumn(rightX, '设备状态', '#80cbc4');
-    const deviceMetrics: Array<[string, string, string]> = [
-      ['在线率', stats.onlineRate == null ? '暂无数据' : `${stats.onlineRate}%`, '#80cbc4'],
-      ['离线设备', `${stats.offlineCount}`, '#ff5c8a'],
-      ['环境预警', `${stats.envWarningCount}`, '#ffb74d'],
-    ];
-    deviceMetrics.forEach(([label, value, color], index) => {
-      const y = columnTop + 112 + index * 92;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(rightX + 48, y, 13, 0, Math.PI * 2);
+    drawColumn(rightX, '设备状态', '#80cbc4', (x, y, w) => {
+      const deviceMetrics: Array<[string, string, string]> = [
+        ['在线率', stats.onlineRate == null ? '暂无数据' : `${stats.onlineRate}%`, '#80cbc4'],
+        ['离线设备', `${stats.offlineCount}`, '#ff5c8a'],
+        ['环境预警', `${stats.envWarningCount}`, '#ffb74d'],
+      ];
+      deviceMetrics.forEach(([label, value, color], index) => {
+        const rowY = y + 34 + index * 86;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x + 18, rowY, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c6e4ea';
+        ctx.font = '23px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(label, x + 44, rowY + 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 31px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'right';
+        this.drawTruncatedText(ctx, value, x + w - 4 - Math.min(140, w / 2), rowY + 8, Math.min(140, w / 2));
+      });
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(123,223,242,0.14)';
+      this.drawBoardRoundRect(ctx, x + 4, y + 316, w - 8, 58, 13);
       ctx.fill();
-      ctx.fillStyle = '#c6e4ea';
-      ctx.font = '24px "Microsoft YaHei", sans-serif';
-      ctx.fillText(label, rightX + 76, y + 8);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 34px "Microsoft YaHei", sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(value, rightX + columnWidth - 24, y + 8);
+      ctx.fillStyle = stats.offlineCount || stats.envWarningCount ? '#ffcf8a' : '#9fe5d8';
+      ctx.font = 'bold 21px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(stats.offlineCount || stats.envWarningCount ? '请优先处理异常设备' : '设备运行正常', x + w / 2, y + 345);
       ctx.textAlign = 'left';
     });
-    ctx.fillStyle = 'rgba(123,223,242,0.12)';
-    this.drawBoardRoundRect(ctx, rightX + 24, columnTop + 350, columnWidth - 48, 56, 12);
-    ctx.fill();
-    ctx.fillStyle = stats.offlineCount || stats.envWarningCount ? '#ffcf8a' : '#9fe5d8';
-    ctx.font = 'bold 21px "Microsoft YaHei", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(stats.offlineCount || stats.envWarningCount ? '请优先处理异常设备' : '设备运行正常', rightX + columnWidth / 2, columnTop + 384);
-    ctx.textAlign = 'left';
     return this.makeBoardTexture(canvas);
   }
 
@@ -2045,6 +2088,262 @@ export class AreaScene {
     return overlay;
   }
 
+  private getNurseStationMeshBoundsInRoot(mesh: THREE.Mesh, root: THREE.Object3D) {
+    const bounds = new THREE.Box3();
+    const position = mesh.geometry.getAttribute('position');
+    if (!position)
+      return bounds;
+
+    mesh.updateMatrixWorld(true);
+    root.updateMatrixWorld(true);
+    const meshToRoot = new THREE.Matrix4()
+      .copy(root.matrixWorld)
+      .invert()
+      .multiply(mesh.matrixWorld);
+    const point = new THREE.Vector3();
+    for (let index = 0; index < position.count; index++) {
+      point.fromBufferAttribute(position, index).applyMatrix4(meshToRoot);
+      bounds.expandByPoint(point);
+    }
+    return bounds;
+  }
+
+  /**
+   * 解析新 1-1.glb 的电脑屏幕。
+   *
+   * 新模型把四块屏幕合并到了 Keyboard_04.001，Workstation_01～04 只保留为空父节点。
+   * 四个父节点在 GLB 中共用同一个变换，真正能区分工作台的是各自下面的
+   * Keyboard_01～Keyboard_04 实体；用这些实体的世界坐标把深蓝屏幕面三角形
+   * 归属到对应工作台，返回四个独立区域，避免把一个合并网格错误地绑定成一张大屏。
+   */
+  private resolveNurseStationWorkstationDisplays(model: THREE.Object3D): NurseStationWorkstationDisplay[] {
+    const mergedMonitor = model.getObjectByName('Keyboard_04.001');
+    const workstationNames = ['Workstation_01', 'Workstation_02', 'Workstation_03', 'Workstation_04'];
+    const workstationObjects = workstationNames.map(name => model.getObjectByName(name));
+    if (!(mergedMonitor instanceof THREE.Mesh) || workstationObjects.some(object => !object))
+      return [];
+    const workstationAnchors = workstationObjects.map((workstation, index) => {
+      if (!workstation)
+        return undefined;
+      const keyboardName = `Keyboard_${String(index + 1).padStart(2, '0')}`;
+      return workstation.getObjectByName(keyboardName) ?? workstation;
+    });
+    if (workstationAnchors.some(anchor => !anchor))
+      return [];
+
+    const root = mergedMonitor.parent ?? model;
+    const geometry = mergedMonitor.geometry;
+    const position = geometry.getAttribute('position');
+    if (!position || !geometry.groups.length)
+      return [];
+
+    model.updateMatrixWorld(true);
+    root.updateMatrixWorld(true);
+    mergedMonitor.updateMatrixWorld(true);
+    const meshToRoot = new THREE.Matrix4()
+      .copy(root.matrixWorld)
+      .invert()
+      .multiply(mergedMonitor.matrixWorld);
+    const materialList = Array.isArray(mergedMonitor.material)
+      ? mergedMonitor.material
+      : [mergedMonitor.material];
+    const screenMaterialIndexes = new Set(
+      materialList
+        .map((material, index) => /^深蓝$|Screen_Glass|screen|display/i.test(material.name) ? index : -1)
+        .filter(index => index >= 0),
+    );
+    if (!screenMaterialIndexes.size)
+      return [];
+
+    const getVertexIndex = (index: number) => geometry.index?.getX(index) ?? index;
+    const toRootPoint = (index: number) => new THREE.Vector3()
+      .fromBufferAttribute(position, getVertexIndex(index))
+      .applyMatrix4(meshToRoot);
+    const screenTriangles: Array<{ points: THREE.Vector3[]; center: THREE.Vector3 }> = [];
+    const screenBounds = new THREE.Box3();
+
+    for (const group of geometry.groups) {
+      if (!screenMaterialIndexes.has(group.materialIndex))
+        continue;
+      const end = Math.min(group.start + group.count, geometry.index?.count ?? position.count);
+      for (let index = group.start; index + 2 < end; index += 3) {
+        const points = [toRootPoint(index), toRootPoint(index + 1), toRootPoint(index + 2)];
+        const center = points[0].clone().add(points[1]).add(points[2]).multiplyScalar(1 / 3);
+        points.forEach(point => screenBounds.expandByPoint(point));
+        screenTriangles.push({ points, center });
+      }
+    }
+    if (screenTriangles.length < workstationObjects.length)
+      return [];
+
+    const axisValues = (vector: THREE.Vector3) => [vector.x, vector.y, vector.z];
+    const screenSize = screenBounds.getSize(new THREE.Vector3());
+    const axes = [
+      { axis: 'x' as const, size: screenSize.x },
+      { axis: 'y' as const, size: screenSize.y },
+      { axis: 'z' as const, size: screenSize.z },
+    ].sort((left, right) => right.size - left.size);
+    const longAxis = axes[0].axis;
+    const workstationAxisValues = workstationAnchors.map((anchor) => {
+      const worldPosition = anchor!.getWorldPosition(new THREE.Vector3());
+      const localPosition = worldPosition.applyMatrix4(root.matrixWorld.clone().invert());
+      return axisValues(localPosition)[longAxis === 'x' ? 0 : longAxis === 'y' ? 1 : 2];
+    });
+    const regions = workstationObjects.map(() => new THREE.Box3());
+
+    for (const triangle of screenTriangles) {
+      const triangleAxisValue = axisValues(triangle.center)[longAxis === 'x' ? 0 : longAxis === 'y' ? 1 : 2];
+      let nearestIndex = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      workstationAxisValues.forEach((workstationAxisValue, index) => {
+        const distance = Math.abs(workstationAxisValue - triangleAxisValue);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = index;
+        }
+      });
+      triangle.points.forEach(point => regions[nearestIndex].expandByPoint(point));
+    }
+
+    const kinds: NurseStationWorkstationKind[] = ['taskQueue', 'wardStatus', 'bedMonitor', 'deviceHealth'];
+    if (regions.some(region => region.isEmpty()))
+      return [];
+
+    return regions.map((displayRegion, index) => ({
+      kind: kinds[index],
+      workstationName: workstationNames[index],
+      mesh: mergedMonitor,
+      root,
+      displayRegion,
+    }));
+  }
+
+  /**
+   * 为合并的 Keyboard_04.001 屏幕面创建四个独立覆盖层。
+   * 覆盖层沿真实屏幕面法线放置，宽高直接取对应材质区域，避免整块合并网格被一张模板覆盖。
+   */
+  private createMergedWorkstationDisplayOverlays(displays: NurseStationWorkstationDisplay[]) {
+    if (!displays.length)
+      return;
+
+    const mesh = displays[0].mesh;
+    const root = displays[0].root;
+    const fullBounds = this.getNurseStationMeshBoundsInRoot(mesh, root);
+    const fullCenter = fullBounds.getCenter(new THREE.Vector3());
+    const surfaceSize = displays.reduce(
+      (bounds, display) => bounds.union(display.displayRegion),
+      new THREE.Box3(),
+    ).getSize(new THREE.Vector3());
+    const axes = [
+      { axis: 'x' as const, size: surfaceSize.x },
+      { axis: 'y' as const, size: surfaceSize.y },
+      { axis: 'z' as const, size: surfaceSize.z },
+    ].sort((left, right) => right.size - left.size);
+    const longAxis = axes[0].axis;
+    const shortAxis = axes[1].axis;
+    const depthAxis = axes[2].axis;
+    const getAxisValue = (vector: THREE.Vector3, axis: 'x' | 'y' | 'z') =>
+      axis === 'x' ? vector.x : axis === 'y' ? vector.y : vector.z;
+    const setAxisValue = (vector: THREE.Vector3, axis: 'x' | 'y' | 'z', value: number) => {
+      if (axis === 'x')
+        vector.x = value;
+      else if (axis === 'y')
+        vector.y = value;
+      else
+        vector.z = value;
+    };
+    const axisVector = (axis: 'x' | 'y' | 'z', sign = 1) => {
+      if (axis === 'x')
+        return new THREE.Vector3(sign, 0, 0);
+      if (axis === 'y')
+        return new THREE.Vector3(0, sign, 0);
+      return new THREE.Vector3(0, 0, sign);
+    };
+
+    // 仅隐藏合并网格的深蓝屏幕面，保留显示器边框和支架。
+    const originalMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const hiddenMaterials = originalMaterials.map((material) => {
+      if (!/^深蓝$|Screen_Glass|screen|display/i.test(material.name))
+        return material;
+      const replacement = material.clone();
+      replacement.transparent = true;
+      replacement.opacity = 0;
+      replacement.depthWrite = false;
+      replacement.needsUpdate = true;
+      return replacement;
+    });
+    mesh.material = Array.isArray(mesh.material) ? hiddenMaterials : hiddenMaterials[0];
+
+    for (const display of displays) {
+      const texture = this.createNurseStationBoardTexture(display.kind);
+      texture.flipY = true;
+      texture.needsUpdate = true;
+      const region = display.displayRegion;
+      const size = region.getSize(new THREE.Vector3());
+      const center = region.getCenter(new THREE.Vector3());
+      const frontSign = getAxisValue(center, depthAxis) < getAxisValue(fullCenter, depthAxis) ? -1 : 1;
+      const width = Math.max(getAxisValue(size, longAxis), 0.001);
+      const height = Math.max(getAxisValue(size, shortAxis), 0.001);
+      const widthAxis = axisVector(longAxis);
+      const heightAxis = axisVector(shortAxis);
+      const desiredNormal = axisVector(depthAxis, frontSign);
+      let normal = widthAxis.clone().cross(heightAxis).normalize();
+      if (normal.dot(desiredNormal) < 0) {
+        widthAxis.negate();
+        normal = widthAxis.clone().cross(heightAxis).normalize();
+      }
+
+      const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          side: THREE.DoubleSide,
+          toneMapped: false,
+          transparent: false,
+          depthTest: true,
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -4,
+          polygonOffsetUnits: -4,
+        }),
+      );
+      plane.name = `nurse-station-workstation-display-${display.kind}`;
+      plane.position.copy(center);
+      const frontSurface = frontSign < 0
+        ? getAxisValue(region.min, depthAxis)
+        : getAxisValue(region.max, depthAxis);
+      setAxisValue(plane.position, depthAxis, frontSurface + frontSign * 0.006);
+      plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(widthAxis, heightAxis, normal));
+      plane.userData.displayRegion = {
+        min: region.min.toArray(),
+        max: region.max.toArray(),
+      };
+      plane.userData.displayWidth = width;
+      plane.userData.displayHeight = height;
+      plane.userData.displayDepthAxis = depthAxis;
+      plane.userData.workstationName = display.workstationName;
+      plane.renderOrder = 10000;
+      plane.frustumCulled = false;
+      root.add(plane);
+      this.nurseStationBoardDisplays.push({ kind: display.kind, screen: plane, texture });
+
+      console.info('[NurseStationDisplay] bound merged workstation screen', {
+        kind: display.kind,
+        workstationName: display.workstationName,
+        objectName: mesh.name,
+        displayWidth: width,
+        displayHeight: height,
+        depthAxis,
+        frontSign,
+        position: {
+          x: Number(plane.position.x.toFixed(4)),
+          y: Number(plane.position.y.toFixed(4)),
+          z: Number(plane.position.z.toFixed(4)),
+        },
+      });
+    }
+  }
+
   private attachNurseStationBoardDisplays(model: THREE.Object3D) {
     this.disposeNurseStationBoardDisplays();
     this.hideNurseStationStaticBoardContent(model);
@@ -2086,6 +2385,12 @@ export class AreaScene {
         })
         .sort((left, right) => right.score - left.score)[0]?.mesh ?? meshes[0];
     };
+    const workstationDisplays = this.resolveNurseStationWorkstationDisplays(model);
+    if (workstationDisplays.length === 4)
+      this.createMergedWorkstationDisplayOverlays(workstationDisplays);
+    const workstationDisplayKinds = new Set<NurseStationBoardKind>(
+      workstationDisplays.map(display => display.kind),
+    );
     const boards: Array<[NurseStationBoardKind, string[]]> = [
       ['dashboard', ['Screen_Main', 'Screen_Main_Frame']],
       ['whiteboard', ['Board_Nursing', 'Nursing_Board_Title']],
@@ -2099,6 +2404,8 @@ export class AreaScene {
     ];
 
     for (const [kind, objectNames] of boards) {
+      if (workstationDisplayKinds.has(kind))
+        continue;
       const preferredMaterialPattern = kind === 'corridorArea'
         ? /门口机内/i
         : kind === 'whiteboard'

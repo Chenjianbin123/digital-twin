@@ -310,6 +310,55 @@ const interiorItems = computed(() => [
   }
 }
 
+@media (min-width: 769px) and (max-width: 1023px) {
+  .dash-bottom {
+    bottom: calc(var(--mobile-panel-height) + 12px + env(safe-area-inset-bottom));
+    width: min(100% - 24px, 560px);
+
+    &__main {
+      gap: 2px;
+      padding: 4px 6px;
+    }
+
+    &__item,
+    &__sim {
+      min-width: 58px;
+      padding: 6px 8px;
+    }
+
+    &__item--corridor {
+      min-width: 78px;
+      padding-inline: 9px;
+    }
+
+    &__icon {
+      width: 22px;
+      height: 22px;
+    }
+
+    &__label {
+      font-size: 9px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .dash-bottom {
+    bottom: calc(var(--mobile-panel-height) + 10px + env(safe-area-inset-bottom));
+    gap: 6px;
+
+    &__sub {
+      max-width: 100%;
+    }
+
+    &__sub-item {
+      min-width: 0;
+      flex: 1 1 0;
+      padding-inline: 10px;
+    }
+  }
+}
+
 @keyframes sim-pulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
