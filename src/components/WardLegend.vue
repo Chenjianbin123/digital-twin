@@ -59,8 +59,8 @@ function isPulseState(state: string) {
 <style scoped lang="scss">
 .ward-legend {
   position: absolute;
-  left: 220px;
-  bottom: 88px;
+  left: 10px;
+  bottom: 10px;
   z-index: 10;
   pointer-events: none;
 

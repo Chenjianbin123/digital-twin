@@ -18,12 +18,6 @@ export async function loadParsedTemplate(id: number): Promise<ParsedTemplate> {
   if (cached?.signature === signature)
     return cached.parsed;
   const parsed = parseTemplateInfo(info);
-  console.info('[DoorTemplate] 模板解析完成', {
-    id,
-    width: parsed.width,
-    height: parsed.height,
-    nodeCount: parsed.nodes.length,
-  });
   parsedCache.set(id, { signature, parsed });
   return parsed;
 }

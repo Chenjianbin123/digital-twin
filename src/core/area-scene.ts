@@ -46,6 +46,7 @@ import {
   getHospitalCorridorEntranceScreenOrder,
   getHospitalCorridorEntranceScreenMaterialIndex,
   getHospitalCorridorEntranceScreenAspect,
+  createHospitalCorridorDisplayGeometry,
   fitHospitalCorridorEntranceScreenGeometry,
   shouldDepthTestHospitalCorridorScreen,
   getHospitalCorridorDisplayScreenOrder,
@@ -134,7 +135,7 @@ interface WardCorridorModelBinding {
   labelTexture?: THREE.CanvasTexture;
 }
 
-type NurseStationBoardKind = 'dashboard' | 'whiteboard' | 'roomStatus' | 'education' | 'queue' | 'kiosk' | 'workLeft' | 'workRight' | 'taskQueue' | 'wardStatus' | 'bedMonitor' | 'deviceHealth' | 'clock';
+type NurseStationBoardKind = 'dashboard' | 'whiteboard' | 'roomStatus' | 'education' | 'queue' | 'kiosk' | 'workLeft' | 'workRight' | 'taskQueue' | 'wardStatus' | 'bedMonitor' | 'deviceHealth' | 'clock' | 'corridorArea';
 
 interface NurseStationBoardDisplay {
   kind: NurseStationBoardKind;
@@ -161,6 +162,7 @@ const NURSE_STATION_MODEL_MAX_SIZE = new THREE.Vector3(
   nurseStationSceneConfig.model.maxSize.z,
 );
 const NURSE_STATION_BG = nurseStationSceneConfig.appearance.background;
+const DEBUG_DASHBOARD_SCREEN_BORDER = false;
 
 // =============================================================================
 // 病区总览 3D 可调参数（文件：src/core/area-scene.ts）
@@ -186,10 +188,6 @@ const STATION_TARGET_LOCAL = new THREE.Vector3(
   nurseStationSceneConfig.camera.target.y,
   nurseStationSceneConfig.camera.target.z,
 );
-const STATION_TARGET_Z = STATION_TARGET_LOCAL.z;
-const STATION_PAN_X_LIMIT = nurseStationSceneConfig.camera.pan.xLimit;
-const STATION_PAN_Y_MIN = nurseStationSceneConfig.camera.pan.yMin;
-const STATION_PAN_Y_MAX = nurseStationSceneConfig.camera.pan.yMax;
 /** 初始视距（越大画面越小、看得越多）；实际数值见 nurse-station-scene.ts。 */
 const STATION_INIT_DISTANCE = nurseStationSceneConfig.camera.initialDistance;
 /**
@@ -211,16 +209,6 @@ const STATION_CAM_LOCAL = STATION_TARGET_LOCAL.clone().add(
 const STATION_SHELL_BACK_Z = nurseStationSceneConfig.shell.backZ;
 const STATION_SHELL_HALF_W = nurseStationSceneConfig.shell.halfWidth;
 const STATION_SHELL_HALF_D = nurseStationSceneConfig.shell.halfDepth;
-const STATION_MIN_DISTANCE = nurseStationSceneConfig.camera.distance.min;
-const STATION_MAX_DISTANCE = nurseStationSceneConfig.camera.distance.max;
-const STATION_AZIMUTH_LIMIT = nurseStationSceneConfig.camera.azimuthLimit;
-const STATION_MIN_POLAR_ANGLE = nurseStationSceneConfig.camera.polar.min;
-const STATION_MAX_POLAR_ANGLE = nurseStationSceneConfig.camera.polar.max;
-/** 护士站室内天花板下沿（护士 group 本地 Y），相机不得高于此 */
-const STATION_CEILING_Y = nurseStationSceneConfig.camera.ceilingY;
-const STATION_CEILING_CAM_MARGIN = nurseStationSceneConfig.camera.ceilingCameraMargin;
-const STATION_CEILING_TARGET_MARGIN = nurseStationSceneConfig.camera.ceilingTargetMargin;
-const STATION_FLOOR_CAM_MARGIN = nurseStationSceneConfig.camera.floorCameraMargin;
 
 // --- B. 相机初始视角（走廊总览，expand 后使用）---
 // 视线落点高度：↑ 看门楣/天花板  ↓ 看地板（太低只剩灰地面）
@@ -236,9 +224,9 @@ const OVERVIEW_ELEVATION_PER_ROW = 0.72; // 每多一行病房，高度 +此值
 const OVERVIEW_ELEVATION_ROW_CAP = 4.2;  // 高度增量上限
 const OVERVIEW_CAM_X_PER_ROW = 0.62;    // 每行 X 偏移增量
 const OVERVIEW_CAM_X_MAX = 9.6;          // X 偏移上限
-const OVERVIEW_CAM_Z_BACK_BASE = 8.5;  // 相机沿走廊后退基数
+const OVERVIEW_CAM_Z_BACK_BASE = 1;  // 相机沿走廊后退基数；减小可让护士站更靠前、更大
 const OVERVIEW_CAM_Z_LEN_FACTOR = 0.065; // 走廊越长，相机越靠护士站外侧
-const OVERVIEW_CAM_Z_BACK_MAX = 12.8;   // 后退距离上限
+const OVERVIEW_CAM_Z_BACK_MAX = 5.2;   // 后退距离上限；与基数配合让护士站更靠前
 
 // --- C. 视野与交互（OrbitControls）---
 const AREA_CAMERA_FOV = wardCorridorSceneConfig.camera.overviewFov.upToTwoRooms;
@@ -1018,10 +1006,13 @@ export class AreaScene {
   }
 
   private createBoardCanvas(width: number, height: number) {
+    const CANVAS_SCALE = 2;
     const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = width * CANVAS_SCALE;
+    canvas.height = height * CANVAS_SCALE;
     const ctx = canvas.getContext('2d')!;
+    ctx.scale(CANVAS_SCALE, CANVAS_SCALE);
+    ctx.imageSmoothingEnabled = true;
     return { canvas, ctx };
   }
 
@@ -1029,6 +1020,9 @@ export class AreaScene {
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;
     texture.needsUpdate = true;
     return texture;
   }
@@ -1053,6 +1047,40 @@ export class AreaScene {
     ctx.lineTo(x, y + radius);
     ctx.quadraticCurveTo(x, y, x + radius, y);
     ctx.closePath();
+  }
+
+  private drawTechGrid(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    accent = '#38d9ff',
+  ) {
+    ctx.save();
+    ctx.strokeStyle = `${accent}18`;
+    ctx.lineWidth = 1;
+    for (let x = 16; x < width; x += 32) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    for (let y = 16; y < height; y += 32) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = `${accent}8c`;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 8;
+    ctx.strokeRect(12, 12, width - 24, height - 24);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = `${accent}cc`;
+    [[18, 18], [width - 18, 18], [18, height - 18], [width - 18, height - 18]].forEach(([x, y]) => {
+      ctx.fillRect(x - 3, y - 3, 6, 6);
+    });
+    ctx.restore();
   }
 
   private drawTruncatedText(
@@ -1252,6 +1280,7 @@ export class AreaScene {
     bg.addColorStop(1, side === 'left' ? '#0f2d38' : '#132a31');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, 640, 280);
+    this.drawTechGrid(ctx, 640, 280, side === 'left' ? '#4dd0e1' : '#80cbc4');
     ctx.fillStyle = 'rgba(123,223,242,0.16)';
     ctx.fillRect(28, 24, 584, 4);
 
@@ -1367,6 +1396,7 @@ export class AreaScene {
     bg.addColorStop(1, '#102c36');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, 960, 520);
+    this.drawTechGrid(ctx, 960, 520, '#4dd0e1');
     ctx.fillStyle = '#153b49';
     ctx.fillRect(0, 0, 960, 92);
     ctx.fillStyle = '#7bdff2';
@@ -1548,50 +1578,136 @@ export class AreaScene {
     bg.addColorStop(1, '#10313a');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, 1200, 640);
+    this.drawTechGrid(ctx, 1200, 640, '#57e5ff');
     ctx.fillStyle = '#153b49';
-    ctx.fillRect(0, 0, 1200, 112);
+    ctx.fillRect(0, 0, 1200, 132);
     ctx.fillStyle = '#7bdff2';
-    ctx.fillRect(0, 108, 1200, 4);
+    ctx.fillRect(0, 128, 1200, 4);
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#e7fbff';
     ctx.font = 'bold 48px "Microsoft YaHei", sans-serif';
-    ctx.fillText('病区态势', 48, 56);
+    ctx.fillText('病区态势', 36, 78);
     ctx.fillStyle = '#9ccfd8';
     ctx.font = '28px "Microsoft YaHei", sans-serif';
-    this.drawTruncatedText(ctx, info.areaName ?? '智慧病区', 276, 58, 520);
+    this.drawTruncatedText(ctx, info.areaName ?? '智慧病区', 264, 80, 560);
     ctx.textAlign = 'right';
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 46px "Consolas", "Microsoft YaHei", monospace';
-    ctx.fillText(time, 1152, 56);
+    ctx.fillText(time, 1164, 78);
 
-    const metrics: Array<[string, string, string]> = [
-      ['在床患者', `${stats.occupiedBeds}/${stats.totalBeds}`, '#7bdff2'],
-      ['待处理呼叫', `${stats.callingCount}`, stats.callingCount > 0 ? '#ff5c8a' : '#7bdff2'],
-      ['输液巡视', `${stats.infusingCount}`, stats.infusingCount > 0 ? '#ffb74d' : '#7bdff2'],
-      ['设备在线率', stats.onlineRate == null ? '暂无数据' : `${stats.onlineRate}%`, stats.offlineCount > 0 ? '#ffb74d' : '#80cbc4'],
-    ];
-    metrics.forEach(([label, value, color], index) => {
-      const col = index % 2;
-      const row = Math.floor(index / 2);
-      const x = 48 + col * 564;
-      const y = 150 + row * 206;
+    const columnGap = 8;
+    const columnWidth = (1200 - columnGap * 2) / 3;
+    const columnTop = 132;
+    const columnHeight = 508;
+    const leftX = 0;
+    const centerX = leftX + columnWidth + columnGap;
+    const rightX = centerX + columnWidth + columnGap;
+    const drawColumn = (x: number, title: string, accent: string) => {
       ctx.fillStyle = 'rgba(255,255,255,0.065)';
-      this.drawBoardRoundRect(ctx, x, y, 516, 172, 20);
+      this.drawBoardRoundRect(ctx, x, columnTop, columnWidth, columnHeight, 12);
       ctx.fill();
-      ctx.strokeStyle = `${color}66`;
+      ctx.strokeStyle = `${accent}88`;
       ctx.lineWidth = 2;
       ctx.stroke();
-      ctx.fillStyle = color;
-      ctx.fillRect(x + 24, y + 28, 9, 112);
+      ctx.fillStyle = accent;
+      ctx.fillRect(x, columnTop, columnWidth, 8);
+      ctx.fillStyle = '#dff8ff';
+      ctx.font = 'bold 28px "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'left';
+      ctx.fillText(title, x + 24, columnTop + 42);
+    };
+
+    // 左栏：病区概览
+    drawColumn(leftX, '病区概览', '#7bdff2');
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 68px "Microsoft YaHei", sans-serif';
+    ctx.fillText(`${stats.occupiedBeds}/${stats.totalBeds}`, leftX + 22, 252);
+    ctx.fillStyle = '#9ccfd8';
+    ctx.font = '26px "Microsoft YaHei", sans-serif';
+    ctx.fillText('在床患者', leftX + 24, 292);
+    const overviewMetrics: Array<[string, string, string]> = [
+      ['待处理呼叫', `${stats.callingCount}`, '#ff5c8a'],
+      ['输液巡视', `${stats.infusingCount}`, '#ffb74d'],
+      ['设备在线率', stats.onlineRate == null ? '暂无数据' : `${stats.onlineRate}%`, '#80cbc4'],
+    ];
+    overviewMetrics.forEach(([label, value, color], index) => {
+      const y = 326 + index * 72;
+      ctx.fillStyle = color;
+      ctx.fillRect(leftX + 24, y - 18, 8, 36);
+      ctx.fillStyle = '#c6e4ea';
+      ctx.font = '24px "Microsoft YaHei", sans-serif';
+      ctx.fillText(label, leftX + 50, y);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 66px "Microsoft YaHei", sans-serif';
-      ctx.fillText(value, x + 62, y + 70);
-      ctx.fillStyle = '#9ccfd8';
-      ctx.font = '30px "Microsoft YaHei", sans-serif';
-      ctx.fillText(label, x + 64, y + 126);
+      ctx.font = 'bold 30px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(value, leftX + columnWidth - 24, y);
+      ctx.textAlign = 'left';
     });
+
+    // 中栏：患者动态
+    drawColumn(centerX, '患者动态', '#4dd0e1');
+    const priorityRooms = [...this.summaries]
+      .sort((left, right) => right.callingCount - left.callingCount || right.occupiedBeds - left.occupiedBeds)
+      .slice(0, 4);
+    const patientCardHeight = 72;
+    priorityRooms.forEach((room, index) => {
+      const y = columnTop + 88 + index * 84;
+      ctx.fillStyle = 'rgba(255,255,255,0.07)';
+      this.drawBoardRoundRect(ctx, centerX + 16, y, columnWidth - 32, patientCardHeight, 14);
+      ctx.fill();
+      ctx.fillStyle = room.accentColor;
+      ctx.fillRect(centerX + 32, y + 14, 7, patientCardHeight - 28);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px "Microsoft YaHei", sans-serif';
+      this.drawTruncatedText(ctx, room.sickroomName, centerX + 52, y + 24, 150);
+      ctx.fillStyle = '#9ccfd8';
+      ctx.font = '18px "Microsoft YaHei", sans-serif';
+      ctx.fillText(`${room.occupiedBeds}/${room.totalBeds} 在床`, centerX + 52, y + 54);
+      ctx.fillStyle = room.accentColor;
+      ctx.font = 'bold 19px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(room.statusText, centerX + columnWidth - 24, y + 40);
+      ctx.textAlign = 'left';
+    });
+    if (!priorityRooms.length) {
+      ctx.fillStyle = '#9ccfd8';
+      ctx.font = '24px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('暂无患者数据', centerX + columnWidth / 2, columnTop + 220);
+      ctx.textAlign = 'left';
+    }
+
+    // 右栏：设备状态
+    drawColumn(rightX, '设备状态', '#80cbc4');
+    const deviceMetrics: Array<[string, string, string]> = [
+      ['在线率', stats.onlineRate == null ? '暂无数据' : `${stats.onlineRate}%`, '#80cbc4'],
+      ['离线设备', `${stats.offlineCount}`, '#ff5c8a'],
+      ['环境预警', `${stats.envWarningCount}`, '#ffb74d'],
+    ];
+    deviceMetrics.forEach(([label, value, color], index) => {
+      const y = columnTop + 112 + index * 92;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(rightX + 48, y, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c6e4ea';
+      ctx.font = '24px "Microsoft YaHei", sans-serif';
+      ctx.fillText(label, rightX + 76, y + 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 34px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(value, rightX + columnWidth - 24, y + 8);
+      ctx.textAlign = 'left';
+    });
+    ctx.fillStyle = 'rgba(123,223,242,0.12)';
+    this.drawBoardRoundRect(ctx, rightX + 24, columnTop + 350, columnWidth - 48, 56, 12);
+    ctx.fill();
+    ctx.fillStyle = stats.offlineCount || stats.envWarningCount ? '#ffcf8a' : '#9fe5d8';
+    ctx.font = 'bold 21px "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(stats.offlineCount || stats.envWarningCount ? '请优先处理异常设备' : '设备运行正常', rightX + columnWidth / 2, columnTop + 384);
+    ctx.textAlign = 'left';
     return this.makeBoardTexture(canvas);
   }
 
@@ -1657,6 +1773,19 @@ export class AreaScene {
   private createNurseStationBoardTexture(kind: NurseStationBoardKind) {
     if (kind === 'clock')
       return this.createNurseStationClockTexture();
+    if (kind === 'corridorArea') {
+      const texture = createCorridorScreenTexture({
+        ...this.getCorridorDisplayData(),
+        mode: 'area',
+      });
+      // 走廊屏模型的可见面朝向与覆盖平面相反；从背面显示时文字会水平镜像。
+      // 仅反转走廊屏纹理，避免影响护士站其它屏幕及病房门口屏。
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.repeat.x = -1;
+      texture.offset.x = 1;
+      texture.needsUpdate = true;
+      return texture;
+    }
     if (kind === 'dashboard')
       return this.createNurseRearDashboardTexture();
     if (kind === 'whiteboard')
@@ -1758,6 +1887,7 @@ export class AreaScene {
     screen: THREE.Mesh,
     texture: THREE.Texture,
     kind: NurseStationBoardKind,
+    root: THREE.Object3D = screen,
   ) {
     texture.flipY = true;
     texture.needsUpdate = true;
@@ -1769,12 +1899,68 @@ export class AreaScene {
       }
       oldMaterial.dispose();
     }
-    screen.material = new THREE.MeshBasicMaterial({ color: 0x07131b, toneMapped: false });
+    // 原始屏幕 Mesh 只作为定位基准，不再显示其内置占位图形。
+    screen.material = new THREE.MeshBasicMaterial({
+      color: 0x07131b,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      toneMapped: false,
+    });
 
     screen.geometry.computeBoundingBox();
-    const bounds = screen.geometry.boundingBox;
-    const size = bounds?.getSize(new THREE.Vector3()) ?? new THREE.Vector3(1, 0.55, 0.02);
-    const center = bounds?.getCenter(new THREE.Vector3()) ?? new THREE.Vector3();
+    const fullBounds = screen.geometry.boundingBox;
+    const position = screen.geometry.getAttribute('position');
+    const displayMaterialPattern = kind === 'corridorArea'
+      ? /门口机内/i
+      : kind === 'whiteboard'
+        ? /Nursing_Whiteboard|Whiteboard_Ink/i
+        : /深蓝|Screen_Glass|screen|display/i;
+    const surfaceMaterialIndexes = new Set(
+      oldMaterials
+        .map((material, index) => displayMaterialPattern.test(material.name) ? index : -1)
+        .filter(index => index >= 0),
+    );
+    const surfaceGroups = screen.geometry.groups.filter(
+      group => group.materialIndex != null && surfaceMaterialIndexes.has(group.materialIndex),
+    );
+    const sourceBounds = new THREE.Box3();
+    if (surfaceGroups.length && position) {
+      surfaceGroups.forEach((group) => {
+        const end = Math.min(group.start + group.count, screen.geometry.index?.count ?? position.count);
+        for (let i = group.start; i < end; i++) {
+          const vertexIndex = screen.geometry.index?.getX(i) ?? i;
+          sourceBounds.expandByPoint(new THREE.Vector3(
+            position.getX(vertexIndex),
+            position.getY(vertexIndex),
+            position.getZ(vertexIndex),
+          ));
+        }
+      });
+    }
+    if (sourceBounds.isEmpty() && fullBounds)
+      sourceBounds.copy(fullBounds);
+    // 子 Mesh 的局部坐标转换到完整屏幕父节点坐标，避免只按 Cube 子面生成小贴片。
+    screen.updateMatrixWorld(true);
+    root.updateMatrixWorld(true);
+    const sourceToRoot = new THREE.Matrix4()
+      .copy(root.matrixWorld)
+      .invert()
+      .multiply(screen.matrixWorld);
+    const bounds = new THREE.Box3();
+    const corners = [
+      new THREE.Vector3(sourceBounds.min.x, sourceBounds.min.y, sourceBounds.min.z),
+      new THREE.Vector3(sourceBounds.min.x, sourceBounds.min.y, sourceBounds.max.z),
+      new THREE.Vector3(sourceBounds.min.x, sourceBounds.max.y, sourceBounds.min.z),
+      new THREE.Vector3(sourceBounds.min.x, sourceBounds.max.y, sourceBounds.max.z),
+      new THREE.Vector3(sourceBounds.max.x, sourceBounds.min.y, sourceBounds.min.z),
+      new THREE.Vector3(sourceBounds.max.x, sourceBounds.min.y, sourceBounds.max.z),
+      new THREE.Vector3(sourceBounds.max.x, sourceBounds.max.y, sourceBounds.min.z),
+      new THREE.Vector3(sourceBounds.max.x, sourceBounds.max.y, sourceBounds.max.z),
+    ];
+    corners.forEach(corner => bounds.expandByPoint(corner.applyMatrix4(sourceToRoot)));
+    const size = bounds.getSize(new THREE.Vector3());
+    const center = bounds.getCenter(new THREE.Vector3());
     const axes = [
       { axis: 'x' as const, size: size.x },
       { axis: 'y' as const, size: size.y },
@@ -1782,9 +1968,12 @@ export class AreaScene {
     ].sort((a, b) => a.size - b.size);
     const depthAxis = axes[0].axis;
     const surfaceAxes = axes.slice(1).sort((a, b) => b.size - a.size);
-    const overlayWidth = surfaceAxes[0].size * 0.94;
-    const overlayHeight = surfaceAxes[1].size * 0.9;
-    const surfaceOffset = 0.002;
+    // 使用实际可见面尺寸，模板 100% 覆盖屏幕，不再缩小到屏幕内部一小块。
+    const overlayFitScaleX = kind === 'dashboard' ? 1.24 : 1;
+    const overlayFitScaleY = kind === 'dashboard' ? 1.42 : 1;
+    const overlayWidth = Math.max(surfaceAxes[0].size * overlayFitScaleX, 0.001);
+    const overlayHeight = Math.max(surfaceAxes[1].size * overlayFitScaleY, 0.001);
+    const surfaceOffset = 0.004;
 
     const overlay = new THREE.Mesh(
       new THREE.PlaneGeometry(overlayWidth, overlayHeight),
@@ -1792,12 +1981,35 @@ export class AreaScene {
         map: texture,
         side: THREE.DoubleSide,
         toneMapped: false,
+        // 覆盖层仍保持高渲染顺序，但参与深度测试，避免不同屏幕在斜视角下互相遮挡。
         depthTest: true,
         depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -4,
+        polygonOffsetUnits: -4,
       }),
     );
-    const primaryScreenKinds = new Set<NurseStationBoardKind>(['dashboard', 'whiteboard', 'roomStatus', 'clock']);
-    const overlayOpacity = primaryScreenKinds.has(kind) ? 1 : 0.78;
+    overlay.userData.displayMaterialNames = oldMaterials
+      .filter((_, index) => surfaceMaterialIndexes.has(index))
+      .map(material => material.name);
+    overlay.userData.displayWidth = overlayWidth;
+    overlay.userData.displayHeight = overlayHeight;
+    if (kind === 'dashboard' && DEBUG_DASHBOARD_SCREEN_BORDER) {
+      const border = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.PlaneGeometry(overlayWidth, overlayHeight)),
+        new THREE.LineBasicMaterial({
+          color: 0xff3344,
+          transparent: true,
+          opacity: 0.95,
+          depthTest: false,
+          depthWrite: false,
+        }),
+      );
+      border.name = 'nurse-station-dashboard-screen-debug-border';
+      border.renderOrder = 10001;
+      overlay.add(border);
+    }
+    const overlayOpacity = 1;
     const overlayMaterial = overlay.material as THREE.MeshBasicMaterial;
     overlayMaterial.transparent = overlayOpacity < 1;
     overlayMaterial.opacity = overlayOpacity;
@@ -1813,44 +2025,180 @@ export class AreaScene {
       overlay.rotation.y = Math.PI / 2;
       overlay.position.set((bounds?.max.x ?? size.x / 2) + surfaceOffset, center.y, center.z);
     }
-    overlay.renderOrder = 24;
-    screen.add(overlay);
+    overlay.userData.displayDepthAxis = depthAxis;
+    overlay.userData.displayPosition = {
+      x: Number(overlay.position.x.toFixed(4)),
+      y: Number(overlay.position.y.toFixed(4)),
+      z: Number(overlay.position.z.toFixed(4)),
+    };
+    overlay.renderOrder = 10000;
+    overlay.frustumCulled = false;
+    root.add(overlay);
     return overlay;
   }
 
   private attachNurseStationBoardDisplays(model: THREE.Object3D) {
     this.disposeNurseStationBoardDisplays();
     this.hideNurseStationStaticBoardContent(model);
-    const boards: Array<[NurseStationBoardKind, string]> = [
-      ['dashboard', 'Screen_Main'],
-      ['whiteboard', 'Board_Nursing'],
-      ['roomStatus', 'Board_Patient_Status'],
-      ['taskQueue', 'Screen_Work_01'],
-      ['wardStatus', 'Screen_Work_02'],
-      ['bedMonitor', 'Screen_Work_03'],
-      ['deviceHealth', 'Screen_Work_04'],
-      ['clock', 'Clock_Display'],
+    const allMeshes: THREE.Mesh[] = [];
+    model.traverse((object) => {
+      if (object instanceof THREE.Mesh)
+        allMeshes.push(object);
+    });
+    const usedMeshes = new Set<THREE.Mesh>();
+    const resolveDisplayMesh = (
+      object: THREE.Object3D | undefined,
+      preferredMaterialPattern: RegExp,
+    ) => {
+      if (!object)
+        return undefined;
+      if (object instanceof THREE.Mesh)
+        return object;
+      const meshes: THREE.Mesh[] = [];
+      object.traverse((child) => {
+        if (child instanceof THREE.Mesh)
+          meshes.push(child);
+      });
+      return meshes
+        .map((mesh) => {
+          const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          const materialText = materials.map(material => material.name).join(' ');
+          mesh.geometry.computeBoundingBox();
+          const size = mesh.geometry.boundingBox?.getSize(new THREE.Vector3()) ?? new THREE.Vector3();
+          const axes = [Math.abs(size.x), Math.abs(size.y), Math.abs(size.z)].sort((a, b) => b - a);
+          const surfaceArea = (axes[0] ?? 0) * (axes[1] ?? 0);
+          let score = surfaceArea;
+          if (preferredMaterialPattern.test(materialText))
+            score += 1000;
+          if (/深蓝|Screen_Glass/i.test(materialText))
+            score += 100;
+          else if (/UI_Blue|UI_Cyan|Clock_Red/i.test(materialText))
+            score += 1;
+          return { mesh, score };
+        })
+        .sort((left, right) => right.score - left.score)[0]?.mesh ?? meshes[0];
+    };
+    const boards: Array<[NurseStationBoardKind, string[]]> = [
+      ['dashboard', ['Screen_Main', 'Screen_Main_Frame']],
+      ['whiteboard', ['Board_Nursing', 'Nursing_Board_Title']],
+      ['roomStatus', ['Board_Patient_Status', 'Patient_Status_Bar_02']],
+      ['corridorArea', ['走廊屏_1']],
+      ['taskQueue', ['Screen_Work_01', 'Monitor_UI_01_00']],
+      ['wardStatus', ['Screen_Work_02', 'Monitor_UI_02_02']],
+      ['bedMonitor', ['Screen_Work_03', 'Monitor_Frame_03']],
+      ['deviceHealth', ['Screen_Work_04', 'Monitor_Frame_04']],
+      ['clock', ['Clock_Display', 'Clock_Frame']],
     ];
 
-    for (const [kind, objectName] of boards) {
-      const object = model.getObjectByName(objectName);
+    for (const [kind, objectNames] of boards) {
+      const preferredMaterialPattern = kind === 'corridorArea'
+        ? /门口机内/i
+        : kind === 'whiteboard'
+          ? /Nursing_Whiteboard|Whiteboard_Ink/i
+          : /深蓝|Screen_Glass|screen|display/i;
+      const exactObjectName = objectNames.find(name => model.getObjectByName(name));
+      let object = resolveDisplayMesh(
+        exactObjectName ? model.getObjectByName(exactObjectName) : undefined,
+        preferredMaterialPattern,
+      );
       if (!(object instanceof THREE.Mesh)) {
-        console.warn(`[AreaScene] nurse station board mesh not found: ${objectName}`);
+        const namePattern = kind === 'clock'
+          ? /clock|time|时钟/i
+          : kind === 'dashboard'
+            ? /screen.*main|main.*screen|dashboard|总览|态势/i
+            : kind === 'whiteboard'
+              ? /board|whiteboard|护理|交班/i
+              : kind === 'roomStatus'
+                ? /patient.*status|status.*patient|患者|状态/i
+                : /monitor.*ui|monitor.*frame|screen.*work|workstation|工作台/i;
+        object = allMeshes.find(mesh => !usedMeshes.has(mesh) && namePattern.test(mesh.name));
+      }
+      if (!(object instanceof THREE.Mesh)) {
+        const scored = allMeshes
+          .map(mesh => {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            const materialText = materials.map(material => material.name).join(' ');
+            let score = 0;
+            if (/Screen_Glass|UI_Blue|UI_Cyan|Clock_Red|Whiteboard|Nursing_Whiteboard/i.test(materialText))
+              score += 4;
+            if (kind === 'clock' && /Clock_Red/i.test(materialText))
+              score += 8;
+            if (kind === 'dashboard' && /Screen_Glass/i.test(materialText))
+              score += 6;
+            if (/Monitor_UI|Monitor_Frame/i.test(mesh.name))
+              score += 5;
+            return { mesh, score };
+          })
+          .filter(item => item.score > 0)
+          .sort((left, right) => right.score - left.score);
+        object = scored.find(item => !usedMeshes.has(item.mesh))?.mesh;
+      }
+      if (object instanceof THREE.Mesh && usedMeshes.has(object))
+        object = undefined;
+      if (!(object instanceof THREE.Mesh)) {
+        console.warn(`[AreaScene] nurse station board mesh not found: ${objectNames.join(' / ')}`);
         continue;
       }
+      usedMeshes.add(object);
+      const displayRoot = exactObjectName ? model.getObjectByName(exactObjectName) : object;
+      if (displayRoot)
+        this.hideNurseStationPlaceholderMaterials(displayRoot);
       const videoTexture = kind === 'education'
         ? this.createHealthEducationVideoTexture()
         : undefined;
       const texture = videoTexture?.texture ?? this.createNurseStationBoardTexture(kind);
-      const overlay = this.attachNurseStationTextureOverlay(object, texture, kind);
+      const materialNames = (Array.isArray(object.material) ? object.material : [object.material])
+        .map(material => material.name)
+        .filter(Boolean);
+      const overlay = this.attachNurseStationTextureOverlay(object, texture, kind, displayRoot);
       this.nurseStationBoardDisplays.push({ kind, screen: overlay, texture, video: videoTexture?.video });
+      console.info('[NurseStationDisplay] bound', {
+        kind,
+        objectName: object.name,
+        displayRootName: displayRoot?.name ?? object.parent?.name,
+        selectedMaterial: (overlay.userData.displayMaterialNames as string[] | undefined)?.join(', ') || materialNames[0] || '(none)',
+        overlayWidth: overlay.userData.displayWidth,
+        overlayHeight: overlay.userData.displayHeight,
+        depthAxis: overlay.userData.displayDepthAxis,
+        overlayPosition: overlay.userData.displayPosition,
+        overlayParent: overlay.parent?.name,
+        mode: 'overlay',
+      });
     }
+    if (!this.nurseStationBoardDisplays.length)
+      console.warn('[NurseStationDisplay] no display mesh was bound');
+  }
+
+  /** 隐藏 GLB 电脑屏内置的蓝色横条/占位 UI，避免覆盖真实模板。 */
+  private hideNurseStationPlaceholderMaterials(root: THREE.Object3D) {
+    root.traverse((object) => {
+      if (!(object instanceof THREE.Mesh))
+        return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => {
+        if (!/UI_Blue|UI_Cyan|Clock_Red/i.test(material.name))
+          return;
+        material.transparent = true;
+        material.opacity = 0;
+        material.depthWrite = false;
+        material.needsUpdate = true;
+      });
+    });
   }
 
   private hideNurseStationStaticBoardContent(model: THREE.Object3D) {
     const exactNames = new Set([
       'Nursing_Board_Title',
       'Patient_Board_Title',
+      // 模型自带的顶部主屏静态标题/指标，避免和实时 Canvas 模板重叠。
+      'Detail_Header_Accent',
+      'Detail_Header_Center',
+      'Detail_Header_Left',
+      'Detail_Header_Left_Text',
+      'Detail_Header_Right',
+      'Detail_Header_Right_Text',
+      'Detail_Header_Subtitle',
+      'Detail_Header_Title',
     ]);
     const prefixes = [
       'Nursing_Bed_',
@@ -1863,6 +2211,17 @@ export class AreaScene {
     model.traverse((object) => {
       if (exactNames.has(object.name) || prefixes.some(prefix => object.name.startsWith(prefix)))
         object.visible = false;
+      if (!(object instanceof THREE.Mesh))
+        return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => {
+        if (!/UI_Blue|UI_Cyan|Clock_Red/i.test(material.name))
+          return;
+        material.transparent = true;
+        material.opacity = 0;
+        material.depthWrite = false;
+        material.needsUpdate = true;
+      });
     });
   }
 
@@ -2021,6 +2380,9 @@ export class AreaScene {
   private async loadNurseStationModel(parent: THREE.Group) {
     const token = ++this.nurseStationModelLoadToken;
     const loader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('/draco/');
+    loader.setDRACOLoader(dracoLoader);
     this.onModelState?.('loading');
 
     try {
@@ -2045,6 +2407,9 @@ export class AreaScene {
     catch (error) {
       console.warn('[AreaScene] failed to load nurse station GLB', error);
       this.onModelState?.('fallback');
+    }
+    finally {
+      dracoLoader.dispose();
     }
   }
 
@@ -2178,36 +2543,34 @@ export class AreaScene {
   private bindCorridorModelDisplays(nodes: readonly THREE.Object3D[]) {
     this.disposeCorridorModelDisplays();
     const displayNodes = getHospitalCorridorDisplayScreenOrder(nodes);
+    const uniqueDisplayNodes = displayNodes.filter((screen, index, screens) => {
+      const center = new THREE.Box3().setFromObject(screen).getCenter(new THREE.Vector3());
+      return screens.findIndex(candidate => {
+        const other = new THREE.Box3().setFromObject(candidate).getCenter(new THREE.Vector3());
+        return center.distanceToSquared(other) < 1e-8;
+      }) === index;
+    });
 
-    displayNodes.slice(0, 2).forEach((screen, index) => {
+    uniqueDisplayNodes.slice(0, 2).forEach((screen, index) => {
       const mode: CorridorModelDisplay['mode'] = index === 0 ? 'area' : 'clock';
       const texture = createCorridorScreenTexture({
         ...this.getCorridorDisplayData(),
         mode,
       });
       const materialIndex = getHospitalCorridorEntranceScreenMaterialIndex(screen);
-      const overlayGeometry = screen.geometry.clone();
-      const targetGroups = materialIndex >= 0
-        ? overlayGeometry.groups.filter(group => group.materialIndex === materialIndex)
-        : [];
-      overlayGeometry.clearGroups();
-      if (targetGroups.length) {
-        targetGroups.forEach(group => {
-          overlayGeometry.addGroup(group.start, group.count, 0);
-        });
-      }
-      else {
-        overlayGeometry.addGroup(0, overlayGeometry.index?.count ?? overlayGeometry.getAttribute('position').count, 0);
-      }
+      const overlayGeometry = createHospitalCorridorDisplayGeometry(screen, materialIndex);
 
       const overlay = new THREE.Mesh(
         overlayGeometry,
         new THREE.MeshBasicMaterial({
-        map: texture,
-        side: THREE.DoubleSide,
-        toneMapped: false,
-        depthTest: false,
-        depthWrite: false,
+          map: texture,
+          side: THREE.DoubleSide,
+          toneMapped: false,
+          depthTest: false,
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -4,
+          polygonOffsetUnits: -4,
         }),
       );
       overlay.name = `${screen.name}-dynamic-display`;
@@ -2216,14 +2579,6 @@ export class AreaScene {
       overlay.userData.generatedCorridorDisplayOverlay = true;
       screen.add(overlay);
       screen.visible = true;
-      console.info('[CorridorDisplay] bind', {
-        name: screen.name,
-        mode,
-        materialIndex,
-        materialCount: Array.isArray(screen.material) ? screen.material.length : 1,
-        groups: screen.geometry.groups,
-        targetGroups,
-      });
       this.corridorModelDisplays.push({ screen, overlay, texture, mode });
     });
   }
@@ -2469,12 +2824,6 @@ export class AreaScene {
       const summary = roomIndex == null ? undefined : this.summaries[roomIndex];
       if (!room || !summary || !binding.screen)
         return;
-      console.info('[DoorTemplate] 走廊屏刷新', {
-        room: room.sickroomName,
-        templateId: room.templateId,
-        hasSummary: !!summary,
-        screen: binding.screen.name,
-      });
 
       let texture: THREE.CanvasTexture;
       let isHorizontal = isDoorHorizontal(resolveDoorDirector(room));
@@ -2752,54 +3101,8 @@ export class AreaScene {
     };
   }
 
-  /** 护士站：限制 Orbit 不穿过天花板（动态 polar + 高度硬钳制） */
+  /** 护士站视角不做边界钳制，允许自由旋转、缩放和平移。 */
   private applyStationOrbitCeilingConstraint() {
-    if (this.viewPhase !== 'station' || !this.nurseGroup)
-      return;
-
-    const targetLocal = this.nurseGroup.worldToLocal(this.controls.target.clone());
-    const clampedX = THREE.MathUtils.clamp(
-      targetLocal.x,
-      -STATION_PAN_X_LIMIT,
-      STATION_PAN_X_LIMIT,
-    );
-    const clampedY = THREE.MathUtils.clamp(
-      targetLocal.y,
-      STATION_PAN_Y_MIN,
-      STATION_PAN_Y_MAX,
-    );
-    if (clampedX !== targetLocal.x || clampedY !== targetLocal.y || targetLocal.z !== STATION_TARGET_Z) {
-      targetLocal.x = clampedX;
-      targetLocal.y = clampedY;
-      targetLocal.z = STATION_TARGET_Z;
-
-      const clampedTarget = this.worldFromNurseLocal(targetLocal);
-      const correction = clampedTarget.clone().sub(this.controls.target);
-      this.controls.target.copy(clampedTarget);
-      this.camera.position.add(correction);
-    }
-
-    const radius = Math.max(this.camera.position.distanceTo(this.controls.target), 0.01);
-    const headroom = STATION_CEILING_Y - targetLocal.y - STATION_CEILING_CAM_MARGIN;
-
-    if (headroom > 0.05) {
-      const minPolar = Math.acos(Math.min(1, headroom / radius));
-      this.controls.minPolarAngle = Math.max(Math.PI / 4, Math.min(minPolar, Math.PI / 2.06));
-    }
-
-    const ceilingWorldY = this.worldFromNurseLocal(new THREE.Vector3(0, STATION_CEILING_Y, 0)).y;
-    const camMaxY = ceilingWorldY - STATION_CEILING_CAM_MARGIN;
-    if (this.camera.position.y > camMaxY)
-      this.camera.position.y = camMaxY;
-
-    const floorWorldY = this.worldFromNurseLocal(new THREE.Vector3(0, 0, 0)).y;
-    const camMinY = floorWorldY + STATION_FLOOR_CAM_MARGIN;
-    if (this.camera.position.y < camMinY)
-      this.camera.position.y = camMinY;
-
-    const targetMaxY = ceilingWorldY - STATION_CEILING_TARGET_MARGIN;
-    if (this.controls.target.y > targetMaxY)
-      this.controls.target.y = targetMaxY;
   }
 
   private applyStationDeskCamera() {
@@ -2815,12 +3118,12 @@ export class AreaScene {
     this.camera.fov = STATION_DESK_FOV;
     this.camera.position.copy(position);
     this.controls.target.copy(target);
-    this.controls.minPolarAngle = STATION_MIN_POLAR_ANGLE;
-    this.controls.maxPolarAngle = STATION_MAX_POLAR_ANGLE;
-    this.controls.minAzimuthAngle = -STATION_AZIMUTH_LIMIT;
-    this.controls.maxAzimuthAngle = STATION_AZIMUTH_LIMIT;
-    this.controls.minDistance = STATION_MIN_DISTANCE;
-    this.controls.maxDistance = STATION_MAX_DISTANCE;
+    this.controls.minPolarAngle = 0.001;
+    this.controls.maxPolarAngle = Math.PI - 0.001;
+    this.controls.minAzimuthAngle = -Infinity;
+    this.controls.maxAzimuthAngle = Infinity;
+    this.controls.minDistance = 0.1;
+    this.controls.maxDistance = 1000;
     this.camera.lookAt(target);
     this.controls.update();
     this.applyStationOrbitCeilingConstraint();

@@ -21,11 +21,11 @@ assert.match(exportScript, /clock\.location = \(4\.85, -0\.105, 3\.10\)/);
 assert.match(exportScript, /clock\.dimensions = \(1\.20, 0\.05, 0\.32\)/);
 
 // Live JSON-driven work screens remain mapped to the exported model meshes.
-assert.match(areaScene, /\['taskQueue', 'Screen_Work_01'\]/);
-assert.match(areaScene, /\['wardStatus', 'Screen_Work_02'\]/);
-assert.match(areaScene, /\['bedMonitor', 'Screen_Work_03'\]/);
-assert.match(areaScene, /\['deviceHealth', 'Screen_Work_04'\]/);
-assert.match(areaScene, /\['clock', 'Clock_Display'\]/);
+assert.match(areaScene, /\['taskQueue', \['Screen_Work_01', 'Monitor_UI_01_00'\]\]/);
+assert.match(areaScene, /\['wardStatus', \['Screen_Work_02', 'Monitor_UI_02_02'\]\]/);
+assert.match(areaScene, /\['bedMonitor', \['Screen_Work_03', 'Monitor_Frame_03'\]\]/);
+assert.match(areaScene, /\['deviceHealth', \['Screen_Work_04', 'Monitor_Frame_04'\]\]/);
+assert.match(areaScene, /\['clock', \['Clock_Display', 'Clock_Frame'\]\]/);
 assert.match(areaScene, /ctx\.font = '700 124px ui-monospace/);
 
 // Keep the scene bright and neutral enough for an on-site hospital display.

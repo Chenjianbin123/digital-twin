@@ -30,11 +30,11 @@ assert.match(blendValidator, /corridor presentation fold/);
 assert.match(glbValidator, /Detail_Header_Title/);
 assert.match(glbValidator, /Detail_Full_Ceiling/);
 
-assert.match(sceneConfig, /20260820-latest-blender-v3-export-v20/);
+assert.match(sceneConfig, /1-v1\.glb\?v=20260827-nurse-station-1-v1/);
 assert.match(areaScene, /architecturalFillNames = new Set\(\['Detail_Full_Ceiling'\]\)/);
-assert.match(areaScene, /\['taskQueue', 'Screen_Work_01'\]/);
-assert.match(areaScene, /\['wardStatus', 'Screen_Work_02'\]/);
-assert.match(areaScene, /\['bedMonitor', 'Screen_Work_03'\]/);
-assert.match(areaScene, /\['deviceHealth', 'Screen_Work_04'\]/);
+assert.match(areaScene, /\['taskQueue', \['Screen_Work_01', 'Monitor_UI_01_00'\]\]/);
+assert.match(areaScene, /\['wardStatus', \['Screen_Work_02', 'Monitor_UI_02_02'\]\]/);
+assert.match(areaScene, /\['bedMonitor', \['Screen_Work_03', 'Monitor_Frame_03'\]\]/);
+assert.match(areaScene, /\['deviceHealth', \['Screen_Work_04', 'Monitor_Frame_04'\]\]/);
 
 console.log('Nurse-station bright-modern boundary checks passed.');

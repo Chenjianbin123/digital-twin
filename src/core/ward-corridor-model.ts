@@ -97,22 +97,43 @@ export function getHospitalCorridorDisplayScreenOrder(
         namedMeshes.push(node);
         return;
       }
+      let preferredMesh: THREE.Mesh | undefined;
+      let firstMesh: THREE.Mesh | undefined;
       node.traverse(child => {
-        if (child instanceof THREE.Mesh)
-          namedMeshes.push(child);
+        if (!(child instanceof THREE.Mesh))
+          return;
+        firstMesh ??= child;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        if (!preferredMesh && materials.some(material => material.name.includes('门口机内')))
+          preferredMesh = child;
       });
+      if (preferredMesh ?? firstMesh)
+        namedMeshes.push(preferredMesh ?? firstMesh!);
     });
-  if (namedMeshes.length)
-    return namedMeshes.slice(0, 2);
+  if (namedMeshes.length) {
+    return [...new Set(namedMeshes)]
+      .sort((left, right) => {
+        const leftIndex = Number(left.name.match(/走廊屏(\d+)/)?.[1] ?? 99);
+        const rightIndex = Number(right.name.match(/走廊屏(\d+)/)?.[1] ?? 99);
+        return leftIndex - rightIndex;
+      })
+      .slice(0, 2);
+  }
 
-  return nodes
+  const fallbackMeshes = nodes
     .filter((node): node is THREE.Mesh => {
       if (!(node instanceof THREE.Mesh) || /^门口机\d+$/.test(node.name))
         return false;
       const materials = Array.isArray(node.material) ? node.material : [node.material];
       return materials.some(material => material.name.includes('门口机内'));
     })
-    .slice(0, 2);
+    .filter((mesh, index, meshes) => meshes.indexOf(mesh) === index)
+    .sort((left, right) => {
+      const leftCenter = new THREE.Box3().setFromObject(left).getCenter(new THREE.Vector3());
+      const rightCenter = new THREE.Box3().setFromObject(right).getCenter(new THREE.Vector3());
+      return rightCenter.z - leftCenter.z || rightCenter.x - leftCenter.x;
+    });
+  return fallbackMeshes.slice(0, 2);
 }
 
 export function getHospitalCorridorEntranceScreenMaterialIndex(mesh: THREE.Mesh) {
@@ -121,6 +142,46 @@ export function getHospitalCorridorEntranceScreenMaterialIndex(mesh: THREE.Mesh)
     material.name.includes('门口机内')
     || (material.name.includes('门口机') && /屏|screen|display/i.test(material.name)),
   );
+}
+
+/** 提取走廊屏可见面并按模型 Y/Z 轴重新生成完整横屏 UV。 */
+export function createHospitalCorridorDisplayGeometry(
+  mesh: THREE.Mesh,
+  materialIndex: number,
+) {
+  const geometry = mesh.geometry.clone();
+  const groups = materialIndex >= 0
+    ? geometry.groups.filter(group => group.materialIndex === materialIndex)
+    : [];
+  const targetGroups = groups.length
+    ? groups
+    : [{ start: 0, count: geometry.index?.count ?? geometry.getAttribute('position').count }];
+  const position = geometry.getAttribute('position');
+  const vertexIndices = new Set<number>();
+  targetGroups.forEach(group => {
+    const end = Math.min(group.start + group.count, geometry.index?.count ?? position.count);
+    for (let i = group.start; i < end; i++)
+      vertexIndices.add(geometry.index?.getX(i) ?? i);
+  });
+
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+  const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  vertexIndices.forEach(index => {
+    min.min(new THREE.Vector3(position.getX(index), position.getY(index), position.getZ(index)));
+    max.max(new THREE.Vector3(position.getX(index), position.getY(index), position.getZ(index)));
+  });
+  const width = Math.max(max.z - min.z, 1e-6);
+  const height = Math.max(max.y - min.y, 1e-6);
+  const uv = new THREE.BufferAttribute(new Float32Array(position.count * 2), 2);
+  for (let index = 0; index < position.count; index++) {
+    const u = (position.getZ(index) - min.z) / width;
+    const v = (position.getY(index) - min.y) / height;
+    uv.setXY(index, u, v);
+  }
+  geometry.setAttribute('uv', uv);
+  geometry.clearGroups();
+  targetGroups.forEach(group => geometry.addGroup(group.start, group.count, 0));
+  return geometry;
 }
 
 export function getHospitalCorridorEntranceScreenAspect(mesh: THREE.Mesh) {

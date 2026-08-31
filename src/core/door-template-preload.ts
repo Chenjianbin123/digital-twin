@@ -23,11 +23,6 @@ export async function preloadDoorTemplates(
       .map(device => Number(device.doorDeviceInfo.templateId))
       .filter(id => Number.isFinite(id) && id > 0),
   )];
-  console.info('[DoorTemplate] 预加载模板', {
-    deviceCount: devices.length,
-    templateIds,
-    missingTemplateCount: warnings.length,
-  });
 
   const settled = await Promise.allSettled(
     templateIds.map(templateId => loadTemplate(templateId)),

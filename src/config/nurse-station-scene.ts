@@ -44,7 +44,7 @@ export interface NurseStationSceneConfig {
 /** 护士站模型、构图和交互限制。调整护士站外观时优先修改这里。 */
 export const nurseStationSceneConfig: NurseStationSceneConfig = {
   model: {
-    url: '/models/smart-ward-nurse-station/high_fidelity_nurse_station_v3.glb?v=20260820-latest-blender-v3-export-v20',
+    url: '/models/smart-ward-nurse-station/1-v1.glb?v=20260827-nurse-station-1-v1',
     maxSize: { x: 11.04, y: 2.3895, z: 5.102 },
   },
   position: { x: 0, z: 14 },
@@ -60,14 +60,14 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
      * - y：减小后模型整体更靠画面上方，增大后更靠下方。
      * - z：调整前后纵深，通常保持不动。
      */
-    target: { x: 1, y: 0.55, z: -0.05 },
+    target: { x: 1.068, y: 0.631, z: 0.369 },
     /** 首屏相机距离：减小会放大模型，增大会缩小模型；建议每次改 0.2。 */
-    initialDistance: 1.8,
+    initialDistance: 5.953,
     /** 水平角正值从右侧看、负值从左侧看；垂直角正值抬高机位、负值降低机位。 */
-    initialAngle: { azimuthDeg: 0, elevationDeg: 0 },
+    initialAngle: { azimuthDeg: -82.69, elevationDeg: 4.65 },
     /** 交互平移边界；yMin 要低于 target.y，否则初始目标会被自动抬高。 */
     pan: { xLimit: 0.42, yMin: 0.42, yMax: 1.35 },
-    distance: { min: 2.55, max: 6.25 },
+    distance: { min: 1.8, max: 6.25 },
     azimuthLimit: Math.PI / 8,
     polar: { min: Math.PI / 2.42, max: Math.PI / 1.92 },
     ceilingY: 2.95,

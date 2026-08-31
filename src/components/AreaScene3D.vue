@@ -18,8 +18,12 @@ const props = defineProps<{
 const areaPhase = computed(() =>
   twinSceneToAreaPhase(props.sceneType ?? 'nurse-station'),
 );
+// 开发调试开关：true 显示护士站/病房走廊视角参数面板，false 隐藏。
+const CAMERA_DEBUG_PANEL_ENABLED = false;
 const cameraDebugEnabled = computed(() =>
-  import.meta.env.DEV && (areaPhase.value === 'station' || areaPhase.value === 'corridor'),
+  CAMERA_DEBUG_PANEL_ENABLED
+  && import.meta.env.DEV
+  && (areaPhase.value === 'station' || areaPhase.value === 'corridor'),
 );
 const cameraDebugTitle = computed(() =>
   areaPhase.value === 'station' ? '护士站视角参数' : '病房走廊视角参数',

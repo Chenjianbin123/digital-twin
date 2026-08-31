@@ -247,9 +247,11 @@ function fitCanvasFontSize(
 /** 走廊屏贴图：病区信息 + 值班医护 + 公告 + 当前时间 */
 export function createCorridorScreenTexture(data: CorridorDisplayData): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 800;
-  canvas.height = 360;
+  const renderScale = 2;
+  canvas.width = 800 * renderScale;
+  canvas.height = 360 * renderScale;
   const ctx = canvas.getContext('2d')!;
+  ctx.scale(renderScale, renderScale);
   const now = new Date();
   const timeStr = now.toLocaleTimeString('zh-CN', {
     hour: '2-digit',
@@ -265,46 +267,96 @@ export function createCorridorScreenTexture(data: CorridorDisplayData): THREE.Ca
   });
 
   if (data.mode === 'clock') {
-    ctx.fillStyle = '#0b1824';
+    const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    bg.addColorStop(0, '#071521');
+    bg.addColorStop(0.55, '#0b2231');
+    bg.addColorStop(1, '#07131e');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#1d9bf0';
-    ctx.fillRect(0, 0, canvas.width, 12);
+    ctx.strokeStyle = 'rgba(111, 214, 255, 0.08)';
+    ctx.lineWidth = 1;
+    for (let x = 32; x < canvas.width; x += 32) {
+      ctx.beginPath();
+      ctx.moveTo(x, 18);
+      ctx.lineTo(x, canvas.height - 18);
+      ctx.stroke();
+    }
+    for (let y = 32; y < canvas.height; y += 32) {
+      ctx.beginPath();
+      ctx.moveTo(18, y);
+      ctx.lineTo(canvas.width - 18, y);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#18c7b4';
+    ctx.fillRect(0, 0, canvas.width, 7);
+    ctx.fillStyle = '#229ef2';
+    ctx.fillRect(0, 7, canvas.width, 4);
+    ctx.fillStyle = 'rgba(4, 15, 24, 0.72)';
+    ctx.fillRect(8, 14, 784, 332);
+    ctx.strokeStyle = 'rgba(103, 215, 255, 0.34)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(8, 14, 784, 332);
+    ctx.fillStyle = '#8be6ff';
+    ctx.beginPath();
+    ctx.arc(28, 38, 6, 0, Math.PI * 2);
+    ctx.fill();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#8ed8ff';
-    ctx.font = 'bold 30px "Microsoft YaHei", sans-serif';
-    ctx.fillText('当前时间', 400, 82);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 88px "Consolas", monospace';
-    ctx.fillText(timeStr, 400, 194);
-    ctx.fillStyle = '#73a6c5';
-    ctx.font = '20px "Microsoft YaHei", sans-serif';
-    ctx.fillText(dateStr, 400, 286);
+    ctx.shadowColor = 'rgba(71, 206, 255, 0.58)';
+    ctx.shadowBlur = 14;
+    ctx.font = 'bold 150px "Consolas", monospace';
+    ctx.fillText(timeStr, 400, 200);
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = true;
+    tex.anisotropy = 8;
     tex.needsUpdate = true;
     return tex;
   }
 
   if (data.mode === 'area') {
-    ctx.fillStyle = '#071923';
+    const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    bg.addColorStop(0, '#061d22');
+    bg.addColorStop(0.5, '#0b2b32');
+    bg.addColorStop(1, '#071820');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#19c6a5';
-    ctx.fillRect(0, 0, canvas.width, 12);
+    ctx.fillRect(0, 0, canvas.width, 7);
+    ctx.fillStyle = '#229ef2';
+    ctx.fillRect(0, 7, canvas.width, 4);
+    ctx.fillStyle = 'rgba(4, 18, 24, 0.72)';
+    ctx.fillRect(8, 14, 784, 332);
+    ctx.strokeStyle = 'rgba(72, 231, 198, 0.34)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(8, 14, 784, 332);
+    ctx.fillStyle = '#6df0d4';
+    ctx.beginPath();
+    ctx.arc(28, 38, 6, 0, Math.PI * 2);
+    ctx.fill();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#7debd5';
-    ctx.font = 'bold 26px "Microsoft YaHei", sans-serif';
-    ctx.fillText('当前病区', 400, 76);
-    ctx.fillStyle = '#ffffff';
-    const nameSize = fitCanvasFontSize(ctx, data.areaName, 720, 56, 28);
-    ctx.font = `bold ${nameSize}px "Microsoft YaHei", sans-serif`;
-    ctx.fillText(data.areaName, 400, 176);
-    ctx.fillStyle = '#80a9b8';
+    ctx.fillStyle = '#5dafa6';
     ctx.font = '20px "Microsoft YaHei", sans-serif';
-    ctx.fillText(data.deptName ?? '智慧病房', 400, 260);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold 140px "Microsoft YaHei", sans-serif`;
+    ctx.shadowColor = 'rgba(40, 235, 190, 0.48)';
+    ctx.shadowBlur = 14;
+    ctx.fillText(data.areaName, 400, 140);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#80a9b8';
+    ctx.font = '60px "Microsoft YaHei", sans-serif';
+    ctx.fillText(data.deptName ?? '智慧病房', 400, 280);
+    ctx.fillStyle = '#3b8d89';
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = true;
+    tex.anisotropy = 8;
     tex.needsUpdate = true;
     return tex;
   }

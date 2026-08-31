@@ -21,12 +21,40 @@ import {
   getHospitalCorridorEntranceScreenMaterialIndex,
   getHospitalCorridorEntranceScreenAspect,
   getHospitalCorridorEntranceScreenBounds,
+  createHospitalCorridorDisplayGeometry,
   fitHospitalCorridorEntranceScreenGeometry,
   shouldDepthTestHospitalCorridorScreen,
   normalizeHospitalCorridorModelTransform,
   HOSPITAL_CORRIDOR_DOOR_NAMES,
   HOSPITAL_CORRIDOR_ENTRANCE_DEVICE_NAMES,
 } from './ward-corridor-model.ts';
+
+test('creates a horizontal corridor display geometry with normalized screen UVs', () => {
+  const geometry = new THREE.BoxGeometry(0.1, 2, 4);
+  geometry.clearGroups();
+  geometry.addGroup(0, geometry.index?.count ?? 0, 0);
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+
+  const displayGeometry = createHospitalCorridorDisplayGeometry(mesh, 0);
+  const uv = displayGeometry.getAttribute('uv');
+  const values = Array.from({ length: uv.count }, (_, index) => [uv.getX(index), uv.getY(index)]);
+
+  assert.equal(displayGeometry.groups.length, 1);
+  assert.ok(values.every(([u, v]) => u >= 0 && u <= 1 && v >= 0 && v <= 1));
+  assert.ok(new Set(values.map(([u]) => u)).size > 1);
+  assert.ok(new Set(values.map(([, v]) => v)).size > 1);
+  const positions = displayGeometry.getAttribute('position');
+  const maxZIndex = values.reduce(
+    (best, _value, index) => positions.getZ(index) > positions.getZ(best) ? index : best,
+    0,
+  );
+  assert.ok(values[maxZIndex][0] > 0.99);
+  const minYIndex = values.reduce(
+    (best, _value, index) => positions.getY(index) < positions.getY(best) ? index : best,
+    0,
+  );
+  assert.ok(values[minYIndex][1] < 0.01);
+});
 
 test('maps room data to six corridor slots and fills remaining slots with empty beds', () => {
   const rooms = [
@@ -149,8 +177,38 @@ test('recognizes the two corridor displays before using material fallback', () =
   other.name = '门口机1';
   assert.deepEqual(
     getHospitalCorridorDisplayScreenOrder([other, second, first]).map(node => node.name),
-    ['走廊屏2', '走廊屏1'],
+    ['走廊屏1', '走廊屏2'],
   );
+});
+
+test('selects one screen mesh per named corridor display group', () => {
+  const material = new THREE.MeshBasicMaterial();
+  material.name = '门口机内';
+  const firstGroup = new THREE.Group();
+  firstGroup.name = '走廊屏1';
+  firstGroup.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial()));
+  const firstScreen = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+  firstScreen.name = '立方体024';
+  firstGroup.add(firstScreen);
+  const secondGroup = new THREE.Group();
+  secondGroup.name = '走廊屏2';
+  const secondScreen = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+  secondScreen.name = '立方体024_1';
+  secondGroup.add(secondScreen);
+
+  assert.deepEqual(
+    getHospitalCorridorDisplayScreenOrder([firstGroup, secondGroup]).map(node => node.name),
+    ['立方体024', '立方体024_1'],
+  );
+});
+
+test('does not bind the same fallback mesh twice', () => {
+  const material = new THREE.MeshBasicMaterial();
+  material.name = '门口机内';
+  const screen = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+  const result = getHospitalCorridorDisplayScreenOrder([screen, screen]);
+  assert.equal(result.length, 1);
+  assert.equal(result[0], screen);
 });
 
 test('returns the exact 门口机内 material index for direct model-surface rendering', () => {

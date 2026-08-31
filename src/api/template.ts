@@ -41,11 +41,5 @@ export async function queryTemplateById(id: number): Promise<SwpTemplateInfo> {
       : JSON.stringify(res.data.templateJson);
   if (!res.data.templateContent)
     throw new Error(res.message || '模板数据为空');
-  console.info('[DoorTemplate] 模板接口返回', {
-    id,
-    name: res.data.templateName,
-    contentLength: res.data.templateContent.length,
-    analyzeType: res.data.analyzeType,
-  });
   return res.data;
 }

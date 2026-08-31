@@ -6,10 +6,10 @@ test('nurse station live screens do not invent fixed contact or visit data', asy
   const source = await readFile(new URL('../src/core/area-scene.ts', import.meta.url), 'utf8');
   const details = await readFile(new URL('../src/core/hospital-scene-details.ts', import.meta.url), 'utf8');
   assert.match(source, /buildNurseStationLiveData/);
-  assert.match(source, /\['whiteboard', 'Board_Nursing'\]/);
-  assert.match(source, /\['roomStatus', 'Board_Patient_Status'\]/);
-  assert.match(source, /\['taskQueue', 'Screen_Work_01'\]/);
-  assert.match(source, /\['deviceHealth', 'Screen_Work_04'\]/);
+  assert.match(source, /\['whiteboard', \['Board_Nursing', 'Nursing_Board_Title'\]\]/);
+  assert.match(source, /\['roomStatus', \['Board_Patient_Status', 'Patient_Status_Bar_02'\]\]/);
+  assert.match(source, /\['taskQueue', \['Screen_Work_01', 'Monitor_UI_01_00'\]\]/);
+  assert.match(source, /\['deviceHealth', \['Screen_Work_04', 'Monitor_Frame_04'\]\]/);
   assert.match(source, /暂无公告/);
   assert.match(source, /暂无数据/);
   assert.doesNotMatch(source, /内线 119/);

@@ -44,7 +44,7 @@ assert.match(validator, /wayfinding title must stay inside panel/);
 assert.match(validator, /wayfinding sign intersects corridor wall/);
 assert.match(validator, /door_front_y >= counter_back_y \+ 0\.80/);
 assert.match(validator, /wall_back_y >= last_door_back_y/);
-assert.match(sceneConfig, /20260820-latest-blender-v3-export-v20/);
+assert.match(sceneConfig, /1-v1\.glb\?v=20260827-nurse-station-1-v1/);
 assert.match(sceneConfig, /maxSize: \{ x: 11\.04, y: 2\.3895, z: 5\.102 \}/);
 assert.match(sceneConfig, /halfWidth: 5\.55/);
 

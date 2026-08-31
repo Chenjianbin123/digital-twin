@@ -566,7 +566,7 @@ onBeforeUnmount(() => {
         <WardLegend v-if="(isWard || isWardInterior) && panelsVisible" />
 
         <NurseStationVisualScene
-          v-if="isNurseStation"
+          v-show="isNurseStation"
           :area="area"
           :room-summaries="roomSummaries"
           :device-count="deviceCodes.length"

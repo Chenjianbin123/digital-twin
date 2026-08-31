@@ -16,12 +16,12 @@ assert.match(exportScript, /clock_frame\.location = \(4\.85, -0\.04, 3\.10\)/);
 assert.match(exportScript, /clock\.location = \(4\.85, -0\.105, 3\.10\)/);
 assert.match(exportScript, /optimize_information_visibility\(\)[\s\S]*?apply_bright_modern_architecture\(\)/);
 
-assert.match(sceneConfig, /20260820-latest-blender-v3-export-v20/);
+assert.match(sceneConfig, /1-v1\.glb\?v=20260827-nurse-station-1-v1/);
 assert.match(sceneConfig, /target: \{ x: -?\d+(?:\.\d+)?, y: -?\d+(?:\.\d+)?, z: -?\d+(?:\.\d+)? \}/);
 assert.match(sceneConfig, /initialAngle: \{ azimuthDeg: -?\d+(?:\.\d+)?, elevationDeg: -?\d+(?:\.\d+)? \}/);
-assert.match(areaScene, /\['dashboard', 'Screen_Main'\]/);
-assert.match(areaScene, /\['clock', 'Clock_Display'\]/);
-assert.match(areaScene, /\['taskQueue', 'Screen_Work_01'\]/);
-assert.match(areaScene, /\['deviceHealth', 'Screen_Work_04'\]/);
+assert.match(areaScene, /\['dashboard', \['Screen_Main', 'Screen_Main_Frame'\]\]/);
+assert.match(areaScene, /\['clock', \['Clock_Display', 'Clock_Frame'\]\]/);
+assert.match(areaScene, /\['taskQueue', \['Screen_Work_01', 'Monitor_UI_01_00'\]\]/);
+assert.match(areaScene, /\['deviceHealth', \['Screen_Work_04', 'Monitor_Frame_04'\]\]/);
 
 console.log('Nurse-station content visibility boundary checks passed.');
