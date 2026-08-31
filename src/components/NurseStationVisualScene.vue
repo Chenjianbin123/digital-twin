@@ -91,11 +91,12 @@ const emit = defineEmits<{
     z-index: 2;
     pointer-events: none;
     background:
-      radial-gradient(ellipse at 50% 56%, rgba(180, 244, 255, 0.06) 0%, rgba(92, 205, 220, 0.02) 28%, transparent 54%),
-      radial-gradient(ellipse at 50% 78%, rgba(0, 128, 148, 0.06) 0%, transparent 42%),
-      linear-gradient(90deg, rgba(3, 11, 18, 0.12), transparent 18%, transparent 82%, rgba(3, 11, 18, 0.12)),
-      linear-gradient(180deg, rgba(5, 18, 28, 0.02), transparent 22%, rgba(3, 12, 22, 0.07));
+      radial-gradient(ellipse at 50% 56%, rgba(180, 244, 255, 0.04) 0%, rgba(92, 205, 220, 0.01) 28%, transparent 54%),
+      radial-gradient(ellipse at 50% 78%, rgba(0, 128, 148, 0.03) 0%, transparent 42%),
+      linear-gradient(90deg, rgba(3, 11, 18, 0.05), transparent 18%, transparent 82%, rgba(3, 11, 18, 0.05)),
+      linear-gradient(180deg, rgba(5, 18, 28, 0.01), transparent 22%, rgba(3, 12, 22, 0.03));
     mix-blend-mode: multiply;
+    opacity: 0.55;
   }
 
   &__ambient,
@@ -108,17 +109,17 @@ const emit = defineEmits<{
   &__ambient {
     z-index: 4;
     background:
-      radial-gradient(ellipse at 50% 42%, rgba(220, 250, 255, 0.1) 0%, rgba(149, 224, 232, 0.03) 38%, transparent 66%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 22%);
+      radial-gradient(ellipse at 50% 42%, rgba(220, 250, 255, 0.06) 0%, rgba(149, 224, 232, 0.02) 38%, transparent 66%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 22%);
     mix-blend-mode: screen;
-    opacity: 0.42;
+    opacity: 0.28;
   }
 
   &__depth {
     z-index: 5;
     background:
-      linear-gradient(180deg, rgba(2, 10, 18, 0.04), transparent 26%, transparent 72%, rgba(1, 10, 16, 0.14)),
-      radial-gradient(ellipse at 50% 82%, rgba(0, 120, 150, 0.08), transparent 54%);
+      linear-gradient(180deg, rgba(2, 10, 18, 0.05), transparent 24%, transparent 68%, rgba(1, 10, 16, 0.12)),
+      radial-gradient(ellipse at 50% 82%, rgba(0, 90, 110, 0.07), transparent 54%);
   }
 
   &::before,
@@ -132,8 +133,8 @@ const emit = defineEmits<{
 
   &::before {
     background:
-      linear-gradient(180deg, rgba(2, 10, 18, 0.04), transparent 18%, transparent 74%, rgba(2, 9, 16, 0.08)),
-      radial-gradient(ellipse at 50% 66%, transparent 0%, transparent 56%, rgba(1, 7, 14, 0.06) 88%);
+      linear-gradient(180deg, rgba(2, 10, 18, 0.02), transparent 18%, transparent 74%, rgba(2, 9, 16, 0.04)),
+      radial-gradient(ellipse at 50% 66%, transparent 0%, transparent 56%, rgba(1, 7, 14, 0.03) 88%);
   }
 
   &::after {

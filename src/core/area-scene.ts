@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { summarizeArea, summarizeRoom, type RoomSummary } from '@/core/area-summary';
 import { buildRoomStructureSignature } from '@/core/area-scene-identity';
@@ -172,6 +174,10 @@ const NURSE_STATION_MODEL_MAX_SIZE = new THREE.Vector3(
   nurseStationSceneConfig.model.maxSize.z,
 );
 const NURSE_STATION_BG = nurseStationSceneConfig.appearance.background;
+const STATION_EXPOSURE = nurseStationSceneConfig.appearance.exposure;
+const STATION_ENV_MAP_INTENSITY = nurseStationSceneConfig.appearance.envMapIntensity;
+const STATION_ENVIRONMENT_INTENSITY = nurseStationSceneConfig.appearance.environmentIntensity;
+const CORRIDOR_EXPOSURE = 1.05;
 const DEBUG_DASHBOARD_SCREEN_BORDER = false;
 const NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS = new Set([
   'Nursing_Board_Title',
@@ -227,6 +233,19 @@ const STATION_CAM_LOCAL = STATION_TARGET_LOCAL.clone().add(
 const STATION_SHELL_BACK_Z = nurseStationSceneConfig.shell.backZ;
 const STATION_SHELL_HALF_W = nurseStationSceneConfig.shell.halfWidth;
 const STATION_SHELL_HALF_D = nurseStationSceneConfig.shell.halfDepth;
+const STATION_TARGET_Z = STATION_TARGET_LOCAL.z;
+const STATION_PAN_X_LIMIT = nurseStationSceneConfig.camera.pan.xLimit;
+const STATION_PAN_Y_MIN = nurseStationSceneConfig.camera.pan.yMin;
+const STATION_PAN_Y_MAX = nurseStationSceneConfig.camera.pan.yMax;
+const STATION_MIN_DISTANCE = nurseStationSceneConfig.camera.distance.min;
+const STATION_MAX_DISTANCE = nurseStationSceneConfig.camera.distance.max;
+/** 折中后退：可比房间盒边界再退 30%，并额外 +1.5m，但仍不超过 distance.max。 */
+const STATION_ZOOM_OUT_BOX_FACTOR = 1.3;
+const STATION_ZOOM_OUT_EXTRA_METERS = 1.5;
+const STATION_AZIMUTH_LIMIT = nurseStationSceneConfig.camera.azimuthLimit;
+const STATION_MIN_POLAR_ANGLE = nurseStationSceneConfig.camera.polar.min;
+const STATION_MAX_POLAR_ANGLE = nurseStationSceneConfig.camera.polar.max;
+const STATION_VIEW_BOUNDS = nurseStationSceneConfig.camera.viewBounds;
 
 // --- B. 相机初始视角（走廊总览，expand 后使用）---
 // 视线落点高度：↑ 看门楣/天花板  ↓ 看地板（太低只剩灰地面）
@@ -253,7 +272,7 @@ const AREA_CAMERA_FOV = wardCorridorSceneConfig.camera.overviewFov.upToTwoRooms;
 
 // --- D. 画面外观 ---
 const SCENE_BG = wardCorridorSceneConfig.appearance.background;
-// renderer.toneMappingExposure = 1.05  （在 constructor 内，越大越亮）
+// 护士站曝光见 nurse-station-scene.ts appearance.exposure；走廊默认 CORRIDOR_EXPOSURE
 
 const CORRIDOR_SAFETY_SIGNS: Array<{
   title: string;
@@ -297,6 +316,15 @@ export class AreaScene {
   private nurseStationModel: THREE.Object3D | null = null;
   private nurseStationModelLoadToken = 0;
   private hasLoadedNurseStationModel = false;
+  /** 房间边界网格的原始包围（未加 margins）；约束时每帧套用配置边距。 */
+  private nurseStationBoundMeshes: {
+    floorMaxY: number;
+    ceilingMinY: number;
+    wallMinX: number;
+    wallMaxX: number;
+    floorMinZ: number;
+    floorMaxZ: number;
+  } | null = null;
   private lastRoomCount = 0;
   private focusedRoomIndex = -1;
   private cameraTransition: CameraTransition | null = null;
@@ -323,6 +351,8 @@ export class AreaScene {
   private nurseStationBoardRefreshAt = 0;
   private viewPhase: AreaViewPhase = 'station';
   private stationShell?: THREE.Group;
+  private pmremGenerator: THREE.PMREMGenerator | null = null;
+  private environmentTexture: THREE.Texture | null = null;
   private css2dLookDir = new THREE.Vector3();
   private css2dToLabel = new THREE.Vector3();
   private pageHidden = document.hidden;
@@ -353,7 +383,7 @@ export class AreaScene {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = STATION_EXPOSURE;
     this.styleRendererLayers();
 
     this.labelRenderer = new CSS2DRenderer();
@@ -380,6 +410,7 @@ export class AreaScene {
     this.controls.addEventListener('change', this.onControlsChange);
 
     this.setupLights();
+    this.setupEnvironment();
     this.envGroup = new THREE.Group();
     this.scene.add(this.envGroup);
     this.buildNurseStation();
@@ -476,13 +507,19 @@ export class AreaScene {
   };
 
   private setupLights() {
-    this.scene.add(new THREE.AmbientLight(0xf4faf6, 0.78));
-    this.scene.add(new THREE.HemisphereLight(0xf0f8f4, 0x96aaa0, 0.55));
+    RectAreaLightUniformsLib.init();
 
-    const key = new THREE.DirectionalLight(0xfffef8, 0.86);
+    // 低环境光 + 强主光：提亮靠 key/exposure，对比靠压低 fill
+    this.scene.add(new THREE.AmbientLight(0xf4faf6, 0.48));
+    this.scene.add(new THREE.HemisphereLight(0xeef6f2, 0x6f8278, 0.38));
+
+    const key = new THREE.DirectionalLight(0xfffef8, 1.28);
     key.position.set(8, 26, 16);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
+    key.shadow.bias = -0.00012;
+    key.shadow.normalBias = 0.03;
+    key.shadow.intensity = 1.15;
     key.shadow.camera.near = 1;
     key.shadow.camera.far = 120;
     key.shadow.camera.left = -50;
@@ -491,25 +528,39 @@ export class AreaScene {
     key.shadow.camera.bottom = -50;
     this.scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xe8f5e9, 0.3);
+    const fill = new THREE.DirectionalLight(0xdceee3, 0.18);
     fill.position.set(-14, 14, 6);
     this.scene.add(fill);
 
-    const corridor = new THREE.DirectionalLight(0xffffff, 0.2);
+    const corridor = new THREE.DirectionalLight(0xffffff, 0.16);
     corridor.position.set(0, 18, -18);
     this.scene.add(corridor);
 
     this.setupNurseStationAtmosphereLights();
   }
 
+  private setupEnvironment() {
+    this.pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+    this.pmremGenerator.compileEquirectangularShader();
+    this.environmentTexture = this.pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environment = this.environmentTexture;
+    this.scene.environmentIntensity = STATION_ENVIRONMENT_INTENSITY;
+  }
+
+  private applyViewAppearance(phase: AreaViewPhase) {
+    const isStation = phase === 'station';
+    this.renderer.toneMappingExposure = isStation ? STATION_EXPOSURE : CORRIDOR_EXPOSURE;
+    this.scene.environmentIntensity = isStation ? STATION_ENVIRONMENT_INTENSITY : 0.48;
+  }
+
   private setupNurseStationAtmosphereLights() {
-    const counterGlow = new THREE.RectAreaLight(0x9eefff, 0.85, 5.8, 1.2);
+    const counterGlow = new THREE.RectAreaLight(0xb8f3ff, 0.78, 5.8, 1.2);
     counterGlow.name = 'nurse-station-counter-softbox';
     counterGlow.position.set(0, 2.25, NURSE_STATION.z + 0.45);
     counterGlow.rotation.x = -Math.PI / 2.55;
     this.scene.add(counterGlow);
 
-    const screenFill = new THREE.PointLight(0x67d9ff, 0.55, 8.2, 1.7);
+    const screenFill = new THREE.PointLight(0x7ee0ff, 0.48, 8.2, 1.85);
     screenFill.name = 'nurse-station-screen-fill';
     screenFill.position.set(0, 1.75, NURSE_STATION.z - 0.85);
     this.scene.add(screenFill);
@@ -2718,15 +2769,19 @@ export class AreaScene {
       }
 
       model.name = 'blender-nurse-station';
-      this.prepareLoadedModel(model);
+      this.prepareLoadedModel(model, { envMapIntensity: STATION_ENV_MAP_INTENSITY });
       this.fitNurseStationModel(model);
       this.attachNurseStationBoardDisplays(model);
       parent.add(model);
       this.nurseStationModel = model;
+      this.captureNurseStationViewBounds(model);
       this.hasLoadedNurseStationModel = true;
       this.onModelState?.('ready');
       if (this.stationShell)
         this.stationShell.visible = false;
+      // 模型边界就绪后强制回到盒内初始机位，避免沿用盒外占位相机
+      if (this.viewPhase === 'station')
+        this.applyStationDeskCamera();
     }
     catch (error) {
       console.warn('[AreaScene] failed to load nurse station GLB', error);
@@ -3241,7 +3296,8 @@ export class AreaScene {
       mesh.group.visible = false;
   }
 
-  private prepareLoadedModel(model: THREE.Object3D) {
+  private prepareLoadedModel(model: THREE.Object3D, options?: { envMapIntensity?: number }) {
+    const envMapIntensity = options?.envMapIntensity ?? 0.56;
     model.traverse((obj) => {
       if (!(obj instanceof THREE.Mesh))
         return;
@@ -3250,7 +3306,7 @@ export class AreaScene {
       const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
       for (const material of materials) {
         if ('envMapIntensity' in material)
-          material.envMapIntensity = 0.56;
+          material.envMapIntensity = envMapIntensity;
       }
     });
   }
@@ -3417,16 +3473,233 @@ export class AreaScene {
     return v;
   }
 
-  /** 坐席视角：面向排班看板与 L 型柜台（智慧病房护士站真实动线） */
+  /** 坐席视角：面向排班看板与 L 型柜台；机位强制落在房间包围盒内。 */
   private getNurseStationDeskCameraView() {
+    const target = this.clampPointToNurseStationBounds(
+      this.worldFromNurseLocal(STATION_TARGET_LOCAL.clone()),
+    );
+    const preferred = this.worldFromNurseLocal(STATION_CAM_LOCAL.clone());
+    const offset = preferred.sub(target);
+    const fallbackDir = STATION_CAM_DIR.clone();
+    if (this.nurseGroup)
+      fallbackDir.transformDirection(this.nurseGroup.matrixWorld);
+    const dir = offset.lengthSq() > 1e-8 ? offset.normalize() : fallbackDir.normalize();
+    const maxReach = this.getNurseStationOrbitReach(target, dir);
+    const distance = THREE.MathUtils.clamp(
+      Math.min(STATION_INIT_DISTANCE, maxReach),
+      STATION_MIN_DISTANCE,
+      STATION_MAX_DISTANCE,
+    );
     return {
-      position: this.worldFromNurseLocal(STATION_CAM_LOCAL.clone()),
-      target: this.worldFromNurseLocal(STATION_TARGET_LOCAL.clone()),
+      position: target.clone().addScaledVector(dir, distance),
+      target,
     };
   }
 
-  /** 护士站视角不做边界钳制，允许自由旋转、缩放和平移。 */
+  private clampPointToNurseStationBounds(point: THREE.Vector3): THREE.Vector3 {
+    const bounds = this.getNurseStationPaddedBounds();
+    if (!bounds)
+      return point;
+    point.x = THREE.MathUtils.clamp(point.x, bounds.minX, bounds.maxX);
+    point.y = THREE.MathUtils.clamp(point.y, bounds.minY, bounds.maxY);
+    point.z = THREE.MathUtils.clamp(point.z, bounds.minZ, bounds.maxZ);
+    return point;
+  }
+
+  /** 每帧从网格原始包围 + 配置 margins 生成可活动盒（改 margins 立即生效）。 */
+  private getNurseStationPaddedBounds(): {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+    minZ: number;
+    maxZ: number;
+  } | null {
+    const raw = this.nurseStationBoundMeshes;
+    if (!raw)
+      return null;
+
+    const { floor, ceiling, wall, depth } = nurseStationSceneConfig.camera.viewBounds.margins;
+    const minX = raw.wallMinX + wall;
+    const maxX = raw.wallMaxX - wall;
+    const minY = raw.floorMaxY + floor;
+    const maxY = raw.ceilingMinY - ceiling;
+    const minZ = raw.floorMinZ + depth;
+    const maxZ = raw.floorMaxZ - depth;
+    if (!(minX < maxX) || !(minY < maxY) || !(minZ < maxZ))
+      return null;
+    return { minX, maxX, minY, maxY, minZ, maxZ };
+  }
+
+  /** 从观察点沿方向射到房间盒边界的距离（偏保守，用于初始机位）。 */
+  private getNurseStationOrbitReach(origin: THREE.Vector3, direction: THREE.Vector3): number {
+    const bounds = this.getNurseStationPaddedBounds();
+    if (!bounds)
+      return STATION_MAX_DISTANCE;
+
+    const dir = direction.clone().normalize();
+    let tExit = Infinity;
+    const hit = (min: number, max: number, o: number, d: number) => {
+      if (d > 1e-8)
+        tExit = Math.min(tExit, (max - o) / d);
+      else if (d < -1e-8)
+        tExit = Math.min(tExit, (min - o) / d);
+      else if (o < min || o > max)
+        tExit = 0;
+    };
+    hit(bounds.minX, bounds.maxX, origin.x, dir.x);
+    hit(bounds.minY, bounds.maxY, origin.y, dir.y);
+    hit(bounds.minZ, bounds.maxZ, origin.z, dir.z);
+    if (!Number.isFinite(tExit) || tExit <= 0)
+      return STATION_MIN_DISTANCE;
+    return Math.max(STATION_MIN_DISTANCE, tExit * 0.88);
+  }
+
+  /** 滚轮后退上限（折中）：房间盒可达距离 * 1.3 + 1.5m，再与 distance.max 取小。 */
+  private getNurseStationZoomOutLimit(origin: THREE.Vector3, direction: THREE.Vector3): number {
+    const reach = this.getNurseStationOrbitReach(origin, direction);
+    return Math.min(
+      STATION_MAX_DISTANCE,
+      Math.max(STATION_MIN_DISTANCE, reach * STATION_ZOOM_OUT_BOX_FACTOR + STATION_ZOOM_OUT_EXTRA_METERS),
+    );
+  }
+
+  /** 从 GLB 命名网格读取原始边界；失败时回退到模型总包围盒。 */
+  private captureNurseStationViewBounds(model: THREE.Object3D) {
+    model.updateMatrixWorld(true);
+    const floor = model.getObjectByName(STATION_VIEW_BOUNDS.floorMesh);
+    const ceiling = model.getObjectByName(STATION_VIEW_BOUNDS.ceilingMesh);
+    const wallA = model.getObjectByName(STATION_VIEW_BOUNDS.wallMeshes[0]);
+    const wallB = model.getObjectByName(STATION_VIEW_BOUNDS.wallMeshes[1]);
+    const modelBox = new THREE.Box3().setFromObject(model);
+    const floorBox = floor ? new THREE.Box3().setFromObject(floor) : null;
+    const ceilingBox = ceiling ? new THREE.Box3().setFromObject(ceiling) : null;
+
+    const floorMaxY = floorBox ? floorBox.max.y : modelBox.min.y + 0.05;
+    const ceilingMinY = ceilingBox ? ceilingBox.min.y : modelBox.max.y - 0.05;
+    let wallMinX = (floorBox ?? modelBox).min.x;
+    let wallMaxX = (floorBox ?? modelBox).max.x;
+    const floorMinZ = (floorBox ?? modelBox).min.z;
+    const floorMaxZ = (floorBox ?? modelBox).max.z;
+
+    if (wallA && wallB) {
+      const boxA = new THREE.Box3().setFromObject(wallA);
+      const boxB = new THREE.Box3().setFromObject(wallB);
+      const centerA = boxA.getCenter(new THREE.Vector3());
+      const centerB = boxB.getCenter(new THREE.Vector3());
+      if (Math.abs(centerA.x - centerB.x) >= Math.abs(centerA.z - centerB.z)) {
+        const left = centerA.x < centerB.x ? boxA : boxB;
+        const right = centerA.x < centerB.x ? boxB : boxA;
+        wallMinX = left.max.x;
+        wallMaxX = right.min.x;
+      }
+    }
+
+    if (!(wallMinX < wallMaxX)) {
+      wallMinX = (floorBox ?? modelBox).min.x;
+      wallMaxX = (floorBox ?? modelBox).max.x;
+    }
+
+    if (!(floorMaxY < ceilingMinY) || !(floorMinZ < floorMaxZ) || !(wallMinX < wallMaxX)) {
+      console.warn('[AreaScene] nurse station bound meshes unusable, fallback to model box', {
+        floor: Boolean(floor),
+        ceiling: Boolean(ceiling),
+        wallA: Boolean(wallA),
+        wallB: Boolean(wallB),
+        floorMaxY,
+        ceilingMinY,
+        wallMinX,
+        wallMaxX,
+        floorMinZ,
+        floorMaxZ,
+      });
+      this.nurseStationBoundMeshes = {
+        floorMaxY: modelBox.min.y + 0.05,
+        ceilingMinY: modelBox.max.y - 0.05,
+        wallMinX: modelBox.min.x,
+        wallMaxX: modelBox.max.x,
+        floorMinZ: modelBox.min.z,
+        floorMaxZ: modelBox.max.z,
+      };
+    }
+    else {
+      this.nurseStationBoundMeshes = {
+        floorMaxY,
+        ceilingMinY,
+        wallMinX,
+        wallMaxX,
+        floorMinZ,
+        floorMaxZ,
+      };
+    }
+
+    console.warn('[AreaScene] nurse station view bounds', {
+      raw: this.nurseStationBoundMeshes,
+      padded: this.getNurseStationPaddedBounds(),
+    });
+  }
+
+  /** 护士站：锁定观察点，并用球坐标 + 房间盒把相机关在边框内。 */
   private applyStationOrbitCeilingConstraint() {
+    if (this.viewPhase !== 'station' || !this.nurseGroup)
+      return;
+
+    const lockedTargetLocal = STATION_TARGET_LOCAL.clone();
+    lockedTargetLocal.x = THREE.MathUtils.clamp(lockedTargetLocal.x, -STATION_PAN_X_LIMIT, STATION_PAN_X_LIMIT);
+    lockedTargetLocal.y = THREE.MathUtils.clamp(lockedTargetLocal.y, STATION_PAN_Y_MIN, STATION_PAN_Y_MAX);
+    lockedTargetLocal.z = STATION_TARGET_Z;
+    const lockedTarget = this.clampPointToNurseStationBounds(
+      this.worldFromNurseLocal(lockedTargetLocal),
+    );
+    this.controls.target.copy(lockedTarget);
+
+    this.controls.minPolarAngle = STATION_MIN_POLAR_ANGLE;
+    this.controls.maxPolarAngle = STATION_MAX_POLAR_ANGLE;
+    this.controls.minAzimuthAngle = STATION_INITIAL_AZIMUTH - STATION_AZIMUTH_LIMIT;
+    this.controls.maxAzimuthAngle = STATION_INITIAL_AZIMUTH + STATION_AZIMUTH_LIMIT;
+    this.controls.minDistance = STATION_MIN_DISTANCE;
+    this.controls.maxDistance = STATION_MAX_DISTANCE;
+
+    this.constrainStationCameraToOrbitBox(lockedTarget);
+  }
+
+  /** 用球坐标夹角收束视角；后退按折中上限，上下仍硬钳防穿顶穿底。 */
+  private constrainStationCameraToOrbitBox(target: THREE.Vector3) {
+    const offset = this.camera.position.clone().sub(target);
+    if (offset.lengthSq() < 1e-8)
+      offset.copy(STATION_CAM_DIR);
+
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    spherical.phi = THREE.MathUtils.clamp(spherical.phi, STATION_MIN_POLAR_ANGLE, STATION_MAX_POLAR_ANGLE);
+    spherical.theta = THREE.MathUtils.clamp(
+      spherical.theta,
+      STATION_INITIAL_AZIMUTH - STATION_AZIMUTH_LIMIT,
+      STATION_INITIAL_AZIMUTH + STATION_AZIMUTH_LIMIT,
+    );
+    spherical.makeSafe();
+
+    const direction = new THREE.Vector3().setFromSpherical(spherical).normalize();
+    const zoomOutLimit = this.getNurseStationZoomOutLimit(target, direction);
+    spherical.radius = THREE.MathUtils.clamp(spherical.radius, STATION_MIN_DISTANCE, zoomOutLimit);
+
+    this.camera.position.copy(target).add(new THREE.Vector3().setFromSpherical(spherical));
+
+    const bounds = this.getNurseStationPaddedBounds();
+    if (bounds) {
+      // 左右、上下恢复硬边界（折中只放宽滚轮后退距离，不再放宽墙/顶）
+      this.camera.position.x = THREE.MathUtils.clamp(this.camera.position.x, bounds.minX, bounds.maxX);
+      this.camera.position.y = THREE.MathUtils.clamp(this.camera.position.y, bounds.minY, bounds.maxY);
+      // 纵深仅少量外放，方便后退，但不放开左右墙
+      const depthPad = 0.4;
+      this.camera.position.z = THREE.MathUtils.clamp(
+        this.camera.position.z,
+        bounds.minZ - depthPad,
+        bounds.maxZ + depthPad,
+      );
+    }
+
+    this.controls.minDistance = STATION_MIN_DISTANCE;
+    this.controls.maxDistance = zoomOutLimit;
   }
 
   private applyStationDeskCamera() {
@@ -3435,19 +3708,28 @@ export class AreaScene {
     this.controls.enabled = true;
     this.controls.enableRotate = true;
     this.controls.enableZoom = true;
-    this.controls.enablePan = true;
-    this.controls.screenSpacePanning = true;
+    this.controls.enablePan = false;
+    this.controls.screenSpacePanning = false;
+    this.controls.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.ROTATE,
+    };
+    this.controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_ROTATE,
+    };
     this.controls.zoomSpeed = 0.9;
-    this.controls.rotateSpeed = 0.7;
+    this.controls.rotateSpeed = 0.55;
     this.camera.fov = STATION_DESK_FOV;
     this.camera.position.copy(position);
     this.controls.target.copy(target);
-    this.controls.minPolarAngle = 0.001;
-    this.controls.maxPolarAngle = Math.PI - 0.001;
-    this.controls.minAzimuthAngle = -Infinity;
-    this.controls.maxAzimuthAngle = Infinity;
-    this.controls.minDistance = 0.1;
-    this.controls.maxDistance = 1000;
+    this.controls.minPolarAngle = STATION_MIN_POLAR_ANGLE;
+    this.controls.maxPolarAngle = STATION_MAX_POLAR_ANGLE;
+    this.controls.minAzimuthAngle = STATION_INITIAL_AZIMUTH - STATION_AZIMUTH_LIMIT;
+    this.controls.maxAzimuthAngle = STATION_INITIAL_AZIMUTH + STATION_AZIMUTH_LIMIT;
+    this.controls.minDistance = STATION_MIN_DISTANCE;
+    this.controls.maxDistance = STATION_MAX_DISTANCE;
     this.camera.lookAt(target);
     this.controls.update();
     this.applyStationOrbitCeilingConstraint();
@@ -3468,6 +3750,7 @@ export class AreaScene {
     const count = Math.max(this.area?.rooms.length ?? 1, 1);
     const showCorridor = phase === 'corridor';
     this.scene.background = new THREE.Color(showCorridor ? SCENE_BG : NURSE_STATION_BG);
+    this.applyViewAppearance(phase);
     this.setCorridorContentVisible(showCorridor);
 
     if (showCorridor) {
@@ -3512,6 +3795,16 @@ export class AreaScene {
     this.controls.enableRotate = true;
     this.controls.enableZoom = true;
     this.controls.enablePan = true;
+    this.controls.screenSpacePanning = true;
+    this.controls.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.PAN,
+    };
+    this.controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN,
+    };
     this.controls.zoomSpeed = wardCorridorSceneConfig.controls.zoomSpeed;
     this.controls.rotateSpeed = wardCorridorSceneConfig.controls.rotateSpeed;
     this.camera.fov = this.getOverviewFov(count);
@@ -4488,6 +4781,9 @@ export class AreaScene {
       }
     }
 
+    // 先按当前半径刷新 polar 上限，再 update，避免上下拖动写穿地板/顶棚
+    if (this.viewPhase === 'station')
+      this.applyStationOrbitCeilingConstraint();
     this.controls.update();
     if (this.viewPhase === 'station')
       this.applyStationOrbitCeilingConstraint();
@@ -4512,6 +4808,7 @@ export class AreaScene {
     this.nurseStationModelLoadToken++;
     this.wardCorridorModelLoadToken++;
     this.hasLoadedNurseStationModel = false;
+    this.nurseStationBoundMeshes = null;
     cancelAnimationFrame(this.animationId);
     this.timer.dispose();
     this.resizeObserver?.disconnect();
@@ -4524,6 +4821,13 @@ export class AreaScene {
     this.renderer.dispose();
     this.renderer.domElement.remove();
     this.labelRenderer.domElement.remove();
+    if (this.environmentTexture) {
+      this.environmentTexture.dispose();
+      this.environmentTexture = null;
+    }
+    this.scene.environment = null;
+    this.pmremGenerator?.dispose();
+    this.pmremGenerator = null;
     if (this.envGroup)
       this.scene.remove(this.envGroup);
     this.disposeNurseStationBoardDisplays();

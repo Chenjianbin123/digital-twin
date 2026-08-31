@@ -7,6 +7,9 @@ export interface NurseStationSceneConfig {
   appearance: {
     background: number;
     deskFov: number;
+    exposure: number;
+    envMapIntensity: number;
+    environmentIntensity: number;
   };
   camera: {
     /** 画面中心点：y 越小，模型在首屏中越靠上；z 调整前后纵深。 */
@@ -33,6 +36,18 @@ export interface NurseStationSceneConfig {
     ceilingCameraMargin: number;
     ceilingTargetMargin: number;
     floorCameraMargin: number;
+
+    viewBounds: {
+      floorMesh: string;
+      ceilingMesh: string;
+      wallMeshes: [string, string];
+      margins: {
+        floor: number;
+        ceiling: number;
+        wall: number;
+        depth: number;
+      };
+    };
   };
   shell: {
     backZ: number;
@@ -44,14 +59,18 @@ export interface NurseStationSceneConfig {
 /** 护士站模型、构图和交互限制。调整护士站外观时优先修改这里。 */
 export const nurseStationSceneConfig: NurseStationSceneConfig = {
   model: {
-    url: '/models/smart-ward-nurse-station/1-1.glb?v=20260831-nurse-station-1-1',
+    url: "/models/smart-ward-nurse-station/1-1.glb?v=20260831-nurse-station-1-1",
     maxSize: { x: 11.04, y: 2.3895, z: 5.102 },
   },
   position: { x: 0, z: 14 },
   appearance: {
-    background: 0xdde7e3,
+    background: 0xcfdad4,
     /** 首屏视野角：数值越小，模型越大；数值越大，看到的环境越多。 */
     deskFov: 30,
+
+    exposure: 1.18,
+    envMapIntensity: 0.42,
+    environmentIntensity: 0.4,
   },
   camera: {
     /**
@@ -61,19 +80,27 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
      * - z：调整前后纵深，通常保持不动。
      */
     target: { x: 1.068, y: 0.631, z: 0.369 },
-    /** 首屏相机距离：减小会放大模型，增大会缩小模型；建议每次改 0.2。 */
-    initialDistance: 5.953,
-    /** 水平角正值从右侧看、负值从左侧看；垂直角正值抬高机位、负值降低机位。 */
+    initialDistance: 3.6,
     initialAngle: { azimuthDeg: -82.69, elevationDeg: 4.65 },
-    /** 交互平移边界；yMin 要低于 target.y，否则初始目标会被自动抬高。 */
     pan: { xLimit: 0.42, yMin: 0.42, yMax: 1.35 },
-    distance: { min: 1.8, max: 6.25 },
-    azimuthLimit: Math.PI / 8,
-    polar: { min: Math.PI / 2.42, max: Math.PI / 1.92 },
+    distance: { min: 1.6, max: 8 },
+    azimuthLimit: Math.PI / 12,
+    polar: { min: Math.PI / 2.12, max: Math.PI / 2.05 },
     ceilingY: 2.95,
     ceilingCameraMargin: 0.12,
     ceilingTargetMargin: 0.48,
     floorCameraMargin: 0.18,
+    viewBounds: {
+      floorMesh: "地板",
+      ceilingMesh: "顶支架.002",
+      wallMeshes: ["墙壁", "墙壁2"],
+      margins: {
+        floor: 0.28,
+        ceiling: 0.7,
+        wall: 0.28,
+        depth: 0.25,
+      },
+    },
   },
   shell: {
     backZ: 5.45,

@@ -1,20 +1,27 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import AlertTaskPanel from '@/components/AlertTaskPanel.vue';
-import DoorStaffCards from '@/components/DoorStaffCards.vue';
-import DashSectionHeader from '@/components/dashboard/DashSectionHeader.vue';
-import type { AlertAckRecordMap } from '@/core/alert-ack';
-import type { RoomPriority, RoomSummary } from '@/core/area-summary';
-import type { AlertTask } from '@/core/alert-workflow';
-import { buildDataHealthSummary, type DataStatus } from '@/core/data-status';
-import { buildNurseStationLiveData, buildShiftHandoffSummary } from '@/core/nurse-station-live-data';
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import AlertTaskPanel from "@/components/AlertTaskPanel.vue";
+import DoorStaffCards from "@/components/DoorStaffCards.vue";
+import DashSectionHeader from "@/components/dashboard/DashSectionHeader.vue";
+import type { AlertAckRecordMap } from "@/core/alert-ack";
+import type { RoomPriority, RoomSummary } from "@/core/area-summary";
+import type { AlertTask } from "@/core/alert-workflow";
+import { buildDataHealthSummary, type DataStatus } from "@/core/data-status";
+import {
+  buildNurseStationLiveData,
+  buildShiftHandoffSummary,
+} from "@/core/nurse-station-live-data";
 import type {
   NormalizedSwpEvent,
   SwpEventSyncState,
   SwpResponseMetrics,
-} from '@/types/swp-events';
-import type { StatusHistoryEntry, TwinAreaEntity, TwinWardEntity } from '@/types/twin';
-import { formatWardClock, getNursingShift } from '@/utils/ward-shift';
+} from "@/types/swp-events";
+import type {
+  StatusHistoryEntry,
+  TwinAreaEntity,
+  TwinWardEntity,
+} from "@/types/twin";
+import { formatWardClock, getNursingShift } from "@/utils/ward-shift";
 
 const props = defineProps<{
   area: TwinAreaEntity;
@@ -46,13 +53,19 @@ let timer: ReturnType<typeof setInterval> | null = null;
 
 const clock = computed(() => formatWardClock(now.value));
 const shift = computed(() => getNursingShift(now.value));
-const primaryWard = computed<TwinWardEntity | null>(() => props.area.rooms[0] ?? null);
+const primaryWard = computed<TwinWardEntity | null>(
+  () => props.area.rooms[0] ?? null,
+);
 const stationSubtitle = computed(() =>
-  [props.area.areaName, props.area.deptName].filter(Boolean).join(' · '),
+  [props.area.areaName, props.area.deptName].filter(Boolean).join(" · "),
 );
 
 const metrics = computed(() => {
-  const live = buildNurseStationLiveData(props.area, props.roomSummaries, props.deviceCount);
+  const live = buildNurseStationLiveData(
+    props.area,
+    props.roomSummaries,
+    props.deviceCount,
+  );
   const callKeys = new Set<string>();
   for (const room of props.area.rooms) {
     for (const bed of room.beds) {
@@ -61,11 +74,12 @@ const metrics = computed(() => {
     }
   }
   for (const event of props.swpEvents ?? []) {
-    if (event.taskType !== 'call')
-      continue;
-    callKeys.add(event.location?.bedCode
-      ? `bed:${event.location.roomCode}:${event.location.bedCode}`
-      : `event:${event.id}`);
+    if (event.taskType !== "call") continue;
+    callKeys.add(
+      event.location?.bedCode
+        ? `bed:${event.location.roomCode}:${event.location.bedCode}`
+        : `event:${event.id}`,
+    );
   }
   return {
     ...live,
@@ -78,95 +92,128 @@ const metrics = computed(() => {
 });
 const occupancyRate = computed(() => {
   const { occupied, totalBeds } = metrics.value;
-  if (!totalBeds)
-    return null;
+  if (!totalBeds) return null;
   return Math.round((occupied / totalBeds) * 100);
 });
 
 const loadLabel = computed(() => {
-  if (!metrics.value.totalBeds)
-    return '待同步';
+  if (!metrics.value.totalBeds) return "待同步";
   const rate = occupancyRate.value ?? 0;
-  if (rate >= 85)
-    return '高负载';
-  if (rate >= 60)
-    return '平稳';
-  return '宽松';
+  if (rate >= 85) return "高负载";
+  if (rate >= 60) return "平稳";
+  return "宽松";
 });
 
 const stationKpis = computed(() => [
-  { key: 'occupied', label: '在院', value: metrics.value.occupied, unit: '人', tone: 'cyan' },
-  { key: 'empty', label: '空床', value: metrics.value.empty, unit: '床', tone: 'blue' },
-  { key: 'calls', label: '呼叫', value: metrics.value.calling, unit: '项', tone: metrics.value.calling ? 'alert' : 'green' },
-  { key: 'infusing', label: '输液巡视', value: metrics.value.infusingCount, unit: '床', tone: metrics.value.infusingCount ? 'infusion' : 'green' },
-  { key: 'online', label: '在线设备', value: metrics.value.deviceOnline, unit: '台', tone: metrics.value.offlineBeds ? 'warn' : 'green' },
+  {
+    key: "occupied",
+    label: "在院",
+    value: metrics.value.occupied,
+    unit: "人",
+    tone: "cyan",
+  },
+  {
+    key: "empty",
+    label: "空床",
+    value: metrics.value.empty,
+    unit: "床",
+    tone: "blue",
+  },
+  {
+    key: "calls",
+    label: "呼叫",
+    value: metrics.value.calling,
+    unit: "项",
+    tone: metrics.value.calling ? "alert" : "green",
+  },
+  {
+    key: "infusing",
+    label: "输液巡视",
+    value: metrics.value.infusingCount,
+    unit: "床",
+    tone: metrics.value.infusingCount ? "infusion" : "green",
+  },
+  {
+    key: "online",
+    label: "在线设备",
+    value: metrics.value.deviceOnline,
+    unit: "台",
+    tone: metrics.value.offlineBeds ? "warn" : "green",
+  },
 ]);
 
 const deviceAttentionDetail = computed(() => {
   const parts = [
     metrics.value.offlineDeviceCount
       ? `${metrics.value.offlineDeviceCount} 台设备离线`
-      : '',
+      : "",
     metrics.value.lowBatteryDeviceCount
       ? `${metrics.value.lowBatteryDeviceCount} 台设备低电量`
-      : '',
+      : "",
   ].filter(Boolean);
-  return parts.length ? parts.join('，') : '设备链路正常';
+  return parts.length ? parts.join("，") : "设备链路正常";
 });
 
 const operationRows = computed(() => {
   const waitingTasks = props.alertTasks
-    ? props.alertTasks.filter(task => task.type !== 'infusion').length
-      + (props.hiddenAlertTasks?.filter(task => task.type !== 'infusion').length ?? 0)
-    : metrics.value.calling + metrics.value.offlineBeds + metrics.value.envWarnings;
+    ? props.alertTasks.filter((task) => task.type !== "infusion").length +
+      (props.hiddenAlertTasks?.filter((task) => task.type !== "infusion")
+        .length ?? 0)
+    : metrics.value.calling +
+      metrics.value.offlineBeds +
+      metrics.value.envWarnings;
   const pressure = Math.min(100, waitingTasks * 18);
 
   return [
     {
-      key: 'occupancy',
-      label: '床位占用',
-      value: occupancyRate.value == null ? '待同步' : `${occupancyRate.value}%`,
+      key: "occupancy",
+      label: "床位占用",
+      value: occupancyRate.value == null ? "待同步" : `${occupancyRate.value}%`,
       sub: `${metrics.value.occupied}/${metrics.value.totalBeds} 在院`,
       percent: occupancyRate.value ?? 0,
-      tone: occupancyRate.value != null && occupancyRate.value > 85 ? 'warn' : 'cyan',
+      tone:
+        occupancyRate.value != null && occupancyRate.value > 85
+          ? "warn"
+          : "cyan",
     },
     {
-      key: 'device',
-      label: '设备在线率',
+      key: "device",
+      label: "设备在线率",
       value: `${metrics.value.deviceHealthRate}%`,
       sub: `${metrics.value.deviceOnline}/${metrics.value.deviceTotal} 台在线`,
       percent: metrics.value.deviceHealthRate ?? 0,
-      tone: metrics.value.offlineBeds ? 'warn' : 'green',
+      tone: metrics.value.offlineBeds ? "warn" : "green",
     },
     {
-      key: 'pressure',
-      label: '响应压力',
-      value: waitingTasks ? `${waitingTasks} 项` : '低',
+      key: "pressure",
+      label: "响应压力",
+      value: waitingTasks ? `${waitingTasks} 项` : "低",
       sub: metrics.value.calling
-        ? '存在床位呼叫'
+        ? "存在床位呼叫"
         : metrics.value.infusingCount
           ? `${metrics.value.infusingCount} 床输液待巡视`
-          : '无紧急呼叫',
+          : "无紧急呼叫",
       percent: pressure,
-      tone: waitingTasks ? 'alert' : 'blue',
+      tone: waitingTasks ? "alert" : "blue",
     },
   ];
 });
 
-const responseMetrics = computed<SwpResponseMetrics>(() => props.swpResponseMetrics ?? ({
-  callCount: 0,
-  arrivedCallCount: 0,
-  unattendedCallCount: 0,
-  arrivalCount: 0,
-  averageResponseSeconds: null,
-  latestCallAt: null,
-}));
+const responseMetrics = computed<SwpResponseMetrics>(
+  () =>
+    props.swpResponseMetrics ?? {
+      callCount: 0,
+      arrivedCallCount: 0,
+      unattendedCallCount: 0,
+      arrivalCount: 0,
+      averageResponseSeconds: null,
+      latestCallAt: null,
+    },
+);
 
 function formatResponseDuration(seconds: number | null) {
-  if (seconds == null)
-    return '--';
-  if (seconds < 60)
-    return `${seconds}秒`;
+  if (seconds == null) return "--";
+  if (seconds < 60) return `${seconds}秒`;
   const minutes = Math.floor(seconds / 60);
   const remain = seconds % 60;
   return remain ? `${minutes}分${remain}秒` : `${minutes}分钟`;
@@ -174,118 +221,115 @@ function formatResponseDuration(seconds: number | null) {
 
 const responseCards = computed(() => [
   {
-    key: 'average',
-    label: '平均响应',
+    key: "average",
+    label: "平均响应",
     value: formatResponseDuration(responseMetrics.value.averageResponseSeconds),
   },
   {
-    key: 'arrived',
-    label: '已到场呼叫',
+    key: "arrived",
+    label: "已到场呼叫",
     value: `${responseMetrics.value.arrivedCallCount}/${responseMetrics.value.callCount}`,
   },
   {
-    key: 'unattended',
-    label: '未到场',
+    key: "unattended",
+    label: "未到场",
     value: String(responseMetrics.value.unattendedCallCount),
   },
 ]);
 
 const eventSourceLabel = computed(() => {
-  if (props.swpEventSync?.phase === 'error')
-    return '呼叫数据异常';
-  if (props.swpEventSync?.phase === 'partial')
-    return '呼叫数据部分同步';
-  if (props.swpEventSync?.phase === 'loading')
-    return props.swpEventSync.lastSyncedAt ? '呼叫数据刷新中' : '呼叫数据同步中';
-  if (props.swpEventSync?.phase === 'ready')
-    return '呼叫数据已同步';
-  return '等待呼叫数据';
+  if (props.swpEventSync?.phase === "error") return "呼叫数据异常";
+  if (props.swpEventSync?.phase === "partial") return "呼叫数据部分同步";
+  if (props.swpEventSync?.phase === "loading")
+    return props.swpEventSync.lastSyncedAt
+      ? "呼叫数据刷新中"
+      : "呼叫数据同步中";
+  if (props.swpEventSync?.phase === "ready") return "呼叫数据已同步";
+  return "等待呼叫数据";
 });
 
 const eventSourceDetail = computed(() => {
-  if (props.swpEventSync?.phase === 'error')
+  if (props.swpEventSync?.phase === "error")
     return props.swpEventSync.lastSyncedAt
-      ? '当前显示最近一次数据'
-      : '暂未获取到呼叫数据';
-  if (props.swpEventSync?.phase === 'partial')
-    return '部分呼叫数据可能延迟，请关注管理机或话机';
-  if (props.swpEventSync?.phase === 'loading')
-    return '正在更新呼叫列表';
-  if (!props.swpEventSync?.lastSyncedAt)
-    return '等待护士站呼叫数据';
-  return `最近同步 ${new Date(props.swpEventSync.lastSyncedAt).toLocaleTimeString('zh-CN', { hour12: false })}`;
+      ? "当前显示最近一次数据"
+      : "暂未获取到呼叫数据";
+  if (props.swpEventSync?.phase === "partial")
+    return "部分呼叫数据可能延迟，请关注管理机或话机";
+  if (props.swpEventSync?.phase === "loading") return "正在更新呼叫列表";
+  if (!props.swpEventSync?.lastSyncedAt) return "等待护士站呼叫数据";
+  return `最近同步 ${new Date(props.swpEventSync.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
 });
 
-const shiftHandoff = computed(() => buildShiftHandoffSummary(
-  props.alertTasks ?? [],
-  props.swpEventSync,
-));
+const shiftHandoff = computed(() =>
+  buildShiftHandoffSummary(props.alertTasks ?? [], props.swpEventSync),
+);
 
-const dataHealth = computed(() => buildDataHealthSummary({
-  wardStatus: props.wardDataStatus ?? 'loading',
-  eventSync: props.swpEventSync ?? {
-    phase: 'idle',
-    lastSyncedAt: null,
-    error: null,
-    warning: null,
-  },
-}));
+const dataHealth = computed(() =>
+  buildDataHealthSummary({
+    wardStatus: props.wardDataStatus ?? "loading",
+    eventSync: props.swpEventSync ?? {
+      phase: "idle",
+      lastSyncedAt: null,
+      error: null,
+      warning: null,
+    },
+  }),
+);
 
 const displayedStationState = computed(() => {
-  if (metrics.value.state.level !== 'normal' || dataHealth.value.canDeclareNormal)
+  if (
+    metrics.value.state.level !== "normal" ||
+    dataHealth.value.canDeclareNormal
+  )
     return metrics.value.state;
   return {
-    level: 'attention' as const,
-    label: '数据需复核',
-    message: '数据未完全同步，暂不能判断病区运行正常',
+    level: "attention" as const,
+    label: "数据需复核",
+    message: "数据未完全同步，暂不能判断病区运行正常",
   };
 });
 
-const statusTone = computed(() => displayedStationState.value.level === 'urgent'
-  ? 'alert'
-  : displayedStationState.value.level === 'attention' ? 'warn' : 'ok');
+const statusTone = computed(() =>
+  displayedStationState.value.level === "urgent"
+    ? "alert"
+    : displayedStationState.value.level === "attention"
+      ? "warn"
+      : "ok",
+);
 
 const displayedShiftHandoff = computed(() => {
   if (dataHealth.value.canDeclareNormal || (props.alertTasks?.length ?? 0) > 0)
     return shiftHandoff.value;
   return {
-    level: 'attention' as const,
-    title: '交班数据需复核',
+    level: "attention" as const,
+    title: "交班数据需复核",
     items: [
-      '数据未完全同步，暂不能确认本班无待交接事项',
-      '请结合管理机、话机和现场设备确认',
+      "数据未完全同步，暂不能确认本班无待交接事项",
+      "请结合管理机、话机和现场设备确认",
     ],
   };
 });
 
 function dataHealthStatusLabel(status: DataStatus) {
-  if (status === 'ready')
-    return '正常';
-  if (status === 'loading')
-    return '同步中';
-  if (status === 'warning')
-    return '部分同步';
-  if (status === 'stale')
-    return '已延迟';
-  return '中断';
+  if (status === "ready") return "正常";
+  if (status === "loading") return "同步中";
+  if (status === "warning") return "部分同步";
+  if (status === "stale") return "已延迟";
+  return "中断";
 }
 
 const responseSourceLabel = computed(() => {
-  if (props.swpResponseSync?.phase === 'error')
-    return '指标同步异常';
-  if (props.swpResponseSync?.phase === 'loading')
-    return props.swpResponseSync.lastSyncedAt ? '指标刷新中' : '指标同步中';
-  if (props.swpResponseSync?.phase === 'ready')
-    return '指标已同步';
-  return '指标待同步';
+  if (props.swpResponseSync?.phase === "error") return "指标同步异常";
+  if (props.swpResponseSync?.phase === "loading")
+    return props.swpResponseSync.lastSyncedAt ? "指标刷新中" : "指标同步中";
+  if (props.swpResponseSync?.phase === "ready") return "指标已同步";
+  return "指标待同步";
 });
 
 const responseSourceDetail = computed(() => {
-  if (props.swpResponseSync?.error)
-    return props.swpResponseSync.error;
-  if (!props.swpResponseSync?.lastSyncedAt)
-    return '等待响应时效数据';
-  return `最近同步 ${new Date(props.swpResponseSync.lastSyncedAt).toLocaleTimeString('zh-CN', { hour12: false })}`;
+  if (props.swpResponseSync?.error) return props.swpResponseSync.error;
+  if (!props.swpResponseSync?.lastSyncedAt) return "等待响应时效数据";
+  return `最近同步 ${new Date(props.swpResponseSync.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
 });
 
 const PRIORITY_RANK: Record<RoomPriority, number> = {
@@ -300,30 +344,33 @@ const PRIORITY_RANK: Record<RoomPriority, number> = {
 
 const attentionRooms = computed(() =>
   [...props.roomSummaries]
-    .filter(s => s.priority !== 'normal' && s.priority !== 'empty')
+    .filter((s) => s.priority !== "normal" && s.priority !== "empty")
     .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority])
     .slice(0, 5),
 );
 
 const overviewRooms = computed(() =>
-  [...props.roomSummaries].sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]),
+  [...props.roomSummaries].sort(
+    (a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority],
+  ),
 );
 
 const focusRooms = computed(() => {
-  if (attentionRooms.value.length)
-    return attentionRooms.value.slice(0, 3);
+  if (attentionRooms.value.length) return attentionRooms.value.slice(0, 3);
   return overviewRooms.value.slice(0, 3);
 });
 
 function roomPatrolText(room: RoomSummary) {
-  const roomTasks = (props.alertTasks ?? []).filter(task => task.roomCode === room.sickroomCode);
-  const urgentTaskCount = roomTasks.filter(task => task.type !== 'infusion').length;
+  const roomTasks = (props.alertTasks ?? []).filter(
+    (task) => task.roomCode === room.sickroomCode,
+  );
+  const urgentTaskCount = roomTasks.filter(
+    (task) => task.type !== "infusion",
+  ).length;
   const parts = [room.statusText];
-  if (urgentTaskCount)
-    parts.push(`待处理 ${urgentTaskCount}`);
-  else if (room.infusingCount)
-    parts.push(`待巡视 ${room.infusingCount}`);
-  return parts.join(' · ');
+  if (urgentTaskCount) parts.push(`待处理 ${urgentTaskCount}`);
+  else if (room.infusingCount) parts.push(`待巡视 ${room.infusingCount}`);
+  return parts.join(" · ");
 }
 
 const recentHistory = computed(() => (props.statusHistory ?? []).slice(0, 3));
@@ -334,15 +381,14 @@ const envSnapshot = computed(() => {
   for (const room of props.area.rooms) {
     const env = room.doorEnvData;
     if (env?.temp != null && String(env.temp).trim())
-      temps.push(String(env.temp).replace(/℃|°C/g, '').trim());
+      temps.push(String(env.temp).replace(/℃|°C/g, "").trim());
     if (env?.relativeHumid != null && String(env.relativeHumid).trim())
-      humids.push(String(env.relativeHumid).replace(/%/g, '').trim());
+      humids.push(String(env.relativeHumid).replace(/%/g, "").trim());
   }
 
   const avg = (values: string[]) => {
-    const nums = values.map(Number).filter(n => !Number.isNaN(n));
-    if (!nums.length)
-      return null;
+    const nums = values.map(Number).filter((n) => !Number.isNaN(n));
+    if (!nums.length) return null;
     return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
   };
 
@@ -354,59 +400,57 @@ const envSnapshot = computed(() => {
 
 const envCards = computed(() => [
   {
-    key: 'temp',
-    label: '平均温度',
-    value: envSnapshot.value.temp == null ? '--' : envSnapshot.value.temp,
-    unit: envSnapshot.value.temp == null ? '' : '℃',
+    key: "temp",
+    label: "平均温度",
+    value: envSnapshot.value.temp == null ? "--" : envSnapshot.value.temp,
+    unit: envSnapshot.value.temp == null ? "" : "℃",
   },
   {
-    key: 'humid',
-    label: '平均湿度',
-    value: envSnapshot.value.humid == null ? '--' : envSnapshot.value.humid,
-    unit: envSnapshot.value.humid == null ? '' : '%',
+    key: "humid",
+    label: "平均湿度",
+    value: envSnapshot.value.humid == null ? "--" : envSnapshot.value.humid,
+    unit: envSnapshot.value.humid == null ? "" : "%",
   },
   {
-    key: 'env',
-    label: '环境预警',
+    key: "env",
+    label: "环境预警",
     value: metrics.value.envWarnings,
-    unit: '间',
+    unit: "间",
   },
 ]);
 
 function priorityLabel(priority: RoomPriority) {
   const map: Record<RoomPriority, string> = {
-    calling: '呼叫',
-    danger: '异常',
-    offline: '离线',
-    infusing: '输液',
-    warning: '预警',
-    empty: '空房',
-    normal: '正常',
+    calling: "呼叫",
+    danger: "异常",
+    offline: "离线",
+    infusing: "输液",
+    warning: "预警",
+    empty: "空房",
+    normal: "正常",
   };
-  return map[priority] ?? '正常';
+  return map[priority] ?? "正常";
 }
 
-function historyCategoryLabel(category: StatusHistoryEntry['category']) {
-  if (category === 'env')
-    return '环境';
-  if (category === 'call')
-    return '呼叫';
-  if (category === 'device')
-    return '设备';
-  return '输液';
+function historyCategoryLabel(category: StatusHistoryEntry["category"]) {
+  if (category === "env") return "环境";
+  if (category === "call") return "呼叫";
+  if (category === "device") return "设备";
+  return "输液";
 }
 
 function handleRoomClick(index: number) {
-  emit('focusRoom', index);
+  emit("focusRoom", index);
 }
 
 onMounted(() => {
-  timer = setInterval(() => { now.value = new Date(); }, 1000);
+  timer = setInterval(() => {
+    now.value = new Date();
+  }, 1000);
 });
 
 onUnmounted(() => {
-  if (timer)
-    clearInterval(timer);
+  if (timer) clearInterval(timer);
 });
 </script>
 
@@ -419,10 +463,10 @@ onUnmounted(() => {
           <h1>智慧护士站</h1>
           <p v-if="stationSubtitle">{{ stationSubtitle }}</p>
         </div>
-        <div class="station-hero__clock">
+        <!-- <div class="station-hero__clock">
           <time>{{ clock.time }}</time>
           <span>{{ clock.date }} · {{ shift.label }}</span>
-        </div>
+        </div> -->
       </div>
 
       <div class="station-hero__body">
@@ -431,14 +475,18 @@ onUnmounted(() => {
           <strong>当前运行状态</strong>
         </div>
         <div class="station-hero__status">
-          <span :class="`station-hero__badge station-hero__badge--${statusTone}`">
+          <span
+            :class="`station-hero__badge station-hero__badge--${statusTone}`"
+          >
             {{ displayedStationState.label }}
           </span>
           <p>{{ displayedStationState.message }}</p>
           <div class="station-hero__chips">
             <span>{{ loadLabel }}</span>
             <span>{{ metrics.rooms }} 间病房</span>
-            <span>{{ metrics.deviceOnline }}/{{ metrics.deviceTotal }} 台在线</span>
+            <span
+              >{{ metrics.deviceOnline }}/{{ metrics.deviceTotal }} 台在线</span
+            >
             <span>真实事件 {{ swpEvents?.length ?? 0 }}</span>
             <button
               type="button"
@@ -446,7 +494,7 @@ onUnmounted(() => {
               :aria-pressed="callAlertsEnabled"
               @click="emit('setCallAlertsEnabled', !callAlertsEnabled)"
             >
-              呼叫提醒：{{ callAlertsEnabled ? '已开启' : '未开启' }}
+              呼叫提醒：{{ callAlertsEnabled ? "已开启" : "未开启" }}
             </button>
           </div>
         </div>
@@ -466,13 +514,18 @@ onUnmounted(() => {
       @restore="emit('restoreAlert', $event)"
     />
 
-    <section class="handoff-card" :class="`handoff-card--${displayedShiftHandoff.level}`">
+    <section
+      class="handoff-card"
+      :class="`handoff-card--${displayedShiftHandoff.level}`"
+    >
       <div class="handoff-card__head">
         <span>护理交班</span>
         <strong>{{ displayedShiftHandoff.title }}</strong>
       </div>
       <ul>
-        <li v-for="item in displayedShiftHandoff.items" :key="item">{{ item }}</li>
+        <li v-for="item in displayedShiftHandoff.items" :key="item">
+          {{ item }}
+        </li>
       </ul>
     </section>
 
@@ -484,11 +537,15 @@ onUnmounted(() => {
       <ul>
         <li v-for="item in dataHealth.items" :key="item.key">
           <span>{{ item.label }}</span>
-          <strong :class="`data-health__status--${item.status}`">{{ dataHealthStatusLabel(item.status) }}</strong>
+          <strong :class="`data-health__status--${item.status}`">{{
+            dataHealthStatusLabel(item.status)
+          }}</strong>
           <small>{{ item.detail }}</small>
         </li>
       </ul>
-      <p v-if="!dataHealth.canDeclareNormal">数据未完全同步时，不能据此判断病区无异常，请结合现场设备确认。</p>
+      <p v-if="!dataHealth.canDeclareNormal">
+        数据未完全同步时，不能据此判断病区无异常，请结合现场设备确认。
+      </p>
     </section>
 
     <section class="kpi-grid" aria-label="护士站核心指标">
@@ -499,12 +556,20 @@ onUnmounted(() => {
         :class="`kpi-card--${item.tone}`"
       >
         <span class="kpi-card__label">{{ item.label }}</span>
-        <strong>{{ item.value }}<small>{{ item.unit }}</small></strong>
+        <strong
+          >{{ item.value }}<small>{{ item.unit }}</small></strong
+        >
       </article>
     </section>
 
-    <section v-if="focusRooms.length" class="surface-panel surface-panel--focus">
-      <DashSectionHeader :title="attentionRooms.length ? '重点病房' : '病房巡视'" :count="focusRooms.length" />
+    <section
+      v-if="focusRooms.length"
+      class="surface-panel surface-panel--focus"
+    >
+      <DashSectionHeader
+        :title="attentionRooms.length ? '重点病房' : '病房巡视'"
+        :count="focusRooms.length"
+      />
       <ul class="focus-list">
         <li
           v-for="room in focusRooms"
@@ -517,7 +582,10 @@ onUnmounted(() => {
             :aria-label="`进入走廊并定位${room.sickroomName}`"
             @click="handleRoomClick(room.roomIndex)"
           >
-            <span class="focus-room__bar" :style="{ backgroundColor: room.accentColor }" />
+            <span
+              class="focus-room__bar"
+              :style="{ backgroundColor: room.accentColor }"
+            />
             <span class="focus-room__main">
               <strong>{{ room.sickroomName }}</strong>
               <span>{{ roomPatrolText(room) }}</span>
@@ -543,8 +611,17 @@ onUnmounted(() => {
               class="ops-row"
               :class="`ops-row--${row.tone}`"
             >
-              <div class="ops-row__head"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>
-              <div class="ops-row__track"><i :style="{ width: `${Math.max(row.percent, row.percent > 0 ? 5 : 0)}%` }" /></div>
+              <div class="ops-row__head">
+                <span>{{ row.label }}</span
+                ><strong>{{ row.value }}</strong>
+              </div>
+              <div class="ops-row__track">
+                <i
+                  :style="{
+                    width: `${Math.max(row.percent, row.percent > 0 ? 5 : 0)}%`,
+                  }"
+                />
+              </div>
               <p>{{ row.sub }}</p>
             </div>
           </div>
@@ -554,12 +631,17 @@ onUnmounted(() => {
           <DashSectionHeader title="设备与环境" />
           <div class="env-grid">
             <article v-for="item in envCards" :key="item.key" class="env-card">
-              <span>{{ item.label }}</span><strong>{{ item.value }}<small>{{ item.unit }}</small></strong>
+              <span>{{ item.label }}</span
+              ><strong
+                >{{ item.value }}<small>{{ item.unit }}</small></strong
+              >
             </article>
           </div>
           <div class="device-line">
             <span>设备在线口径</span>
-            <strong>{{ metrics.deviceOnline }}/{{ metrics.deviceTotal }} 台</strong>
+            <strong
+              >{{ metrics.deviceOnline }}/{{ metrics.deviceTotal }} 台</strong
+            >
             <em>{{ deviceAttentionDetail }}</em>
           </div>
         </section>
@@ -567,8 +649,13 @@ onUnmounted(() => {
         <section class="surface-panel surface-panel--response">
           <DashSectionHeader title="呼叫响应（近24小时）" />
           <div class="env-grid">
-            <article v-for="item in responseCards" :key="item.key" class="env-card">
-              <span>{{ item.label }}</span><strong>{{ item.value }}</strong>
+            <article
+              v-for="item in responseCards"
+              :key="item.key"
+              class="env-card"
+            >
+              <span>{{ item.label }}</span
+              ><strong>{{ item.value }}</strong>
             </article>
           </div>
           <div class="device-line">
@@ -583,22 +670,43 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <section v-if="primaryWard?.doorStaff || primaryWard?.doorDeptUsers?.length" class="surface-panel">
+        <section
+          v-if="primaryWard?.doorStaff || primaryWard?.doorDeptUsers?.length"
+          class="surface-panel"
+        >
           <DashSectionHeader title="值班医护" />
-          <DoorStaffCards :staff="primaryWard?.doorStaff" :dept-users="primaryWard?.doorDeptUsers" primary-only compact />
+          <DoorStaffCards
+            :staff="primaryWard?.doorStaff"
+            :dept-users="primaryWard?.doorDeptUsers"
+            primary-only
+            compact
+          />
         </section>
 
         <section class="surface-panel surface-panel--feed">
-          <DashSectionHeader title="实时动态" :count="recentHistory.length || undefined" />
+          <DashSectionHeader
+            title="实时动态"
+            :count="recentHistory.length || undefined"
+          />
           <ul v-if="recentHistory.length" class="feed">
-            <li v-for="item in recentHistory" :key="item.id" class="feed__item" :class="`feed__item--${item.category}`">
+            <li
+              v-for="item in recentHistory"
+              :key="item.id"
+              class="feed__item"
+              :class="`feed__item--${item.category}`"
+            >
               <span class="feed__time">{{ item.time }}</span>
-              <span class="feed__tag">{{ historyCategoryLabel(item.category) }}</span>
-              <span class="feed__text">{{ item.roomName }} {{ item.bedName }} · {{ item.label }}</span>
+              <span class="feed__tag">{{
+                historyCategoryLabel(item.category)
+              }}</span>
+              <span class="feed__text"
+                >{{ item.roomName }} {{ item.bedName }} · {{ item.label }}</span
+              >
             </li>
           </ul>
           <div v-else class="empty-feed">
-            <strong>暂无实时事件</strong><span>系统将持续监听呼叫、输液、环境与设备状态</span>
+            <strong>暂无实时事件</strong
+            ><span>系统将持续监听呼叫、输液、环境与设备状态</span>
           </div>
         </section>
       </div>
@@ -618,7 +726,9 @@ onUnmounted(() => {
   scrollbar-width: thin;
   scrollbar-color: rgba(77, 208, 255, 0.28) transparent;
 
-  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
   &::-webkit-scrollbar-thumb {
     background: rgba(77, 208, 255, 0.24);
     border-radius: 4px;
@@ -643,16 +753,20 @@ onUnmounted(() => {
       list-style: none;
 
       &::after {
-        content: '+';
+        content: "+";
         color: #81d8d1;
         font-size: 18px;
         font-weight: 500;
       }
 
-      &::-webkit-details-marker { display: none; }
+      &::-webkit-details-marker {
+        display: none;
+      }
     }
 
-    &[open] summary::after { content: '−'; }
+    &[open] summary::after {
+      content: "−";
+    }
 
     &-body {
       display: grid;
@@ -680,7 +794,11 @@ onUnmounted(() => {
   padding: 9px 11px;
   border: 1px solid rgba(96, 210, 255, 0.16);
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(17, 50, 70, 0.64), rgba(8, 28, 44, 0.52));
+  background: linear-gradient(
+    135deg,
+    rgba(17, 50, 70, 0.64),
+    rgba(8, 28, 44, 0.52)
+  );
 
   &__head {
     display: flex;
@@ -802,16 +920,28 @@ onUnmounted(() => {
   }
 
   &__status--warning,
-  &__status--stale { color: #ffd08a !important; }
-  &__status--error { color: #ffadc8 !important; }
-  &__status--loading { color: #aeeeff !important; }
+  &__status--stale {
+    color: #ffd08a !important;
+  }
+  &__status--error {
+    color: #ffadc8 !important;
+  }
+  &__status--loading {
+    color: #aeeeff !important;
+  }
 
   &--warning,
-  &--stale { border-color: rgba(255, 190, 90, 0.24); }
-  &--error { border-color: rgba(255, 105, 138, 0.3); }
+  &--stale {
+    border-color: rgba(255, 190, 90, 0.24);
+  }
+  &--error {
+    border-color: rgba(255, 105, 138, 0.3);
+  }
 
   @include down($bp-md) {
-    ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    ul {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 }
 
@@ -821,13 +951,18 @@ onUnmounted(() => {
   overflow: hidden;
 
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     left: -20%;
     right: -20%;
     top: -1px;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(77, 208, 255, 0.55), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(77, 208, 255, 0.55),
+      transparent
+    );
     opacity: 0.8;
   }
 
@@ -990,14 +1125,20 @@ onUnmounted(() => {
     border-color: rgba(240, 189, 104, 0.28);
     background: rgba(128, 88, 29, 0.14);
 
-    > span { background: #f0bd68; box-shadow: 0 0 12px rgba(240, 189, 104, 0.55); }
+    > span {
+      background: #f0bd68;
+      box-shadow: 0 0 12px rgba(240, 189, 104, 0.55);
+    }
   }
 
   &--alert {
     border-color: rgba(238, 112, 133, 0.32);
     background: rgba(139, 47, 65, 0.16);
 
-    > span { background: #ee7085; box-shadow: 0 0 12px rgba(238, 112, 133, 0.6); }
+    > span {
+      background: #ee7085;
+      box-shadow: 0 0 12px rgba(238, 112, 133, 0.6);
+    }
   }
 }
 
@@ -1013,7 +1154,11 @@ onUnmounted(() => {
   padding: 8px 10px 7px;
   border: 1px solid rgba(96, 210, 255, 0.13);
   border-radius: 8px;
-  background: linear-gradient(180deg, rgba(15, 46, 70, 0.46), rgba(9, 26, 45, 0.42));
+  background: linear-gradient(
+    180deg,
+    rgba(15, 46, 70, 0.46),
+    rgba(9, 26, 45, 0.42)
+  );
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 
   &__label {
@@ -1040,10 +1185,18 @@ onUnmounted(() => {
     }
   }
 
-  &--green strong { color: #bdf7c8; }
-  &--infusion strong { color: #aeeeff; }
-  &--warn strong { color: #ffd08a; }
-  &--alert strong { color: #ffadc8; }
+  &--green strong {
+    color: #bdf7c8;
+  }
+  &--infusion strong {
+    color: #aeeeff;
+  }
+  &--warn strong {
+    color: #ffd08a;
+  }
+  &--alert strong {
+    color: #ffadc8;
+  }
 }
 
 .surface-panel {
@@ -1060,7 +1213,11 @@ onUnmounted(() => {
 
   &--env,
   &--feed {
-    background: linear-gradient(180deg, rgba(10, 30, 48, 0.46), rgba(7, 21, 34, 0.38));
+    background: linear-gradient(
+      180deg,
+      rgba(10, 30, 48, 0.46),
+      rgba(7, 21, 34, 0.38)
+    );
   }
 }
 
@@ -1107,10 +1264,18 @@ onUnmounted(() => {
     font-size: 10px;
   }
 
-  &--green .ops-row__track i { background: #67d78c; }
-  &--blue .ops-row__track i { background: #6ba9ff; }
-  &--warn .ops-row__track i { background: #ffb84a; }
-  &--alert .ops-row__track i { background: #ff719d; }
+  &--green .ops-row__track i {
+    background: #67d78c;
+  }
+  &--blue .ops-row__track i {
+    background: #6ba9ff;
+  }
+  &--warn .ops-row__track i {
+    background: #ffb84a;
+  }
+  &--alert .ops-row__track i {
+    background: #ff719d;
+  }
 }
 
 .focus-list,
@@ -1144,7 +1309,9 @@ onUnmounted(() => {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.045);
   cursor: pointer;
-  transition: background 0.14s, border-color 0.14s;
+  transition:
+    background 0.14s,
+    border-color 0.14s;
 
   &:hover {
     background: rgba(77, 208, 255, 0.08);
@@ -1314,9 +1481,15 @@ onUnmounted(() => {
     line-height: 1.35;
   }
 
-  &__item--call &__text { color: #ffadc8; }
-  &__item--infusion &__text { color: #aeeeff; }
-  &__item--env &__text { color: #ffd08a; }
+  &__item--call &__text {
+    color: #ffadc8;
+  }
+  &__item--infusion &__text {
+    color: #aeeeff;
+  }
+  &__item--env &__text {
+    color: #ffd08a;
+  }
 }
 
 .empty-feed {
