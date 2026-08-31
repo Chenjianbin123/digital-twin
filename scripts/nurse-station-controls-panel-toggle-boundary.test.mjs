@@ -40,7 +40,7 @@ assert.match(app, /'digital-twin__main--interior': isWardInterior/);
 assert.match(app, /&__panel-toggle \{[\s\S]*?bottom: 10px;/);
 assert.match(app, /&__panel-toggle \{[\s\S]*?min-height: 34px;/);
 assert.match(app, /&__panel-toggle \{[\s\S]*?border: 1px solid rgba\(157, 245, 235, 0\.24\);/);
-assert.match(app, /&__panel-toggle \{[\s\S]*?@include down\(\$bp-md\) \{[\s\S]*?bottom: calc\(186px \+ env\(safe-area-inset-bottom\)\);/);
+assert.match(app, /&__panel-toggle \{[\s\S]*?@include down\(\$bp-md\) \{[\s\S]*?bottom: calc\(var\(--mobile-panel-height\) \+ 88px \+ env\(safe-area-inset-bottom\)\);/);
 assert.match(app, /&__panel-toggle-icon[\s\S]*?&::after/);
 assert.match(app, /&__panel-toggle--hidden &__panel-toggle-icon::after/);
 assert.match(app, /&__main--panels-hidden &__scene/);

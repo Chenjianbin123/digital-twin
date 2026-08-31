@@ -1355,4 +1355,84 @@ onUnmounted(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .nurse-panel {
+    gap: 7px;
+    padding: 8px 10px 10px;
+  }
+
+  .station-hero {
+    padding: 8px;
+
+    &__top {
+      gap: 8px;
+    }
+
+    &__title h1 {
+      font-size: 18px;
+    }
+
+    &__clock time {
+      font-size: 19px;
+    }
+
+    &__body {
+      grid-template-columns: 68px minmax(0, 1fr);
+      gap: 9px;
+    }
+  }
+
+  .station-state {
+    width: 68px;
+    min-height: 64px;
+    padding: 8px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .kpi-card {
+    min-height: 52px;
+    padding: 7px 8px;
+
+    strong {
+      font-size: 19px;
+    }
+  }
+
+  .data-health ul {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 720px) and (min-width: 1024px) {
+  .nurse-panel {
+    gap: 5px;
+    padding-block: 6px 8px;
+  }
+
+  .station-hero {
+    padding-block: 6px;
+
+    &__top {
+      padding-bottom: 6px;
+    }
+
+    &__body {
+      padding-top: 6px;
+    }
+  }
+
+  .handoff-card,
+  .data-health {
+    padding-block: 7px;
+  }
+
+  .surface-panel {
+    padding-block: 7px;
+  }
+}
 </style>

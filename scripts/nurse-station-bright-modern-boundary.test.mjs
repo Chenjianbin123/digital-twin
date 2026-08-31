@@ -30,7 +30,7 @@ assert.match(blendValidator, /corridor presentation fold/);
 assert.match(glbValidator, /Detail_Header_Title/);
 assert.match(glbValidator, /Detail_Full_Ceiling/);
 
-assert.match(sceneConfig, /1-v1\.glb\?v=20260827-nurse-station-1-v1/);
+assert.match(sceneConfig, /1-1\.glb\?v=20260831-nurse-station-1-1/);
 assert.match(areaScene, /architecturalFillNames = new Set\(\['Detail_Full_Ceiling'\]\)/);
 assert.match(areaScene, /\['taskQueue', \['Screen_Work_01', 'Monitor_UI_01_00'\]\]/);
 assert.match(areaScene, /\['wardStatus', \['Screen_Work_02', 'Monitor_UI_02_02'\]\]/);

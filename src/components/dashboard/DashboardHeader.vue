@@ -712,4 +712,51 @@ const dataStatusLabel = computed(() => ({
     }
   }
 }
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .dash-header {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 1.15fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px 14px 6px;
+
+    &__title {
+      font-size: clamp(17px, 1.8vw, 20px);
+    }
+
+    &__title-wrap {
+      gap: 8px;
+    }
+
+    &__wing {
+      width: 24px;
+      flex-basis: 24px;
+    }
+
+    &__area-name {
+      max-width: min(220px, 24vw);
+    }
+
+    &__operator {
+      max-width: 110px;
+    }
+
+    &__status,
+    &__date {
+      display: none;
+    }
+
+    &:has(.dash-header__side--compact) {
+      .dash-header__action-label {
+        display: none;
+      }
+
+      .dash-header__refresh,
+      .dash-header__logout {
+        min-width: 32px;
+        width: 32px;
+        padding: 0;
+      }
+    }
+  }
+}
 </style>

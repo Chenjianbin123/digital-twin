@@ -48,3 +48,18 @@ test('login gate presents a Chinese-only sign-in surface', () => {
     assert.doesNotMatch(loginGate, new RegExp(obsoleteCopy));
   }
 });
+
+test('login gate uses an adaptive desktop card layout', () => {
+  assert.match(loginGate, /swp-login__card/);
+  assert.match(loginGate, /@media \(min-width: 1200px\)/);
+  assert.match(loginGate, /@media \(min-width: 769px\) and \(max-width: 1199px\)/);
+  assert.match(loginGate, /width: min\(100% - 48px, 560px\)/);
+  assert.match(loginGate, /max-height: calc\(100dvh - 64px\)/);
+});
+
+test('login gate handles short and reduced-motion viewports', () => {
+  assert.match(loginGate, /@media \(max-height: 720px\)/);
+  assert.match(loginGate, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(loginGate, /100svh/);
+  assert.match(loginGate, /env\(safe-area-inset-bottom\)/);
+});

@@ -149,6 +149,7 @@ function enterChosenArea() {
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 100svh;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -206,7 +207,7 @@ function enterChosenArea() {
   }
 
   &__main {
-    width: min(760px, calc(100% - 40px));
+    width: min(760px, calc(100% - clamp(32px, 6vw, 96px)));
     margin: 0 auto;
     padding: clamp(44px, 8vh, 92px) 0 48px;
   }
@@ -449,6 +450,60 @@ function enterChosenArea() {
     &__description { margin-bottom: 18px; }
     &__list { grid-template-columns: minmax(0, 1fr); }
     &__tile { min-height: 76px; }
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1023px) {
+  .area-selection {
+    &__header {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 14px;
+      padding-inline: clamp(16px, 3vw, 28px);
+    }
+
+    &__platform {
+      min-width: 0;
+      overflow: hidden;
+      font-size: clamp(14px, 2vw, 17px);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &__main {
+      width: min(760px, calc(100% - clamp(32px, 7vw, 72px)));
+      padding-top: clamp(34px, 7vh, 68px);
+    }
+  }
+}
+
+@media (max-height: 720px) {
+  .area-selection {
+    &__header {
+      min-height: 50px;
+    }
+
+    &__main {
+      padding-top: 28px;
+      padding-bottom: 28px;
+    }
+
+    &__title {
+      font-size: clamp(26px, 3vw, 32px);
+    }
+
+    &__description {
+      margin-bottom: 17px;
+    }
+
+    &__tile {
+      min-height: 70px;
+      padding: 11px 13px;
+    }
+
+    &__state {
+      min-height: 142px;
+      padding: 18px;
+    }
   }
 }
 
