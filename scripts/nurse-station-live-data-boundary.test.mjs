@@ -20,13 +20,28 @@ test('nurse station live screens do not invent fixed contact or visit data', asy
 
 test('dynamic rear boards hide Blender static labels before adding live overlays', async () => {
   const source = await readFile(new URL('../src/core/area-scene.ts', import.meta.url), 'utf8');
+  const hideStaticContent = source.slice(
+    source.indexOf('private hideNurseStationStaticBoardContent('),
+    source.indexOf('private refreshNurseStationBoardDisplays('),
+  );
   assert.match(source, /hideNurseStationStaticBoardContent\(model\)/);
-  assert.match(source, /Nursing_Board_Title/);
-  assert.match(source, /Nursing_Bed_/);
-  assert.match(source, /Nursing_Row_/);
-  assert.match(source, /Nursing_Level_/);
-  assert.match(source, /Patient_Board_Title/);
-  assert.match(source, /Patient_Room_/);
-  assert.match(source, /Patient_Status_Dot_/);
-  assert.match(source, /Patient_Status_Bar_/);
+  assert.match(source, /NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS/);
+  assert.match(source, /NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS\.has\(object\.name\)/);
+  assert.match(source, /'Nursing_Board_Title'/);
+  assert.match(source, /'Patient_Status_Bar_02'/);
+  assert.match(source, /'Detail_Header_Center'/);
+  assert.match(source, /'Detail_Header_Accent'/);
+  assert.doesNotMatch(hideStaticContent, /'Nursing_Board_Title'/);
+  assert.doesNotMatch(hideStaticContent, /'Patient_Status_Bar_02'/);
+  assert.doesNotMatch(hideStaticContent, /'Detail_Header_Center'/);
+  assert.doesNotMatch(hideStaticContent, /'Detail_Header_Left'/);
+  assert.doesNotMatch(hideStaticContent, /'Detail_Header_Right'/);
+  assert.doesNotMatch(hideStaticContent, /'Detail_Header_Accent'/);
+  assert.match(hideStaticContent, /Nursing_Bed_/);
+  assert.match(hideStaticContent, /Nursing_Row_/);
+  assert.match(hideStaticContent, /Nursing_Level_/);
+  assert.match(hideStaticContent, /Patient_Board_Title/);
+  assert.match(hideStaticContent, /Patient_Room_/);
+  assert.match(hideStaticContent, /Patient_Status_Dot_/);
+  assert.match(hideStaticContent, /Patient_Status_Bar_/);
 });

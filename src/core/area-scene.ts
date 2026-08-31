@@ -163,6 +163,14 @@ const NURSE_STATION_MODEL_MAX_SIZE = new THREE.Vector3(
 );
 const NURSE_STATION_BG = nurseStationSceneConfig.appearance.background;
 const DEBUG_DASHBOARD_SCREEN_BORDER = false;
+const NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS = new Set([
+  'Nursing_Board_Title',
+  'Patient_Status_Bar_02',
+  'Detail_Header_Center',
+  'Detail_Header_Left',
+  'Detail_Header_Right',
+  'Detail_Header_Accent',
+]);
 
 // =============================================================================
 // 病区总览 3D 可调参数（文件：src/core/area-scene.ts）
@@ -2139,6 +2147,13 @@ export class AreaScene {
         console.warn(`[AreaScene] nurse station board mesh not found: ${objectNames.join(' / ')}`);
         continue;
       }
+      if (
+        NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS.has(object.name)
+        || (exactObjectName != null && NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS.has(exactObjectName))
+      ) {
+        usedMeshes.add(object);
+        continue;
+      }
       usedMeshes.add(object);
       const displayRoot = exactObjectName ? model.getObjectByName(exactObjectName) : object;
       if (displayRoot)
@@ -2172,30 +2187,36 @@ export class AreaScene {
   /** 隐藏 GLB 电脑屏内置的蓝色横条/占位 UI，避免覆盖真实模板。 */
   private hideNurseStationPlaceholderMaterials(root: THREE.Object3D) {
     root.traverse((object) => {
-      if (!(object instanceof THREE.Mesh))
+      if (!(object instanceof THREE.Mesh) || NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS.has(object.name))
         return;
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      materials.forEach((material) => {
-        if (!/UI_Blue|UI_Cyan|Clock_Red/i.test(material.name))
-          return;
-        material.transparent = true;
-        material.opacity = 0;
-        material.depthWrite = false;
-        material.needsUpdate = true;
-      });
+      this.hideNurseStationPlaceholderMaterialsOnMesh(object);
     });
+  }
+
+  private hideNurseStationPlaceholderMaterialsOnMesh(mesh: THREE.Mesh) {
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    let changed = false;
+    const next = materials.map((material) => {
+      if (!/UI_Blue|UI_Cyan|Clock_Red/i.test(material.name))
+        return material;
+      const hidden = material.clone();
+      hidden.transparent = true;
+      hidden.opacity = 0;
+      hidden.depthWrite = false;
+      hidden.needsUpdate = true;
+      changed = true;
+      return hidden;
+    });
+    if (!changed)
+      return;
+    mesh.material = Array.isArray(mesh.material) ? next : next[0]!;
   }
 
   private hideNurseStationStaticBoardContent(model: THREE.Object3D) {
     const exactNames = new Set([
-      'Nursing_Board_Title',
       'Patient_Board_Title',
-      // 模型自带的顶部主屏静态标题/指标，避免和实时 Canvas 模板重叠。
-      'Detail_Header_Accent',
-      'Detail_Header_Center',
-      'Detail_Header_Left',
+      // 模型自带的顶部主屏静态标题文字，避免和实时 Canvas 模板重叠。
       'Detail_Header_Left_Text',
-      'Detail_Header_Right',
       'Detail_Header_Right_Text',
       'Detail_Header_Subtitle',
       'Detail_Header_Title',
@@ -2209,19 +2230,15 @@ export class AreaScene {
       'Patient_Status_Bar_',
     ];
     model.traverse((object) => {
-      if (exactNames.has(object.name) || prefixes.some(prefix => object.name.startsWith(prefix)))
+      const preserve = NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS.has(object.name);
+      if (
+        !preserve
+        && (exactNames.has(object.name) || prefixes.some(prefix => object.name.startsWith(prefix)))
+      )
         object.visible = false;
-      if (!(object instanceof THREE.Mesh))
+      if (!(object instanceof THREE.Mesh) || preserve)
         return;
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      materials.forEach((material) => {
-        if (!/UI_Blue|UI_Cyan|Clock_Red/i.test(material.name))
-          return;
-        material.transparent = true;
-        material.opacity = 0;
-        material.depthWrite = false;
-        material.needsUpdate = true;
-      });
+      this.hideNurseStationPlaceholderMaterialsOnMesh(object);
     });
   }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { confirmSwpRole, loginSwpUser } from '@/api/auth';
+import { computed, onMounted, ref } from "vue";
+import { confirmSwpRole, loginSwpUser } from "@/api/auth";
 import {
   clearAuthSession,
   confirmAuthRole,
@@ -8,8 +8,8 @@ import {
   readPendingAuth,
   replacePendingAuthToken,
   writePendingAuth,
-} from '@/core/auth-session';
-import type { AuthRole, AuthSession, AuthUser } from '@/types/auth';
+} from "@/core/auth-session";
+import type { AuthRole, AuthSession, AuthUser } from "@/types/auth";
 
 const props = defineProps<{
   notice?: string;
@@ -19,17 +19,20 @@ const emit = defineEmits<{
   authenticated: [session: AuthSession];
 }>();
 
-const step = ref<'credentials' | 'role'>('credentials');
-const userName = ref('');
-const password = ref('');
+const step = ref<"credentials" | "role">("credentials");
+const userName = ref("");
+const password = ref("");
 const showPassword = ref(false);
 const pendingUser = ref<AuthUser | null>(null);
-const selectedRoleId = ref('');
+const selectedRoleId = ref("");
 const isSubmitting = ref(false);
-const errorMessage = ref('');
+const errorMessage = ref("");
 
-const displayName = computed(() =>
-  pendingUser.value?.userRealname || pendingUser.value?.userName || '值班人员',
+const displayName = computed(
+  () =>
+    pendingUser.value?.userRealname ||
+    pendingUser.value?.userName ||
+    "值班人员",
 );
 
 function errorText(error: unknown, fallback: string): string {
@@ -38,48 +41,51 @@ function errorText(error: unknown, fallback: string): string {
 
 function selectRole(role: AuthRole) {
   selectedRoleId.value = String(role.id);
-  errorMessage.value = '';
+  errorMessage.value = "";
 }
 
 async function submitCredentials() {
-  errorMessage.value = '';
+  errorMessage.value = "";
   const normalizedName = userName.value.trim();
   if (!normalizedName || !password.value) {
-    errorMessage.value = '请输入平台账号和登录密码';
+    errorMessage.value = "请输入平台账号和登录密码";
     return;
   }
 
   isSubmitting.value = true;
   try {
-    const user = await loginSwpUser({ userName: normalizedName, password: password.value });
+    const user = await loginSwpUser({
+      userName: normalizedName,
+      password: password.value,
+    });
     if (!Array.isArray(user.roleList) || !user.roleList.length) {
       clearAuthSession();
-      throw new Error('当前账号未分配角色，请联系管理员');
+      throw new Error("当前账号未分配角色，请联系管理员");
     }
     writePendingAuth(user);
     pendingUser.value = user;
-    selectedRoleId.value = '';
-    password.value = '';
-    step.value = 'role';
-  }
-  catch (error) {
-    errorMessage.value = errorText(error, '登录失败，请稍后重试');
-  }
-  finally {
+    selectedRoleId.value = "";
+    password.value = "";
+    step.value = "role";
+  } catch (error) {
+    errorMessage.value = errorText(error, "登录失败，请稍后重试");
+  } finally {
     isSubmitting.value = false;
   }
 }
 
 async function submitRole() {
   const user = pendingUser.value;
-  const role = user?.roleList.find(item => String(item.id) === selectedRoleId.value);
+  const role = user?.roleList.find(
+    (item) => String(item.id) === selectedRoleId.value,
+  );
   if (!user || !role) {
-    errorMessage.value = '请选择本次值班角色';
+    errorMessage.value = "请选择本次值班角色";
     return;
   }
 
   isSubmitting.value = true;
-  errorMessage.value = '';
+  errorMessage.value = "";
   try {
     const confirmedToken = await confirmSwpRole(role.id, user.token);
     if (confirmedToken) {
@@ -88,14 +94,11 @@ async function submitRole() {
     }
     confirmAuthRole(role);
     const session = readAuthSession();
-    if (!session)
-      throw new Error('登录会话保存失败，请重新登录');
-    emit('authenticated', session);
-  }
-  catch (error) {
-    errorMessage.value = errorText(error, '角色确认失败，请稍后重试');
-  }
-  finally {
+    if (!session) throw new Error("登录会话保存失败，请重新登录");
+    emit("authenticated", session);
+  } catch (error) {
+    errorMessage.value = errorText(error, "角色确认失败，请稍后重试");
+  } finally {
     isSubmitting.value = false;
   }
 }
@@ -103,17 +106,16 @@ async function submitRole() {
 function restartLogin() {
   clearAuthSession();
   pendingUser.value = null;
-  selectedRoleId.value = '';
-  errorMessage.value = '';
-  step.value = 'credentials';
+  selectedRoleId.value = "";
+  errorMessage.value = "";
+  step.value = "credentials";
 }
 
 onMounted(() => {
   const pending = readPendingAuth();
-  if (!pending?.user.roleList?.length)
-    return;
+  if (!pending?.user.roleList?.length) return;
   pendingUser.value = pending.user;
-  step.value = 'role';
+  step.value = "role";
 });
 </script>
 
@@ -121,9 +123,9 @@ onMounted(() => {
   <main class="swp-login">
     <img
       class="swp-login__scene"
-      src="/images/smart-ward-nurse-station/nurse_station_high_fidelity.webp"
+      src="/images/smart-ward-nurse-station/login-bg.png"
       alt="智慧病房护士站"
-    >
+    />
     <div class="swp-login__shade" aria-hidden="true" />
 
     <section class="swp-login__brand" aria-label="系统名称">
@@ -145,7 +147,7 @@ onMounted(() => {
               autocomplete="username"
               placeholder="请输入用户名"
               :disabled="isSubmitting"
-            >
+            />
           </label>
 
           <label class="swp-login__field">
@@ -158,20 +160,24 @@ onMounted(() => {
                 autocomplete="current-password"
                 placeholder="请输入密码"
                 :disabled="isSubmitting"
-              >
+              />
               <button
                 type="button"
                 :aria-label="showPassword ? '隐藏密码' : '显示密码'"
                 :title="showPassword ? '隐藏密码' : '显示密码'"
                 @click="showPassword = !showPassword"
               >
-                {{ showPassword ? '隐藏' : '显示' }}
+                {{ showPassword ? "隐藏" : "显示" }}
               </button>
             </span>
           </label>
 
-          <button class="swp-login__submit" type="submit" :disabled="isSubmitting">
-            {{ isSubmitting ? '正在登录...' : '登录' }}
+          <button
+            class="swp-login__submit"
+            type="submit"
+            :disabled="isSubmitting"
+          >
+            {{ isSubmitting ? "正在登录..." : "登录" }}
           </button>
         </form>
       </div>
@@ -185,7 +191,9 @@ onMounted(() => {
             v-for="role in pendingUser?.roleList ?? []"
             :key="String(role.id)"
             class="swp-login__role"
-            :class="{ 'swp-login__role--selected': selectedRoleId === String(role.id) }"
+            :class="{
+              'swp-login__role--selected': selectedRoleId === String(role.id),
+            }"
           >
             <input
               type="radio"
@@ -193,7 +201,7 @@ onMounted(() => {
               :value="String(role.id)"
               :checked="selectedRoleId === String(role.id)"
               @change="selectRole(role)"
-            >
+            />
             <span class="swp-login__role-indicator" aria-hidden="true" />
             <span>
               <strong>{{ role.roleName }}</strong>
@@ -202,15 +210,29 @@ onMounted(() => {
           </label>
         </div>
 
-        <button class="swp-login__submit" type="button" :disabled="isSubmitting" @click="submitRole">
-          {{ isSubmitting ? '正在确认...' : '确认并进入' }}
+        <button
+          class="swp-login__submit"
+          type="button"
+          :disabled="isSubmitting"
+          @click="submitRole"
+        >
+          {{ isSubmitting ? "正在确认..." : "确认并进入" }}
         </button>
-        <button class="swp-login__back" type="button" :disabled="isSubmitting" @click="restartLogin">
+        <button
+          class="swp-login__back"
+          type="button"
+          :disabled="isSubmitting"
+          @click="restartLogin"
+        >
           切换账号
         </button>
       </div>
 
-      <p v-if="errorMessage || props.notice" class="swp-login__message" aria-live="polite">
+      <p
+        v-if="errorMessage || props.notice"
+        class="swp-login__message"
+        aria-live="polite"
+      >
         {{ errorMessage || props.notice }}
       </p>
     </aside>
@@ -337,7 +359,9 @@ onMounted(() => {
       font: inherit;
       font-size: 14px;
       background: #0b2a34;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      transition:
+        border-color 0.15s,
+        box-shadow 0.15s;
 
       &::placeholder {
         color: #69878e;
@@ -388,7 +412,10 @@ onMounted(() => {
     font-weight: 800;
     background: #51d5d0;
     cursor: pointer;
-    transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+    transition:
+      background 0.15s,
+      box-shadow 0.15s,
+      transform 0.15s;
 
     &:hover:not(:disabled) {
       background: #72e3df;
@@ -490,7 +517,6 @@ onMounted(() => {
     background: rgba(115, 72, 18, 0.22);
     overflow-wrap: anywhere;
   }
-
 }
 
 @media (max-width: 768px) {
