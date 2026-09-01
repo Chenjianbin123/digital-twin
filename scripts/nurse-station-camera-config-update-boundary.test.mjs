@@ -6,9 +6,9 @@ const sceneConfig = await readFile(
   'utf8',
 );
 
-assert.match(sceneConfig, /target: \{ x: 1\.068, y: 0\.807, z: 0\.369 \}/);
-assert.match(sceneConfig, /initialDistance: 5\.726/);
-assert.match(sceneConfig, /initialAngle: \{ azimuthDeg: -82\.69, elevationDeg: 2\.2 \}/);
+assert.match(sceneConfig, /target: \{ x: 1\.066, y: 0\.812, z: 0\.257 \}/);
+assert.match(sceneConfig, /initialDistance: 3\.362/);
+assert.match(sceneConfig, /initialAngle: \{ azimuthDeg: -88\.65, elevationDeg: 3\.62 \}/);
 assert.match(sceneConfig, /limitsEnabled:\s*true/);
 assert.match(sceneConfig, /deskFov: 30/);
 
