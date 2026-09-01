@@ -40,6 +40,10 @@ export interface WardInteriorSceneConfig {
     exposure: number;
     baseFogDensity: number;
     fogSpanFactor: number;
+    envMapIntensity: number;
+    environmentIntensity: number;
+    /** Cap glTF metalness so bright plastics/whites don't go black without a studio HDRI. */
+    maxMetalness: number;
   };
   modelBedLayout: {
     baseWidth: number;
@@ -54,7 +58,7 @@ export interface WardInteriorSceneConfig {
 /** 病房内部模型、镜头、交互和床位排布参数。业务数据与模型节点校验不在此配置。 */
 export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
   model: {
-    url: '/models/smart-ward-interior/smart_ward_interior.glb?v=20260812-terminal-layout-v4',
+    url: '/models/smart-ward-interior/room-v1.glb?v=20260901-room-v1-native',
     baseSize: { width: 12, height: 3.92, depth: 9 },
     canvasTextureFlipY: false,
   },
@@ -85,10 +89,13 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
     maxDistanceSpanFactor: 2.5,
   },
   appearance: {
-    background: 0xe8eeea,
-    exposure: 1.05,
-    baseFogDensity: 0.012,
-    fogSpanFactor: 0.00015,
+    background: 0xd8d2c8,
+    exposure: 1.0,
+    baseFogDensity: 0,
+    fogSpanFactor: 0,
+    envMapIntensity: 0.22,
+    environmentIntensity: 0.26,
+    maxMetalness: 0.78,
   },
   modelBedLayout: {
     baseWidth: 3.92,

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { easeOutCubic } from '@/core/camera-easing';
 import { getCameraPreset, resolveWardCameraViewportScale } from '@/core/camera-presets';
@@ -34,13 +36,16 @@ import {
 import { BED_DEPTH, BED_HEAD_Z, BED_WIDTH, resolveBedVisualScale } from '@/core/ward-bed-geometry';
 import {
   WARD_INTERIOR_MODEL_URL,
+  bindWardInteriorBakedBed,
   cloneWardInteriorBed,
   configureWardInteriorCanvasTexture,
   disposeWardInteriorModel,
   fitWardInteriorEnvironment,
   getWardInteriorAssetParts,
   hideWardInteriorCeiling,
+  prepareWardInteriorModelMaterials,
   resolveWardInteriorModelBedPose,
+  syncWardInteriorBakedBedVisibility,
 } from '@/core/ward-interior-model';
 import type { WardInteriorAssetParts } from '@/core/ward-interior-model';
 import type { BedStatusMeta, CameraPresetId, TwinBedEntity, TwinWardEntity } from '@/types/twin';
@@ -111,6 +116,7 @@ export class WardScene {
   private wardInteriorModel: THREE.Group | null = null;
   private wardInteriorParts: WardInteriorAssetParts | null = null;
   private wardInteriorModelLoadToken = 0;
+  private environmentTexture: THREE.Texture | null = null;
   private quiltTexture: THREE.CanvasTexture | null = null;
   private pillowcaseTexture: THREE.CanvasTexture | null = null;
   private roomW = 14;
@@ -130,7 +136,8 @@ export class WardScene {
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(SCENE_BG);
-    this.scene.fog = new THREE.FogExp2(SCENE_BG, wardInteriorSceneConfig.appearance.baseFogDensity);
+    if (wardInteriorSceneConfig.appearance.baseFogDensity > 0)
+      this.scene.fog = new THREE.FogExp2(SCENE_BG, wardInteriorSceneConfig.appearance.baseFogDensity);
 
     const perspective = wardInteriorSceneConfig.camera.perspective;
     this.camera = new THREE.PerspectiveCamera(perspective.fov, width / height, perspective.near, perspective.far);
@@ -141,10 +148,17 @@ export class WardScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = wardInteriorSceneConfig.appearance.exposure;
     this.renderer.sortObjects = true;
     this.styleRendererLayers();
+
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.environmentTexture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environment = this.environmentTexture;
+    this.scene.environmentIntensity = wardInteriorSceneConfig.appearance.environmentIntensity;
+    pmrem.dispose();
 
     this.labelRenderer = new CSS2DRenderer();
     this.labelRenderer.setSize(width, height);
@@ -166,8 +180,8 @@ export class WardScene {
     this.controls.addEventListener('change', this.onControlsChange);
 
     this.scene.add(this.roomGroup);
+    this.roomGroup.visible = false;
     this.setupLights();
-    this.rebuildRoomShell();
     void this.loadWardInteriorModel();
 
     this.container.addEventListener('click', this.handleClick);
@@ -1713,10 +1727,10 @@ export class WardScene {
   }
 
   private setupLights() {
-    this.scene.add(new THREE.AmbientLight(0xf4faf6, 0.62));
-    this.scene.add(new THREE.HemisphereLight(0xf0f8f4, 0x9ab0a4, 0.42));
+    this.scene.add(new THREE.AmbientLight(0xf4faf6, 0.38));
+    this.scene.add(new THREE.HemisphereLight(0xf7f3ee, 0x8a847c, 0.28));
 
-    const key = new THREE.DirectionalLight(0xfffef8, 0.82);
+    const key = new THREE.DirectionalLight(0xfff8f0, 0.72);
     key.position.set(5, 12, 8);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -1728,20 +1742,17 @@ export class WardScene {
     key.shadow.camera.bottom = -12;
     this.scene.add(key);
 
-    const rim = new THREE.DirectionalLight(0xe8f5e9, 0.28);
+    const rim = new THREE.DirectionalLight(0xe8e4dc, 0.18);
     rim.position.set(-6, 5, -8);
     this.scene.add(rim);
-
-    [[-3.5, ROOM_H - 0.12, -1], [3.5, ROOM_H - 0.12, 1], [0, ROOM_H - 0.12, 3]].forEach(([x, y, z]) => {
-      const light = new THREE.PointLight(0xfff8f0, 0.48, 12, 1.8);
-      light.position.set(x, y, z);
-      this.scene.add(light);
-    });
   }
 
   private async loadWardInteriorModel() {
     const token = ++this.wardInteriorModelLoadToken;
     const loader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('/draco/');
+    loader.setDRACOLoader(dracoLoader);
     let model: THREE.Group | null = null;
 
     try {
@@ -1754,15 +1765,19 @@ export class WardScene {
 
       const parts = getWardInteriorAssetParts(model);
       model.name = 'blender-smart-ward-interior';
-      model.traverse((object) => {
-        if (!(object instanceof THREE.Mesh))
-          return;
-        object.castShadow = true;
-        object.receiveShadow = true;
+      prepareWardInteriorModelMaterials(model, {
+        envMapIntensity: wardInteriorSceneConfig.appearance.envMapIntensity,
+        maxMetalness: wardInteriorSceneConfig.appearance.maxMetalness,
       });
-      parts.bedPrototype.visible = false;
+      if (parts.bedPrototype)
+        parts.bedPrototype.visible = false;
       hideWardInteriorCeiling(parts.architecture);
       fitWardInteriorEnvironment(parts, this.roomW, this.roomD, ROOM_H);
+      if (parts.mode === 'baked' && parts.baseBounds) {
+        this.roomW = Math.max(parts.baseBounds.size.x, 4);
+        this.roomD = Math.max(parts.baseBounds.size.z, 4);
+        this.fitControlsToRoom();
+      }
 
       this.wardInteriorModel = model;
       this.wardInteriorParts = parts;
@@ -1790,10 +1805,11 @@ export class WardScene {
         }
         disposeWardInteriorModel(model);
       }
-      this.roomGroup.visible = true;
-      console.warn('[WardScene] failed to load smart ward interior GLB, using generated fallback', error);
-      if (this.ward)
-        this.updateWard(this.ward);
+      this.roomGroup.visible = false;
+      console.warn('[WardScene] failed to load room-v1 GLB', error);
+    }
+    finally {
+      dracoLoader.dispose();
     }
   }
 
@@ -1843,6 +1859,27 @@ export class WardScene {
     meshGroup.bedsideMonitorTexture?.dispose();
     meshGroup.label?.removeFromParent();
     meshGroup.deviceTag?.removeFromParent();
+
+    if (meshGroup.group.userData.wardInteriorBakedBed) {
+      this.disposeMesh(meshGroup.mattress, false);
+      this.disposeMesh(meshGroup.indicator, false);
+      this.disposeMesh(meshGroup.bedTerminalScreen, false);
+      this.disposeMesh(meshGroup.bedsideMonitor, false);
+      this.disposeMesh(meshGroup.infusionPump);
+      this.disposeMesh(meshGroup.callRing);
+      this.disposeMesh(meshGroup.selectionRing);
+      this.disposeMesh(meshGroup.selectionPillar);
+      this.disposeMesh(meshGroup.selectionBeam);
+      meshGroup.infusionPump = undefined;
+      meshGroup.callRing = undefined;
+      meshGroup.selectionRing = undefined;
+      meshGroup.selectionPillar = undefined;
+      meshGroup.selectionBeam = undefined;
+      meshGroup.label = undefined;
+      meshGroup.deviceTag = undefined;
+      delete meshGroup.group.userData.bedCode;
+      return;
+    }
 
     if (meshGroup.group.userData.wardInteriorModelBed) {
       this.disposeMesh(meshGroup.mattress, false);
@@ -2100,12 +2137,14 @@ export class WardScene {
   }
 
   private fitControlsToRoom() {
-    const span = Math.max(this.roomW, this.roomD);
     this.applyOpenWardControls();
-    this.scene.fog = new THREE.FogExp2(
-      SCENE_BG,
-      wardInteriorSceneConfig.appearance.baseFogDensity - span * wardInteriorSceneConfig.appearance.fogSpanFactor,
-    );
+    const fogDensity = wardInteriorSceneConfig.appearance.baseFogDensity;
+    this.scene.fog = fogDensity > 0
+      ? new THREE.FogExp2(
+          SCENE_BG,
+          fogDensity - Math.max(this.roomW, this.roomD) * wardInteriorSceneConfig.appearance.fogSpanFactor,
+        )
+      : null;
     this.controls.update();
   }
 
@@ -2147,6 +2186,8 @@ export class WardScene {
   }
 
   private applyBedPose(group: THREE.Group, index: number, total: number) {
+    if (group.userData.wardInteriorBakedBed)
+      return;
     if (group.userData.wardInteriorModelBed) {
       const pose = resolveWardInteriorModelBedPose(index, total, this.roomW, this.roomD);
       if (!pose)
@@ -2159,6 +2200,68 @@ export class WardScene {
     const pose = this.getBedPose(index, total);
     group.position.set(pose.x, 0, pose.z);
     group.rotation.y = pose.rotationY;
+  }
+
+  private createBakedModelBedMesh(bed: TwinBedEntity, index: number, total: number): BedMeshGroup {
+    const slot = this.wardInteriorParts?.bakedBeds[index];
+    if (!slot)
+      return this.createGeneratedBedMesh(bed, index, total);
+
+    const bound = bindWardInteriorBakedBed(slot, bed.bedCode);
+    const group = bound.group as THREE.Group;
+
+    const status = resolveBedStatus(bed);
+    const bedTerminalTexture = this.createBedTerminalTexture(bed, status);
+    configureWardInteriorCanvasTexture(bedTerminalTexture);
+    const terminalMaterials = Array.isArray(bound.bedTerminalScreen.material)
+      ? bound.bedTerminalScreen.material
+      : [bound.bedTerminalScreen.material];
+    terminalMaterials.forEach(material => material.dispose());
+    bound.bedTerminalScreen.material = new THREE.MeshBasicMaterial({
+      map: bedTerminalTexture,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    });
+
+    const bedsideMonitorTexture = this.createBedsideMonitorTexture(bed, status);
+    configureWardInteriorCanvasTexture(bedsideMonitorTexture);
+    const monitorMaterials = Array.isArray(bound.bedsideMonitor.material)
+      ? bound.bedsideMonitor.material
+      : [bound.bedsideMonitor.material];
+    monitorMaterials.forEach(material => material.dispose());
+    bound.bedsideMonitor.material = new THREE.MeshBasicMaterial({
+      map: bedsideMonitorTexture,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    });
+
+    const label = this.createBedLabel(bed);
+    label.position.y = 2.25;
+    group.add(label);
+
+    const deviceTag = new CSS2DObject(this.createDeviceTagElement(bed));
+    deviceTag.position.set(0.55, 2.05, 0.35);
+    group.add(deviceTag);
+
+    const selection = this.createSelectionMeshes(status);
+    group.add(selection.ring, selection.pulse, selection.beam);
+
+    return {
+      bedCode: bed.bedCode,
+      group,
+      indicator: bound.indicator,
+      mattress: bound.mattress,
+      bedTerminalScreen: bound.bedTerminalScreen,
+      bedTerminalTexture,
+      label,
+      selectionRing: selection.ring,
+      selectionPillar: selection.pulse,
+      selectionBeam: selection.beam,
+      deviceTag,
+      bedsideMonitor: bound.bedsideMonitor,
+      bedsideMonitorTexture,
+      curtainPhase: group.position.x * 0.7 + group.position.z * 0.4,
+    };
   }
 
   private createModelBedMesh(bed: TwinBedEntity, index: number, total: number): BedMeshGroup {
@@ -2233,10 +2336,15 @@ export class WardScene {
     };
   }
 
-  private createBedMesh(bed: TwinBedEntity, index: number, total: number): BedMeshGroup {
-    if (this.wardInteriorParts)
-      return this.createModelBedMesh(bed, index, total);
-    return this.createGeneratedBedMesh(bed, index, total);
+  private createBedMesh(bed: TwinBedEntity, index: number, total: number): BedMeshGroup | null {
+    if (!this.wardInteriorParts)
+      return null;
+    if (this.wardInteriorParts.mode === 'baked') {
+      if (index < this.wardInteriorParts.bakedBeds.length)
+        return this.createBakedModelBedMesh(bed, index, total);
+      return null;
+    }
+    return this.createModelBedMesh(bed, index, total);
   }
 
   private createGeneratedBedMesh(bed: TwinBedEntity, index: number, total: number): BedMeshGroup {
@@ -2490,13 +2598,15 @@ export class WardScene {
     if (count !== this.lastBedCount) {
       this.bedCount = count;
       this.lastBedCount = count;
-      const { w, d } = getWardRoomSize(count);
-      if (w !== this.roomW || d !== this.roomD) {
-        this.roomW = w;
-        this.roomD = d;
-        this.rebuildRoomShell();
-        if (this.wardInteriorParts)
-          fitWardInteriorEnvironment(this.wardInteriorParts, this.roomW, this.roomD, ROOM_H);
+      if (this.wardInteriorParts?.mode !== 'baked') {
+        const { w, d } = getWardRoomSize(count);
+        if (w !== this.roomW || d !== this.roomD) {
+          this.roomW = w;
+          this.roomD = d;
+          this.rebuildRoomShell();
+          if (this.wardInteriorParts)
+            fitWardInteriorEnvironment(this.wardInteriorParts, this.roomW, this.roomD, ROOM_H);
+        }
       }
       this.fitControlsToRoom();
       this.clearBedMeshes();
@@ -2514,13 +2624,18 @@ export class WardScene {
     }
 
     for (const [index, bed] of ward.beds.entries()) {
-      if (!this.bedMeshes.has(bed.bedCode))
-        this.bedMeshes.set(bed.bedCode, this.createBedMesh(bed, index, ward.beds.length));
+      if (!this.bedMeshes.has(bed.bedCode)) {
+        const created = this.createBedMesh(bed, index, ward.beds.length);
+        if (created)
+          this.bedMeshes.set(bed.bedCode, created);
+      }
       const meshGroup = this.bedMeshes.get(bed.bedCode);
       if (meshGroup)
         this.applyBedPose(meshGroup.group, index, ward.beds.length);
       this.updateBedVisual(bed);
     }
+    if (this.wardInteriorParts)
+      syncWardInteriorBakedBedVisibility(this.wardInteriorParts, ward.beds.length);
     this.updateAllBedSelectionVisuals();
   }
 
@@ -2872,6 +2987,9 @@ export class WardScene {
     this.pillowcaseTexture?.dispose();
     this.quiltTexture = null;
     this.pillowcaseTexture = null;
+    this.environmentTexture?.dispose();
+    this.environmentTexture = null;
+    this.scene.environment = null;
     cancelAnimationFrame(this.animationId);
     this.resizeObserver?.disconnect();
     this.controls.removeEventListener('start', this.onControlsStart);

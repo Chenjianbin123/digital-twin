@@ -5,13 +5,16 @@ import * as THREE from 'three';
 
 import {
   WARD_INTERIOR_MODEL_URL,
+  bindWardInteriorBakedBed,
   cloneWardInteriorBed,
   configureWardInteriorCanvasTexture,
   disposeWardInteriorModel,
   fitWardInteriorEnvironment,
   getWardInteriorAssetParts,
   hideWardInteriorCeiling,
+  prepareWardInteriorModelMaterials,
   resolveWardInteriorModelBedPose,
+  syncWardInteriorBakedBedVisibility,
 } from './ward-interior-model.ts';
 
 
@@ -49,18 +52,46 @@ function createAssetRoot() {
   return root;
 }
 
+function createBakedAssetRoot() {
+  const root = new THREE.Group();
+  const geometry = new THREE.BoxGeometry(1, 0.4, 2);
+
+  const bedA = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xffffff }));
+  bedA.name = '床';
+  bedA.position.set(-1, 0.5, -1);
+
+  const pillowA = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.5), new THREE.MeshStandardMaterial());
+  pillowA.name = '枕头';
+  pillowA.position.set(-1.4, 0.7, -1);
+
+  const bedB = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xffffff }));
+  bedB.name = '床.001';
+  bedB.position.set(-1, 0.5, 1.5);
+
+  const pillowB = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.5), new THREE.MeshStandardMaterial());
+  pillowB.name = '枕头.001';
+  pillowB.position.set(-1.4, 0.7, 1.5);
+
+  const chair = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshStandardMaterial());
+  chair.name = '椅子坐';
+  chair.position.set(1, 0.25, 0);
+
+  root.add(bedA, pillowA, bedB, pillowB, chair);
+  return root;
+}
+
 
 test('uses the versioned smart ward interior model URL', () => {
   assert.equal(
     WARD_INTERIOR_MODEL_URL,
-    '/models/smart-ward-interior/smart_ward_interior.glb?v=20260812-terminal-layout-v4',
+    '/models/smart-ward-interior/room-v1.glb?v=20260901-room-v1-native',
   );
 });
 
-test('rejects assets that do not provide the complete node contract', () => {
+test('rejects assets that do not provide a supported ward interior layout', () => {
   assert.throws(
     () => getWardInteriorAssetParts(new THREE.Group()),
-    /WardArchitecture/,
+    /床/,
   );
 });
 
@@ -96,6 +127,7 @@ test('configures CanvasTexture for glTF UV orientation', () => {
 
 test('fits architecture while repositioning props without stretching them', () => {
   const parts = getWardInteriorAssetParts(createAssetRoot());
+  assert.equal(parts.mode, 'prototype');
   const prop = parts.props.children[0];
   fitWardInteriorEnvironment(parts, 18, 14, 4.2);
 
@@ -112,6 +144,54 @@ test('fits props from their original positions instead of accumulating scale', (
   fitWardInteriorEnvironment(parts, 12, 9, 3.92);
 
   assert.deepEqual(prop.position.toArray(), [2, 1, -3]);
+});
+
+test('organizes baked Chinese-named beds with proxy screens', () => {
+  const parts = getWardInteriorAssetParts(createBakedAssetRoot());
+  assert.equal(parts.mode, 'baked');
+  assert.equal(parts.bedPrototype, null);
+  assert.equal(parts.bakedBeds.length, 2);
+  assert.equal(parts.bakedBeds[0].mattress.name, '床');
+  assert.equal(parts.bakedBeds[1].mattress.name, '床.001');
+  assert.ok(parts.bakedBeds[0].bedTerminalScreen);
+  assert.ok(parts.bakedBeds[0].bedsideMonitor);
+  assert.equal(parts.bakedBeds[0].group.parent, parts.architecture);
+  assert.equal(parts.bakedBeds[0].mattress.parent, parts.bakedBeds[0].group);
+
+  const bound = bindWardInteriorBakedBed(parts.bakedBeds[0], 'BED-A');
+  assert.equal(bound.group.userData.bedCode, 'BED-A');
+  assert.equal(bound.group.userData.wardInteriorBakedBed, true);
+  assert.ok(bound.mattress.material instanceof THREE.MeshStandardMaterial);
+
+  syncWardInteriorBakedBedVisibility(parts, 1);
+  assert.equal(parts.bakedBeds[0].group.visible, true);
+  assert.equal(parts.bakedBeds[1].group.visible, false);
+});
+
+test('keeps baked rooms at native Blender scale without stretching', () => {
+  const parts = getWardInteriorAssetParts(createBakedAssetRoot());
+  fitWardInteriorEnvironment(parts, 12, 9, 3.92);
+  assert.deepEqual(parts.architecture.scale.toArray(), [1, 1, 1]);
+  const first = parts.architecture.position.toArray().map(v => Number(v.toFixed(4)));
+  fitWardInteriorEnvironment(parts, 18, 14, 4.2);
+  assert.deepEqual(parts.architecture.scale.toArray(), [1, 1, 1]);
+  assert.deepEqual(
+    parts.architecture.position.toArray().map(v => Number(v.toFixed(4))),
+    first,
+  );
+});
+
+test('caps extreme metalness so bright glTF surfaces stay readable without studio HDRI', () => {
+  const root = new THREE.Group();
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1, roughness: 0.15 }),
+  );
+  root.add(mesh);
+  prepareWardInteriorModelMaterials(root, { envMapIntensity: 0.22, maxMetalness: 0.78 });
+  const mat = mesh.material as THREE.MeshStandardMaterial;
+  assert.equal(mat.metalness, 0.78);
+  assert.equal(mat.envMapIntensity, 0.22);
 });
 
 test('hides model ceiling occluders for the overhead ward camera', () => {

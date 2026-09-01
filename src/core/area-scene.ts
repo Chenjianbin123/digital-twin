@@ -177,7 +177,9 @@ const NURSE_STATION_BG = nurseStationSceneConfig.appearance.background;
 const STATION_EXPOSURE = nurseStationSceneConfig.appearance.exposure;
 const STATION_ENV_MAP_INTENSITY = nurseStationSceneConfig.appearance.envMapIntensity;
 const STATION_ENVIRONMENT_INTENSITY = nurseStationSceneConfig.appearance.environmentIntensity;
-const CORRIDOR_EXPOSURE = 1.05;
+const CORRIDOR_EXPOSURE = wardCorridorSceneConfig.appearance.exposure;
+const CORRIDOR_ENV_MAP_INTENSITY = wardCorridorSceneConfig.appearance.envMapIntensity;
+const CORRIDOR_ENVIRONMENT_INTENSITY = wardCorridorSceneConfig.appearance.environmentIntensity;
 const DEBUG_DASHBOARD_SCREEN_BORDER = false;
 const NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS = new Set([
   'Nursing_Board_Title',
@@ -272,7 +274,7 @@ const AREA_CAMERA_FOV = wardCorridorSceneConfig.camera.overviewFov.upToTwoRooms;
 
 // --- D. 画面外观 ---
 const SCENE_BG = wardCorridorSceneConfig.appearance.background;
-// 护士站曝光见 nurse-station-scene.ts appearance.exposure；走廊默认 CORRIDOR_EXPOSURE
+// 护士站/走廊曝光与环境光分别见各自 scene config 的 appearance
 
 const CORRIDOR_SAFETY_SIGNS: Array<{
   title: string;
@@ -550,7 +552,9 @@ export class AreaScene {
   private applyViewAppearance(phase: AreaViewPhase) {
     const isStation = phase === 'station';
     this.renderer.toneMappingExposure = isStation ? STATION_EXPOSURE : CORRIDOR_EXPOSURE;
-    this.scene.environmentIntensity = isStation ? STATION_ENVIRONMENT_INTENSITY : 0.48;
+    this.scene.environmentIntensity = isStation
+      ? STATION_ENVIRONMENT_INTENSITY
+      : CORRIDOR_ENVIRONMENT_INTENSITY;
   }
 
   private setupNurseStationAtmosphereLights() {
@@ -2809,7 +2813,7 @@ export class AreaScene {
       }
 
       model.name = 'blender-ward-corridor';
-      this.prepareLoadedModel(model);
+      this.prepareLoadedModel(model, { envMapIntensity: CORRIDOR_ENV_MAP_INTENSITY });
       normalizeHospitalCorridorModelTransform(model);
       // Keep the corridor's long axis aligned with the existing scene Z axis.
       model.rotation.y = Math.PI / 2;

@@ -38,7 +38,16 @@ export interface WardCorridorSceneConfig {
     zoomSpeed: number;
     rotateSpeed: number;
   };
-  appearance: { background: number; fov: number };
+  appearance: {
+    background: number;
+    fov: number;
+    /** 与护士站统一的 ACES 曝光。 */
+    exposure: number;
+    /** 与护士站统一的 PBR 环境反射强度。 */
+    envMapIntensity: number;
+    /** 与护士站统一的场景环境光强度。 */
+    environmentIntensity: number;
+  };
   fallbackGeometry: {
     ceilingHeight: number;
     halfWidth: number;
@@ -90,7 +99,13 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
     zoomSpeed: 1.2,
     rotateSpeed: 0.85,
   },
-  appearance: { background: 0x0a1218, fov: 52 },
+  appearance: {
+    background: 0x0a1218,
+    fov: 52,
+    exposure: 1.18,
+    envMapIntensity: 0.42,
+    environmentIntensity: 0.4,
+  },
   fallbackGeometry: {
     ceilingHeight: 2.85,
     halfWidth: 3.2,

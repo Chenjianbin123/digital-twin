@@ -6,6 +6,7 @@ const wardScene = readFileSync(new URL('../src/core/ward-scene.ts', import.meta.
 
 test('loads the versioned smart ward GLB with a stale-result token', () => {
   assert.match(wardScene, /GLTFLoader/);
+  assert.match(wardScene, /DRACOLoader/);
   assert.match(wardScene, /WARD_INTERIOR_MODEL_URL/);
   assert.match(wardScene, /wardInteriorModelLoadToken/);
   assert.match(wardScene, /loader\.loadAsync\(WARD_INTERIOR_MODEL_URL\)/);
@@ -18,8 +19,18 @@ test('rebuilds the latest ward and templates after the model becomes ready', () 
   assert.match(wardScene, /this\.syncWardBedTemplates\(this\.ward\)/);
 });
 
-test('applies the model pose scale to each cloned Blender bed', () => {
-  assert.match(wardScene, /group\.scale\.setScalar\(pose\.scale\)/);
+test('binds baked room beds in place without cloning a BedPrototype', () => {
+  assert.match(wardScene, /mode === 'baked'/);
+  assert.match(wardScene, /bindWardInteriorBakedBed/);
+  assert.match(wardScene, /syncWardInteriorBakedBedVisibility/);
+  assert.match(wardScene, /wardInteriorBakedBed/);
+});
+
+test('prepares ward interior materials with IBL intensity and metalness caps', () => {
+  assert.match(wardScene, /RoomEnvironment/);
+  assert.match(wardScene, /prepareWardInteriorModelMaterials/);
+  assert.match(wardScene, /environmentIntensity/);
+  assert.match(wardScene, /outputColorSpace/);
 });
 
 test('keeps the JSON template renderer and configures model canvas UVs', () => {
@@ -28,14 +39,15 @@ test('keeps the JSON template renderer and configures model canvas UVs', () => {
   assert.match(wardScene, /configureWardInteriorCanvasTexture\(tex\)/);
 });
 
-test('keeps the generated room as fallback and invalidates late loads on dispose', () => {
-  assert.match(wardScene, /failed to load smart ward interior GLB, using generated fallback/);
-  assert.match(wardScene, /this\.roomGroup\.visible = true/);
+test('does not flash or fall back to the generated room while loading room-v1', () => {
+  assert.match(wardScene, /this\.roomGroup\.visible = false/);
+  assert.doesNotMatch(wardScene, /using generated fallback/);
+  assert.match(wardScene, /failed to load room-v1 GLB/);
   assert.match(wardScene, /\+\+this\.wardInteriorModelLoadToken/);
   assert.match(wardScene, /disposeWardInteriorModel/);
 });
 
-test('tears down a partially mounted GLB before rebuilding the generated fallback', () => {
+test('tears down a partially mounted GLB without showing the generated room', () => {
   const loadStart = wardScene.indexOf('private async loadWardInteriorModel');
   const loadEnd = wardScene.indexOf('private addAccentStrip', loadStart);
   const loadMethod = wardScene.slice(loadStart, loadEnd);
@@ -43,7 +55,7 @@ test('tears down a partially mounted GLB before rebuilding the generated fallbac
   assert.match(loadMethod, /this\.scene\.remove\(model\)/);
   assert.match(loadMethod, /this\.wardInteriorModel = null/);
   assert.match(loadMethod, /this\.wardInteriorParts = null/);
-  assert.match(loadMethod, /if \(this\.ward\)\s+this\.updateWard\(this\.ward\)/);
+  assert.doesNotMatch(loadMethod, /this\.roomGroup\.visible = true/);
 });
 
 test('removes CSS bed overlays before disposing a replaced bed group', () => {
