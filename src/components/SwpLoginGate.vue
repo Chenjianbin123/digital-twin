@@ -127,17 +127,27 @@ onMounted(() => {
       alt="智慧病房护士站"
     />
     <div class="swp-login__shade" aria-hidden="true" />
+    <div class="swp-login__tech-grid" aria-hidden="true" />
+    <div class="swp-login__scanline" aria-hidden="true" />
+    <div
+      class="swp-login__signal swp-login__signal--left"
+      aria-hidden="true"
+    />
+    <div
+      class="swp-login__signal swp-login__signal--right"
+      aria-hidden="true"
+    />
 
     <section class="swp-login__brand" aria-label="系统名称">
       <div class="swp-login__brand-mark" aria-hidden="true">
         <span>智</span>
       </div>
-      <p class="swp-login__brand-kicker">智慧病房 · 数字孪生</p>
+      <p class="swp-login__brand-kicker">智慧病房 · 实时运营</p>
       <h1>智慧病房数字孪生平台</h1>
-      <p>护士站实时空间态势</p>
+      <p>让病区状态清晰可见，让护理协同更高效</p>
       <div class="swp-login__brand-points" aria-label="平台能力">
         <span>病区态势</span>
-        <span>设备状态</span>
+        <span>设备联动</span>
         <span>护理协同</span>
       </div>
     </section>
@@ -149,7 +159,7 @@ onMounted(() => {
             <span class="swp-login__card-mark" aria-hidden="true">智</span>
             <span>
               <strong>智慧病房</strong>
-              <small>数字孪生工作台</small>
+              <small>数字孪生运营平台</small>
             </span>
           </div>
           <span class="swp-login__secure">
@@ -158,18 +168,63 @@ onMounted(() => {
           </span>
         </header>
 
+        <nav class="swp-login__steps" aria-label="登录流程">
+          <span
+            class="swp-login__step"
+            :class="{
+              'swp-login__step--active': step === 'credentials',
+              'swp-login__step--done': step === 'role',
+            }"
+          >
+            <i>01</i>
+            <span>账号验证</span>
+          </span>
+          <b class="swp-login__step-line" aria-hidden="true" />
+          <span
+            class="swp-login__step"
+            :class="{ 'swp-login__step--active': step === 'role' }"
+          >
+            <i>02</i>
+            <span>角色确认</span>
+          </span>
+        </nav>
+
         <div v-if="step === 'credentials'" class="swp-login__content">
           <div class="swp-login__heading">
-            <span class="swp-login__eyebrow">工作台入口</span>
-            <h2>欢迎登录</h2>
-            <p class="swp-login__subtitle">使用平台账号进入病区工作台</p>
+            <span class="swp-login__eyebrow">授权入口</span>
+            <h2>进入智慧病房</h2>
+            <p class="swp-login__subtitle">登录后查看授权病区的实时态势</p>
+          </div>
+
+          <div class="swp-login__support" aria-label="平台能力">
+            <span class="swp-login__support-item">
+              <i aria-hidden="true">态</i>
+              <span>
+                <strong>病区态势</strong>
+                <small>空间可视化</small>
+              </span>
+            </span>
+            <span class="swp-login__support-item">
+              <i aria-hidden="true">联</i>
+              <span>
+                <strong>设备联动</strong>
+                <small>状态可追踪</small>
+              </span>
+            </span>
+            <span class="swp-login__support-item">
+              <i aria-hidden="true">护</i>
+              <span>
+                <strong>护理协同</strong>
+                <small>任务更清晰</small>
+              </span>
+            </span>
           </div>
 
           <form class="swp-login__form" @submit.prevent="submitCredentials">
             <label class="swp-login__field">
               <span class="swp-login__field-head">
                 <span>账号</span>
-                <small>平台账号</small>
+                <small>工作账号</small>
               </span>
               <span class="swp-login__input-wrap">
                 <span
@@ -181,7 +236,7 @@ onMounted(() => {
                   name="username"
                   type="text"
                   autocomplete="username"
-                  placeholder="请输入用户名"
+                  placeholder="请输入账号"
                   :disabled="isSubmitting"
                 />
               </span>
@@ -190,7 +245,7 @@ onMounted(() => {
             <label class="swp-login__field">
               <span class="swp-login__field-head">
                 <span>密码</span>
-                <small>登录密码</small>
+                <small>登录凭证</small>
               </span>
               <span class="swp-login__password">
                 <span
@@ -221,7 +276,7 @@ onMounted(() => {
               type="submit"
               :disabled="isSubmitting"
             >
-              <span>{{ isSubmitting ? "正在登录..." : "登录" }}</span>
+              <span>{{ isSubmitting ? "正在登录..." : "登录并继续" }}</span>
               <i aria-hidden="true">→</i>
             </button>
           </form>
@@ -290,8 +345,8 @@ onMounted(() => {
         </p>
 
         <footer class="swp-login__card-foot">
-          <span>登录后加载授权病区数据</span>
-          <span>智慧病房平台</span>
+          <span>仅展示当前账号授权病区</span>
+          <span>权限校验后进入</span>
         </footer>
       </div>
     </aside>
@@ -648,7 +703,8 @@ onMounted(() => {
   --login-line: rgba(163, 225, 229, 0.2);
   --login-accent: #65e0d3;
   --login-accent-strong: #2fc1bd;
-  --login-panel: rgba(7, 25, 38, 0.86);
+  --login-panel-alpha: 0.62;
+  --login-panel: rgba(7, 25, 38, var(--login-panel-alpha));
   --login-field: rgba(12, 45, 58, 0.72);
   min-height: 100svh;
   min-height: 100dvh;
@@ -696,7 +752,7 @@ onMounted(() => {
         90deg,
         rgba(3, 13, 21, 0.08) 0%,
         rgba(3, 13, 21, 0.12) 48%,
-        rgba(3, 13, 21, 0.7) 100%
+        rgba(3, 13, 21, 0.58) 100%
       ),
       linear-gradient(
         180deg,
@@ -834,7 +890,7 @@ onMounted(() => {
       -28px 28px 70px rgba(0, 0, 0, 0.28),
       0 0 0 1px rgba(255, 255, 255, 0.025) inset,
       0 0 42px rgba(64, 206, 200, 0.08) inset;
-    backdrop-filter: blur(20px) saturate(1.15);
+    backdrop-filter: blur(18px) saturate(1.12);
     scrollbar-color: rgba(112, 210, 207, 0.36) transparent;
     scrollbar-width: thin;
   }
@@ -921,7 +977,7 @@ onMounted(() => {
     min-height: 0;
     flex-direction: column;
     justify-content: center;
-    padding: clamp(30px, 5vh, 58px) 0 clamp(24px, 4vh, 42px);
+    padding: clamp(10px, 1vh, 40px) 0 clamp(24px, 4vh, 42px);
 
     &--roles {
       justify-content: flex-start;
@@ -1671,7 +1727,739 @@ onMounted(() => {
   }
 }
 
+/* 数字孪生氛围层：保持背景可读，同时用低频动效强化空间感 */
+.swp-login {
+  &__tech-grid {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.28;
+    background-image:
+      linear-gradient(
+        90deg,
+        rgba(111, 235, 230, 0.14) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        180deg,
+        rgba(111, 235, 230, 0.1) 1px,
+        transparent 1px
+      ),
+      radial-gradient(
+        circle at 52% 40%,
+        rgba(79, 219, 212, 0.17),
+        transparent 34%
+      );
+    background-size: 92px 92px, 92px 92px, 100% 100%;
+    mask-image: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.96),
+      rgba(0, 0, 0, 0.68) 58%,
+      transparent 94%
+    );
+    animation: login-grid-drift 28s linear infinite;
+  }
+
+  &__scanline {
+    position: absolute;
+    z-index: 2;
+    top: -30%;
+    left: -12%;
+    width: 124%;
+    height: 24%;
+    pointer-events: none;
+    opacity: 0.22;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      rgba(135, 255, 242, 0.34) 48%,
+      transparent
+    );
+    filter: blur(1px);
+    transform: skewY(-4deg);
+    animation: login-scan 11s ease-in-out infinite;
+  }
+
+  &__signal {
+    position: absolute;
+    z-index: 2;
+    width: clamp(110px, 13vw, 190px);
+    aspect-ratio: 1;
+    pointer-events: none;
+    border: 1px solid rgba(111, 235, 230, 0.2);
+    border-radius: 50%;
+    opacity: 0.52;
+    background: radial-gradient(
+      circle,
+      rgba(88, 229, 217, 0.14),
+      transparent 62%
+    );
+    box-shadow:
+      0 0 32px rgba(83, 221, 213, 0.12),
+      inset 0 0 26px rgba(83, 221, 213, 0.08);
+    animation: login-signal-pulse 7s ease-in-out infinite;
+
+    &::before,
+    &::after {
+      position: absolute;
+      inset: 15%;
+      border: 1px solid rgba(111, 235, 230, 0.16);
+      border-radius: inherit;
+      content: "";
+    }
+
+    &::after {
+      inset: 47%;
+      border: 0;
+      background: #8af7ec;
+      box-shadow: 0 0 16px rgba(138, 247, 236, 0.9);
+    }
+
+    &--left {
+      top: 15%;
+      left: 7%;
+    }
+
+    &--right {
+      right: 38%;
+      bottom: 12%;
+      width: clamp(86px, 9vw, 132px);
+      animation-delay: -3.5s;
+    }
+  }
+
+  &__card {
+    position: relative;
+    isolation: isolate;
+    overflow-x: hidden;
+
+    &::after {
+      position: absolute;
+      z-index: 0;
+      top: -45%;
+      left: -80%;
+      width: 58%;
+      height: 190%;
+      pointer-events: none;
+      content: "";
+      background: linear-gradient(
+        105deg,
+        transparent 0%,
+        rgba(154, 255, 243, 0.03) 36%,
+        rgba(154, 255, 243, 0.18) 50%,
+        rgba(154, 255, 243, 0.03) 64%,
+        transparent 100%
+      );
+      transform: rotate(12deg);
+      animation: login-card-sweep 9s ease-in-out infinite;
+    }
+
+    > * {
+      position: relative;
+      z-index: 1;
+    }
+  }
+
+  &__brand-mark {
+    animation: login-mark-pulse 5.5s ease-in-out infinite;
+  }
+
+  &__secure i {
+    animation: login-status-blink 2.8s ease-in-out infinite;
+  }
+
+  &__submit {
+    position: relative;
+    overflow: hidden;
+
+    &::after {
+      position: absolute;
+      top: 0;
+      left: -45%;
+      width: 32%;
+      height: 100%;
+      pointer-events: none;
+      content: "";
+      background: linear-gradient(
+        100deg,
+        transparent,
+        rgba(255, 255, 255, 0.48),
+        transparent
+      );
+      transform: skewX(-18deg);
+      animation: login-button-sweep 5.5s ease-in-out infinite;
+    }
+
+    > * {
+      position: relative;
+      z-index: 1;
+    }
+  }
+}
+
+@keyframes login-grid-drift {
+  from {
+    background-position: 0 0, 0 0, 0 0;
+  }
+
+  to {
+    background-position: 92px 46px, -46px 92px, 0 0;
+  }
+}
+
+@keyframes login-scan {
+  0%,
+  100% {
+    transform: translate3d(0, -12%, 0) skewY(-4deg);
+    opacity: 0;
+  }
+
+  18%,
+  74% {
+    opacity: 0.22;
+  }
+
+  58% {
+    transform: translate3d(0, 470%, 0) skewY(-4deg);
+    opacity: 0.34;
+  }
+}
+
+@keyframes login-signal-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.94);
+  }
+
+  50% {
+    opacity: 0.62;
+    transform: scale(1);
+  }
+}
+
+@keyframes login-card-sweep {
+  0%,
+  18% {
+    transform: translate3d(0, 0, 0) rotate(12deg);
+    opacity: 0;
+  }
+
+  36%,
+  68% {
+    opacity: 1;
+  }
+
+  82%,
+  100% {
+    transform: translate3d(340%, 0, 0) rotate(12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes login-button-sweep {
+  0%,
+  55%,
+  100% {
+    transform: translateX(0) skewX(-18deg);
+    opacity: 0;
+  }
+
+  66% {
+    transform: translateX(410%) skewX(-18deg);
+    opacity: 1;
+  }
+}
+
+@keyframes login-mark-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.18),
+      0 0 28px rgba(79, 210, 205, 0.14) inset;
+  }
+
+  50% {
+    box-shadow:
+      0 12px 28px rgba(0, 0, 0, 0.22),
+      0 0 36px rgba(79, 210, 205, 0.3) inset,
+      0 0 18px rgba(79, 210, 205, 0.2);
+  }
+}
+
+@keyframes login-status-blink {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@media (max-width: 768px) {
+  .swp-login {
+    &__tech-grid {
+      opacity: 0.2;
+      background-size: 68px 68px, 68px 68px, 100% 100%;
+      mask-image: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.92),
+        rgba(0, 0, 0, 0.48) 68%,
+        transparent 100%
+      );
+    }
+
+    &__scanline {
+      height: 18%;
+      animation-duration: 13s;
+    }
+
+    &__signal {
+      opacity: 0.34;
+
+      &--left {
+        top: 12%;
+        left: -26px;
+      }
+
+      &--right {
+        right: -30px;
+        bottom: 34%;
+      }
+    }
+  }
+}
+
+/* 结构化登录卡片：把账号验证、角色确认和平台能力拆成清晰层级 */
+.swp-login {
+  --login-warm: #f3c875;
+  --login-warm-soft: rgba(243, 200, 117, 0.18);
+
+  &__card {
+    background:
+      radial-gradient(
+        circle at 92% 7%,
+        rgba(96, 222, 211, 0.1),
+        transparent 28%
+      ),
+      radial-gradient(
+        circle at 4% 92%,
+        rgba(243, 200, 117, 0.06),
+        transparent 25%
+      ),
+      linear-gradient(145deg, rgba(21, 66, 78, 0.28), transparent 46%),
+      var(--login-panel);
+    box-shadow:
+      -28px 28px 70px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.025) inset,
+      0 0 46px rgba(64, 206, 200, 0.1) inset,
+      0 0 38px rgba(243, 200, 117, 0.04);
+    animation: login-card-breathe 12s ease-in-out infinite;
+
+    &::before {
+      position: absolute;
+      z-index: 0;
+      inset: 10px;
+      pointer-events: none;
+      border: 1px solid rgba(180, 239, 233, 0.1);
+      border-radius: 20px;
+      content: "";
+      mask-image: linear-gradient(
+        135deg,
+        #000,
+        rgba(0, 0, 0, 0.35) 48%,
+        transparent 80%
+      );
+    }
+  }
+
+  &__steps {
+    display: flex;
+    min-height: 58px;
+    margin-top: 10px;
+    padding: 10px 12px;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(163, 225, 229, 0.14);
+    border-radius: 16px;
+    background: rgba(5, 31, 42, 0.56);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.018) inset,
+      0 8px 20px rgba(1, 14, 22, 0.12);
+  }
+
+  &__step {
+    display: inline-flex;
+    min-width: 0;
+    flex: 1 1 0;
+    align-items: center;
+    gap: 8px;
+    color: #6f8994;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition:
+      color 0.24s ease,
+      transform 0.24s ease;
+
+    i {
+      display: grid;
+      width: 27px;
+      height: 27px;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 1px solid rgba(139, 184, 187, 0.22);
+      border-radius: 9px;
+      color: #79979f;
+      font-size: 10px;
+      font-style: normal;
+      letter-spacing: 0.04em;
+      background: rgba(10, 51, 61, 0.48);
+      transition:
+        border-color 0.24s ease,
+        color 0.24s ease,
+        background 0.24s ease,
+        box-shadow 0.24s ease;
+    }
+
+    > span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &--active {
+      color: #e8ffff;
+      transform: translateY(-1px);
+
+      i {
+        border-color: rgba(101, 224, 211, 0.66);
+        color: #062e34;
+        background: var(--login-accent);
+        box-shadow: 0 0 16px rgba(101, 224, 211, 0.22);
+      }
+    }
+
+    &--done {
+      color: rgba(214, 245, 239, 0.72);
+
+      i {
+        border-color: rgba(243, 200, 117, 0.62);
+        color: #2e2a1d;
+        background: var(--login-warm);
+        box-shadow: 0 0 16px var(--login-warm-soft);
+      }
+    }
+  }
+
+  &__step-line {
+    position: relative;
+    display: block;
+    width: 28px;
+    height: 1px;
+    flex: 0 0 auto;
+    overflow: hidden;
+    background: rgba(151, 219, 220, 0.16);
+
+    &::after {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 45%;
+      height: 100%;
+      content: "";
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(243, 200, 117, 0.78),
+        transparent
+      );
+      animation: login-step-progress 5.5s ease-in-out infinite;
+    }
+  }
+
+  &__support {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+    margin-top: 24px;
+  }
+
+  &__support-item {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 76px;
+    padding: 11px 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    overflow: hidden;
+    border: 1px solid rgba(151, 219, 220, 0.16);
+    border-radius: 15px;
+    background:
+      linear-gradient(
+        145deg,
+        rgba(34, 91, 94, 0.38),
+        rgba(7, 34, 45, 0.38)
+      );
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.015) inset;
+    cursor: default;
+    transition:
+      border-color 0.22s ease,
+      background 0.22s ease,
+      transform 0.22s ease;
+
+    &::after {
+      position: absolute;
+      right: -18px;
+      bottom: -28px;
+      width: 74px;
+      height: 74px;
+      border: 1px solid rgba(101, 224, 211, 0.16);
+      border-radius: 50%;
+      content: "";
+    }
+
+    &:hover {
+      border-color: rgba(151, 219, 220, 0.38);
+      background:
+        linear-gradient(
+          145deg,
+          rgba(42, 111, 110, 0.45),
+          rgba(8, 39, 50, 0.48)
+        );
+      transform: translateY(-2px);
+    }
+
+    > i {
+      display: grid;
+      width: 25px;
+      height: 25px;
+      place-items: center;
+      border: 1px solid rgba(135, 241, 229, 0.34);
+      border-radius: 8px;
+      color: #d9fffb;
+      font-size: 11px;
+      font-style: normal;
+      font-weight: 700;
+      background: rgba(45, 146, 140, 0.34);
+      box-shadow: 0 0 14px rgba(101, 224, 211, 0.1);
+      animation: login-amber-pulse 6s ease-in-out infinite;
+    }
+
+    &:nth-child(2) > i {
+      border-color: rgba(243, 200, 117, 0.42);
+      color: #fff1c8;
+      background: rgba(130, 102, 45, 0.32);
+      animation-delay: -2s;
+    }
+
+    &:nth-child(3) > i {
+      border-color: rgba(170, 168, 255, 0.34);
+      color: #e8e7ff;
+      background: rgba(89, 82, 160, 0.3);
+      animation-delay: -4s;
+    }
+
+    > span {
+      display: grid;
+      min-width: 0;
+      gap: 3px;
+      margin-top: 8px;
+    }
+
+    strong,
+    small {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    strong {
+      color: #e6ffff;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    small {
+      color: #78969f;
+      font-size: 10px;
+    }
+  }
+
+  &__heading {
+    position: relative;
+    padding-left: 2px;
+
+    h2 {
+      text-shadow: 0 4px 20px rgba(104, 229, 219, 0.12);
+    }
+  }
+
+  &__field input {
+    background:
+      linear-gradient(
+        135deg,
+        rgba(19, 70, 80, 0.72),
+        rgba(8, 34, 47, 0.84)
+      ),
+      var(--login-field);
+  }
+
+  &__submit {
+    background:
+      linear-gradient(
+        135deg,
+        #91f4e3 0%,
+        #63ded2 56%,
+        #49c7c9 100%
+      );
+    box-shadow:
+      0 16px 32px rgba(35, 187, 180, 0.22),
+      0 0 26px rgba(101, 224, 211, 0.1),
+      0 1px 0 rgba(255, 255, 255, 0.46) inset;
+
+    i {
+      border-color: rgba(4, 55, 62, 0.26);
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  &__card-foot {
+    margin-top: 4px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(166, 232, 230, 0.1);
+  }
+}
+
+@keyframes login-card-breathe {
+  0%,
+  100% {
+    box-shadow:
+      -28px 28px 70px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.025) inset,
+      0 0 46px rgba(64, 206, 200, 0.1) inset,
+      0 0 38px rgba(243, 200, 117, 0.04);
+  }
+
+  50% {
+    box-shadow:
+      -30px 30px 76px rgba(0, 0, 0, 0.34),
+      0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+      0 0 54px rgba(64, 206, 200, 0.15) inset,
+      0 0 46px rgba(243, 200, 117, 0.08);
+  }
+}
+
+@keyframes login-amber-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 14px rgba(101, 224, 211, 0.1),
+      inset 0 0 0 rgba(243, 200, 117, 0);
+  }
+
+  50% {
+    box-shadow:
+      0 0 18px rgba(101, 224, 211, 0.24),
+      inset 0 0 14px rgba(243, 200, 117, 0.12);
+  }
+}
+
+@keyframes login-step-progress {
+  0%,
+  18% {
+    transform: translateX(-140%);
+    opacity: 0;
+  }
+
+  42%,
+  68% {
+    opacity: 1;
+  }
+
+  82%,
+  100% {
+    transform: translateX(340%);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .swp-login {
+    &__steps {
+      margin-top: 17px;
+      padding: 9px 10px;
+      gap: 7px;
+    }
+
+    &__step {
+      gap: 6px;
+      font-size: 10px;
+
+      i {
+        width: 24px;
+        height: 24px;
+        border-radius: 8px;
+        font-size: 9px;
+      }
+    }
+
+    &__step-line {
+      width: 18px;
+    }
+
+    &__support {
+      gap: 6px;
+      margin-top: 18px;
+    }
+
+    &__support-item {
+      min-height: 66px;
+      padding: 9px 8px;
+      border-radius: 12px;
+
+      > i {
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        font-size: 10px;
+      }
+
+      strong {
+        font-size: 10px;
+      }
+
+      small {
+        font-size: 9px;
+      }
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .swp-login__card,
+  .swp-login__step-line::after,
+  .swp-login__support-item > i {
+    animation: none !important;
+  }
+
+  .swp-login__tech-grid,
+  .swp-login__scanline,
+  .swp-login__signal,
+  .swp-login__card::after,
+  .swp-login__brand-mark,
+  .swp-login__secure i,
+  .swp-login__submit::after {
+    animation: none !important;
+  }
+
   .swp-login *,
   .swp-login *::before,
   .swp-login *::after {

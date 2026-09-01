@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed } from "vue";
 import AlertTaskPanel from "@/components/AlertTaskPanel.vue";
 import DoorStaffCards from "@/components/DoorStaffCards.vue";
 import DashSectionHeader from "@/components/dashboard/DashSectionHeader.vue";
@@ -21,7 +21,6 @@ import type {
   TwinAreaEntity,
   TwinWardEntity,
 } from "@/types/twin";
-import { formatWardClock, getNursingShift } from "@/utils/ward-shift";
 
 const props = defineProps<{
   area: TwinAreaEntity;
@@ -48,11 +47,6 @@ const emit = defineEmits<{
   setCallAlertsEnabled: [enabled: boolean];
 }>();
 
-const now = ref(new Date());
-let timer: ReturnType<typeof setInterval> | null = null;
-
-const clock = computed(() => formatWardClock(now.value));
-const shift = computed(() => getNursingShift(now.value));
 const primaryWard = computed<TwinWardEntity | null>(
   () => props.area.rooms[0] ?? null,
 );
@@ -443,15 +437,6 @@ function handleRoomClick(index: number) {
   emit("focusRoom", index);
 }
 
-onMounted(() => {
-  timer = setInterval(() => {
-    now.value = new Date();
-  }, 1000);
-});
-
-onUnmounted(() => {
-  if (timer) clearInterval(timer);
-});
 </script>
 
 <template>
