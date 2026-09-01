@@ -18,6 +18,8 @@ export interface NurseStationSceneConfig {
     initialDistance: number;
     /** 首屏机位角度：azimuth 正值从右侧看，elevation 正值提高机位。单位：度。 */
     initialAngle: { azimuthDeg: number; elevationDeg: number };
+    /** 视角调试完成前暂时关闭护士站旋转、平移、缩放限制，完成后改回 true。 */
+    limitsEnabled: boolean;
     pan: {
       xLimit: number;
       yMin: number;
@@ -79,9 +81,10 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
      * - y：减小后模型整体更靠画面上方，增大后更靠下方。
      * - z：调整前后纵深，通常保持不动。
      */
-    target: { x: 1.068, y: 0.631, z: 0.369 },
-    initialDistance: 3.6,
+    target: { x: 1.068, y: 0.5, z: 0.369 },
+    initialDistance: 4.2,
     initialAngle: { azimuthDeg: -82.69, elevationDeg: 4.65 },
+    limitsEnabled: false,
     pan: { xLimit: 0.42, yMin: 0.42, yMax: 1.35 },
     distance: { min: 1.6, max: 8 },
     azimuthLimit: Math.PI / 12,

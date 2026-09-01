@@ -8,8 +8,9 @@ const [app, visualScene, areaScene, sceneConfig] = await Promise.all([
   readFile(new URL('../src/config/nurse-station-scene.ts', import.meta.url), 'utf8'),
 ]);
 
-assert.match(sceneConfig, /distance: \{ min: 1\.8, max: 6\.25 \}/);
-assert.match(sceneConfig, /azimuthLimit: Math\.PI \/ 8/);
+assert.match(sceneConfig, /distance: \{ min: 1\.6, max: 8 \}/);
+assert.match(sceneConfig, /azimuthLimit: Math\.PI \/ 12/);
+assert.match(sceneConfig, /limitsEnabled:\s*false/);
 assert.match(sceneConfig, /floorCameraMargin: 0\.18/);
 assert.match(areaScene, /this\.controls\.enableRotate = true;/);
 assert.match(areaScene, /this\.controls\.enableZoom = true;/);
@@ -20,9 +21,11 @@ assert.match(areaScene, /this\.controls\.minAzimuthAngle = -Infinity;/);
 assert.match(areaScene, /this\.controls\.maxAzimuthAngle = Infinity;/);
 assert.match(areaScene, /this\.controls\.minDistance = 0\.1;/);
 assert.match(areaScene, /this\.controls\.maxDistance = 1000;/);
-assert.match(areaScene, /private applyStationOrbitCeilingConstraint\(\)\s*\{\s*\}/);
-assert.doesNotMatch(areaScene, /const STATION_TARGET_Z = STATION_TARGET_LOCAL\.z;/);
-assert.doesNotMatch(areaScene, /THREE\.MathUtils\.clamp\(/);
+assert.match(areaScene, /const STATION_CAMERA_LIMITS_ENABLED = nurseStationSceneConfig\.camera\.limitsEnabled;/);
+assert.match(areaScene, /private applyStationOrbitCeilingConstraint\(\)\s*\{[\s\S]*?if \(!STATION_CAMERA_LIMITS_ENABLED\)/);
+assert.match(areaScene, /this\.controls\.screenSpacePanning = STATION_CAMERA_LIMITS_ENABLED \? false : true;/);
+assert.match(areaScene, /RIGHT: STATION_CAMERA_LIMITS_ENABLED \? THREE\.MOUSE\.ROTATE : THREE\.MOUSE\.PAN,/);
+assert.match(areaScene, /TWO: STATION_CAMERA_LIMITS_ENABLED \? THREE\.TOUCH\.DOLLY_ROTATE : THREE\.TOUCH\.DOLLY_PAN,/);
 
 assert.match(app, /const panelsVisible = ref\(true\);/);
 assert.match(app, /v-if="isNurseStation \|\| isWard \|\| isWardInterior"/);

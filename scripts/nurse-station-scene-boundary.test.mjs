@@ -39,7 +39,7 @@ assert.match(areaScene, /new THREE\.PlaneGeometry\(overlayWidth, overlayHeight\)
 assert.match(areaScene, /overlay\.name = `nurse-station-screen-overlay-\$\{kind\}`/);
 assert.match(areaScene, /depthWrite: false/);
 assert.doesNotMatch(areaScene, /this\.replaceMeshMaterialWithTexture\(object, texture\)/);
-assert.match(sceneConfig, /background: 0xdde7e3/);
+assert.match(sceneConfig, /background: 0xcfdad4/);
 assert.doesNotMatch(areaScene, /nurseStationHospitalEnvironment/);
 assert.doesNotMatch(areaScene, /buildNurseStationHospitalEnvironment/);
 assert.doesNotMatch(areaScene, /nurse-station-hospital-environment/);

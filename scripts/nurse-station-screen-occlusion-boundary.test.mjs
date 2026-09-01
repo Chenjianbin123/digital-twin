@@ -13,5 +13,6 @@ test('护士站屏幕模板参与深度测试且不改变现有屏幕尺寸', ()
   assert.match(overlay, /depthTest: true/);
   assert.match(overlay, /depthWrite: false/);
   assert.match(overlay, /const overlayFitScaleX = kind === 'dashboard' \? 1\.24 : 1/);
-  assert.match(overlay, /const overlayFitScaleY = kind === 'dashboard' \? 1\.42 : 1/);
+  // 后墙大屏高度进一步收窄，避免覆盖下方工作台屏幕。
+  assert.match(overlay, /const overlayFitScaleY = kind === 'dashboard' \? 1\.08 : 1/);
 });

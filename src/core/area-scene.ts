@@ -152,6 +152,7 @@ interface NurseStationWorkstationDisplay {
   kind: NurseStationWorkstationKind;
   workstationName: string;
   mesh: THREE.Mesh;
+  sourceMeshes: THREE.Mesh[];
   root: THREE.Object3D;
   displayRegion: THREE.Box3;
 }
@@ -248,6 +249,8 @@ const STATION_AZIMUTH_LIMIT = nurseStationSceneConfig.camera.azimuthLimit;
 const STATION_MIN_POLAR_ANGLE = nurseStationSceneConfig.camera.polar.min;
 const STATION_MAX_POLAR_ANGLE = nurseStationSceneConfig.camera.polar.max;
 const STATION_VIEW_BOUNDS = nurseStationSceneConfig.camera.viewBounds;
+// 视角调整阶段暂时放开护士站全部相机限制；调好视角后改回 true。
+const STATION_CAMERA_LIMITS_ENABLED = nurseStationSceneConfig.camera.limitsEnabled;
 
 // --- B. 相机初始视角（走廊总览，expand 后使用）---
 // 视线落点高度：↑ 看门楣/天花板  ↓ 看地板（太低只剩灰地面）
@@ -2027,6 +2030,11 @@ export class AreaScene {
         .map((material, index) => displayMaterialPattern.test(material.name) ? index : -1)
         .filter(index => index >= 0),
     );
+    const backgroundMaterialIndexes = new Set(
+      oldMaterials
+        .map((material, index) => /Monitor_Bezel|Screen_Frame|screen.*frame|bezel|backplate|backing/i.test(material.name) ? index : -1)
+        .filter(index => index >= 0),
+    );
     const surfaceGroups = screen.geometry.groups.filter(
       group => group.materialIndex != null && surfaceMaterialIndexes.has(group.materialIndex),
     );
@@ -2076,10 +2084,19 @@ export class AreaScene {
     const surfaceAxes = axes.slice(1).sort((a, b) => b.size - a.size);
     // 使用实际可见面尺寸，模板 100% 覆盖屏幕，不再缩小到屏幕内部一小块。
     const overlayFitScaleX = kind === 'dashboard' ? 1.24 : 1;
-    const overlayFitScaleY = kind === 'dashboard' ? 1.42 : 1;
+    // 后墙主屏进一步收窄高度，避免覆盖下方工作台屏幕；宽度保持原比例。
+    const overlayFitScaleY = kind === 'dashboard' ? 1.08 : 1;
     const overlayWidth = Math.max(surfaceAxes[0].size * overlayFitScaleX, 0.001);
     const overlayHeight = Math.max(surfaceAxes[1].size * overlayFitScaleY, 0.001);
     const surfaceOffset = 0.004;
+    if (kind === 'dashboard')
+      this.syncNurseStationDashboardBackgroundHeight(
+        root,
+        overlayHeight,
+        surfaceAxes[1].axis,
+        screen,
+        backgroundMaterialIndexes,
+      );
 
     const overlay = new THREE.Mesh(
       new THREE.PlaneGeometry(overlayWidth, overlayHeight),
@@ -2143,6 +2160,156 @@ export class AreaScene {
     return overlay;
   }
 
+  /**
+   * 主屏模板高度调整后，同步缩放 GLB 中的物理背板/边框。
+   *
+   * `Screen_Main_Frame` 是一个合并网格：`Monitor_Bezel` 是模型自带背景，
+   * `Screen_Glass` 才是动态模板的定位面。只缩 Canvas 覆盖层会留下高度不一致
+   * 的旧背板，因此这里只改背景材质对应的顶点，宽度和其它屏幕保持不变。
+   */
+  private syncNurseStationDashboardBackgroundHeight(
+    root: THREE.Object3D,
+    overlayHeight: number,
+    rootHeightAxis: 'x' | 'y' | 'z',
+    selectedScreen?: THREE.Mesh,
+    selectedBackgroundMaterialIndexes: Set<number> = new Set(),
+  ) {
+    if (overlayHeight <= 0)
+      return;
+
+    const getAxisValue = (vector: THREE.Vector3, axis: 'x' | 'y' | 'z') =>
+      axis === 'x' ? vector.x : axis === 'y' ? vector.y : vector.z;
+    const setAxisValue = (vector: THREE.Vector3, axis: 'x' | 'y' | 'z', value: number) => {
+      if (axis === 'x')
+        vector.x = value;
+      else if (axis === 'y')
+        vector.y = value;
+      else
+        vector.z = value;
+    };
+    const backgroundMaterialPattern = /Monitor_Bezel|Screen_Frame|screen.*frame|bezel|backplate|backing/i;
+    const backgroundParts: Array<{
+      mesh: THREE.Mesh;
+      vertexIndexes: number[];
+      meshToRoot: THREE.Matrix4;
+    }> = [];
+    const rootBounds = new THREE.Box3();
+
+    root.updateMatrixWorld(true);
+    const rootToLocal = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    const point = new THREE.Vector3();
+    root.traverse((object) => {
+      if (!(object instanceof THREE.Mesh))
+        return;
+      const mesh = object;
+
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const materialIndexes = mesh === selectedScreen && selectedBackgroundMaterialIndexes.size
+        ? selectedBackgroundMaterialIndexes
+        : new Set(
+          materials
+            .map((material, index) => backgroundMaterialPattern.test(material.name) ? index : -1)
+            .filter(index => index >= 0),
+        );
+      if (!materialIndexes.size)
+        return;
+
+      const geometry = mesh.geometry;
+      const position = geometry.getAttribute('position');
+      if (!position)
+        return;
+
+      const groups: Array<{ start: number; count: number; materialIndex: number }> = geometry.groups.length
+        ? geometry.groups.filter(
+          (group: { start: number; count: number; materialIndex: number }) =>
+            group.materialIndex != null && materialIndexes.has(group.materialIndex),
+        )
+        : materialIndexes.has(0)
+          ? [{ start: 0, count: geometry.index?.count ?? position.count, materialIndex: 0 }]
+          : [];
+      if (!groups.length)
+        return;
+
+      const index = geometry.index;
+      const vertexCount = index?.count ?? position.count;
+      const vertexIndexes: number[] = [];
+      const visitedIndexes = new Set<number>();
+      const meshToRoot = rootToLocal.clone().multiply(mesh.matrixWorld);
+      for (const group of groups) {
+        const end = Math.min(group.start + group.count, vertexCount);
+        for (let current = group.start; current < end; current++) {
+          const vertexIndex = index?.getX(current) ?? current;
+          if (visitedIndexes.has(vertexIndex))
+            continue;
+          visitedIndexes.add(vertexIndex);
+          vertexIndexes.push(vertexIndex);
+          point.fromBufferAttribute(position, vertexIndex).applyMatrix4(meshToRoot);
+          rootBounds.expandByPoint(point);
+        }
+      }
+      if (vertexIndexes.length)
+        backgroundParts.push({ mesh, vertexIndexes, meshToRoot });
+    });
+
+    if (!backgroundParts.length || rootBounds.isEmpty())
+      return;
+
+    const currentHeight = getAxisValue(rootBounds.max, rootHeightAxis)
+      - getAxisValue(rootBounds.min, rootHeightAxis);
+    if (currentHeight <= 0.000001)
+      return;
+
+    const scale = overlayHeight / currentHeight;
+    if (Math.abs(scale - 1) <= 0.0001)
+      return;
+
+    const rootCenter = rootBounds.getCenter(new THREE.Vector3());
+    const rootPoint = new THREE.Vector3();
+    for (const part of backgroundParts) {
+      const mesh = part.mesh;
+      const sourceGeometry = mesh.geometry;
+      const sourcePosition = sourceGeometry.getAttribute('position');
+      if (!sourcePosition)
+        continue;
+      const geometry = mesh.geometry.clone();
+      const position = geometry.getAttribute('position');
+      if (!position)
+        continue;
+      const rootToMesh = part.meshToRoot.clone().invert();
+      for (const vertexIndex of part.vertexIndexes) {
+        rootPoint.fromBufferAttribute(sourcePosition, vertexIndex).applyMatrix4(part.meshToRoot);
+        const value = getAxisValue(rootPoint, rootHeightAxis);
+        setAxisValue(
+          rootPoint,
+          rootHeightAxis,
+          getAxisValue(rootCenter, rootHeightAxis)
+            + (value - getAxisValue(rootCenter, rootHeightAxis)) * scale,
+        );
+        rootPoint.applyMatrix4(rootToMesh);
+        position.setXYZ(vertexIndex, rootPoint.x, rootPoint.y, rootPoint.z);
+      }
+      position.needsUpdate = true;
+      geometry.computeVertexNormals();
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+      geometry.userData.nurseStationDashboardBackgroundHeight = {
+        sourceHeight: Number(currentHeight.toFixed(4)),
+        targetHeight: Number(overlayHeight.toFixed(4)),
+        scale: Number(scale.toFixed(4)),
+      };
+      mesh.geometry = geometry;
+    }
+
+    console.info('[NurseStationDisplay] synced dashboard model background height', {
+      objectName: backgroundParts.map(part => part.mesh.name).join(', '),
+      sourceHeight: Number(currentHeight.toFixed(4)),
+      targetHeight: Number(overlayHeight.toFixed(4)),
+      scale: Number(scale.toFixed(4)),
+      rootHeightAxis,
+      partCount: backgroundParts.length,
+    });
+  }
+
   private getNurseStationMeshBoundsInRoot(mesh: THREE.Mesh, root: THREE.Object3D) {
     const bounds = new THREE.Box3();
     const position = mesh.geometry.getAttribute('position');
@@ -2166,16 +2333,27 @@ export class AreaScene {
   /**
    * 解析新 1-1.glb 的电脑屏幕。
    *
-   * 新模型把四块屏幕合并到了 Keyboard_04.001，Workstation_01～04 只保留为空父节点。
+   * 新模型把四块屏幕合并到了 Keyboard_04.001（GLTFLoader 运行时会规范化为
+   * Keyboard_04001，且多材质 mesh 会包装成 Group），Workstation_01～04 只保留为空父节点。
    * 四个父节点在 GLB 中共用同一个变换，真正能区分工作台的是各自下面的
    * Keyboard_01～Keyboard_04 实体；用这些实体的世界坐标把深蓝屏幕面三角形
    * 归属到对应工作台，返回四个独立区域，避免把一个合并网格错误地绑定成一张大屏。
    */
   private resolveNurseStationWorkstationDisplays(model: THREE.Object3D): NurseStationWorkstationDisplay[] {
-    const mergedMonitor = model.getObjectByName('Keyboard_04.001');
+    const normalizedName = (name: string) => name.replace(/[._\-\s]/g, '').toLowerCase();
+    const mergedMonitor = model.getObjectByName('Keyboard_04.001')
+      ?? model.getObjectByName('Keyboard_04001')
+      ?? (() => {
+        let candidate: THREE.Object3D | undefined;
+        model.traverse((object) => {
+          if (!candidate && normalizedName(object.name) === 'keyboard_04001')
+            candidate = object;
+        });
+        return candidate;
+      })();
     const workstationNames = ['Workstation_01', 'Workstation_02', 'Workstation_03', 'Workstation_04'];
     const workstationObjects = workstationNames.map(name => model.getObjectByName(name));
-    if (!(mergedMonitor instanceof THREE.Mesh) || workstationObjects.some(object => !object))
+    if (!mergedMonitor || workstationObjects.some(object => !object))
       return [];
     const workstationAnchors = workstationObjects.map((workstation, index) => {
       if (!workstation)
@@ -2187,45 +2365,47 @@ export class AreaScene {
       return [];
 
     const root = mergedMonitor.parent ?? model;
-    const geometry = mergedMonitor.geometry;
-    const position = geometry.getAttribute('position');
-    if (!position || !geometry.groups.length)
+    const mergedMonitorMeshes: THREE.Mesh[] = [];
+    mergedMonitor.traverse((object) => {
+      if (object instanceof THREE.Mesh)
+        mergedMonitorMeshes.push(object);
+    });
+    if (!mergedMonitorMeshes.length)
       return [];
 
     model.updateMatrixWorld(true);
     root.updateMatrixWorld(true);
     mergedMonitor.updateMatrixWorld(true);
-    const meshToRoot = new THREE.Matrix4()
-      .copy(root.matrixWorld)
-      .invert()
-      .multiply(mergedMonitor.matrixWorld);
-    const materialList = Array.isArray(mergedMonitor.material)
-      ? mergedMonitor.material
-      : [mergedMonitor.material];
-    const screenMaterialIndexes = new Set(
-      materialList
-        .map((material, index) => /^深蓝$|Screen_Glass|screen|display/i.test(material.name) ? index : -1)
-        .filter(index => index >= 0),
-    );
-    if (!screenMaterialIndexes.size)
-      return [];
-
-    const getVertexIndex = (index: number) => geometry.index?.getX(index) ?? index;
-    const toRootPoint = (index: number) => new THREE.Vector3()
-      .fromBufferAttribute(position, getVertexIndex(index))
-      .applyMatrix4(meshToRoot);
     const screenTriangles: Array<{ points: THREE.Vector3[]; center: THREE.Vector3 }> = [];
     const screenBounds = new THREE.Box3();
-
-    for (const group of geometry.groups) {
-      if (!screenMaterialIndexes.has(group.materialIndex))
+    for (const mesh of mergedMonitorMeshes) {
+      const geometry = mesh.geometry;
+      const position = geometry.getAttribute('position');
+      if (!position)
         continue;
-      const end = Math.min(group.start + group.count, geometry.index?.count ?? position.count);
-      for (let index = group.start; index + 2 < end; index += 3) {
-        const points = [toRootPoint(index), toRootPoint(index + 1), toRootPoint(index + 2)];
-        const center = points[0].clone().add(points[1]).add(points[2]).multiplyScalar(1 / 3);
-        points.forEach(point => screenBounds.expandByPoint(point));
-        screenTriangles.push({ points, center });
+      const meshToRoot = new THREE.Matrix4()
+        .copy(root.matrixWorld)
+        .invert()
+        .multiply(mesh.matrixWorld);
+      const materialList = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const groups = geometry.groups.length
+        ? geometry.groups
+        : [{ start: 0, count: geometry.index?.count ?? position.count, materialIndex: 0 }];
+      const getVertexIndex = (index: number) => geometry.index?.getX(index) ?? index;
+      for (const group of groups) {
+        const materialIndex = group.materialIndex ?? 0;
+        const material = materialList[materialIndex];
+        if (!material || !/深蓝|UI_Cyan|UI_Blue|Screen_Glass|screen|display/i.test(material.name))
+          continue;
+        const end = Math.min(group.start + group.count, geometry.index?.count ?? position.count);
+        for (let index = group.start; index + 2 < end; index += 3) {
+          const points = [0, 1, 2].map(offset => new THREE.Vector3()
+            .fromBufferAttribute(position, getVertexIndex(index + offset))
+            .applyMatrix4(meshToRoot));
+          const center = points[0].clone().add(points[1]).add(points[2]).multiplyScalar(1 / 3);
+          points.forEach(point => screenBounds.expandByPoint(point));
+          screenTriangles.push({ points, center });
+        }
       }
     }
     if (screenTriangles.length < workstationObjects.length)
@@ -2267,7 +2447,8 @@ export class AreaScene {
     return regions.map((displayRegion, index) => ({
       kind: kinds[index],
       workstationName: workstationNames[index],
-      mesh: mergedMonitor,
+      mesh: mergedMonitorMeshes[0],
+      sourceMeshes: mergedMonitorMeshes,
       root,
       displayRegion,
     }));
@@ -2281,9 +2462,14 @@ export class AreaScene {
     if (!displays.length)
       return;
 
-    const mesh = displays[0].mesh;
     const root = displays[0].root;
-    const fullBounds = this.getNurseStationMeshBoundsInRoot(mesh, root);
+    const sourceMeshes = displays[0].sourceMeshes?.length
+      ? displays[0].sourceMeshes
+      : [displays[0].mesh];
+    const fullBounds = sourceMeshes.reduce(
+      (bounds, sourceMesh) => bounds.union(this.getNurseStationMeshBoundsInRoot(sourceMesh, root)),
+      new THREE.Box3(),
+    );
     const fullCenter = fullBounds.getCenter(new THREE.Vector3());
     const surfaceSize = displays.reduce(
       (bounds, display) => bounds.union(display.displayRegion),
@@ -2316,18 +2502,20 @@ export class AreaScene {
     };
 
     // 仅隐藏合并网格的深蓝屏幕面，保留显示器边框和支架。
-    const originalMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    const hiddenMaterials = originalMaterials.map((material) => {
-      if (!/^深蓝$|Screen_Glass|screen|display/i.test(material.name))
-        return material;
-      const replacement = material.clone();
-      replacement.transparent = true;
-      replacement.opacity = 0;
-      replacement.depthWrite = false;
-      replacement.needsUpdate = true;
-      return replacement;
-    });
-    mesh.material = Array.isArray(mesh.material) ? hiddenMaterials : hiddenMaterials[0];
+    for (const sourceMesh of sourceMeshes) {
+      const originalMaterials = Array.isArray(sourceMesh.material) ? sourceMesh.material : [sourceMesh.material];
+      const hiddenMaterials = originalMaterials.map((material) => {
+        if (!/深蓝|UI_Cyan|UI_Blue|Screen_Glass|screen|display/i.test(material.name))
+          return material;
+        const replacement = material.clone();
+        replacement.transparent = true;
+        replacement.opacity = 0;
+        replacement.depthWrite = false;
+        replacement.needsUpdate = true;
+        return replacement;
+      });
+      sourceMesh.material = Array.isArray(sourceMesh.material) ? hiddenMaterials : hiddenMaterials[0];
+    }
 
     for (const display of displays) {
       const texture = this.createNurseStationBoardTexture(display.kind);
@@ -2385,7 +2573,7 @@ export class AreaScene {
       console.info('[NurseStationDisplay] bound merged workstation screen', {
         kind: display.kind,
         workstationName: display.workstationName,
-        objectName: mesh.name,
+        objectName: sourceMeshes.map(sourceMesh => sourceMesh.name).join(', '),
         displayWidth: width,
         displayHeight: height,
         depthAxis,
@@ -3645,7 +3833,24 @@ export class AreaScene {
 
   /** 护士站：锁定观察点，并用球坐标 + 房间盒把相机关在边框内。 */
   private applyStationOrbitCeilingConstraint() {
-    if (this.viewPhase !== 'station' || !this.nurseGroup)
+    if (this.viewPhase !== 'station')
+      return;
+
+    if (!STATION_CAMERA_LIMITS_ENABLED) {
+      this.controls.minPolarAngle = 0;
+      this.controls.maxPolarAngle = Math.PI;
+      this.controls.minAzimuthAngle = -Infinity;
+      this.controls.maxAzimuthAngle = Infinity;
+      this.controls.minDistance = 0.1;
+      this.controls.maxDistance = 1000;
+      this.controls.enableRotate = true;
+      this.controls.enableZoom = true;
+      this.controls.enablePan = true;
+      this.controls.screenSpacePanning = true;
+      return;
+    }
+
+    if (!this.nurseGroup)
       return;
 
     const lockedTargetLocal = STATION_TARGET_LOCAL.clone();
@@ -3712,16 +3917,16 @@ export class AreaScene {
     this.controls.enabled = true;
     this.controls.enableRotate = true;
     this.controls.enableZoom = true;
-    this.controls.enablePan = false;
-    this.controls.screenSpacePanning = false;
+    this.controls.enablePan = true;
+    this.controls.screenSpacePanning = STATION_CAMERA_LIMITS_ENABLED ? false : true;
     this.controls.mouseButtons = {
       LEFT: THREE.MOUSE.ROTATE,
       MIDDLE: THREE.MOUSE.DOLLY,
-      RIGHT: THREE.MOUSE.ROTATE,
+      RIGHT: STATION_CAMERA_LIMITS_ENABLED ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN,
     };
     this.controls.touches = {
       ONE: THREE.TOUCH.ROTATE,
-      TWO: THREE.TOUCH.DOLLY_ROTATE,
+      TWO: STATION_CAMERA_LIMITS_ENABLED ? THREE.TOUCH.DOLLY_ROTATE : THREE.TOUCH.DOLLY_PAN,
     };
     this.controls.zoomSpeed = 0.9;
     this.controls.rotateSpeed = 0.55;

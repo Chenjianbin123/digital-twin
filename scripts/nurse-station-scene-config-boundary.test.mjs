@@ -11,7 +11,7 @@ assert.match(config, /position:\s*\{ x: 0, z: 14 \}/);
 assert.match(config, /deskFov: \d+(?:\.\d+)?/);
 assert.match(config, /initialDistance: \d+(?:\.\d+)?/);
 assert.match(config, /initialAngle: \{ azimuthDeg: -?\d+(?:\.\d+)?, elevationDeg: -?\d+(?:\.\d+)? \}/);
-assert.match(config, /distance:\s*\{ min: 1\.8, max: 6\.25 \}/);
+assert.match(config, /distance:\s*\{ min: 1\.6, max: 8 \}/);
 assert.match(areaScene, /from '@\/config\/nurse-station-scene';/);
 assert.match(areaScene, /nurseStationSceneConfig\.model\.url/);
 assert.match(areaScene, /nurseStationSceneConfig\.camera\.target/);
