@@ -81,10 +81,10 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
      * - y：减小后模型整体更靠画面上方，增大后更靠下方。
      * - z：调整前后纵深，通常保持不动。
      */
-    target: { x: 1.068, y: 0.5, z: 0.369 },
-    initialDistance: 4.2,
-    initialAngle: { azimuthDeg: -82.69, elevationDeg: 4.65 },
-    limitsEnabled: false,
+    target: { x: 1.068, y: 0.807, z: 0.369 },
+    initialDistance: 5.726,
+    initialAngle: { azimuthDeg: -82.69, elevationDeg: 2.2 },
+    limitsEnabled: true,
     pan: { xLimit: 0.42, yMin: 0.42, yMax: 1.35 },
     distance: { min: 1.6, max: 8 },
     azimuthLimit: Math.PI / 12,

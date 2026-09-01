@@ -6,7 +6,7 @@ const [areaScene, sceneConfig] = await Promise.all([
   readFile(new URL('../src/config/nurse-station-scene.ts', import.meta.url), 'utf8'),
 ]);
 
-assert.match(sceneConfig, /limitsEnabled:\s*false/);
+assert.match(sceneConfig, /limitsEnabled:\s*true/);
 assert.match(areaScene, /const STATION_CAMERA_LIMITS_ENABLED = nurseStationSceneConfig\.camera\.limitsEnabled;/);
 assert.match(
   areaScene,
@@ -16,4 +16,4 @@ assert.match(areaScene, /screenSpacePanning = STATION_CAMERA_LIMITS_ENABLED \? f
 assert.match(areaScene, /RIGHT: STATION_CAMERA_LIMITS_ENABLED \? THREE\.MOUSE\.ROTATE : THREE\.MOUSE\.PAN,/);
 assert.match(areaScene, /TWO: STATION_CAMERA_LIMITS_ENABLED \? THREE\.TOUCH\.DOLLY_ROTATE : THREE\.TOUCH\.DOLLY_PAN,/);
 
-console.log('Nurse-station camera unlocked boundary checks passed.');
+console.log('Nurse-station camera mode boundary checks passed.');

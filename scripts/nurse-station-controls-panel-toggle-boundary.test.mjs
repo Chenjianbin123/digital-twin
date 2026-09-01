@@ -10,7 +10,7 @@ const [app, visualScene, areaScene, sceneConfig] = await Promise.all([
 
 assert.match(sceneConfig, /distance: \{ min: 1\.6, max: 8 \}/);
 assert.match(sceneConfig, /azimuthLimit: Math\.PI \/ 12/);
-assert.match(sceneConfig, /limitsEnabled:\s*false/);
+assert.match(sceneConfig, /limitsEnabled:\s*true/);
 assert.match(sceneConfig, /floorCameraMargin: 0\.18/);
 assert.match(areaScene, /this\.controls\.enableRotate = true;/);
 assert.match(areaScene, /this\.controls\.enableZoom = true;/);
