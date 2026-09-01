@@ -18,7 +18,7 @@ export interface NurseStationSceneConfig {
     initialDistance: number;
     /** 首屏机位角度：azimuth 正值从右侧看，elevation 正值提高机位。单位：度。 */
     initialAngle: { azimuthDeg: number; elevationDeg: number };
-    /** 视角调试完成前暂时关闭护士站旋转、平移、缩放限制，完成后改回 true。 */
+    /** 护士站旋转、平移、缩放限制开关；true 表示按安全范围限制视角。 */
     limitsEnabled: boolean;
     pan: {
       xLimit: number;
@@ -61,7 +61,7 @@ export interface NurseStationSceneConfig {
 /** 护士站模型、构图和交互限制。调整护士站外观时优先修改这里。 */
 export const nurseStationSceneConfig: NurseStationSceneConfig = {
   model: {
-    url: "/models/smart-ward-nurse-station/1-1.glb?v=20260831-nurse-station-1-1",
+    url: "/models/smart-ward-nurse-station/1-1.glb?v=20260901-h-n2-v1",
     maxSize: { x: 11.04, y: 2.3895, z: 5.102 },
   },
   position: { x: 0, z: 14 },
@@ -81,9 +81,9 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
      * - y：减小后模型整体更靠画面上方，增大后更靠下方。
      * - z：调整前后纵深，通常保持不动。
      */
-    target: { x: 1.068, y: 0.807, z: 0.369 },
-    initialDistance: 5.726,
-    initialAngle: { azimuthDeg: -82.69, elevationDeg: 2.2 },
+    target: { x: 1.066, y: 0.812, z: 0.257 },
+    initialDistance: 3.362,
+    initialAngle: { azimuthDeg: -88.65, elevationDeg: 3.62 },
     limitsEnabled: true,
     pan: { xLimit: 0.42, yMin: 0.42, yMax: 1.35 },
     distance: { min: 1.6, max: 8 },

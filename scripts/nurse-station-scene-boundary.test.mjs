@@ -24,7 +24,7 @@ assert.match(bottomNav, /dash-bottom--compact/);
 assert.match(dashboardFrame, /minimal\?: boolean;/);
 assert.match(dashboardFrame, /dash-frame--minimal/);
 assert.match(app, /\n\s{6}<\/div>\s+<DashboardBottomNav/);
-assert.match(sceneConfig, /1-1\.glb\?v=20260831-nurse-station-1-1/);
+assert.match(sceneConfig, /1-1\.glb\?v=20260901-h-n2-v1/);
 assert.match(sceneConfig, /maxSize: \{ x: 11\.04, y: 2\.3895, z: 5\.102 \}/);
 assert.doesNotMatch(areaScene, /NURSE_STATION_MODEL_HEIGHT_SCALE/);
 assert.doesNotMatch(areaScene, /model\.scale\.y\s*\*=/);

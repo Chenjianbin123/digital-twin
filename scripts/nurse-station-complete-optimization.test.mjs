@@ -31,7 +31,7 @@ assert.match(visual, /modelState: AreaModelState/);
 assert.match(areaComponent, /modelState: \[state: AreaModelState\]/);
 assert.match(areaScene, /onModelState\?: \(state: AreaModelState\) => void/);
 assert.match(areaScene, /this\.onModelState\?\.\('fallback'\)/);
-assert.match(sceneConfig, /1-1\.glb\?v=20260831-nurse-station-1-1/);
+assert.match(sceneConfig, /1-1\.glb\?v=20260901-h-n2-v1/);
 assert.match(sceneConfig, /deskFov: \d+(?:\.\d+)?/);
 assert.match(sceneConfig, /target: \{ x: -?\d+(?:\.\d+)?, y: -?\d+(?:\.\d+)?, z: -?\d+(?:\.\d+)? \}/);
 assert.match(sceneConfig, /initialDistance: \d+(?:\.\d+)?/);
