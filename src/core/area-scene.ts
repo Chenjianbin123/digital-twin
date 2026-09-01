@@ -2300,14 +2300,14 @@ export class AreaScene {
       mesh.geometry = geometry;
     }
 
-    console.info('[NurseStationDisplay] synced dashboard model background height', {
-      objectName: backgroundParts.map(part => part.mesh.name).join(', '),
-      sourceHeight: Number(currentHeight.toFixed(4)),
-      targetHeight: Number(overlayHeight.toFixed(4)),
-      scale: Number(scale.toFixed(4)),
-      rootHeightAxis,
-      partCount: backgroundParts.length,
-    });
+    // console.info('[NurseStationDisplay] synced dashboard model background height', {
+    //   objectName: backgroundParts.map(part => part.mesh.name).join(', '),
+    //   sourceHeight: Number(currentHeight.toFixed(4)),
+    //   targetHeight: Number(overlayHeight.toFixed(4)),
+    //   scale: Number(scale.toFixed(4)),
+    //   rootHeightAxis,
+    //   partCount: backgroundParts.length,
+    // });
   }
 
   private getNurseStationMeshBoundsInRoot(mesh: THREE.Mesh, root: THREE.Object3D) {
@@ -2570,20 +2570,20 @@ export class AreaScene {
       root.add(plane);
       this.nurseStationBoardDisplays.push({ kind: display.kind, screen: plane, texture });
 
-      console.info('[NurseStationDisplay] bound merged workstation screen', {
-        kind: display.kind,
-        workstationName: display.workstationName,
-        objectName: sourceMeshes.map(sourceMesh => sourceMesh.name).join(', '),
-        displayWidth: width,
-        displayHeight: height,
-        depthAxis,
-        frontSign,
-        position: {
-          x: Number(plane.position.x.toFixed(4)),
-          y: Number(plane.position.y.toFixed(4)),
-          z: Number(plane.position.z.toFixed(4)),
-        },
-      });
+      // console.info('[NurseStationDisplay] bound merged workstation screen', {
+      //   kind: display.kind,
+      //   workstationName: display.workstationName,
+      //   objectName: sourceMeshes.map(sourceMesh => sourceMesh.name).join(', '),
+      //   displayWidth: width,
+      //   displayHeight: height,
+      //   depthAxis,
+      //   frontSign,
+      //   position: {
+      //     x: Number(plane.position.x.toFixed(4)),
+      //     y: Number(plane.position.y.toFixed(4)),
+      //     z: Number(plane.position.z.toFixed(4)),
+      //   },
+      // });
     }
   }
 
@@ -2717,21 +2717,21 @@ export class AreaScene {
         .filter(Boolean);
       const overlay = this.attachNurseStationTextureOverlay(object, texture, kind, displayRoot);
       this.nurseStationBoardDisplays.push({ kind, screen: overlay, texture, video: videoTexture?.video });
-      console.info('[NurseStationDisplay] bound', {
-        kind,
-        objectName: object.name,
-        displayRootName: displayRoot?.name ?? object.parent?.name,
-        selectedMaterial: (overlay.userData.displayMaterialNames as string[] | undefined)?.join(', ') || materialNames[0] || '(none)',
-        overlayWidth: overlay.userData.displayWidth,
-        overlayHeight: overlay.userData.displayHeight,
-        depthAxis: overlay.userData.displayDepthAxis,
-        overlayPosition: overlay.userData.displayPosition,
-        overlayParent: overlay.parent?.name,
-        mode: 'overlay',
-      });
+      // console.info('[NurseStationDisplay] bound', {
+      //   kind,
+      //   objectName: object.name,
+      //   displayRootName: displayRoot?.name ?? object.parent?.name,
+      //   selectedMaterial: (overlay.userData.displayMaterialNames as string[] | undefined)?.join(', ') || materialNames[0] || '(none)',
+      //   overlayWidth: overlay.userData.displayWidth,
+      //   overlayHeight: overlay.userData.displayHeight,
+      //   depthAxis: overlay.userData.displayDepthAxis,
+      //   overlayPosition: overlay.userData.displayPosition,
+      //   overlayParent: overlay.parent?.name,
+      //   mode: 'overlay',
+      // });
     }
-    if (!this.nurseStationBoardDisplays.length)
-      console.warn('[NurseStationDisplay] no display mesh was bound');
+    // if (!this.nurseStationBoardDisplays.length)
+    //   console.warn('[NurseStationDisplay] no display mesh was bound');
   }
 
   /** 隐藏 GLB 电脑屏内置的蓝色横条/占位 UI，避免覆盖真实模板。 */
@@ -4846,13 +4846,13 @@ export class AreaScene {
         },
         materialNames,
       });
-      console.info('[AreaScene] 射线命中节点', {
-        name: hit.name,
-        type: hit.type,
-        parent: hit.parent?.name,
-        materialNames,
-        worldPosition,
-      });
+      // console.info('[AreaScene] 射线命中节点', {
+      //   name: hit.name,
+      //   type: hit.type,
+      //   parent: hit.parent?.name,
+      //   materialNames,
+      //   worldPosition,
+      // });
       let obj: THREE.Object3D | null = intersects[0].object;
       while (obj && obj !== this.wardCorridorModel && obj.userData.role !== 'wardCorridorDoor')
         obj = obj.parent;

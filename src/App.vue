@@ -590,22 +590,21 @@ onBeforeUnmount(() => {
           @focus-room="store.focusRoom"
         />
 
-        <template v-if="currentWard && isWardInterior">
-          <WardScene3D
-            v-if="wardInteriorView === '3d'"
-            :ward="currentWard"
-            :camera-preset="cameraPreset"
-            :env-alert-level="currentEnvAlert.level"
-            :selected-bed-code="selectedBed?.bedCode ?? null"
-            @bed-click="store.selectBed"
-          />
-          <WardPlanView
-            v-else
-            :ward="currentWard"
-            :selected-bed="selectedBed"
-            @bed-click="store.selectBed"
-          />
-        </template>
+        <WardScene3D
+          v-if="currentWard"
+          v-show="isWardInterior && wardInteriorView === '3d'"
+          :ward="currentWard"
+          :camera-preset="cameraPreset"
+          :env-alert-level="currentEnvAlert.level"
+          :selected-bed-code="selectedBed?.bedCode ?? null"
+          @bed-click="store.selectBed"
+        />
+        <WardPlanView
+          v-if="isWardInterior && currentWard && wardInteriorView !== '3d'"
+          :ward="currentWard"
+          :selected-bed="selectedBed"
+          @bed-click="store.selectBed"
+        />
 
       </div>
 

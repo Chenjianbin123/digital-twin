@@ -52,9 +52,12 @@ import type { BedStatusMeta, CameraPresetId, TwinBedEntity, TwinWardEntity } fro
 
 type CurtainMode = 'full' | 'lite' | 'minimal';
 
+export type WardInteriorModelState = 'loading' | 'ready' | 'fallback';
+
 export interface WardSceneOptions {
   container: HTMLElement;
   onBedClick?: (bed: TwinBedEntity) => void;
+  onModelState?: (state: WardInteriorModelState) => void;
 }
 
 interface BedMeshGroup {
@@ -104,6 +107,7 @@ export class WardScene {
   private bedTerminalRefreshToken = new Map<string, number>();
   private clock = new THREE.Clock();
   private onBedClick?: (bed: TwinBedEntity) => void;
+  private onModelState?: (state: WardInteriorModelState) => void;
   private resizeObserver: ResizeObserver | null = null;
   private container: HTMLElement;
   private alertLevel: EnvAlertLevel = 'normal';
@@ -116,6 +120,8 @@ export class WardScene {
   private wardInteriorModel: THREE.Group | null = null;
   private wardInteriorParts: WardInteriorAssetParts | null = null;
   private wardInteriorModelLoadToken = 0;
+  private cameraViewLogStep = 0;
+  private cameraViewLogTimer = 0;
   private environmentTexture: THREE.Texture | null = null;
   private quiltTexture: THREE.CanvasTexture | null = null;
   private pillowcaseTexture: THREE.CanvasTexture | null = null;
@@ -127,9 +133,10 @@ export class WardScene {
   private pageHidden = document.hidden;
 
   constructor(options: WardSceneOptions) {
-    const { container, onBedClick } = options;
+    const { container, onBedClick, onModelState } = options;
     this.container = container;
     this.onBedClick = onBedClick;
+    this.onModelState = onModelState;
 
     const width = container.clientWidth;
     const height = container.clientHeight;
@@ -178,6 +185,7 @@ export class WardScene {
     this.controls.target.set(...wardInteriorSceneConfig.camera.initial.target);
     this.controls.addEventListener('start', this.onControlsStart);
     this.controls.addEventListener('change', this.onControlsChange);
+    this.controls.addEventListener('end', this.onControlsEnd);
 
     this.scene.add(this.roomGroup);
     this.roomGroup.visible = false;
@@ -229,7 +237,28 @@ export class WardScene {
 
   private onControlsChange = () => {
     this.suppressBedClick = true;
+    // window.clearTimeout(this.cameraViewLogTimer);
+    // this.cameraViewLogTimer = window.setTimeout(() => this.logCameraView('拖动中'), 160);
   };
+
+  private onControlsEnd = () => {
+    // window.clearTimeout(this.cameraViewLogTimer);
+    // this.logCameraView('操作结束');
+  };
+
+  private logCameraView(reason: string) {
+    // const offset = this.camera.position.clone().sub(this.controls.target);
+    // const spherical = new THREE.Spherical().setFromVector3(offset);
+    // this.cameraViewLogStep += 1;
+    // console.info(`[WardScene] 视角 #${this.cameraViewLogStep} ${reason}`, {
+    //   position: this.camera.position.toArray().map(value => Number(value.toFixed(3))),
+    //   target: this.controls.target.toArray().map(value => Number(value.toFixed(3))),
+    //   distance: Number(spherical.radius.toFixed(3)),
+    //   azimuthDeg: Number(THREE.MathUtils.radToDeg(spherical.theta).toFixed(2)),
+    //   polarDeg: Number(THREE.MathUtils.radToDeg(spherical.phi).toFixed(2)),
+    // });
+    void reason;
+  }
 
   private handleVisibilityChange = () => {
     this.pageHidden = document.hidden;
@@ -1753,6 +1782,7 @@ export class WardScene {
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath('/draco/');
     loader.setDRACOLoader(dracoLoader);
+    this.onModelState?.('loading');
     let model: THREE.Group | null = null;
 
     try {
@@ -1784,11 +1814,13 @@ export class WardScene {
       this.scene.add(model);
       this.roomGroup.visible = false;
       this.clearBedMeshes();
+      this.onModelState?.('ready');
 
       if (this.ward) {
         this.updateWard(this.ward);
         void this.syncWardBedTemplates(this.ward);
       }
+      // this.logCameraView('模型就绪');
     }
     catch (error) {
       if (token !== this.wardInteriorModelLoadToken) {
@@ -1806,6 +1838,7 @@ export class WardScene {
         disposeWardInteriorModel(model);
       }
       this.roomGroup.visible = false;
+      this.onModelState?.('fallback');
       console.warn('[WardScene] failed to load room-v1 GLB', error);
     }
     finally {
@@ -2748,30 +2781,40 @@ export class WardScene {
       this.updateBedSelectionVisual(bed);
   }
 
+  private usesNativeCameraPose() {
+    return this.wardInteriorParts?.mode !== 'prototype';
+  }
+
   setCameraPreset(presetId: CameraPresetId) {
     if (this.activePresetId === presetId && !this.cameraTransition)
       return;
 
     this.activePresetId = presetId;
     const preset = getCameraPreset(presetId);
-    const scale = this.getRoomViewScale();
-    const viewportScale = resolveWardCameraViewportScale(this.camera.aspect);
-    const cameraScale = (presetId === 'door' ? Math.min(1.08, scale) : scale) * viewportScale;
+    const toPos = new THREE.Vector3(...preset.position);
+    const toTarget = new THREE.Vector3(...preset.target);
+    if (!this.usesNativeCameraPose()) {
+      const scale = this.getRoomViewScale();
+      const viewportScale = resolveWardCameraViewportScale(this.camera.aspect);
+      const cameraScale = (presetId === 'door' ? Math.min(1.08, scale) : scale) * viewportScale;
+      toPos.set(
+        preset.position[0] * cameraScale,
+        preset.position[1] * (0.92 + scale * 0.08) * viewportScale,
+        preset.position[2] * cameraScale,
+      );
+      toTarget.set(
+        preset.target[0],
+        preset.target[1],
+        preset.target[2] * (presetId === 'door' ? 1 : scale > 1 ? 0.85 : 1),
+      );
+    }
     this.cameraTransition = {
       elapsed: 0,
       duration: wardInteriorSceneConfig.camera.presetTransitionDuration,
       fromPos: this.camera.position.clone(),
-      toPos: new THREE.Vector3(
-        preset.position[0] * cameraScale,
-        preset.position[1] * (0.92 + scale * 0.08) * viewportScale,
-        preset.position[2] * cameraScale,
-      ),
+      toPos,
       fromTarget: this.controls.target.clone(),
-      toTarget: new THREE.Vector3(
-        preset.target[0],
-        preset.target[1],
-        preset.target[2] * (presetId === 'door' ? 1 : scale > 1 ? 0.85 : 1),
-      ),
+      toTarget,
     };
   }
 
@@ -2829,11 +2872,22 @@ export class WardScene {
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const groups = [...this.bedMeshes.values()].map(m => m.group);
+    const groups = [
+      ...[...this.bedMeshes.values()].map(m => m.group),
+      ...(this.wardInteriorModel ? [this.wardInteriorModel] : []),
+    ];
     const intersects = this.raycaster.intersectObjects(groups, true);
 
     if (intersects.length > 0) {
-      let obj: THREE.Object3D | null = intersects[0].object;
+      const hit = intersects[0];
+      // console.info('[WardScene] 射线命中', {
+      //   name: hit.object.name || '(unnamed)',
+      //   parent: hit.object.parent?.name || '(none)',
+      //   point: hit.point.toArray().map(value => Number(value.toFixed(3))),
+      //   camera: this.camera.position.toArray().map(value => Number(value.toFixed(3))),
+      //   target: this.controls.target.toArray().map(value => Number(value.toFixed(3))),
+      // });
+      let obj: THREE.Object3D | null = hit.object;
       while (obj && !obj.userData.bedCode)
         obj = obj.parent;
       if (obj?.userData.bedCode) {
@@ -2852,7 +2906,10 @@ export class WardScene {
     const previousViewportScale = resolveWardCameraViewportScale(this.camera.aspect);
     this.camera.aspect = width / height;
     const nextViewportScale = resolveWardCameraViewportScale(this.camera.aspect);
-    if (Math.abs(nextViewportScale - previousViewportScale) > 0.001) {
+    if (
+      this.wardInteriorParts?.mode !== 'baked'
+      && Math.abs(nextViewportScale - previousViewportScale) > 0.001
+    ) {
       this.cameraTransition = null;
       this.camera.position
         .sub(this.controls.target)
@@ -2994,6 +3051,8 @@ export class WardScene {
     this.resizeObserver?.disconnect();
     this.controls.removeEventListener('start', this.onControlsStart);
     this.controls.removeEventListener('change', this.onControlsChange);
+    this.controls.removeEventListener('end', this.onControlsEnd);
+    window.clearTimeout(this.cameraViewLogTimer);
     this.container.removeEventListener('click', this.handleClick);
     this.container.removeEventListener('wheel', this.cancelCameraTransition);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);

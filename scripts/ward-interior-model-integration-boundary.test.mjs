@@ -39,6 +39,21 @@ test('keeps the JSON template renderer and configures model canvas UVs', () => {
   assert.match(wardScene, /configureWardInteriorCanvasTexture\(tex\)/);
 });
 
+test('reports interior GLB load state so the shared loading overlay can match the corridor', () => {
+  assert.match(wardScene, /onModelState\?\.\('loading'\)/);
+  assert.match(wardScene, /onModelState\?\.\('ready'\)/);
+  assert.match(wardScene, /onModelState\?\.\('fallback'\)/);
+});
+
+test('applies baked interior camera poses at native scale without live camera debug logs', () => {
+  assert.match(wardScene, /usesNativeCameraPose/);
+  assert.match(wardScene, /logCameraView/);
+  assert.match(wardScene, /\[WardScene\] 视角/);
+  assert.match(wardScene, /addEventListener\('end', this\.onControlsEnd\)/);
+  assert.doesNotMatch(wardScene, /snapCameraToLockedView/);
+  assert.doesNotMatch(wardScene, /\[WardScene\] 射线定机位/);
+});
+
 test('does not flash or fall back to the generated room while loading room-v1', () => {
   assert.match(wardScene, /this\.roomGroup\.visible = false/);
   assert.doesNotMatch(wardScene, /using generated fallback/);
@@ -66,3 +81,4 @@ test('removes CSS bed overlays before disposing a replaced bed group', () => {
   assert.match(disposeMethod, /meshGroup\.label\?\.removeFromParent\(\)/);
   assert.match(disposeMethod, /meshGroup\.deviceTag\?\.removeFromParent\(\)/);
 });
+

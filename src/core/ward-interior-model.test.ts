@@ -13,6 +13,8 @@ import {
   getWardInteriorAssetParts,
   hideWardInteriorCeiling,
   prepareWardInteriorModelMaterials,
+  resolveBakedWardInteriorCameraFromRays,
+  resolveBakedWardInteriorPresetView,
   resolveWardInteriorModelBedPose,
   syncWardInteriorBakedBedVisibility,
 } from './ward-interior-model.ts';
@@ -179,6 +181,36 @@ test('keeps baked rooms at native Blender scale without stretching', () => {
     parts.architecture.position.toArray().map(v => Number(v.toFixed(4))),
     first,
   );
+});
+
+test('locks the doorway camera from floor, wall and door ray hits', () => {
+  const root = new THREE.Group();
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(6, 0.08, 8), new THREE.MeshStandardMaterial());
+  floor.name = '地板';
+  floor.position.set(0, 0.04, 0);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.1, 0.08), new THREE.MeshStandardMaterial());
+  door.name = '门把手.001';
+  door.position.set(0, 1.05, 3.96);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 0.08), new THREE.MeshStandardMaterial());
+  back.name = '后墙';
+  back.position.set(0, 1.5, -4);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(0.08, 3, 8), new THREE.MeshStandardMaterial());
+  left.name = '左墙';
+  left.position.set(-3, 1.5, 0);
+  const right = new THREE.Mesh(new THREE.BoxGeometry(0.08, 3, 8), new THREE.MeshStandardMaterial());
+  right.name = '右墙';
+  right.position.set(3, 1.5, 0);
+  root.add(floor, door, back, left, right);
+
+  const framed = resolveBakedWardInteriorCameraFromRays(root);
+  assert.equal(framed.debug.door?.name, '门把手.001');
+  assert.ok(framed.debug.floor);
+  assert.ok(framed.view.position.z > framed.view.target.z);
+  assert.ok(framed.view.position.y > 1.4 && framed.view.position.y < 1.8);
+  assert.ok(framed.view.position.z > 2.5);
+
+  const top = resolveBakedWardInteriorPresetView('top', framed.view, root);
+  assert.ok(top.position.y > framed.view.position.y);
 });
 
 test('caps extreme metalness so bright glTF surfaces stay readable without studio HDRI', () => {

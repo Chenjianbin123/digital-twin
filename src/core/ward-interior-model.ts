@@ -375,6 +375,176 @@ function fitBakedWardInteriorEnvironment(parts: WardInteriorAssetParts) {
   );
 }
 
+export interface WardInteriorRayHit {
+  name: string;
+  point: [number, number, number];
+  distance: number;
+}
+
+export interface WardInteriorRayCameraDebug {
+  floor: WardInteriorRayHit | null;
+  walls: WardInteriorRayHit[];
+  door: WardInteriorRayHit | null;
+  position: [number, number, number];
+  target: [number, number, number];
+}
+
+export interface WardInteriorLockedView {
+  position: THREE.Vector3;
+  target: THREE.Vector3;
+}
+
+function toPoint(vector: THREE.Vector3): [number, number, number] {
+  return [
+    Number(vector.x.toFixed(3)),
+    Number(vector.y.toFixed(3)),
+    Number(vector.z.toFixed(3)),
+  ];
+}
+
+function collectRayMeshes(root: THREE.Object3D): THREE.Object3D[] {
+  const meshes: THREE.Object3D[] = [];
+  root.traverse((object) => {
+    if (object instanceof THREE.Mesh && object.visible)
+      meshes.push(object);
+  });
+  return meshes;
+}
+
+function firstHit(
+  raycaster: THREE.Raycaster,
+  origin: THREE.Vector3,
+  direction: THREE.Vector3,
+  meshes: THREE.Object3D[],
+): THREE.Intersection | null {
+  raycaster.set(origin, direction.clone().normalize());
+  const hits = raycaster.intersectObjects(meshes, false);
+  return hits[0] ?? null;
+}
+
+function findDoorObject(root: THREE.Object3D): THREE.Object3D | null {
+  let found: THREE.Object3D | null = null;
+  root.traverse((object) => {
+    if (found || !object.name.includes('门'))
+      return;
+    found = object;
+  });
+  return found;
+}
+
+/** Raycast the baked room to lock a doorway standing view looking inward. */
+export function resolveBakedWardInteriorCameraFromRays(root: THREE.Object3D): {
+  view: WardInteriorLockedView;
+  debug: WardInteriorRayCameraDebug;
+} {
+  root.updateWorldMatrix(true, true);
+  const bounds = new THREE.Box3().setFromObject(root);
+  const size = bounds.getSize(new THREE.Vector3());
+  const center = bounds.getCenter(new THREE.Vector3());
+  const meshes = collectRayMeshes(root);
+  const raycaster = new THREE.Raycaster();
+  raycaster.far = Math.max(size.length() * 2, 20);
+
+  const floorOrigin = new THREE.Vector3(center.x, bounds.max.y + 0.8, center.z);
+  const floorHit = firstHit(raycaster, floorOrigin, new THREE.Vector3(0, -1, 0), meshes);
+  const floorY = floorHit?.point.y ?? bounds.min.y;
+  const eyeY = floorY + 1.55;
+
+  const wallDirs: { name: string; dir: THREE.Vector3 }[] = [
+    { name: '+z', dir: new THREE.Vector3(0, 0, 1) },
+    { name: '-z', dir: new THREE.Vector3(0, 0, -1) },
+    { name: '+x', dir: new THREE.Vector3(1, 0, 0) },
+    { name: '-x', dir: new THREE.Vector3(-1, 0, 0) },
+  ];
+  const eyeOrigin = new THREE.Vector3(center.x, eyeY, center.z);
+  const walls: WardInteriorRayHit[] = [];
+  for (const wall of wallDirs) {
+    const hit = firstHit(raycaster, eyeOrigin, wall.dir, meshes);
+    if (!hit)
+      continue;
+    walls.push({
+      name: `${wall.name}:${hit.object.name || '(unnamed)'}`,
+      point: toPoint(hit.point),
+      distance: Number(hit.distance.toFixed(3)),
+    });
+  }
+
+  const doorObject = findDoorObject(root);
+  const doorPoint = new THREE.Vector3();
+  if (doorObject)
+    doorObject.getWorldPosition(doorPoint);
+  else if (walls.length) {
+    const farthest = walls.reduce((best, wall) => wall.distance > best.distance ? wall : best);
+    doorPoint.set(...farthest.point);
+  }
+  else {
+    doorPoint.set(center.x, eyeY, bounds.max.z);
+  }
+
+  const inward = new THREE.Vector3(center.x - doorPoint.x, 0, center.z - doorPoint.z);
+  if (inward.lengthSq() < 1e-6)
+    inward.set(0, 0, -1);
+  inward.normalize();
+
+  const position = new THREE.Vector3(doorPoint.x, eyeY, doorPoint.z);
+  position.addScaledVector(inward, 0.62);
+  const target = new THREE.Vector3(center.x, floorY + 1.05, center.z);
+  target.addScaledVector(inward, 0.35);
+
+  const debug: WardInteriorRayCameraDebug = {
+    floor: floorHit
+      ? {
+          name: floorHit.object.name || '(unnamed)',
+          point: toPoint(floorHit.point),
+          distance: Number(floorHit.distance.toFixed(3)),
+        }
+      : null,
+    walls,
+    door: {
+      name: doorObject?.name || '(inferred)',
+      point: toPoint(doorPoint),
+      distance: Number(doorPoint.distanceTo(center).toFixed(3)),
+    },
+    position: toPoint(position),
+    target: toPoint(target),
+  };
+
+  return {
+    view: { position, target },
+    debug,
+  };
+}
+
+export function resolveBakedWardInteriorPresetView(
+  presetId: string,
+  doorView: WardInteriorLockedView,
+  root: THREE.Object3D,
+): WardInteriorLockedView {
+  if (presetId === 'door' || presetId === 'free')
+    return doorView;
+
+  const bounds = new THREE.Box3().setFromObject(root);
+  const size = bounds.getSize(new THREE.Vector3());
+  const center = bounds.getCenter(new THREE.Vector3());
+  const inward = doorView.target.clone().sub(doorView.position).setY(0);
+  if (inward.lengthSq() < 1e-6)
+    inward.set(0, 0, -1);
+  inward.normalize();
+  const side = new THREE.Vector3(-inward.z, 0, inward.x);
+
+  if (presetId === 'top') {
+    return {
+      position: new THREE.Vector3(center.x, bounds.max.y + Math.max(2.4, size.z * 0.55), center.z + 0.01),
+      target: new THREE.Vector3(center.x, bounds.min.y, center.z),
+    };
+  }
+
+  return {
+    position: doorView.position.clone().addScaledVector(side, Math.max(size.x, size.z) * 0.28).add(new THREE.Vector3(0, 0.45, 0)),
+    target: doorView.target.clone(),
+  };
+}
+
 /** Prepare glTF materials so they read closer to Blender's look under in-app lighting. */
 export function prepareWardInteriorModelMaterials(
   root: THREE.Object3D,

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
 import { AreaScene, type AreaCameraDebugState, type AreaModelState, type AreaNodePickInfo } from '@/core/area-scene';
+import SceneModelLoading from '@/components/SceneModelLoading.vue';
 import { buildAreaStructureSignature } from '@/core/area-scene-identity';
 import type { RoomSummary } from '@/core/area-summary';
 import { resolveAreaPhaseTransition } from '@/core/scene-transition';
@@ -219,16 +220,11 @@ watch(areaPhase, (phase, prev) => {
   <div class="area-scene-3d">
     <div ref="containerRef" class="area-scene-3d__canvas-host" />
 
-    <div
+    <SceneModelLoading
       v-if="areaPhase === 'corridor' && corridorModelState !== 'ready'"
-      class="area-scene-3d__model-loading"
-      role="status"
-      aria-live="polite"
-    >
-      <span class="area-scene-3d__model-loading-spinner" aria-hidden="true" />
-      <strong>正在准备病房走廊模型</strong>
-      <small>首次加载需要一点时间，后续切换会直接打开</small>
-    </div>
+      title="正在准备病房走廊模型"
+      subtitle="首次加载需要一点时间，后续切换会直接打开"
+    />
 
     <div v-if="areaPhase === 'station'" class="area-scene-3d__shade" aria-hidden="true" />
 
@@ -310,39 +306,6 @@ watch(areaPhase, (phase, prev) => {
       transparent 72%,
       rgba(6, 14, 26, 0.45) 100%
     );
-  }
-
-  &__model-loading {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    display: grid;
-    place-content: center;
-    justify-items: center;
-    gap: 10px;
-    background: radial-gradient(circle at 50% 42%, rgba(15, 77, 91, 0.32), rgba(3, 14, 24, 0.92) 62%);
-    color: rgba(220, 250, 250, 0.94);
-    text-align: center;
-    pointer-events: none;
-
-    strong {
-      font-size: 13px;
-      letter-spacing: 0.04em;
-    }
-
-    small {
-      color: rgba(180, 220, 224, 0.7);
-      font-size: 10px;
-    }
-  }
-
-  &__model-loading-spinner {
-    width: 28px;
-    height: 28px;
-    border: 2px solid rgba(157, 245, 235, 0.22);
-    border-top-color: #9df5eb;
-    border-radius: 50%;
-    animation: area-scene-model-spin 0.85s linear infinite;
   }
 
   &__hud {
@@ -515,9 +478,4 @@ watch(areaPhase, (phase, prev) => {
   }
 }
 
-@keyframes area-scene-model-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 </style>

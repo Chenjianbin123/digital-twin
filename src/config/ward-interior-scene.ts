@@ -65,10 +65,10 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
   room: { height: 4.2 },
   camera: {
     perspective: { fov: 45, near: 0.1, far: 100 },
-    initial: { position: [8, 10, 12], target: [0, 0, 0] },
+    initial: { position: [0.819, 1.313, 5.265], target: [0, 1, -0.8] },
     presets: [
-      { id: 'free', label: '自由视角', position: [6.4, 4.8, 8.8], target: [0, 1, -0.8] },
-      { id: 'door', label: '门口视角', position: [-0.72, 3.05, 0.18], target: [0, 0.92, -5.72] },
+      { id: 'free', label: '自由视角', position: [0.819, 1.313, 5.265], target: [0, 1, -0.8] },
+      { id: 'door', label: '门口视角', position: [0.819, 1.313, 5.265], target: [0, 1, -0.8] },
       { id: 'nurse', label: '巡视视角', position: [8.8, 5.8, 6.8], target: [0, 0.9, -1.6] },
       { id: 'top', label: '俯视视角', position: [0, 18, 0.01], target: [0, 0, 0] },
     ],
