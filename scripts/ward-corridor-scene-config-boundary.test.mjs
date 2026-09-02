@@ -15,6 +15,11 @@ test('病房走廊场景参数集中在独立配置文件中', async () => {
   assert.match(config, /entranceDeviceNodeNames: \['门口机1', '门口机2', '门口机3', '门口机4', '门口机5', '门口机6', '门口机7', '门口机8', '门口机9', '门口机10'\]/);
   assert.match(config, /canvasTextureFlipY: false/);
   assert.match(config, /background: 0x0a1218/);
+  assert.match(config, /exposure: 1\.02/);
+  assert.match(config, /envMapIntensity: 0\.22/);
+  assert.match(config, /environmentIntensity: 0\.26/);
+  assert.match(config, /floorMeshName: '地板'/);
+  assert.match(config, /floorStripeColorScale: 0\.5/);
   assert.match(config, /ceilingHeight: 2\.85/);
   assert.match(config, /halfWidth: 3\.2/);
   assert.match(config, /doorWidth: 2\.1/);
@@ -36,4 +41,5 @@ test('病房走廊核心模块均消费统一配置', async () => {
   assert.match(controls, /wardCorridorSceneConfig\.controls/);
   assert.match(scene, /wardCorridorSceneConfig\.fallbackGeometry/);
   assert.match(scene, /wardCorridorSceneConfig\.camera\.overviewFov/);
+  assert.match(scene, /dimHospitalCorridorFloorStripes/);
 });

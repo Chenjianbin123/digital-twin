@@ -54,6 +54,7 @@ import {
   getHospitalCorridorDisplayScreenOrder,
   getWardCorridorScreenPresentation,
   normalizeHospitalCorridorModelTransform,
+  dimHospitalCorridorFloorStripes,
   shouldUseWardCorridorModel,
   WARD_CORRIDOR_MODEL_URL,
   type WardCorridorSlot,
@@ -74,8 +75,11 @@ interface CameraTransition {
   onComplete?: () => void;
 }
 
+export type AreaSceneModelKind = 'station' | 'corridor';
+
 export interface AreaSceneOptions {
   container: HTMLElement;
+  modelKind?: AreaSceneModelKind;
   onRoomClick?: (roomIndex: number) => void;
   onNodePick?: (info: AreaNodePickInfo) => void;
   onModelState?: (state: AreaModelState) => void;
@@ -304,6 +308,7 @@ export class AreaScene {
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private animationId = 0;
+  private isActive = true;
   private timer = new THREE.Timer();
   private roomMeshes = new Map<number, RoomMeshGroup>();
   private area: TwinAreaEntity | null = null;
@@ -355,6 +360,7 @@ export class AreaScene {
   private nurseStationBoardDisplays: NurseStationBoardDisplay[] = [];
   private nurseStationBoardRefreshAt = 0;
   private viewPhase: AreaViewPhase = 'station';
+  private modelKind: AreaSceneModelKind = 'station';
   private stationShell?: THREE.Group;
   private pmremGenerator: THREE.PMREMGenerator | null = null;
   private environmentTexture: THREE.Texture | null = null;
@@ -365,6 +371,8 @@ export class AreaScene {
   constructor(options: AreaSceneOptions) {
     const { container, onRoomClick, onNodePick, onModelState, onCorridorState, onCameraState } = options;
     this.container = container;
+    this.modelKind = options.modelKind ?? 'station';
+    this.viewPhase = this.modelKind === 'corridor' ? 'corridor' : 'station';
     this.onRoomClick = onRoomClick;
     this.onNodePick = onNodePick;
     this.onModelState = onModelState;
@@ -418,9 +426,13 @@ export class AreaScene {
     this.setupEnvironment();
     this.envGroup = new THREE.Group();
     this.scene.add(this.envGroup);
-    this.buildNurseStation();
-    this.buildStationBackdrop();
-    this.loadWardCorridorModel();
+    if (this.modelKind === 'station') {
+      this.buildNurseStation();
+      this.buildStationBackdrop();
+    }
+    else {
+      this.loadWardCorridorModel();
+    }
 
     this.timer.connect(document);
 
@@ -541,7 +553,8 @@ export class AreaScene {
     corridor.position.set(0, 18, -18);
     this.scene.add(corridor);
 
-    this.setupNurseStationAtmosphereLights();
+    if (this.modelKind === 'station')
+      this.setupNurseStationAtmosphereLights();
   }
 
   private setupEnvironment() {
@@ -549,7 +562,13 @@ export class AreaScene {
     this.pmremGenerator.compileEquirectangularShader();
     this.environmentTexture = this.pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environment = this.environmentTexture;
-    this.scene.environmentIntensity = STATION_ENVIRONMENT_INTENSITY;
+    this.scene.environmentIntensity = this.modelKind === 'corridor'
+      ? CORRIDOR_ENVIRONMENT_INTENSITY
+      : STATION_ENVIRONMENT_INTENSITY;
+    if (this.modelKind === 'corridor') {
+      this.scene.background = new THREE.Color(SCENE_BG);
+      this.renderer.toneMappingExposure = CORRIDOR_EXPOSURE;
+    }
   }
 
   private applyViewAppearance(phase: AreaViewPhase) {
@@ -2974,6 +2993,7 @@ export class AreaScene {
       // 模型边界就绪后强制回到盒内初始机位，避免沿用盒外占位相机
       if (this.viewPhase === 'station')
         this.applyStationDeskCamera();
+      void this.warmGpu();
     }
     catch (error) {
       console.warn('[AreaScene] failed to load nurse station GLB', error);
@@ -3002,6 +3022,7 @@ export class AreaScene {
 
       model.name = 'blender-ward-corridor';
       this.prepareLoadedModel(model, { envMapIntensity: CORRIDOR_ENV_MAP_INTENSITY });
+      dimHospitalCorridorFloorStripes(model);
       normalizeHospitalCorridorModelTransform(model);
       // Keep the corridor's long axis aligned with the existing scene Z axis.
       model.rotation.y = Math.PI / 2;
@@ -3015,6 +3036,7 @@ export class AreaScene {
       this.updateCorridorImplementationVisibility();
       if (this.viewPhase === 'corridor')
         this.applyCorridorOverviewCamera(Math.max(this.area?.rooms.length ?? 1, 1));
+      void this.warmGpu();
     }
     catch (error) {
       this.wardCorridorModelFailed = true;
@@ -4901,7 +4923,34 @@ export class AreaScene {
       this.ensureOverviewCamera();
   }
 
+  setActive(active: boolean) {
+    if (this.isActive === active)
+      return;
+    this.isActive = active;
+    this.controls.enabled = active;
+    if (active) {
+      this.timer.getDelta();
+      this.handleResize();
+      if (!this.animationId)
+        this.animate();
+      return;
+    }
+    cancelAnimationFrame(this.animationId);
+    this.animationId = 0;
+  }
+
+  private async warmGpu() {
+    try {
+      await this.renderer.compileAsync(this.scene, this.camera);
+    }
+    catch {
+      this.renderer.compile(this.scene, this.camera);
+    }
+  }
+
   private animate = (timestamp?: number) => {
+    if (!this.isActive)
+      return;
     this.animationId = requestAnimationFrame(this.animate);
     if (this.pageHidden)
       return;

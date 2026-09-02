@@ -29,7 +29,7 @@ assert.match(areaScene, /\['clock', \['Clock_Display', 'Clock_Frame'\]\]/);
 assert.match(areaScene, /ctx\.font = '700 124px ui-monospace/);
 
 // Keep the scene bright and neutral enough for an on-site hospital display.
-assert.match(visualScene, /&__ambient[\s\S]*?opacity: 0\.42;/);
+assert.match(visualScene, /&__ambient[\s\S]*?opacity: 0\.28;/);
 assert.match(visualScene, /&::after[\s\S]*?opacity: 0\.28;/);
 
 console.log('Nurse-station page presentation boundary checks passed.');

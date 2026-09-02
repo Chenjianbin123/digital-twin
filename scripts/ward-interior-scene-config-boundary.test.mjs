@@ -14,8 +14,9 @@ test('病房内部场景参数集中在独立配置文件中', async () => {
   assert.match(config, /position: \[0\.819, 1\.313, 5\.265\], target: \[0, 1, -0\.8\]/);
   assert.match(config, /referenceAspect: 0\.92/);
   assert.match(config, /background: 0xd8d2c8/);
+  assert.match(config, /exposure: 1\.12/);
   assert.match(config, /baseFogDensity: 0/);
-  assert.match(config, /envMapIntensity: 0\.22/);
+  assert.match(config, /envMapIntensity: 0\.3/);
   assert.match(config, /maxMetalness: 0\.78/);
   assert.match(config, /baseWidth: 3\.92/);
   assert.match(config, /maxBeds: 6/);

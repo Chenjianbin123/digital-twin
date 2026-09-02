@@ -10,8 +10,15 @@ const areaScene = await readFile(new URL('../src/core/area-scene.ts', import.met
 const sceneConfig = await readFile(new URL('../src/config/nurse-station-scene.ts', import.meta.url), 'utf8');
 
 assert.match(app, /NurseStationVisualScene/);
-assert.match(app, /NurseStationVisualScene[\s\S]*?v-show="isNurseStation"/);
-assert.match(app, /<AreaScene3D[\s\S]*?v-show="isWard"/);
+assert.match(app, /stationSceneActive/);
+assert.match(app, /corridorSceneActive/);
+assert.match(app, /interiorSceneActive/);
+assert.match(app, /model-kind="corridor"/);
+assert.match(visualScene, /model-kind="station"/);
+assert.match(visualScene, /<AreaScene3D/);
+assert.match(areaScene, /modelKind === 'station'/);
+assert.match(areaScene, /this\.loadWardCorridorModel\(\)/);
+assert.doesNotMatch(areaScene, /this\.buildNurseStation\(\);\s*this\.buildStationBackdrop\(\);\s*this\.loadWardCorridorModel\(\)/);
 assert.match(app, /WardScene3D/);
 assert.match(app, /WardPlanView/);
 assert.doesNotMatch(visualScene, /nurse-station-visual__markers/);

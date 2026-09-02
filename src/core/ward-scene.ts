@@ -102,6 +102,7 @@ export class WardScene {
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private animationId = 0;
+  private isActive = true;
   private bedMeshes = new Map<string, BedMeshGroup>();
   private ward: TwinWardEntity | null = null;
   private bedTerminalRefreshToken = new Map<string, number>();
@@ -1820,6 +1821,7 @@ export class WardScene {
         this.updateWard(this.ward);
         void this.syncWardBedTemplates(this.ward);
       }
+      void this.warmGpu();
       // this.logCameraView('模型就绪');
     }
     catch (error) {
@@ -2924,7 +2926,34 @@ export class WardScene {
     this.styleLabelLayer();
   }
 
+  setActive(active: boolean) {
+    if (this.isActive === active)
+      return;
+    this.isActive = active;
+    this.controls.enabled = active;
+    if (active) {
+      this.clock.getDelta();
+      this.handleResize();
+      if (!this.animationId)
+        this.animate();
+      return;
+    }
+    cancelAnimationFrame(this.animationId);
+    this.animationId = 0;
+  }
+
+  private async warmGpu() {
+    try {
+      await this.renderer.compileAsync(this.scene, this.camera);
+    }
+    catch {
+      this.renderer.compile(this.scene, this.camera);
+    }
+  }
+
   private animate = () => {
+    if (!this.isActive)
+      return;
     this.animationId = requestAnimationFrame(this.animate);
     if (this.pageHidden)
       return;

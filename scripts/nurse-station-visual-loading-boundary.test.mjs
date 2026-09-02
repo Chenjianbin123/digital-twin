@@ -6,9 +6,11 @@ const [app, visualScene] = await Promise.all([
   readFile(new URL('../src/components/NurseStationVisualScene.vue', import.meta.url), 'utf8'),
 ]);
 
-const nurseStationBlock = app.match(/<NurseStationVisualScene[\s\S]*?\/>/)?.[0] ?? '';
+const nurseStationBlock = app.match(/<NurseStationVisualScene[\s\S]*?\/>/)?.[0]
+  ?? app.match(/<NurseStationVisualScene[\s\S]*?<\/NurseStationVisualScene>/)?.[0]
+  ?? '';
 
-assert.match(nurseStationBlock, /v-show="isNurseStation"/);
+assert.match(nurseStationBlock, /stationSceneActive/);
 assert.doesNotMatch(nurseStationBlock, /v-if="isNurseStation"/);
 
 assert.match(visualScene, /class="nurse-station-visual__model-state"/);

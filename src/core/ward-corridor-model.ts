@@ -8,6 +8,34 @@ export const HOSPITAL_CORRIDOR_DOOR_NAMES = wardCorridorSceneConfig.model.doorNo
 export const HOSPITAL_CORRIDOR_ENTRANCE_DEVICE_NAMES =
   wardCorridorSceneConfig.model.entranceDeviceNodeNames;
 
+const FLOOR_STRIPE_CHROMA_MIN = 0.35;
+
+export function dimHospitalCorridorFloorStripes(root: THREE.Object3D) {
+  const meshName = wardCorridorSceneConfig.appearance.floorMeshName;
+  const scale = wardCorridorSceneConfig.appearance.floorStripeColorScale;
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || object.name !== meshName)
+      return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    const next = materials.map((material) => {
+      if (!('color' in material))
+        return material;
+      const std = material as THREE.MeshStandardMaterial;
+      const max = Math.max(std.color.r, std.color.g, std.color.b);
+      const min = Math.min(std.color.r, std.color.g, std.color.b);
+      const chroma = max === 0 ? 0 : (max - min) / max;
+      if (chroma < FLOOR_STRIPE_CHROMA_MIN)
+        return material;
+      const cloned = std.clone();
+      cloned.color.multiplyScalar(scale);
+      if (cloned.emissiveIntensity > 0)
+        cloned.emissiveIntensity *= scale;
+      return cloned;
+    });
+    object.material = Array.isArray(object.material) ? next : next[0];
+  });
+}
+
 export function normalizeHospitalCorridorModelTransform(root: THREE.Object3D) {
   root.rotation.set(wardCorridorSceneConfig.model.rotationX, 0, 0);
   root.updateMatrixWorld(true);

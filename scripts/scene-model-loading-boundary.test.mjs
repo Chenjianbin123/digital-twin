@@ -9,6 +9,9 @@ test('corridor and ward interior share the same model loading overlay', () => {
   const corridor = read('src/components/AreaScene3D.vue');
   const interior = read('src/components/WardScene3D.vue');
   const app = read('src/App.vue');
+  const visual = read('src/components/NurseStationVisualScene.vue');
+  const areaScene = read('src/core/area-scene.ts');
+  const wardScene = read('src/core/ward-scene.ts');
 
   assert.match(overlay, /class="scene-model-loading"/);
   assert.match(corridor, /SceneModelLoading/);
@@ -18,5 +21,10 @@ test('corridor and ward interior share the same model loading overlay', () => {
   assert.match(interior, /正在准备病房内部模型/);
   assert.match(interior, /首次加载需要一点时间，后续切换会直接打开/);
   assert.match(interior, /onModelState: state => \(modelState\.value = state\)/);
-  assert.match(app, /v-show="isWardInterior && wardInteriorView === '3d'"/);
+  assert.match(app, /digital-twin__scene-layer--inactive/);
+  assert.match(app, /:active="interiorSceneActive"/);
+  assert.match(app, /model-kind="corridor"/);
+  assert.match(visual, /model-kind="station"/);
+  assert.match(areaScene, /setActive\(active: boolean\)/);
+  assert.match(wardScene, /setActive\(active: boolean\)/);
 });

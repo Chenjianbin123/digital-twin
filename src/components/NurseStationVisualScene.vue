@@ -12,6 +12,7 @@ defineProps<{
   deviceCount?: number;
   overlaysVisible: boolean;
   modelState: AreaModelState;
+  active?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -29,6 +30,8 @@ const emit = defineEmits<{
         :room-summaries="roomSummaries"
         :configured-device-count="deviceCount"
         scene-type="nurse-station"
+        model-kind="station"
+        :active="active !== false"
         @room-click="emit('roomClick', $event)"
         @model-state="emit('modelState', $event)"
       />

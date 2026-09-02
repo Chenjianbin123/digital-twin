@@ -41,12 +41,16 @@ export interface WardCorridorSceneConfig {
   appearance: {
     background: number;
     fov: number;
-    /** 与护士站统一的 ACES 曝光。 */
+    /** 走廊 ACES 曝光；低于护士站，避免长通道墙面发亮。 */
     exposure: number;
-    /** 与护士站统一的 PBR 环境反射强度。 */
+    /** 走廊 PBR 环境反射；压低以免瓷砖/墙漆发塑料光。 */
     envMapIntensity: number;
-    /** 与护士站统一的场景环境光强度。 */
+    /** 走廊场景环境光强度。 */
     environmentIntensity: number;
+    /** 走廊地板网格名（含红/绿/橙导向带）。 */
+    floorMeshName: string;
+    /** 仅压暗地板上高饱和色带，白地砖不改。 */
+    floorStripeColorScale: number;
   };
   fallbackGeometry: {
     ceilingHeight: number;
@@ -102,9 +106,11 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
   appearance: {
     background: 0x0a1218,
     fov: 52,
-    exposure: 1.18,
-    envMapIntensity: 0.42,
-    environmentIntensity: 0.4,
+    exposure: 1.02,
+    envMapIntensity: 0.22,
+    environmentIntensity: 0.26,
+    floorMeshName: '地板',
+    floorStripeColorScale: 0.5,
   },
   fallbackGeometry: {
     ceilingHeight: 2.85,

@@ -4,7 +4,6 @@ import { AreaScene, type AreaCameraDebugState, type AreaModelState, type AreaNod
 import SceneModelLoading from '@/components/SceneModelLoading.vue';
 import { buildAreaStructureSignature } from '@/core/area-scene-identity';
 import type { RoomSummary } from '@/core/area-summary';
-import { resolveAreaPhaseTransition } from '@/core/scene-transition';
 import { twinSceneToAreaPhase, type TwinAreaEntity, type TwinSceneType } from '@/types/twin';
 
 const props = defineProps<{
@@ -14,6 +13,8 @@ const props = defineProps<{
   focusedRoomIndex?: number;
   configuredDeviceCount?: number;
   sceneType?: TwinSceneType;
+  modelKind?: 'station' | 'corridor';
+  active?: boolean;
 }>();
 
 const areaPhase = computed(() =>
@@ -78,6 +79,7 @@ function mountScene() {
 
   scene = new AreaScene({
     container: host,
+    modelKind: props.modelKind ?? (areaPhase.value === 'corridor' ? 'corridor' : 'station'),
     onRoomClick: index => emit('roomClick', index),
     onNodePick: info => (pickedNode.value = info),
     onModelState: state => emit('modelState', state),
@@ -86,6 +88,7 @@ function mountScene() {
   });
   applyAreaToScene(true);
   scene.setViewPhase(areaPhase.value, false);
+  scene.setActive(props.active !== false);
   requestAnimationFrame(() => scene?.refreshLayout());
   mountRetryCount = 0;
   return true;
@@ -208,11 +211,8 @@ watch(() => props.focusedRoomIndex, (index, prev) => {
   scene?.focusRoom(index);
 });
 
-watch(areaPhase, (phase, prev) => {
-  if (!scene || phase === prev)
-    return;
-  const transition = resolveAreaPhaseTransition(prev, phase);
-  scene.setViewPhase(phase, transition.animate);
+watch(() => props.active, (active) => {
+  scene?.setActive(active !== false);
 });
 </script>
 

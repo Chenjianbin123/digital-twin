@@ -90,11 +90,11 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
   },
   appearance: {
     background: 0xd8d2c8,
-    exposure: 1.0,
+    exposure: 1.12,
     baseFogDensity: 0,
     fogSpanFactor: 0,
-    envMapIntensity: 0.22,
-    environmentIntensity: 0.26,
+    envMapIntensity: 0.3,
+    environmentIntensity: 0.36,
     maxMetalness: 0.78,
   },
   modelBedLayout: {

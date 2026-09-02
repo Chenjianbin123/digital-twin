@@ -26,6 +26,8 @@ const props = defineProps<{
 
   selectedBedCode?: string | null;
 
+  active?: boolean;
+
 }>();
 
 
@@ -102,6 +104,8 @@ onMounted(() => {
 
   scene.setSelectedBedCode(props.selectedBedCode ?? null);
 
+  scene.setActive(props.active !== false);
+
 });
 
 
@@ -135,6 +139,12 @@ watch(() => props.envAlertLevel, (level) => {
 watch(() => props.selectedBedCode, (bedCode) => {
 
   scene?.setSelectedBedCode(bedCode ?? null);
+
+});
+
+watch(() => props.active, (active) => {
+
+  scene?.setActive(active !== false);
 
 });
 

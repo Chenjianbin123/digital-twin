@@ -27,6 +27,7 @@ import {
   normalizeHospitalCorridorModelTransform,
   HOSPITAL_CORRIDOR_DOOR_NAMES,
   HOSPITAL_CORRIDOR_ENTRANCE_DEVICE_NAMES,
+  dimHospitalCorridorFloorStripes,
 } from './ward-corridor-model.ts';
 
 test('creates a horizontal corridor display geometry with normalized screen UVs', () => {
@@ -369,4 +370,30 @@ test('configures corridor canvas textures for glTF UV orientation', () => {
 
   assert.equal(WARD_CORRIDOR_CANVAS_TEXTURE_FLIP_Y, false);
   assert.deepEqual(texture, { flipY: false, needsUpdate: true });
+});
+
+test('dims only the high-chroma guide stripes on the corridor floor mesh', () => {
+  const white = new THREE.MeshStandardMaterial({ name: '地板2', color: 0xefefef });
+  const orange = new THREE.MeshStandardMaterial({ name: '材质.008', color: 0xff3800 });
+  const red = new THREE.MeshStandardMaterial({ name: '材质.020', color: 0xcf0909 });
+  const green = new THREE.MeshStandardMaterial({ name: '材质.018', color: 0x01580e });
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(1, 0.02, 1), [white, orange, red, green]);
+  floor.name = '地板';
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 0.1),
+    new THREE.MeshStandardMaterial({ name: '墙壁', color: 0xff3800 }),
+  );
+  wall.name = '墙壁';
+  const root = new THREE.Group();
+  root.add(floor, wall);
+
+  dimHospitalCorridorFloorStripes(root);
+
+  const floorMats = floor.material as THREE.MeshStandardMaterial[];
+  assert.equal(floorMats[0], white);
+  assert.notEqual(floorMats[1], orange);
+  assert.ok(floorMats[1].color.r < orange.color.r);
+  assert.ok(floorMats[2].color.r < red.color.r);
+  assert.ok(floorMats[3].color.g < green.color.g);
+  assert.equal((wall.material as THREE.MeshStandardMaterial).color.getHex(), 0xff3800);
 });

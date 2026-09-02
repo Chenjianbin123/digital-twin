@@ -116,6 +116,11 @@ const dataStatus = computed(() => resolveDataStatus({
   nowMs: dataStatusNow.value,
 }));
 
+const preloadedWard = computed(() => currentWard.value ?? area.value?.rooms[0] ?? null);
+const stationSceneActive = computed(() => isNurseStation.value);
+const corridorSceneActive = computed(() => isWard.value);
+const interiorSceneActive = computed(() => isWardInterior.value && wardInteriorView.value === '3d');
+
 function handlingActionText() {
   return '处理中';
 }
@@ -566,37 +571,44 @@ onBeforeUnmount(() => {
         <WardLegend v-if="(isWard || isWardInterior) && panelsVisible" />
 
         <NurseStationVisualScene
-          v-show="isNurseStation"
+          class="digital-twin__scene-layer"
+          :class="{ 'digital-twin__scene-layer--inactive': !stationSceneActive }"
           :area="area"
           :room-summaries="roomSummaries"
           :device-count="deviceCodes.length"
           :overlays-visible="panelsVisible"
           :model-state="stationModelState"
+          :active="stationSceneActive"
           @room-click="store.enterRoom"
           @model-state="stationModelState = $event"
         />
 
         <AreaScene3D
           v-if="area"
-          v-show="isWard"
+          class="digital-twin__scene-layer"
+          :class="{ 'digital-twin__scene-layer--inactive': !corridorSceneActive }"
           :key="buildAreaSceneIdentity(selectedAreaId)"
           :area-id="selectedAreaId"
           :area="area"
           :room-summaries="roomSummaries"
           :focused-room-index="currentRoomIndex"
           :configured-device-count="deviceCodes.length"
-          :scene-type="sceneType"
+          scene-type="ward"
+          model-kind="corridor"
+          :active="corridorSceneActive"
           @room-click="store.enterRoom"
           @focus-room="store.focusRoom"
         />
 
         <WardScene3D
-          v-if="currentWard"
-          v-show="isWardInterior && wardInteriorView === '3d'"
-          :ward="currentWard"
+          v-if="preloadedWard"
+          class="digital-twin__scene-layer"
+          :class="{ 'digital-twin__scene-layer--inactive': !interiorSceneActive }"
+          :ward="preloadedWard"
           :camera-preset="cameraPreset"
           :env-alert-level="currentEnvAlert.level"
           :selected-bed-code="selectedBed?.bedCode ?? null"
+          :active="interiorSceneActive"
           @bed-click="store.selectBed"
         />
         <WardPlanView
@@ -1267,15 +1279,23 @@ onBeforeUnmount(() => {
 
 
   &__scene {
-
     position: absolute;
-
     inset: 0;
-
     z-index: 1;
-
     overflow: hidden;
+  }
 
+  &__scene-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    transition: opacity 0.42s ease;
+
+    &--inactive {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
   }
 
 
