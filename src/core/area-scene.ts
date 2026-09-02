@@ -309,6 +309,8 @@ export class AreaScene {
   private pointer = new THREE.Vector2();
   private animationId = 0;
   private isActive = true;
+  private stationViewLogStep = 0;
+  private stationViewLogTimer = 0;
   private timer = new THREE.Timer();
   private roomMeshes = new Map<number, RoomMeshGroup>();
   private area: TwinAreaEntity | null = null;
@@ -421,6 +423,7 @@ export class AreaScene {
     this.controls.target.set(0, NURSE_CAMERA_TARGET_Y, 0);
     this.controls.addEventListener('start', this.onControlsStart);
     this.controls.addEventListener('change', this.onControlsChange);
+    this.controls.addEventListener('end', this.onControlsEnd);
 
     this.setupLights();
     this.setupEnvironment();
@@ -484,8 +487,82 @@ export class AreaScene {
   private onControlsChange = () => {
     this.suppressRoomClick = true;
     this.applyStationOrbitCeilingConstraint();
+    // this.scheduleCorridorCameraLog('拖动中');
     this.emitCameraDebugState();
   };
+
+  private onControlsEnd = () => {
+    window.clearTimeout(this.stationViewLogTimer);
+    // this.logCorridorCameraView('操作结束');
+  };
+
+  // private scheduleCorridorCameraLog(reason: string) {
+  //   window.clearTimeout(this.stationViewLogTimer);
+  //   this.stationViewLogTimer = window.setTimeout(() => this.logCorridorCameraView(reason), 160);
+  // }
+
+  // 护士站机位已锁定，视角日志先关掉。
+  // private logStationCameraView(reason: string) {
+  //   if (this.modelKind !== 'station' || this.viewPhase !== 'station')
+  //     return;
+  //   const worldPosition = this.camera.position.toArray().map(value => Number(value.toFixed(3)));
+  //   const worldTarget = this.controls.target.toArray().map(value => Number(value.toFixed(3)));
+  //   const localTarget = this.nurseGroup
+  //     ? this.nurseGroup.worldToLocal(this.controls.target.clone())
+  //     : this.controls.target.clone();
+  //   const localPosition = this.nurseGroup
+  //     ? this.nurseGroup.worldToLocal(this.camera.position.clone())
+  //     : this.camera.position.clone();
+  //   const direction = localPosition.clone().sub(localTarget);
+  //   const horizontalDistance = Math.hypot(direction.x, direction.z);
+  //   this.stationViewLogStep += 1;
+  //   console.info(`[NurseStation] 视角 #${this.stationViewLogStep} ${reason}`, {
+  //     position: worldPosition,
+  //     target: worldTarget,
+  //     localPosition: localPosition.toArray().map(value => Number(value.toFixed(3))),
+  //     camera: {
+  //       target: {
+  //         x: Number(localTarget.x.toFixed(3)),
+  //         y: Number(localTarget.y.toFixed(3)),
+  //         z: Number(localTarget.z.toFixed(3)),
+  //       },
+  //       initialDistance: Number(direction.length().toFixed(3)),
+  //       initialAngle: {
+  //         azimuthDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.x, direction.z)).toFixed(2)),
+  //         elevationDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.y, horizontalDistance)).toFixed(2)),
+  //       },
+  //     },
+  //     fov: Number(this.camera.fov.toFixed(2)),
+  //   });
+  // }
+
+  // 病区走廊机位日志先关掉。
+  // private logCorridorCameraView(reason: string) {
+  //   if (this.modelKind !== 'corridor' || this.viewPhase !== 'corridor')
+  //     return;
+  //   const position = this.camera.position.clone();
+  //   const target = this.controls.target.clone();
+  //   const direction = position.clone().sub(target);
+  //   const horizontalDistance = Math.hypot(direction.x, direction.z);
+  //   this.stationViewLogStep += 1;
+  //   console.info(`[WardCorridor] 视角 #${this.stationViewLogStep} ${reason}`, {
+  //     position: position.toArray().map(value => Number(value.toFixed(3))),
+  //     target: target.toArray().map(value => Number(value.toFixed(3))),
+  //     camera: {
+  //       target: {
+  //         x: Number(target.x.toFixed(3)),
+  //         y: Number(target.y.toFixed(3)),
+  //         z: Number(target.z.toFixed(3)),
+  //       },
+  //       initialDistance: Number(direction.length().toFixed(3)),
+  //       initialAngle: {
+  //         azimuthDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.x, direction.z)).toFixed(2)),
+  //         elevationDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.y, horizontalDistance)).toFixed(2)),
+  //       },
+  //     },
+  //     fov: Number(this.camera.fov.toFixed(2)),
+  //   });
+  // }
 
   /** 输出可直接回填 nurse-station-scene.ts 的护士站相机参数。 */
   private emitCameraDebugState() {
@@ -2991,8 +3068,10 @@ export class AreaScene {
       if (this.stationShell)
         this.stationShell.visible = false;
       // 模型边界就绪后强制回到盒内初始机位，避免沿用盒外占位相机
-      if (this.viewPhase === 'station')
+      if (this.viewPhase === 'station') {
         this.applyStationDeskCamera();
+        // this.logStationCameraView('模型就绪');
+      }
       void this.warmGpu();
     }
     catch (error) {
@@ -3034,8 +3113,10 @@ export class AreaScene {
       this.scene.add(model);
       this.bindWardCorridorSlots();
       this.updateCorridorImplementationVisibility();
-      if (this.viewPhase === 'corridor')
+      if (this.viewPhase === 'corridor') {
         this.applyCorridorOverviewCamera(Math.max(this.area?.rooms.length ?? 1, 1));
+        // this.logCorridorCameraView('模型就绪');
+      }
       void this.warmGpu();
     }
     catch (error) {
@@ -5072,6 +5153,8 @@ export class AreaScene {
     this.resizeObserver?.disconnect();
     this.controls.removeEventListener('start', this.onControlsStart);
     this.controls.removeEventListener('change', this.onControlsChange);
+    this.controls.removeEventListener('end', this.onControlsEnd);
+    window.clearTimeout(this.stationViewLogTimer);
     this.container.removeEventListener('click', this.handleClick);
     this.container.removeEventListener('wheel', this.cancelCameraTransition);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
