@@ -15,6 +15,35 @@ export interface WardInteriorBakedBedSlot {
   bedsideMonitor: THREE.Mesh;
 }
 
+export interface WardInteriorTerminalCandidateDebug {
+  name: string;
+  materialNames: string[];
+  worldCenter: [number, number, number];
+  dimensions: [number, number, number];
+  frontNormal: [number, number, number];
+  distanceToMattress: number;
+}
+
+export interface WardInteriorBedPlacementDebugInfo {
+  bedIndex: number;
+  screenSource: 'model' | 'proxy';
+  mattress: {
+    name: string;
+    worldCenter: [number, number, number];
+    dimensions: [number, number, number];
+  };
+  groupWorldPosition: [number, number, number];
+  inferredHeadX: number;
+  proxy: {
+    localPosition: [number, number, number];
+    worldPosition: [number, number, number];
+    dimensions: [number, number, number];
+    rotationY: number;
+    frontNormal: [number, number, number];
+  };
+  terminalCandidates: WardInteriorTerminalCandidateDebug[];
+}
+
 export interface WardInteriorBaseBounds {
   size: THREE.Vector3;
   center: THREE.Vector3;
@@ -40,7 +69,9 @@ export interface WardInteriorBedParts {
 
 const originalPropPositions = new WeakMap<THREE.Object3D, THREE.Vector3>();
 
-const BAKED_MATTRESS_RE = /^床(?:\.\d{3})?$/;
+// GLTFLoader sanitizes Blender duplicate suffixes (`床.001` → `床001`).
+// Accept both source and runtime spellings so every baked bed is discovered.
+const BAKED_MATTRESS_RE = /^床(?:\.?\d{3})?$/;
 const BAKED_BED_PART_RE = /^(床|枕头|被子|扶手|滑轮|床板|床支架|床配饰)/;
 const BAKED_BED_EQUIP_RE = /^(检测设施|壳|液体|床头柜)/;
 
@@ -114,6 +145,195 @@ function createStatusIndicator(): THREE.Mesh {
   return mesh;
 }
 
+function getMeshMaterials(mesh: THREE.Mesh): THREE.Material[] {
+  return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+}
+
+function getSurfaceVertexIndex(
+  index: THREE.BufferAttribute | THREE.InterleavedBufferAttribute | null,
+  vertexIndex: number,
+) {
+  return index ? index.getX(vertexIndex) : vertexIndex;
+}
+
+function getSurfaceNormal(
+  mesh: THREE.Mesh,
+  materialNamePattern: RegExp,
+): THREE.Vector3 {
+  const geometry = mesh.geometry;
+  const position = geometry.getAttribute('position');
+  const index = geometry.index;
+  const materials = getMeshMaterials(mesh);
+  const matchingMaterialIndexes = new Set<number>();
+  materials.forEach((material, materialIndex) => {
+    if (materialNamePattern.test(material.name))
+      matchingMaterialIndexes.add(materialIndex);
+  });
+  const groups = geometry.groups.length > 0
+    ? geometry.groups.filter(group => matchingMaterialIndexes.has(group.materialIndex ?? 0))
+    : matchingMaterialIndexes.has(0)
+      ? [{ start: 0, count: index ? index.count : position.count, materialIndex: 0 }]
+      : [];
+  const normal = new THREE.Vector3();
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const edgeA = new THREE.Vector3();
+  const edgeB = new THREE.Vector3();
+
+  for (const group of groups) {
+    const end = Math.min(group.start + group.count, index ? index.count : position.count);
+    for (let offset = group.start; offset + 2 < end; offset += 3) {
+      const ia = getSurfaceVertexIndex(index, offset);
+      const ib = getSurfaceVertexIndex(index, offset + 1);
+      const ic = getSurfaceVertexIndex(index, offset + 2);
+      a.fromBufferAttribute(position, ia);
+      b.fromBufferAttribute(position, ib);
+      c.fromBufferAttribute(position, ic);
+      edgeA.subVectors(b, a);
+      edgeB.subVectors(c, a);
+      normal.add(edgeA.cross(edgeB));
+    }
+  }
+
+  if (normal.lengthSq() < 1e-8) {
+    normal.set(0, 0, 1);
+  }
+  return normal
+    .normalize()
+    .transformDirection(mesh.matrixWorld)
+    .normalize();
+}
+
+function collectSurfaceCenter(
+  mesh: THREE.Mesh,
+  materialNamePattern: RegExp,
+): THREE.Vector3 {
+  const geometry = mesh.geometry;
+  const position = geometry.getAttribute('position');
+  const index = geometry.index;
+  const materials = getMeshMaterials(mesh);
+  const matchingMaterialIndexes = new Set<number>();
+  materials.forEach((material, materialIndex) => {
+    if (materialNamePattern.test(material.name))
+      matchingMaterialIndexes.add(materialIndex);
+  });
+  const groups = geometry.groups.length > 0
+    ? geometry.groups.filter(group => matchingMaterialIndexes.has(group.materialIndex ?? 0))
+    : matchingMaterialIndexes.has(0)
+      ? [{ start: 0, count: index ? index.count : position.count, materialIndex: 0 }]
+      : [];
+  const center = new THREE.Vector3();
+  const worldVertex = new THREE.Vector3();
+  let count = 0;
+
+  for (const group of groups) {
+    const end = Math.min(group.start + group.count, index ? index.count : position.count);
+    for (let offset = group.start; offset < end; offset++) {
+      const vertexIndex = getSurfaceVertexIndex(index, offset);
+      worldVertex.fromBufferAttribute(position, vertexIndex).applyMatrix4(mesh.matrixWorld);
+      center.add(worldVertex);
+      count += 1;
+    }
+  }
+
+  if (count === 0)
+    return new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+  return center.multiplyScalar(1 / count);
+}
+
+function collectSurfaceVertexIndices(
+  mesh: THREE.Mesh,
+  materialNamePattern: RegExp,
+): Set<number> {
+  const geometry = mesh.geometry;
+  const position = geometry.getAttribute('position');
+  const index = geometry.index;
+  const materials = getMeshMaterials(mesh);
+  const matchingMaterialIndexes = new Set<number>();
+  materials.forEach((material, materialIndex) => {
+    if (materialNamePattern.test(material.name))
+      matchingMaterialIndexes.add(materialIndex);
+  });
+  const groups = geometry.groups.length > 0
+    ? geometry.groups.filter(group => matchingMaterialIndexes.has(group.materialIndex ?? 0))
+    : matchingMaterialIndexes.has(0)
+      ? [{ start: 0, count: index ? index.count : position.count, materialIndex: 0 }]
+      : [];
+  const vertexIndexes = new Set<number>();
+  for (const group of groups) {
+    const end = Math.min(group.start + group.count, index ? index.count : position.count);
+    for (let offset = group.start; offset < end; offset++)
+      vertexIndexes.add(getSurfaceVertexIndex(index, offset));
+  }
+  return vertexIndexes;
+}
+
+/**
+ * Blender often exports these faces from a shared UV atlas. Dynamic canvas
+ * textures must use the entire face, so clone only the selected surface
+ * geometry and normalize its UV range to [0, 1].
+ */
+function normalizeBedTerminalSurfaceUv(mesh: THREE.Mesh) {
+  if (mesh.userData.wardInteriorTerminalUvNormalized)
+    return;
+
+  const uv = mesh.geometry.getAttribute('uv');
+  if (!uv || uv.count === 0)
+    return;
+
+  const vertexIndexes = collectSurfaceVertexIndices(mesh, /门口机内/);
+  if (vertexIndexes.size === 0)
+    return;
+
+  let minU = Infinity;
+  let maxU = -Infinity;
+  let minV = Infinity;
+  let maxV = -Infinity;
+  for (const vertexIndex of vertexIndexes) {
+    const u = uv.getX(vertexIndex);
+    const v = uv.getY(vertexIndex);
+    minU = Math.min(minU, u);
+    maxU = Math.max(maxU, u);
+    minV = Math.min(minV, v);
+    maxV = Math.max(maxV, v);
+  }
+
+  const spanU = maxU - minU;
+  const spanV = maxV - minV;
+  if (spanU < 1e-6 || spanV < 1e-6)
+    return;
+  if (
+    Math.abs(minU) < 1e-6
+    && Math.abs(maxU - 1) < 1e-6
+    && Math.abs(minV) < 1e-6
+    && Math.abs(maxV - 1) < 1e-6
+  ) {
+    mesh.userData.wardInteriorTerminalUvNormalized = true;
+    return;
+  }
+
+  const normalizedGeometry = mesh.geometry.clone();
+  const normalizedUv = normalizedGeometry.getAttribute('uv');
+  if (!normalizedUv)
+    return;
+  for (const vertexIndex of vertexIndexes) {
+    normalizedUv.setXY(
+      vertexIndex,
+      (uv.getY(vertexIndex) - minV) / spanV,
+      1 - (uv.getX(vertexIndex) - minU) / spanU,
+    );
+  }
+  normalizedUv.needsUpdate = true;
+  mesh.geometry = normalizedGeometry;
+  mesh.userData.wardInteriorTerminalUvNormalized = true;
+}
+
+function isBedTerminalSurface(mesh: THREE.Mesh): boolean {
+  return Boolean(mesh.userData.wardInteriorTerminalSurface)
+    || getMeshMaterials(mesh).some(material => material.name.includes('门口机内'));
+}
+
 function collectBakedMattresses(root: THREE.Object3D): THREE.Mesh[] {
   const mattresses: THREE.Mesh[] = [];
   root.traverse((object) => {
@@ -135,6 +355,44 @@ function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
       meshes.push(object);
   });
   return meshes;
+}
+
+function isBakedBedRelatedName(name: string): boolean {
+  return BAKED_BED_PART_RE.test(name) || BAKED_BED_EQUIP_RE.test(name);
+}
+
+/**
+ * Multi-material GLB primitives are loaded as child meshes under a named
+ * Group (for example `检测设施002` → `立方体035` + `立方体035_1`).
+ * Reparent that semantic container instead of only looking at the child mesh
+ * name, otherwise the real terminal remains outside of its bed slot.
+ */
+function findBakedBedAnchor(
+  object: THREE.Object3D,
+  root: THREE.Object3D,
+): THREE.Object3D | null {
+  let current: THREE.Object3D | null = object;
+  while (current && current !== root) {
+    if (isBakedBedRelatedName(current.name))
+      return current;
+    current = current.parent;
+  }
+  return null;
+}
+
+function collectBakedBedAnchors(root: THREE.Object3D): THREE.Object3D[] {
+  const anchors: THREE.Object3D[] = [];
+  const seen = new Set<THREE.Object3D>();
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh))
+      return;
+    const anchor = findBakedBedAnchor(object, root);
+    if (anchor && !seen.has(anchor)) {
+      seen.add(anchor);
+      anchors.push(anchor);
+    }
+  });
+  return anchors;
 }
 
 function isCloserToMattress(
@@ -166,7 +424,7 @@ function organizeBakedWardInterior(root: THREE.Object3D): WardInteriorAssetParts
     const box = new THREE.Box3().setFromObject(mesh);
     return box.getCenter(new THREE.Vector3());
   });
-  const allMeshes = collectMeshes(architecture);
+  const allBedAnchors = collectBakedBedAnchors(architecture);
   const bakedBeds: WardInteriorBakedBedSlot[] = [];
 
   mattresses.forEach((mattress, index) => {
@@ -178,15 +436,12 @@ function organizeBakedWardInterior(root: THREE.Object3D): WardInteriorAssetParts
     architecture.add(group);
 
     const related: THREE.Object3D[] = [mattress];
-    for (const mesh of allMeshes) {
-      if (mesh === mattress)
+    for (const anchor of allBedAnchors) {
+      if (anchor === mattress)
         continue;
-      const name = mesh.name;
-      if (!BAKED_BED_PART_RE.test(name) && !BAKED_BED_EQUIP_RE.test(name))
-        continue;
-      const meshCenter = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
-      if (isCloserToMattress(meshCenter, center, otherCenters))
-        related.push(mesh);
+      const anchorCenter = new THREE.Box3().setFromObject(anchor).getCenter(new THREE.Vector3());
+      if (isCloserToMattress(anchorCenter, center, otherCenters))
+        related.push(anchor);
     }
 
     for (const object of related)
@@ -205,14 +460,28 @@ function organizeBakedWardInterior(root: THREE.Object3D): WardInteriorAssetParts
     indicator.position.set(headX - 0.02, Math.max(1.35, localCenter.y + localSize.y * 0.55), localCenter.z);
     group.add(indicator);
 
-    const bedTerminalScreen = createProxyScreen('BakedBedTerminalSurface', 0.62, 0.4);
-    bedTerminalScreen.position.set(
-      headX - 0.04,
-      Math.max(1.55, localCenter.y + localSize.y * 0.85),
-      localCenter.z,
-    );
-    bedTerminalScreen.rotation.y = Math.PI / 2;
-    group.add(bedTerminalScreen);
+    const realBedTerminalScreen = collectMeshes(group)
+      .filter(mesh => mesh !== mattress && isBedTerminalSurface(mesh))
+      .sort((a, b) => {
+        const aCenter = collectSurfaceCenter(a, /门口机内/);
+        const bCenter = collectSurfaceCenter(b, /门口机内/);
+        return aCenter.distanceTo(center) - bCenter.distanceTo(center);
+    })[0];
+    let bedTerminalScreen = realBedTerminalScreen;
+    if (!bedTerminalScreen) {
+      bedTerminalScreen = createProxyScreen('BakedBedTerminalSurface', 0.62, 0.4);
+      bedTerminalScreen.position.set(
+        headX - 0.04,
+        Math.max(1.55, localCenter.y + localSize.y * 0.85),
+        localCenter.z,
+      );
+      bedTerminalScreen.rotation.y = Math.PI / 2;
+      group.add(bedTerminalScreen);
+    }
+    else {
+      normalizeBedTerminalSurfaceUv(bedTerminalScreen);
+      bedTerminalScreen.userData.wardInteriorTerminalSurface = true;
+    }
 
     const bedsideMonitor = createProxyScreen('BakedBedsideMonitor', 0.36, 0.28);
     bedsideMonitor.position.set(
@@ -251,6 +520,71 @@ function organizeBakedWardInterior(root: THREE.Object3D): WardInteriorAssetParts
   };
 }
 
+/** 生成床头机定位诊断数据，供浏览器控制台核对真实网格与代理屏幕。 */
+export function getWardInteriorBedPlacementDebugInfo(
+  parts: WardInteriorAssetParts,
+): WardInteriorBedPlacementDebugInfo[] {
+  if (parts.mode !== 'baked')
+    return [];
+
+  const diagnostics: WardInteriorBedPlacementDebugInfo[] = [];
+  for (const slot of parts.bakedBeds) {
+    slot.group.updateWorldMatrix(true, true);
+    const mattressBox = new THREE.Box3().setFromObject(slot.mattress);
+    const mattressCenter = mattressBox.getCenter(new THREE.Vector3());
+    const mattressSize = mattressBox.getSize(new THREE.Vector3());
+    const localMattressBox = mattressBox.clone().applyMatrix4(
+      new THREE.Matrix4().copy(slot.group.matrixWorld).invert(),
+    );
+    const proxyWorldPosition = slot.bedTerminalScreen.getWorldPosition(new THREE.Vector3());
+    const proxyBox = new THREE.Box3().setFromObject(slot.bedTerminalScreen);
+    const candidates: WardInteriorTerminalCandidateDebug[] = [];
+
+    slot.group.traverse((object) => {
+      if (!(object instanceof THREE.Mesh) || !isBedTerminalSurface(object))
+        return;
+      const box = new THREE.Box3().setFromObject(object);
+      const worldCenter = collectSurfaceCenter(object, /门口机内/);
+      candidates.push({
+        name: object.name,
+        materialNames: getMeshMaterials(object).map(material => material.name),
+        worldCenter: toPoint(worldCenter),
+        dimensions: toPoint(box.getSize(new THREE.Vector3())),
+        frontNormal: toPoint(getSurfaceNormal(object, /门口机内/)),
+        distanceToMattress: Number(worldCenter.distanceTo(mattressCenter).toFixed(3)),
+      });
+    });
+    candidates.sort((a, b) => a.distanceToMattress - b.distanceToMattress);
+
+    const groupWorldPosition = slot.group.getWorldPosition(new THREE.Vector3());
+    const proxyWorldQuaternion = slot.bedTerminalScreen.getWorldQuaternion(new THREE.Quaternion());
+    const proxyFrontNormal = new THREE.Vector3(0, 0, 1)
+      .applyQuaternion(proxyWorldQuaternion)
+      .normalize();
+
+    diagnostics.push({
+      bedIndex: slot.index,
+      screenSource: slot.bedTerminalScreen.userData.wardInteriorTerminalSurface ? 'model' : 'proxy',
+      mattress: {
+        name: slot.mattress.name,
+        worldCenter: toPoint(mattressCenter),
+        dimensions: toPoint(mattressSize),
+      },
+      groupWorldPosition: toPoint(groupWorldPosition),
+      inferredHeadX: Number(localMattressBox.min.x.toFixed(3)),
+      proxy: {
+        localPosition: toPoint(slot.bedTerminalScreen.position),
+        worldPosition: toPoint(proxyWorldPosition),
+        dimensions: toPoint(proxyBox.getSize(new THREE.Vector3())),
+        rotationY: Number(slot.bedTerminalScreen.rotation.y.toFixed(3)),
+        frontNormal: toPoint(proxyFrontNormal),
+      },
+      terminalCandidates: candidates,
+    });
+  }
+  return diagnostics;
+}
+
 function getPrototypeWardInteriorParts(root: THREE.Object3D): WardInteriorAssetParts {
   const architecture = requireObject(root, 'WardArchitecture');
   const props = requireObject(root, 'WardProps');
@@ -280,6 +614,46 @@ function cloneMeshMaterial(mesh: THREE.Mesh) {
   mesh.material = Array.isArray(mesh.material)
     ? mesh.material.map(material => material.clone())
     : mesh.material.clone();
+}
+
+function resolveWardInteriorBedTerminalMaterialIndex(mesh: THREE.Mesh): number {
+  const materials = getMeshMaterials(mesh);
+  const configured = Number(mesh.userData.wardInteriorTerminalMaterialIndex);
+  if (Number.isInteger(configured) && configured >= 0 && configured < materials.length)
+    return configured;
+
+  const namedIndex = materials.findIndex(material => material.name.includes('门口机内'));
+  const index = namedIndex >= 0 ? namedIndex : 0;
+  mesh.userData.wardInteriorTerminalMaterialIndex = index;
+  return index;
+}
+
+/**
+ * Replace only the material assigned to the real screen surface.
+ *
+ * The Blender export keeps the bezel and the inner display in one mesh with
+ * separate geometry groups. Assigning a single material to that mesh makes
+ * group index 1 render with no material (or paints the bezel with the canvas).
+ * Keep the material array aligned with the original groups and swap only the
+ * `门口机内` slot.
+ */
+export function setWardInteriorBedTerminalMaterial(
+  mesh: THREE.Mesh,
+  material: THREE.Material,
+) {
+  const current = getMeshMaterials(mesh);
+  const index = resolveWardInteriorBedTerminalMaterialIndex(mesh);
+  const next = [...current];
+  if (next[index] && next[index] !== material)
+    next[index].dispose();
+  next[index] = material;
+  mesh.material = next.length === 1 ? next[0] : next;
+  mesh.userData.wardInteriorTerminalMaterialIndex = index;
+}
+
+export function getWardInteriorBedTerminalMaterial(mesh: THREE.Mesh): THREE.Material {
+  const materials = getMeshMaterials(mesh);
+  return materials[resolveWardInteriorBedTerminalMaterialIndex(mesh)] ?? materials[0];
 }
 
 function ensureMattressStandardMaterial(mesh: THREE.Mesh) {

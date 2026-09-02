@@ -1,10 +1,10 @@
-import type { BedTemplateData } from '@/core/template/data-mapper';
-import { buildBedTemplateData, resolveNodeText, resolveNursingBackground } from '@/core/template/data-mapper';
-import type { ParsedTemplate, TemplateNode } from '@/types/template';
-import { drawTemplateImagePlaceholder } from '@/core/template/template-display-state';
-import type { TwinBedEntity } from '@/types/twin';
-import type { NursingLabelItem } from '@/types/ward';
-import { getFileUrlPrefix } from '@/utils/file-prefix';
+import type { BedTemplateData } from './data-mapper.ts';
+import { buildBedTemplateData, resolveNodeText, resolveNursingBackground } from './data-mapper.ts';
+import type { ParsedTemplate, TemplateNode } from '../../types/template.ts';
+import { drawTemplateImagePlaceholder } from './template-display-state.ts';
+import type { TwinBedEntity } from '../../types/twin.ts';
+import type { NursingLabelItem } from '../../types/ward.ts';
+import { getFileUrlPrefix } from '../../utils/file-prefix.ts';
 
 export interface RenderOptions {
   outputWidth?: number;
@@ -88,6 +88,18 @@ function getNodeRect(node: TemplateNode, outW: number, outH: number): LayoutRect
     y: (toNumber(node.top) / 100) * outH,
     w: (toNumber(node.width) / 100) * outW,
     h: (toNumber(node.height) / 100) * outH,
+  };
+}
+
+/** ParserV3 子节点的尺寸相对父容器百分比。 */
+function getChildRect(node: TemplateNode, parent: LayoutRect): LayoutRect {
+  const width = toNumber(node.width);
+  const height = toNumber(node.height);
+  return {
+    x: parent.x + (toNumber(node.left) / 100) * parent.w,
+    y: parent.y + (toNumber(node.top) / 100) * parent.h,
+    w: width > 0 ? (width / 100) * parent.w : parent.w,
+    h: height > 0 ? (height / 100) * parent.h : parent.h,
   };
 }
 
@@ -235,10 +247,10 @@ async function drawNodeImage(
   node: TemplateNode,
   rect: LayoutRect,
   imageMap: Map<string, HTMLImageElement>,
-) {
+): Promise<boolean> {
   const url = resolveImageUrl(node.src);
   if (!url)
-    return;
+    return false;
   let img = imageMap.get(url);
   if (!img) {
     img = await loadImage(url) ?? undefined;
@@ -246,15 +258,176 @@ async function drawNodeImage(
       imageMap.set(url, img);
   }
   if (!img)
-    return drawTemplateImagePlaceholder(ctx, rect, String(node.text || node.title || ''));
+    drawTemplateImagePlaceholder(ctx, rect, String(node.text || node.title || ''));
+  if (!img)
+    return false;
   ctx.save();
   ctx.globalAlpha = toNumber(node.opacity, 1) || 1;
-  ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
+  const objectFit = String(node.objectFit ?? 'fill');
+  if (objectFit === 'contain') {
+    const scale = Math.min(rect.w / img.width, rect.h / img.height);
+    const width = img.width * scale;
+    const height = img.height * scale;
+    ctx.drawImage(
+      img,
+      rect.x + (rect.w - width) / 2,
+      rect.y + (rect.h - height) / 2,
+      width,
+      height,
+    );
+  }
+  else {
+    ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
+  }
   ctx.restore();
+  return true;
+}
+
+async function drawQrCodeNode(
+  ctx: CanvasRenderingContext2D,
+  node: TemplateNode,
+  rect: LayoutRect,
+  imageMap: Map<string, HTMLImageElement>,
+  value: string,
+) {
+  const rendered = await drawNodeImage(ctx, node, rect, imageMap);
+  if (!rendered)
+    drawPseudoQrCode(ctx, rect, value);
 }
 
 function getNodeType(node: TemplateNode): string {
   return node.type ?? node.title ?? 'element';
+}
+
+function isInteractiveBedNode(node: TemplateNode): boolean {
+  return getNodeType(node) === 'svgBox'
+    || /^button\d*$/i.test(String(node.id ?? ''))
+    || node.class === 'button';
+}
+
+function getTemplateChildren(node: TemplateNode): TemplateNode[] {
+  if (Array.isArray(node.children))
+    return node.children.filter((child): child is TemplateNode => !!child && typeof child === 'object');
+  if (node.children && typeof node.children === 'object') {
+    return Object.values(node.children as Record<string, TemplateNode>)
+      .filter((child): child is TemplateNode => !!child && typeof child === 'object');
+  }
+  return [];
+}
+
+function collectTemplateImageUrls(
+  nodes: TemplateNode[],
+  urls: Set<string>,
+) {
+  for (const node of nodes) {
+    const type = getNodeType(node);
+    if (type === 'img' || type === 'svgBox') {
+      const url = resolveImageUrl(node.src);
+      if (url)
+        urls.add(url);
+    }
+    collectTemplateImageUrls(getTemplateChildren(node), urls);
+  }
+}
+
+function drawPseudoQrCode(
+  ctx: CanvasRenderingContext2D,
+  rect: LayoutRect,
+  value: string,
+) {
+  const side = Math.min(rect.w, rect.h);
+  if (side < 12)
+    return;
+
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  ctx.strokeStyle = '#c6d0d8';
+  ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, Math.max(0, rect.w - 1), Math.max(0, rect.h - 1));
+
+  if (!value) {
+    ctx.restore();
+    return;
+  }
+
+  const modules = 21;
+  const moduleSize = side / modules;
+  let seed = 0;
+  for (const char of value)
+    seed = ((seed << 5) - seed + char.charCodeAt(0)) | 0;
+  const bit = (x: number, y: number) => {
+    const mixed = Math.imul((x + 1) * 73856093, (y + 1) * 19349663) ^ seed;
+    return (mixed & 1) === 1;
+  };
+  const drawFinder = (x: number, y: number) => {
+    ctx.fillStyle = '#101820';
+    ctx.fillRect(rect.x + x * moduleSize, rect.y + y * moduleSize, 7 * moduleSize, 7 * moduleSize);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(rect.x + (x + 1) * moduleSize, rect.y + (y + 1) * moduleSize, 5 * moduleSize, 5 * moduleSize);
+    ctx.fillStyle = '#101820';
+    ctx.fillRect(rect.x + (x + 2) * moduleSize, rect.y + (y + 2) * moduleSize, 3 * moduleSize, 3 * moduleSize);
+  };
+  drawFinder(0, 0);
+  drawFinder(modules - 7, 0);
+  drawFinder(0, modules - 7);
+  ctx.fillStyle = '#101820';
+  for (let y = 0; y < modules; y++) {
+    for (let x = 0; x < modules; x++) {
+      const inFinder = (x < 8 && y < 8)
+        || (x >= modules - 8 && y < 8)
+        || (x < 8 && y >= modules - 8);
+      if (!inFinder && bit(x, y))
+        ctx.fillRect(rect.x + x * moduleSize, rect.y + y * moduleSize, moduleSize + 0.2, moduleSize + 0.2);
+    }
+  }
+  ctx.restore();
+}
+
+async function renderTemplateNodes(
+  ctx2d: CanvasRenderingContext2D,
+  nodes: TemplateNode[],
+  parentRect: LayoutRect | undefined,
+  outW: number,
+  outH: number,
+  remPx: number,
+  imageMap: Map<string, HTMLImageElement>,
+  renderContext: TemplateRenderContext,
+) {
+  for (const node of [...nodes].sort((a, b) => toNumber(a.zIndex) - toNumber(b.zIndex))) {
+    if (node.isRender === false || node.isRender === 'false' || node.display === 'none')
+      continue;
+    if (isInteractiveBedNode(node))
+      continue;
+    const rect = parentRect ? getChildRect(node, parentRect) : getNodeRect(node, outW, outH);
+    if (rect.w <= 0 || rect.h <= 0)
+      continue;
+
+    const type = getNodeType(node);
+    const nursingBg = renderContext.resolveNursingBackground?.(node.id);
+    if (node.id === 'qrcode') {
+      drawNodeBackground(ctx2d, node, rect, remPx, nursingBg);
+      await drawQrCodeNode(ctx2d, node, rect, imageMap, renderContext.resolveText(node));
+    }
+    else if (type === 'img') {
+      await drawNodeImage(ctx2d, node, rect, imageMap);
+    }
+    else if (node.id === 'careLabelBox' || type === 'careLabel') {
+      drawCareLabels(ctx2d, rect, renderContext.careLabels ?? [], remPx);
+    }
+    else if (type === 'verticalLine' || type === 'transverseLine') {
+      drawLine(ctx2d, node, rect);
+    }
+    else {
+      drawNodeBackground(ctx2d, node, rect, remPx, nursingBg);
+      const text = renderContext.resolveText(node);
+      if (text)
+        drawNodeText(ctx2d, node, rect, text, remPx);
+    }
+
+    const children = getTemplateChildren(node);
+    if (children.length)
+      await renderTemplateNodes(ctx2d, children, rect, outW, outH, remPx, imageMap, renderContext);
+  }
 }
 
 export interface TemplateRenderContext {
@@ -282,14 +455,7 @@ export async function renderTemplateWithContext(
   c2d.fillRect(0, 0, outW, outH);
 
   const imageUrls = new Set<string>();
-  for (const node of template.nodes) {
-    const type = getNodeType(node);
-    if (type === 'img' || type === 'svgBox') {
-      const url = resolveImageUrl(node.src);
-      if (url)
-        imageUrls.add(url);
-    }
-  }
+  collectTemplateImageUrls(template.nodes, imageUrls);
   const imageMap = new Map<string, HTMLImageElement>();
   await Promise.all([...imageUrls].map(async (url) => {
     const img = await loadImage(url);
@@ -297,51 +463,7 @@ export async function renderTemplateWithContext(
       imageMap.set(url, img);
   }));
 
-  for (const node of template.nodes) {
-    const rect = getNodeRect(node, outW, outH);
-    if (rect.w <= 0 || rect.h <= 0)
-      continue;
-
-    const type = getNodeType(node);
-    const nursingBg = ctx.resolveNursingBackground?.(node.id);
-
-    if (type === 'img') {
-      await drawNodeImage(c2d, node, rect, imageMap);
-      continue;
-    }
-
-    if (type === 'svgBox')
-      continue;
-
-    if (type === 'text') {
-      drawNodeText(c2d, node, rect, ctx.resolveText(node), remPx);
-      continue;
-    }
-
-    if (node.id === 'careLabelBox' || type === 'careLabel') {
-      drawCareLabels(c2d, rect, ctx.careLabels ?? [], remPx);
-      continue;
-    }
-
-    if (type === 'verticalLine' || type === 'transverseLine') {
-      drawLine(c2d, node, rect);
-      continue;
-    }
-
-    if (node.id === 'qrcode') {
-      drawNodeBackground(c2d, node, rect, remPx, nursingBg);
-      c2d.save();
-      c2d.strokeStyle = '#cccccc';
-      c2d.strokeRect(rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 8);
-      c2d.restore();
-      continue;
-    }
-
-    drawNodeBackground(c2d, node, rect, remPx, nursingBg);
-    const text = ctx.resolveText(node);
-    if (text)
-      drawNodeText(c2d, node, rect, text, remPx);
-  }
+  await renderTemplateNodes(c2d, template.nodes, undefined, outW, outH, remPx, imageMap, ctx);
 
   if (ctx.callingBadge) {
     const badgeW = 90;

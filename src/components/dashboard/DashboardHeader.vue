@@ -360,13 +360,17 @@ const dataStatusLabel = computed(() => ({
   }
 
   &__operator {
-    display: grid;
-    max-width: 140px;
-    margin-bottom: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: min(220px, 22vw);
+    min-width: 0;
+    margin-bottom: 0;
     text-align: right;
 
     strong,
     span {
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -380,7 +384,12 @@ const dataStatusLabel = computed(() => ({
 
     span {
       color: #7fcfd7;
-      font-size: 9px;
+      font-size: 10px;
+    }
+
+    strong + span {
+      padding-left: 6px;
+      border-left: 1px solid rgba(127, 207, 215, 0.3);
     }
   }
 
@@ -737,7 +746,7 @@ const dataStatusLabel = computed(() => ({
     }
 
     &__operator {
-      max-width: 110px;
+      max-width: min(180px, 18vw);
     }
 
     &__status,

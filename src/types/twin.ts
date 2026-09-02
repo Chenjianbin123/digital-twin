@@ -9,6 +9,7 @@ import type {
   StatusBarInfo,
   StatusCode,
 } from './ward';
+import type { BedDeviceInfoVo, BedSickInfoVo } from './bed-device';
 
 /** 孪生场景三类型：护士站 → 病房（走廊） → 病房内 */
 export type TwinSceneType = 'nurse-station' | 'ward' | 'ward-interior';
@@ -37,6 +38,10 @@ export interface TwinBedEntity {
   isOccupied: boolean;
   /** 床头屏模板 ID，来自 queryBedDeviceInfo → bedDeviceInfoVo.templateId */
   templateId?: number;
+  /** 原始床头机设备对象，供模板逗号路径与后续设备字段使用。 */
+  bedDeviceInfo?: BedDeviceInfoVo;
+  /** 原始床头机患者对象，模板字段优先从这里读取。 */
+  bedSickInfo?: BedSickInfoVo | null;
   nursingColor?: string;
   nursingLevel?: string;
   sickInfo?: DoorSickInfo;
@@ -165,22 +170,37 @@ function getBedPosition(index: number, total: number): { x: number; z: number } 
   return layout[index] ?? layout[layout.length - 1] ?? { x: 0, z: 0 };
 }
 
+const EMPTY_PATIENT_LABELS = new Set(['空床', '无患者', '未入住', '未分配']);
+
+/** 对齐 medical-device-v2：只有存在患者身份字段时才算在院床。 */
+function hasPatientIdentity(sick: DoorSickInfo | undefined): boolean {
+  if (!sick)
+    return false;
+  const record = sick as Record<string, unknown>;
+  const name = String(record.sickName ?? '').trim();
+  if (name && !EMPTY_PATIENT_LABELS.has(name))
+    return true;
+  return ['sickNo', 'sickSerialNo', 'sickIdentifier']
+    .some(key => String(record[key] ?? '').trim().length > 0);
+}
+
 export function mapDoorDeviceToTwinWard(doorData: DoorDeviceInfo): TwinWardEntity {
   const { doorDeviceInfo, bedDeviceList, doorSickInfoList, doorEnvData } = doorData;
   const sickMap = new Map(doorSickInfoList.map(s => [s.bedCode, s]));
 
   const beds: TwinBedEntity[] = bedDeviceList.map((bed, index) => {
     const sickInfo = sickMap.get(bed.bedCode);
+    const occupied = hasPatientIdentity(sickInfo);
     return {
       bedCode: bed.bedCode,
       bedName: bed.bedName,
       deviceCode: bed.deviceCode,
       position: getBedPosition(index, bedDeviceList.length),
-      isOccupied: !!sickInfo,
-      nursingColor: sickInfo?.nursingColor,
-      nursingLevel: sickInfo?.nursingLevel,
-      sickInfo,
-      nursingLabels: sickInfo?.nursingLabels,
+      isOccupied: occupied,
+      nursingColor: occupied ? sickInfo?.nursingColor : undefined,
+      nursingLevel: occupied ? sickInfo?.nursingLevel : undefined,
+      sickInfo: occupied ? sickInfo : undefined,
+      nursingLabels: occupied ? sickInfo?.nursingLabels : undefined,
       statusBarInfo: bed.statusBarInfo,
       isOnline: bed.isOnline === '1',
     };

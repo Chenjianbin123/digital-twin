@@ -25,12 +25,57 @@ function asString(value: unknown, fallback = ''): string {
   return String(value);
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object'
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function firstNonEmptyString(values: unknown[]): string {
+  for (const value of values) {
+    const normalized = asString(value).trim();
+    if (normalized)
+      return normalized;
+  }
+  return '';
+}
+
+/** 兼容不同设备列表接口对床头机 SN 的字段命名。 */
+export function resolveBedDeviceCode(raw: BedDeviceInput): string {
+  const record = asRecord(raw);
+  const device = asRecord(record.device);
+  const deviceInfo = asRecord(record.deviceInfo);
+  const bedDeviceInfo = asRecord(record.bedDeviceInfoVo);
+  return firstNonEmptyString([
+    record.deviceCode,
+    record.deviceSn,
+    record.deviceSN,
+    record.sn,
+    record.serialNumber,
+    record.serialNo,
+    record.device_sn,
+    record.serial_number,
+    device.deviceCode,
+    device.deviceSn,
+    device.sn,
+    device.serialNumber,
+    deviceInfo.deviceCode,
+    deviceInfo.deviceSn,
+    deviceInfo.sn,
+    deviceInfo.serialNumber,
+    bedDeviceInfo.deviceCode,
+    bedDeviceInfo.deviceSn,
+    bedDeviceInfo.sn,
+    bedDeviceInfo.serialNumber,
+  ]);
+}
+
 function isValidBedSlot(raw: BedDeviceInput): boolean {
   return !!(asString(raw.bedCode) || asString(raw.bedName));
 }
 
 function normalizeBedDevice(raw: BedDeviceInput): BedDevice {
-  const deviceCode = asString(raw.deviceCode);
+  const deviceCode = resolveBedDeviceCode(raw);
 
   return {
     id: Number(raw.id ?? 0),

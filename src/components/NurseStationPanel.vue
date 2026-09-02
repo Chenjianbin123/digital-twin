@@ -291,6 +291,12 @@ const statusTone = computed(() =>
       : "ok",
 );
 
+const statusModeLabel = computed(() => {
+  if (statusTone.value === "alert") return "需要立即处理";
+  if (statusTone.value === "warn") return "需要复核";
+  return "系统运行正常";
+});
+
 const displayedShiftHandoff = computed(() => {
   if (dataHealth.value.canDeclareNormal || (props.alertTasks?.length ?? 0) > 0)
     return shiftHandoff.value;
@@ -442,9 +448,11 @@ function handleRoomClick(index: number) {
 <template>
   <section class="nurse-panel" aria-label="护士站工作台">
     <header class="station-hero">
+      <span class="station-hero__scanline" aria-hidden="true" />
+      <span class="station-hero__grid" aria-hidden="true" />
       <div class="station-hero__top">
         <div class="station-hero__title">
-          <span class="station-hero__eyebrow">NURSE COMMAND</span>
+          <span class="station-hero__eyebrow">护士站指挥中心</span>
           <h1>智慧护士站</h1>
           <p v-if="stationSubtitle">{{ stationSubtitle }}</p>
         </div>
@@ -456,29 +464,42 @@ function handleRoomClick(index: number) {
 
       <div class="station-hero__body">
         <div class="station-state" :class="`station-state--${statusTone}`">
-          <span aria-hidden="true" />
+          <span class="station-state__signal" aria-hidden="true" />
           <strong>当前运行状态</strong>
+          <small>{{ statusModeLabel }}</small>
         </div>
         <div class="station-hero__status">
-          <span
-            :class="`station-hero__badge station-hero__badge--${statusTone}`"
-          >
-            {{ displayedStationState.label }}
-          </span>
+          <div class="station-hero__status-head">
+            <span
+              :class="`station-hero__badge station-hero__badge--${statusTone}`"
+            >
+              {{ displayedStationState.label }}
+            </span>
+            <span class="station-hero__status-live">
+              <i aria-hidden="true" />实时数据
+            </span>
+          </div>
           <p>{{ displayedStationState.message }}</p>
           <div class="station-hero__chips">
-            <span>{{ loadLabel }}</span>
-            <span>{{ metrics.rooms }} 间病房</span>
-            <span
+            <span class="station-hero__chip station-hero__chip--load">{{
+              loadLabel
+            }}</span>
+            <span class="station-hero__chip station-hero__chip--rooms"
+              >{{ metrics.rooms }} 间病房</span
+            >
+            <span class="station-hero__chip station-hero__chip--devices"
               >{{ metrics.deviceOnline }}/{{ metrics.deviceTotal }} 台在线</span
             >
-            <span>真实事件 {{ swpEvents?.length ?? 0 }}</span>
+            <span class="station-hero__chip station-hero__chip--events"
+              >真实事件 {{ swpEvents?.length ?? 0 }}</span
+            >
             <button
               type="button"
               class="station-hero__alert-toggle"
               :aria-pressed="callAlertsEnabled"
               @click="emit('setCallAlertsEnabled', !callAlertsEnabled)"
             >
+              <span class="station-hero__alert-icon" aria-hidden="true" />
               呼叫提醒：{{ callAlertsEnabled ? "已开启" : "未开启" }}
             </button>
           </div>
@@ -700,6 +721,88 @@ function handleRoomClick(index: number) {
 </template>
 
 <style scoped lang="scss">
+@keyframes nurse-station-hero-scan {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) skewX(-18deg);
+  }
+
+  24% {
+    opacity: 0.72;
+  }
+
+  62% {
+    opacity: 0.72;
+  }
+
+  78%,
+  100% {
+    opacity: 0;
+    transform: translate3d(680%, 0, 0) skewX(-18deg);
+  }
+}
+
+@keyframes nurse-station-status-pulse {
+  0%,
+  100% {
+    opacity: 0.32;
+    transform: scale(0.86);
+  }
+
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes nurse-station-badge-sheen {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) skewX(-18deg);
+  }
+
+  30% {
+    opacity: 0.78;
+  }
+
+  58%,
+  100% {
+    opacity: 0;
+    transform: translate3d(360%, 0, 0) skewX(-18deg);
+  }
+}
+
+@keyframes nurse-station-chip-sheen {
+  0%,
+  22% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) skewX(-18deg);
+  }
+
+  34% {
+    opacity: 0.62;
+  }
+
+  64%,
+  100% {
+    opacity: 0;
+    transform: translate3d(420%, 0, 0) skewX(-18deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .station-hero__scanline,
+  .station-hero__status-live i,
+  .station-hero__badge::after,
+  .station-hero__chips > span::after,
+  .station-state::before,
+  .station-state__signal::before {
+    animation: none;
+  }
+}
+
 .nurse-panel {
   flex: 1;
   min-height: 0;
@@ -932,8 +1035,88 @@ function handleRoomClick(index: number) {
 
 .station-hero {
   position: relative;
+  isolation: isolate;
   padding: 10px;
   overflow: hidden;
+  border-color: rgba(83, 216, 255, 0.28);
+  background:
+    radial-gradient(
+      circle at 4% 0%,
+      rgba(75, 209, 255, 0.18),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 96% 100%,
+      rgba(74, 239, 200, 0.12),
+      transparent 38%
+    ),
+    linear-gradient(145deg, rgba(11, 39, 60, 0.78), rgba(6, 20, 36, 0.58));
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(68, 214, 255, 0.04);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.24;
+    background-image:
+      linear-gradient(rgba(124, 220, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124, 220, 255, 0.08) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(
+      135deg,
+      rgba(0, 0, 0, 0.95),
+      transparent 66%
+    );
+  }
+
+  > * {
+    position: relative;
+    z-index: 2;
+  }
+
+  &__scanline {
+    position: absolute;
+    z-index: 1;
+    top: -35%;
+    bottom: -35%;
+    left: -32%;
+    width: 24%;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(133, 239, 255, 0.28),
+      rgba(108, 255, 222, 0.1),
+      transparent
+    );
+    filter: blur(2px);
+    transform: skewX(-18deg);
+    animation: nurse-station-hero-scan 7.2s ease-in-out infinite;
+  }
+
+  &__grid {
+    position: absolute;
+    z-index: 1;
+    right: 14px;
+    bottom: 13px;
+    width: 76px;
+    height: 38px;
+    pointer-events: none;
+    opacity: 0.38;
+    border-top: 1px solid rgba(105, 235, 255, 0.34);
+    border-right: 1px solid rgba(105, 235, 255, 0.2);
+    background:
+      linear-gradient(90deg, transparent 49%, rgba(105, 235, 255, 0.28) 50%, transparent 51%),
+      linear-gradient(0deg, transparent 49%, rgba(105, 235, 255, 0.24) 50%, transparent 51%);
+    background-size: 12px 12px;
+    mask-image: linear-gradient(135deg, transparent, #000 46%);
+  }
 
   &::before {
     content: "";
@@ -952,6 +1135,7 @@ function handleRoomClick(index: number) {
   }
 
   &__top {
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -965,11 +1149,21 @@ function handleRoomClick(index: number) {
     margin-bottom: 5px;
     padding: 3px 8px;
     border-radius: 999px;
-    background: rgba(77, 208, 255, 0.16);
+    background: linear-gradient(
+      90deg,
+      rgba(77, 208, 255, 0.2),
+      rgba(93, 242, 211, 0.13)
+    );
     color: rgba(188, 239, 255, 0.92);
+    border: 1px solid rgba(112, 230, 255, 0.2);
+    box-shadow: 0 0 18px rgba(77, 208, 255, 0.08);
     font-size: 10px;
     font-weight: 900;
     letter-spacing: 0.6px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__title {
@@ -983,6 +1177,7 @@ function handleRoomClick(index: number) {
       font-size: 21px;
       font-weight: 900;
       line-height: 1.2;
+      text-shadow: 0 0 22px rgba(107, 224, 255, 0.18);
     }
 
     p {
@@ -1016,6 +1211,7 @@ function handleRoomClick(index: number) {
   }
 
   &__body {
+    position: relative;
     display: grid;
     grid-template-columns: 84px 1fr;
     align-items: center;
@@ -1026,16 +1222,49 @@ function handleRoomClick(index: number) {
   &__status {
     min-width: 0;
 
+    &-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    &-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+      color: rgba(150, 226, 232, 0.68);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+
+      i {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #69e4ca;
+        box-shadow: 0 0 10px rgba(105, 228, 202, 0.78);
+        animation: nurse-station-status-pulse 2.2s ease-in-out infinite;
+      }
+    }
+
     p {
       margin: 8px 0 0;
       color: rgba(220, 238, 250, 0.9);
       font-size: 13px;
       font-weight: 700;
       line-height: 1.45;
+      text-shadow: 0 0 16px rgba(116, 207, 255, 0.12);
     }
   }
 
   &__badge {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
     display: inline-flex;
     padding: 3px 8px;
     border-radius: 999px;
@@ -1044,6 +1273,23 @@ function handleRoomClick(index: number) {
     color: #d9fff1;
     background: rgba(84, 185, 116, 0.18);
     border: 1px solid rgba(103, 215, 140, 0.25);
+    box-shadow: 0 0 14px rgba(103, 215, 140, 0.1);
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: -20% auto -20% -55%;
+      width: 36%;
+      pointer-events: none;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.42),
+        transparent
+      );
+      transform: skewX(-18deg);
+      animation: nurse-station-badge-sheen 4.8s ease-in-out infinite;
+    }
 
     &--warn {
       color: #ffe2a7;
@@ -1064,23 +1310,118 @@ function handleRoomClick(index: number) {
     gap: 6px;
     margin-top: 9px;
 
-    span {
+    > span {
+      position: relative;
+      overflow: hidden;
       padding: 4px 8px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(
+        135deg,
+        rgba(130, 206, 232, 0.11),
+        rgba(255, 255, 255, 0.045)
+      );
+      border: 1px solid rgba(142, 220, 240, 0.14);
       color: rgba(195, 220, 240, 0.82);
       font-size: 11px;
       font-weight: 700;
+      transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        background 0.2s ease;
+
+      &::after {
+        content: "";
+        position: absolute;
+        inset: -30% auto -30% -45%;
+        width: 28%;
+        pointer-events: none;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(154, 240, 255, 0.3),
+          transparent
+        );
+        transform: skewX(-18deg);
+        animation: nurse-station-chip-sheen 5.8s ease-in-out infinite;
+      }
+
+      &:hover {
+        transform: translateY(-1px);
+        border-color: rgba(117, 231, 255, 0.34);
+        background: rgba(77, 208, 255, 0.12);
+      }
     }
 
     button {
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 24px;
+      padding: 4px 9px;
+      border: 1px solid rgba(255, 185, 105, 0.28);
+      border-radius: 999px;
+      background: linear-gradient(
+        135deg,
+        rgba(255, 174, 79, 0.2),
+        rgba(113, 52, 27, 0.22)
+      );
+      color: #ffe4b0;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.2;
       cursor: pointer;
+      box-shadow: 0 0 14px rgba(255, 174, 79, 0.08);
+      transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        border-color: rgba(255, 205, 126, 0.56);
+        background: rgba(255, 174, 79, 0.26);
+        box-shadow: 0 0 18px rgba(255, 174, 79, 0.16);
+      }
+
+      &:focus-visible {
+        outline: 2px solid rgba(255, 216, 145, 0.86);
+        outline-offset: 2px;
+      }
+
+      &[aria-pressed="true"] {
+        border-color: rgba(103, 231, 180, 0.42);
+        background: linear-gradient(
+          135deg,
+          rgba(70, 194, 147, 0.22),
+          rgba(15, 79, 65, 0.26)
+        );
+        color: #c6ffe7;
+        box-shadow: 0 0 16px rgba(70, 194, 147, 0.14);
+      }
+
+      .station-hero__alert-icon {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: #ffc067;
+        box-shadow: 0 0 10px rgba(255, 192, 103, 0.76);
+      }
+
+      &[aria-pressed="true"] .station-hero__alert-icon {
+        background: #6be4b5;
+        box-shadow: 0 0 10px rgba(107, 228, 181, 0.82);
+      }
     }
   }
 }
 
 .station-state {
+  position: relative;
+  isolation: isolate;
   width: 84px;
   min-height: 72px;
   display: grid;
@@ -1090,39 +1431,121 @@ function handleRoomClick(index: number) {
   padding: 10px;
   border: 1px solid rgba(103, 215, 140, 0.24);
   border-radius: 7px;
-  background: rgba(45, 121, 83, 0.14);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 14%, rgba(103, 215, 140, 0.18), transparent 46%),
+    linear-gradient(145deg, rgba(45, 121, 83, 0.2), rgba(15, 52, 54, 0.18));
+  box-shadow:
+    inset 0 1px 0 rgba(216, 255, 233, 0.08),
+    0 0 18px rgba(103, 215, 140, 0.07);
 
-  > span {
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    z-index: -1;
+    border: 1px solid rgba(125, 235, 164, 0.22);
+    border-radius: 5px;
+    opacity: 0.52;
+    animation: nurse-station-status-pulse 3.2s ease-in-out infinite;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: -36px;
+    right: -36px;
+    width: 86px;
+    height: 86px;
+    border: 1px solid rgba(120, 239, 181, 0.16);
+    border-radius: 50%;
+    box-shadow: 0 0 0 10px rgba(120, 239, 181, 0.035);
+    pointer-events: none;
+  }
+
+  &__signal {
+    position: relative;
+    z-index: 1;
     width: 10px;
     height: 10px;
     border-radius: 50%;
     background: #67d78c;
     box-shadow: 0 0 12px rgba(103, 215, 140, 0.58);
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: -5px;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      color: rgba(103, 215, 140, 0.5);
+      animation: nurse-station-status-pulse 2.4s ease-out infinite;
+    }
   }
 
   strong {
+    position: relative;
+    z-index: 1;
     color: #eaf7f1;
     font-size: 11px;
     line-height: 1.35;
   }
 
+  small {
+    position: relative;
+    z-index: 1;
+    color: rgba(180, 241, 203, 0.64);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+  }
+
   &--warn {
     border-color: rgba(240, 189, 104, 0.28);
-    background: rgba(128, 88, 29, 0.14);
+    background:
+      radial-gradient(circle at 18% 14%, rgba(240, 189, 104, 0.18), transparent 46%),
+      linear-gradient(145deg, rgba(128, 88, 29, 0.2), rgba(54, 46, 28, 0.2));
 
-    > span {
+    &::before {
+      border-color: rgba(255, 215, 143, 0.24);
+    }
+
+    .station-state__signal {
       background: #f0bd68;
       box-shadow: 0 0 12px rgba(240, 189, 104, 0.55);
+
+      &::before {
+        color: rgba(240, 189, 104, 0.52);
+      }
+    }
+
+    small {
+      color: rgba(255, 222, 163, 0.7);
     }
   }
 
   &--alert {
     border-color: rgba(238, 112, 133, 0.32);
-    background: rgba(139, 47, 65, 0.16);
+    background:
+      radial-gradient(circle at 18% 14%, rgba(238, 112, 133, 0.18), transparent 46%),
+      linear-gradient(145deg, rgba(139, 47, 65, 0.2), rgba(56, 26, 42, 0.2));
 
-    > span {
+    &::before {
+      border-color: rgba(255, 156, 180, 0.26);
+    }
+
+    .station-state__signal {
       background: #ee7085;
       box-shadow: 0 0 12px rgba(238, 112, 133, 0.6);
+
+      &::before {
+        color: rgba(238, 112, 133, 0.58);
+      }
+    }
+
+    small {
+      color: rgba(255, 180, 199, 0.72);
     }
   }
 }

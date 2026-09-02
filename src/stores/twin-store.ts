@@ -62,7 +62,8 @@ import {
   loadSwpCallAlertsEnabled,
   notifyNewSwpCalls,
 } from '@/services/swp-call-notifier';
-import { clearBedTemplateIdCache, enrichBedTemplateIds } from '@/services/bed-template-enricher';
+import { loadBedDeviceDetails, preloadBedTemplates } from '@/services/bed-device-loader';
+import { clearBedTemplateIdCache } from '@/services/bed-template-enricher';
 import { startStatusPusher, stopStatusPusher } from '@/services/status-pusher';
 import type {
   CameraPresetId,
@@ -381,12 +382,13 @@ export const useTwinStore = defineStore('twin', () => {
     bedDetailsLoading.value = true;
     bedDetailsError.value = null;
     try {
-      const warnings = await enrichBedTemplateIds(
+      const result = await loadBedDeviceDetails(
         room.beds,
         () => requestGeneration === bedDetailsRequestGeneration && currentWard.value === room,
+        { forceRefresh: false },
       );
-      if (requestGeneration === bedDetailsRequestGeneration && currentWard.value === room && warnings.length)
-        bedDetailsError.value = warnings.join('；');
+      if (requestGeneration === bedDetailsRequestGeneration && currentWard.value === room && result.warnings.length)
+        bedDetailsError.value = result.warnings.join('；');
     }
     finally {
       if (requestGeneration === bedDetailsRequestGeneration)
@@ -477,6 +479,13 @@ export const useTwinStore = defineStore('twin', () => {
         );
       }
     }
+    const bedResult = await loadBedDeviceDetails(
+      nextArea.rooms.flatMap(room => room.beds),
+      () => true,
+      { forceRefresh: true },
+    );
+    warnings.push(...bedResult.warnings);
+    warnings.push(...await preloadBedTemplates(nextArea.rooms.flatMap(room => room.beds)));
     if (!hospital) {
       const reason = hospitalResult.status === 'rejected' && hospitalResult.reason instanceof Error
         ? `：${hospitalResult.reason.message}`
@@ -671,8 +680,16 @@ export const useTwinStore = defineStore('twin', () => {
             : '';
           warnings.push(`医院基本信息接口失败或返回空数据${reason}`);
         }
+        const nextArea = mapDoorListToTwinArea(result.devices);
+        const bedResult = await loadBedDeviceDetails(
+          nextArea.rooms.flatMap(room => room.beds),
+          () => true,
+          { forceRefresh: true },
+        );
+        warnings.push(...bedResult.warnings);
+        warnings.push(...await preloadBedTemplates(nextArea.rooms.flatMap(room => room.beds)));
         dataWarnings.value = warnings;
-        area.value = mapDoorListToTwinArea(result.devices);
+        area.value = nextArea;
       }
       else {
         throw new Error('请选择病区后再加载病房数据');

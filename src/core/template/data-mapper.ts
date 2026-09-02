@@ -1,6 +1,6 @@
-import type { TwinBedEntity } from '@/types/twin';
-import type { NursingLabelItem } from '@/types/ward';
-import { traverseKeyPath } from '@/utils/key-path';
+import type { TwinBedEntity } from '../../types/twin.ts';
+import type { NursingLabelItem } from '../../types/ward.ts';
+import { traverseKeyPath } from '../../utils/key-path.ts';
 
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n);
@@ -37,52 +37,58 @@ export function infusionStatusText(status?: string): string {
 }
 
 export interface BedTemplateData {
-  bedDeviceInfoVo: {
+  bedDeviceInfoVo: Record<string, unknown> & {
     bedName: string;
     bedCode: string;
     deviceCode: string;
     isOnline: string;
   };
-  bedSickInfoVo: Record<string, string>;
+  bedSickInfoVo: Record<string, unknown>;
   bedSickNursingLabelList: NursingLabelItem[];
   timer: { date: string; time: string };
   statusBarInfo: { status: string; text: string };
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? { ...(value as Record<string, unknown>) } : {};
+}
+
+/** 构造与 ParserV3 相同命名空间的数据对象，保留后端扩展字段。 */
 export function buildBedTemplateData(bed: TwinBedEntity): BedTemplateData {
   const sick = bed.sickInfo;
+  const rawDevice = asRecord(bed.bedDeviceInfo);
+  const rawSick = Object.keys(asRecord(bed.bedSickInfo)).length
+    ? asRecord(bed.bedSickInfo)
+    : asRecord(sick);
   const now = new Date();
 
   return {
     bedDeviceInfoVo: {
+      ...rawDevice,
       bedName: bed.bedName,
       bedCode: bed.bedCode,
       deviceCode: bed.deviceCode,
       isOnline: bed.isOnline ? '1' : '0',
     },
-    bedSickInfoVo: sick
-      ? {
-          sickName: sick.sickName ?? '',
-          sickSex: sick.sickSex ?? '',
-          sickAge: sick.sickAge ?? '',
-          sickNo: sick.sickNo ?? '',
-          sickInTime: sick.sickInTime ?? '',
-          nursingLevel: sick.nursingLevel ?? '',
-          nursingColor: sick.nursingColor ?? bed.nursingColor ?? '',
-          sickAllergy: sick.sickAllergy ?? '',
-          sickDiet: sick.sickDiet ?? '',
-          sickSafetyPrecautions: sick.sickSafetyPrecautions ?? '',
-          sickIsolation: sick.sickIsolation ?? '',
-          visitDoctorName: sick.visitDoctorName ?? '',
-          dutyNurseName: sick.dutyNurseName ?? '',
-          areaHeadNurseName: sick.areaHeadNurseName ?? '',
-          sickType: (sick as { sickType?: string }).sickType ?? '',
-        }
-      : {
-          bedName: bed.bedName,
-          nursingColor: bed.nursingColor ?? '',
-          nursingLevel: bed.nursingLevel ?? '',
-        },
+    bedSickInfoVo: {
+      ...rawSick,
+      bedName: rawSick.bedName ?? bed.bedName,
+      bedCode: rawSick.bedCode ?? bed.bedCode,
+      sickName: rawSick.sickName ?? '',
+      sickSex: rawSick.sickSex ?? '',
+      sickAge: rawSick.sickAge ?? '',
+      sickNo: rawSick.sickNo ?? '',
+      sickInTime: rawSick.sickInTime ?? '',
+      nursingLevel: rawSick.nursingLevel ?? bed.nursingLevel ?? '',
+      nursingColor: rawSick.nursingColor ?? bed.nursingColor ?? '',
+      sickAllergy: rawSick.sickAllergy ?? '',
+      sickDiet: rawSick.sickDiet ?? '',
+      sickSafetyPrecautions: rawSick.sickSafetyPrecautions ?? '',
+      sickIsolation: rawSick.sickIsolation ?? '',
+      visitDoctorName: rawSick.visitDoctorName ?? '',
+      dutyNurseName: rawSick.dutyNurseName ?? '',
+      areaHeadNurseName: rawSick.areaHeadNurseName ?? '',
+    },
     bedSickNursingLabelList: bed.nursingLabels ?? sick?.nursingLabels ?? [],
     timer: {
       date: formatDate(now),
@@ -103,7 +109,7 @@ export function resolveNodeText(
     return data.statusBarInfo.text;
 
   if (typeof node.key === 'string' && node.key.trim()) {
-    const keys = node.key.split(',').map(k => k.trim());
+    const keys = node.key.split(',').map(k => k.trim()).filter(Boolean);
     const value = traverseKeyPath(keys, data);
     if (node.id === 'hosDate')
       return formatHosDate(value);
@@ -117,29 +123,29 @@ export function resolveNodeText(
   if (node.id === 'bedNum' || node.id === 'bedName')
     return data.bedDeviceInfoVo.bedName;
   if (node.id === 'patientName')
-    return data.bedSickInfoVo.sickName ?? '';
+    return String(data.bedSickInfoVo.sickName ?? '');
   if (node.id === 'nursingLevel' || node.id === 'careLevelBack')
-    return data.bedSickInfoVo.nursingLevel ?? '';
+    return String(data.bedSickInfoVo.nursingLevel ?? '');
   if (node.id === 'patientAge')
-    return data.bedSickInfoVo.sickAge ?? '';
+    return String(data.bedSickInfoVo.sickAge ?? '');
   if (node.id === 'patientSex' || node.id === 'sickSex')
-    return data.bedSickInfoVo.sickSex ?? '';
+    return String(data.bedSickInfoVo.sickSex ?? '');
   if (node.id === 'hosNum')
-    return data.bedSickInfoVo.sickNo ?? '';
+    return String(data.bedSickInfoVo.sickNo ?? '');
   if (node.id === 'hosDate')
-    return formatHosDate(data.bedSickInfoVo.sickInTime ?? '');
+    return formatHosDate(String(data.bedSickInfoVo.sickInTime ?? ''));
   if (node.id === 'food')
-    return data.bedSickInfoVo.sickDiet ?? '';
+    return String(data.bedSickInfoVo.sickDiet ?? '');
   if (node.id === 'allergy')
-    return data.bedSickInfoVo.sickAllergy ?? '';
+    return String(data.bedSickInfoVo.sickAllergy ?? '');
   if (node.id === 'guard')
-    return data.bedSickInfoVo.sickSafetyPrecautions ?? data.bedSickInfoVo.sickIsolation ?? '';
+    return String(data.bedSickInfoVo.sickSafetyPrecautions ?? data.bedSickInfoVo.sickIsolation ?? '');
   if (node.id === 'nurseName')
-    return data.bedSickInfoVo.dutyNurseName ?? '';
+    return String(data.bedSickInfoVo.dutyNurseName ?? '');
   if (node.id === 'docName' || node.id === 'visitDoctorName')
-    return data.bedSickInfoVo.visitDoctorName ?? '';
+    return String(data.bedSickInfoVo.visitDoctorName ?? '');
   if (node.id === 'areaHeadNurseName')
-    return data.bedSickInfoVo.areaHeadNurseName ?? '';
+    return String(data.bedSickInfoVo.areaHeadNurseName ?? '');
 
   return node.text ?? '';
 }
@@ -147,10 +153,12 @@ export function resolveNodeText(
 export function resolveNursingBackground(bed: TwinBedEntity, nodeId?: string): string | null {
   if (!nodeId)
     return null;
-  const color = bed.sickInfo?.nursingColor ?? bed.nursingColor;
+  const color = bed.bedSickInfo?.nursingColor
+    || bed.sickInfo?.nursingColor
+    || bed.nursingColor;
   if (!color)
     return null;
   if (['nursingLevel', 'careLevelBack', 'nursingLevelColor'].includes(nodeId))
-    return color;
+    return String(color);
   return null;
 }

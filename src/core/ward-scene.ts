@@ -41,10 +41,13 @@ import {
   configureWardInteriorCanvasTexture,
   disposeWardInteriorModel,
   fitWardInteriorEnvironment,
+  getWardInteriorBedTerminalMaterial,
+  getWardInteriorBedPlacementDebugInfo,
   getWardInteriorAssetParts,
   hideWardInteriorCeiling,
   prepareWardInteriorModelMaterials,
   resolveWardInteriorModelBedPose,
+  setWardInteriorBedTerminalMaterial,
   syncWardInteriorBakedBedVisibility,
 } from '@/core/ward-interior-model';
 import type { WardInteriorAssetParts } from '@/core/ward-interior-model';
@@ -121,8 +124,7 @@ export class WardScene {
   private wardInteriorModel: THREE.Group | null = null;
   private wardInteriorParts: WardInteriorAssetParts | null = null;
   private wardInteriorModelLoadToken = 0;
-  private cameraViewLogStep = 0;
-  private cameraViewLogTimer = 0;
+  private wardInteriorPlacementDiagnosticsLogged = false;
   private environmentTexture: THREE.Texture | null = null;
   private quiltTexture: THREE.CanvasTexture | null = null;
   private pillowcaseTexture: THREE.CanvasTexture | null = null;
@@ -247,18 +249,55 @@ export class WardScene {
     // this.logCameraView('操作结束');
   };
 
-  private logCameraView(reason: string) {
-    // const offset = this.camera.position.clone().sub(this.controls.target);
-    // const spherical = new THREE.Spherical().setFromVector3(offset);
-    // this.cameraViewLogStep += 1;
-    // console.info(`[WardScene] 视角 #${this.cameraViewLogStep} ${reason}`, {
-    //   position: this.camera.position.toArray().map(value => Number(value.toFixed(3))),
-    //   target: this.controls.target.toArray().map(value => Number(value.toFixed(3))),
-    //   distance: Number(spherical.radius.toFixed(3)),
-    //   azimuthDeg: Number(THREE.MathUtils.radToDeg(spherical.theta).toFixed(2)),
-    //   polarDeg: Number(THREE.MathUtils.radToDeg(spherical.phi).toFixed(2)),
-    // });
-    void reason;
+  private isWardInteriorPlacementDiagnosticsEnabled() {
+    if (import.meta.env.DEV)
+      return true;
+    return new URLSearchParams(window.location.search).get('debugWardTerminal') === '1';
+  }
+
+  private logWardInteriorBedPlacementDiagnostics(parts: WardInteriorAssetParts) {
+    if (
+      !this.isWardInteriorPlacementDiagnosticsEnabled()
+      || parts.mode !== 'baked'
+      || this.wardInteriorPlacementDiagnosticsLogged
+    )
+      return;
+
+    const diagnostics = getWardInteriorBedPlacementDebugInfo(parts);
+    this.wardInteriorPlacementDiagnosticsLogged = true;
+    console.groupCollapsed('[WardScene] 床头机位置诊断');
+    console.info('说明：绑定面是当前模板实际使用的屏幕面；真实候选面是模型内带“门口机内”材质的候选面。');
+    console.table(diagnostics.map((item) => {
+      const nearest = item.terminalCandidates[0];
+      const delta = nearest
+        ? nearest.worldCenter.map((value, index) => Number((value - item.proxy.worldPosition[index]).toFixed(3))).join(', ')
+        : '—';
+      const directionDot = nearest
+        ? nearest.frontNormal.reduce((sum, value, index) => sum + value * item.proxy.frontNormal[index], 0)
+        : null;
+      return {
+        床位: item.bedIndex + 1,
+        绑定面来源: item.screenSource === 'model' ? '模型真实屏幕' : '代理面',
+        床垫中心: item.mattress.worldCenter.join(', '),
+        床垫尺寸: item.mattress.dimensions.join(', '),
+        推测床头X: item.inferredHeadX,
+        绑定面位置: item.proxy.worldPosition.join(', '),
+        绑定面法线: item.proxy.frontNormal.join(', '),
+        绑定面旋转Y: item.proxy.rotationY,
+        最近真实面: nearest?.name ?? '未找到',
+        真实面位置: nearest?.worldCenter.join(', ') ?? '—',
+        绑定面到真实面偏移: delta,
+        真实面法线: nearest?.frontNormal.join(', ') ?? '—',
+        方向点积: directionDot === null ? '—' : Number(directionDot.toFixed(3)),
+        真实候选数: item.terminalCandidates.length,
+      };
+    }));
+    for (const item of diagnostics) {
+      console.groupCollapsed(`床位 ${item.bedIndex + 1} · ${item.mattress.name}`);
+      console.table(item.terminalCandidates);
+      console.groupEnd();
+    }
+    console.groupEnd();
   }
 
   private handleVisibilityChange = () => {
@@ -717,7 +756,7 @@ export class WardScene {
     if (meshGroup.bedTerminalTexture)
       meshGroup.bedTerminalTexture.dispose();
     meshGroup.bedTerminalTexture = tex;
-    const screenMat = meshGroup.bedTerminalScreen.material as THREE.MeshBasicMaterial;
+    const screenMat = getWardInteriorBedTerminalMaterial(meshGroup.bedTerminalScreen) as THREE.MeshBasicMaterial;
     screenMat.map = tex;
     screenMat.needsUpdate = true;
     tex.needsUpdate = true;
@@ -1812,6 +1851,7 @@ export class WardScene {
 
       this.wardInteriorModel = model;
       this.wardInteriorParts = parts;
+      this.wardInteriorPlacementDiagnosticsLogged = false;
       this.scene.add(model);
       this.roomGroup.visible = false;
       this.clearBedMeshes();
@@ -2248,15 +2288,12 @@ export class WardScene {
     const status = resolveBedStatus(bed);
     const bedTerminalTexture = this.createBedTerminalTexture(bed, status);
     configureWardInteriorCanvasTexture(bedTerminalTexture);
-    const terminalMaterials = Array.isArray(bound.bedTerminalScreen.material)
-      ? bound.bedTerminalScreen.material
-      : [bound.bedTerminalScreen.material];
-    terminalMaterials.forEach(material => material.dispose());
-    bound.bedTerminalScreen.material = new THREE.MeshBasicMaterial({
+    setWardInteriorBedTerminalMaterial(bound.bedTerminalScreen, new THREE.MeshBasicMaterial({
+      name: '门口机内·动态模板',
       map: bedTerminalTexture,
       side: THREE.DoubleSide,
       toneMapped: false,
-    });
+    }));
 
     const bedsideMonitorTexture = this.createBedsideMonitorTexture(bed, status);
     configureWardInteriorCanvasTexture(bedsideMonitorTexture);
@@ -2319,15 +2356,12 @@ export class WardScene {
     const status = resolveBedStatus(bed);
     const bedTerminalTexture = this.createBedTerminalTexture(bed, status);
     configureWardInteriorCanvasTexture(bedTerminalTexture);
-    const terminalMaterials = Array.isArray(cloned.bedTerminalScreen.material)
-      ? cloned.bedTerminalScreen.material
-      : [cloned.bedTerminalScreen.material];
-    terminalMaterials.forEach(material => material.dispose());
-    cloned.bedTerminalScreen.material = new THREE.MeshBasicMaterial({
+    setWardInteriorBedTerminalMaterial(cloned.bedTerminalScreen, new THREE.MeshBasicMaterial({
+      name: '门口机内·动态模板',
       map: bedTerminalTexture,
       side: THREE.DoubleSide,
       toneMapped: false,
-    });
+    }));
 
     const bedsideMonitorTexture = this.createBedsideMonitorTexture(bed, status);
     configureWardInteriorCanvasTexture(bedsideMonitorTexture);
@@ -2671,6 +2705,8 @@ export class WardScene {
     }
     if (this.wardInteriorParts)
       syncWardInteriorBakedBedVisibility(this.wardInteriorParts, ward.beds.length);
+    if (this.wardInteriorParts)
+      this.logWardInteriorBedPlacementDiagnostics(this.wardInteriorParts);
     this.updateAllBedSelectionVisuals();
   }
 
@@ -3081,7 +3117,6 @@ export class WardScene {
     this.controls.removeEventListener('start', this.onControlsStart);
     this.controls.removeEventListener('change', this.onControlsChange);
     this.controls.removeEventListener('end', this.onControlsEnd);
-    window.clearTimeout(this.cameraViewLogTimer);
     this.container.removeEventListener('click', this.handleClick);
     this.container.removeEventListener('wheel', this.cancelCameraTransition);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);

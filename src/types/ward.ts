@@ -49,6 +49,8 @@ export interface DoorSickInfo {
   areaHeadNurseName: string;
   areaHeadNurseUserPic: string;
   nursingLabels?: NursingLabelItem[];
+  /** 原始床头机患者字段，门口机数据没有时保持为空。 */
+  [key: string]: unknown;
 }
 
 export interface BedDevice {

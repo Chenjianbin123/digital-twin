@@ -2808,9 +2808,6 @@ export class AreaScene {
         ? this.createHealthEducationVideoTexture()
         : undefined;
       const texture = videoTexture?.texture ?? this.createNurseStationBoardTexture(kind);
-      const materialNames = (Array.isArray(object.material) ? object.material : [object.material])
-        .map(material => material.name)
-        .filter(Boolean);
       const overlay = this.attachNurseStationTextureOverlay(object, texture, kind, displayRoot);
       this.nurseStationBoardDisplays.push({ kind, screen: overlay, texture, video: videoTexture?.video });
       // console.info('[NurseStationDisplay] bound', {

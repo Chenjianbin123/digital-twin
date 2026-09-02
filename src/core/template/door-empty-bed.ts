@@ -1,4 +1,4 @@
-import type { TemplateNode } from '@/types/template';
+import type { TemplateNode } from '../../types/template.ts';
 
 /** 对齐主项目 EMPTY_TOKEN，Canvas 渲染用 */
 const EMPTY_BED_TEMPLATES: Record<'bed1' | 'bed2' | 'bed3', TemplateNode> = {

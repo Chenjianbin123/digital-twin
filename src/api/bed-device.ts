@@ -34,8 +34,8 @@ export async function queryBedDeviceInfo(deviceCode: string): Promise<BedDeviceI
 
 export async function queryBedTemplateId(deviceCode: string): Promise<number> {
   const data = await queryBedDeviceInfo(deviceCode);
-  const templateId = data.bedDeviceInfoVo.templateId;
-  if (!templateId)
+  const templateId = Number(data.bedDeviceInfoVo.templateId);
+  if (!Number.isFinite(templateId) || templateId <= 0)
     throw new Error(`床头机 ${deviceCode} 未配置 templateId`);
   return templateId;
 }

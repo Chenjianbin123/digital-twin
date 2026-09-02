@@ -8,13 +8,13 @@ const snapshotBody = source.slice(
   source.indexOf('async function fetchAreaSnapshot'),
   source.indexOf('async function commitRequestedArea'),
 );
-assert.doesNotMatch(snapshotBody, /enrichAreaBedTemplateIds/);
+assert.match(snapshotBody, /loadBedDeviceDetails/);
 
 const loadAreaBody = source.slice(
   source.indexOf('async function loadArea'),
   source.indexOf('function updateBedStatus'),
 );
-assert.doesNotMatch(loadAreaBody, /enrichAreaBedTemplateIds/);
+assert.match(loadAreaBody, /loadBedDeviceDetails/);
 
 const enterRoomIndex = source.indexOf('function enterRoom');
 assert.ok(enterRoomIndex >= 0, 'enterRoom should remain the ward interior entry point');
@@ -23,11 +23,11 @@ assert.match(enterRoomBody, /loadCurrentWardBedDetails/);
 const bedLoadIndex = source.indexOf('async function loadCurrentWardBedDetails');
 assert.ok(bedLoadIndex >= 0, 'ward entry should define a deferred bed detail loader');
 const bedLoadBody = source.slice(bedLoadIndex, source.indexOf('\n  }', bedLoadIndex) + 4);
-assert.match(bedLoadBody, /enrichBedTemplateIds/);
+assert.match(bedLoadBody, /loadBedDeviceDetails/);
 assert.match(bedLoadBody, /bedDetailsLoading/);
 assert.match(bedLoadBody, /bedDetailsError/);
 assert.match(bedLoadBody, /bedDetailsRequestGeneration/);
-assert.match(source, /enrichBedTemplateIds\(\s*room\.beds,/);
+assert.match(source, /loadBedDeviceDetails\(\s*room\.beds,/);
 assert.match(source, /\(\) => requestGeneration === bedDetailsRequestGeneration/);
 assert.match(app, /bedDetailsLoading/);
 assert.match(app, /bedDetailsError/);

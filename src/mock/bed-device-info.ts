@@ -1,48 +1,69 @@
 import type { BedDeviceInfoData } from '@/types/bed-device';
+import type { DoorDeviceInfo } from '@/types/ward';
+import { MOCK_DOOR_DEVICE_LIST } from './door-device-list';
 
-/** 对齐主项目 mock/bed/device-list.ts，按床头机 SN 返回 templateId */
-const BED_DEVICE_BY_SN: Record<string, BedDeviceInfoData> = {
-  SN1001: {
-    bedDeviceInfoVo: {
-      id: 752, deviceName: '床头机1号', deviceCode: 'SN1001', deviceIp: '192.168.6.101',
-      deviceTypeCode: '102', deptId: 60, deptName: '普通内科', deptCode: '4444',
-      areaId: 72, areaName: '普通内科病区', areaCode: '2009',
-      sickroomId: 23, sickroomName: '901房', sickroomCode: '3091',
-      bedName: '01', bedId: 41, bedCode: '90101', templateId: 1,
-    },
-  },
-  SN1002: {
-    bedDeviceInfoVo: {
-      id: 753, deviceName: '床头机2号', deviceCode: 'SN1002', deviceIp: '192.168.6.102',
-      deviceTypeCode: '102', deptId: 60, deptName: '普通内科', deptCode: '4444',
-      areaId: 72, areaName: '普通内科病区', areaCode: '2009',
-      sickroomId: 23, sickroomName: '901房', sickroomCode: '3091',
-      bedName: '02', bedId: 42, bedCode: '90102', templateId: 1,
-    },
-  },
-  SN1003: {
-    bedDeviceInfoVo: {
-      id: 754, deviceName: '床头机3号', deviceCode: 'SN1003', deviceIp: '192.168.6.103',
-      deviceTypeCode: '102', deptId: 60, deptName: '普通内科', deptCode: '4444',
-      areaId: 72, areaName: '普通内科病区', areaCode: '2009',
-      sickroomId: 23, sickroomName: '901房', sickroomCode: '3091',
-      bedName: '03', bedId: 43, bedCode: '90103', templateId: 1,
-    },
-  },
-  SN1004: {
-    bedDeviceInfoVo: {
-      id: 755, deviceName: '床头机4号', deviceCode: 'SN1004', deviceIp: '192.168.6.104',
-      deviceTypeCode: '102', deptId: 60, deptName: '普通内科', deptCode: '4444',
-      areaId: 72, areaName: '普通内科病区', areaCode: '2009',
-      sickroomId: 23, sickroomName: '901房', sickroomCode: '3091',
-      bedName: '04', bedId: 44, bedCode: '90104', templateId: 1,
-    },
-  },
-};
+function buildBedDeviceInfo(room: DoorDeviceInfo, bedCode: string): BedDeviceInfoData | null {
+  const bed = room.bedDeviceList.find(item => item.bedCode === bedCode);
+  if (!bed)
+    return null;
+  const patient = room.doorSickInfoList.find(item => item.bedCode === bed.bedCode);
+  const labels = patient?.nursingLabels ?? [];
 
-export function getMockBedDeviceInfo(deviceCode: string): BedDeviceInfoData | null {
-  if (BED_DEVICE_BY_SN[deviceCode])
-    return structuredClone(BED_DEVICE_BY_SN[deviceCode]);
+  return {
+    bedDeviceInfoVo: {
+      id: bed.id,
+      deviceName: bed.deviceName,
+      deviceCode: bed.deviceCode,
+      deviceIp: bed.deviceIp,
+      deviceTypeCode: '102',
+      deptId: Number(room.doorDeviceInfo.deptId || 0),
+      deptName: room.doorDeviceInfo.deptName,
+      deptCode: room.doorDeviceInfo.deptCode,
+      areaId: room.doorDeviceInfo.areaId,
+      areaName: room.doorDeviceInfo.areaName,
+      areaCode: room.doorDeviceInfo.areaCode,
+      sickroomId: Number(room.doorDeviceInfo.sickroomId || 0),
+      sickroomName: room.doorDeviceInfo.sickroomName,
+      sickroomCode: room.doorDeviceInfo.sickroomCode,
+      bedName: bed.bedName,
+      bedId: bed.id,
+      bedCode: bed.bedCode,
+      templateId: 1,
+      isOnline: bed.isOnline,
+    },
+    bedSickInfoVo: patient
+      ? {
+          ...patient,
+          sickIdentifier: patient.sickNo,
+          sickSerialNo: patient.sickNo,
+          sickType: '',
+        }
+      : null,
+    bedSickNursingLabelList: labels.map((item, index) => ({
+      id: index + 1,
+      labelCode: item.labelCode,
+      labelName: item.labelName,
+      labelColor: item.labelColor,
+      labelTextColor: item.labelTextColor,
+    })),
+  };
+}
+
+function findMockBedDeviceInfo(deviceCode: string): BedDeviceInfoData | null {
+  for (const room of MOCK_DOOR_DEVICE_LIST.data) {
+    const result = buildBedDeviceInfo(room, deviceCode);
+    if (result)
+      return result;
+  }
+  return null;
+}
+
+/** Mock 也走与真实接口相同的完整床头数据结构。 */
+export function getMockBedDeviceInfo(deviceCode: string): BedDeviceInfoData {
+  const found = findMockBedDeviceInfo(deviceCode);
+  if (found)
+    return structuredClone(found);
+
   return {
     bedDeviceInfoVo: {
       id: 0,
@@ -64,5 +85,7 @@ export function getMockBedDeviceInfo(deviceCode: string): BedDeviceInfoData | nu
       bedCode: '',
       templateId: 1,
     },
+    bedSickInfoVo: null,
+    bedSickNursingLabelList: [],
   };
 }

@@ -1,6 +1,6 @@
-import { getEmptyBedTemplate, pickEmptyBedKey } from '@/core/template/door-empty-bed';
-import { validateTemplateContent } from '@/core/template/template-validation';
-import type { ParsedTemplate, SwpTemplateInfo, TemplateContent, TemplateNode } from '@/types/template';
+import { getEmptyBedTemplate, pickEmptyBedKey } from './door-empty-bed.ts';
+import { validateTemplateContent } from './template-validation.ts';
+import type { ParsedTemplate, SwpTemplateInfo, TemplateContent, TemplateNode } from '../../types/template.ts';
 
 /** 对齐主项目 AnalyzeTypeEnum.PERCENTAGE_TEMPLATE */
 const PERCENTAGE_TEMPLATE = '2';
@@ -16,44 +16,36 @@ function shouldRenderNode(node: TemplateNode): boolean {
   if (node.isRender === 'false' || node.isRender === false)
     return false;
   const id = node.id ?? '';
-  if (/^button\d*$/i.test(id))
-    return false;
-  if (node.class === 'button')
-    return false;
   if (id === 'sickRoomStatusCoverSlot' || id === 'sickRoomStatusCountdownSlot')
     return false;
   return true;
 }
 
 /**
- * 对齐主项目 SizeTransformStrategy：像素模板将 left/top/width/height 转为百分比
- * 仅处理 root 直系子节点（模板 data 数组中的扁平节点）
+ * 对齐主项目 SizeTransformStrategy：像素模板将 root 直系子节点的
+ * left/top/width/height 转为百分比；子节点本身已经是父容器百分比，不重复换算。
  */
 function normalizeNodeCoordinates(
-  nodes: TemplateNode[],
+  node: TemplateNode,
   tplWidth: number,
   tplHeight: number,
   analyzeType?: string,
-  isNew?: boolean,
 ) {
   const isPercentageTemplate = analyzeType === PERCENTAGE_TEMPLATE;
   if (isPercentageTemplate)
     return;
 
-  const shouldConvert = isNew || analyzeType === '1' || !analyzeType;
-  if (!shouldConvert)
-    return;
+  const toPercentage = (value: number | string | undefined, size: number) => {
+    if (value === undefined || value === null || value === '')
+      return '0';
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? ((numeric * 100) / size).toFixed(3) : '0';
+  };
 
-  for (const node of nodes) {
-    if (node.left !== undefined && node.left !== '')
-      node.left = ((+node.left * 100) / tplWidth).toFixed(3);
-    if (node.top !== undefined && node.top !== '')
-      node.top = ((+node.top * 100) / tplHeight).toFixed(3);
-    if (node.width !== undefined && node.width !== '')
-      node.width = ((+node.width * 100) / tplWidth).toFixed(3);
-    if (node.height !== undefined && node.height !== '')
-      node.height = ((+node.height * 100) / tplHeight).toFixed(3);
-  }
+  node.left = toPercentage(node.left, tplWidth);
+  node.top = toPercentage(node.top, tplHeight);
+  node.width = toPercentage(node.width, tplWidth);
+  node.height = toPercentage(node.height, tplHeight);
 }
 
 /** 对齐主项目 ParentObjectTransformStrategy：为 doorInfoBox 注入空床模板 */
@@ -70,15 +62,65 @@ function injectDoorEmptyBedTemplates(nodes: TemplateNode[]) {
   }
 }
 
+function cloneNode(
+  input: TemplateNode,
+  root: boolean,
+  width: number,
+  height: number,
+  analyzeType?: string,
+): TemplateNode {
+  const node: TemplateNode = { ...input };
+  if (typeof node.id === 'string')
+    node.id = node.id.trim();
+  if (root)
+    normalizeNodeCoordinates(node, width, height, analyzeType);
+
+  if (Array.isArray(input.children)) {
+    node.children = input.children
+      .filter((child): child is TemplateNode => !!child && typeof child === 'object')
+      .map(child => cloneNode(child, false, width, height, analyzeType))
+      .filter(shouldRenderNode);
+  }
+  else if (input.children && typeof input.children === 'object') {
+    const childEntries = Object.entries(input.children as Record<string, TemplateNode>)
+      .filter((entry): entry is [string, TemplateNode] =>
+        !!entry[1] && typeof entry[1] === 'object');
+    const clonedEntries = childEntries.map(([key, child]) => [
+      key,
+      cloneNode(child, false, width, height, analyzeType),
+    ] as const);
+    node.children = Object.fromEntries(
+      clonedEntries.filter(([, child]) => shouldRenderNode(child)),
+    );
+  }
+  return node;
+}
+
 export function parseTemplateContent(raw: string, analyzeType?: string): ParsedTemplate {
-  const content = validateTemplateContent(JSON.parse(raw) as TemplateContent);
+  let parsed: TemplateContent;
+  try {
+    parsed = JSON.parse(raw) as TemplateContent;
+  }
+  catch {
+    // 部分旧的本地模板把 svgBox.children 内的引号多转义了一次，
+    // 仅在标准 JSON 失败时做一次兼容修复，真实接口内容不受影响。
+    try {
+      parsed = JSON.parse(raw.replace(/\\\\(?=")/g, '\\')) as TemplateContent;
+    }
+    catch {
+      throw new Error('无效的模板');
+    }
+  }
+  const content = validateTemplateContent(parsed);
+  if (content.isNew !== true)
+    throw new Error('暂不支持旧模板，请检查模板配置');
   const width = content.width;
   const height = content.height;
   const nodes = (content.data ?? [])
-    .map(node => ({ ...node }))
+    .filter((node): node is TemplateNode => !!node && typeof node === 'object')
+    .map(node => cloneNode(node, true, width, height, analyzeType))
     .filter(shouldRenderNode);
 
-  normalizeNodeCoordinates(nodes, width, height, analyzeType, content.isNew);
   injectDoorEmptyBedTemplates(nodes);
 
   nodes.sort((a, b) => {

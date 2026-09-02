@@ -10,12 +10,14 @@ import {
   configureWardInteriorCanvasTexture,
   disposeWardInteriorModel,
   fitWardInteriorEnvironment,
+  getWardInteriorBedPlacementDebugInfo,
   getWardInteriorAssetParts,
   hideWardInteriorCeiling,
   prepareWardInteriorModelMaterials,
   resolveBakedWardInteriorCameraFromRays,
   resolveBakedWardInteriorPresetView,
   resolveWardInteriorModelBedPose,
+  setWardInteriorBedTerminalMaterial,
   syncWardInteriorBakedBedVisibility,
 } from './ward-interior-model.ts';
 
@@ -80,6 +82,17 @@ function createBakedAssetRoot() {
 
   root.add(bedA, pillowA, bedB, pillowB, chair);
   return root;
+}
+
+function createBakedScreen(name: string, z: number) {
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.22, 0.38),
+    new THREE.MeshBasicMaterial({ name: '门口机内' }),
+  );
+  screen.name = name;
+  screen.position.set(-1.05, 1.75, z);
+  screen.rotation.y = Math.PI / 2;
+  return screen;
 }
 
 
@@ -168,6 +181,102 @@ test('organizes baked Chinese-named beds with proxy screens', () => {
   syncWardInteriorBakedBedVisibility(parts, 1);
   assert.equal(parts.bakedBeds[0].group.visible, true);
   assert.equal(parts.bakedBeds[1].group.visible, false);
+});
+
+test('reports each baked bed terminal candidate and proxy orientation', () => {
+  const root = createBakedAssetRoot();
+  root.add(createBakedScreen('检测设施.002', -1));
+  root.add(createBakedScreen('检测设施.010', 1.5));
+
+  const parts = getWardInteriorAssetParts(root);
+  const diagnostics = getWardInteriorBedPlacementDebugInfo(parts);
+
+  assert.equal(diagnostics.length, 2);
+  assert.equal(diagnostics[0].bedIndex, 0);
+  assert.equal(diagnostics[0].screenSource, 'model');
+  assert.deepEqual(diagnostics[0].terminalCandidates.map(candidate => candidate.name), ['检测设施.002']);
+  assert.ok(diagnostics[0].proxy.worldPosition[0] < diagnostics[0].mattress.worldCenter[0]);
+  assert.ok(diagnostics[0].proxy.frontNormal[0] > 0.9);
+  assert.equal(diagnostics[1].terminalCandidates[0].name, '检测设施.010');
+});
+
+test('uses GLTFLoader duplicate names and binds the inner screen mesh from a terminal group', () => {
+  const root = createBakedAssetRoot();
+  root.getObjectByName('床.001')!.name = '床001';
+
+  const terminal = new THREE.Group();
+  terminal.name = '检测设施002';
+  terminal.position.set(-1.08, 1.35, -1);
+  const shell = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.52, 0.68),
+    new THREE.MeshBasicMaterial({ name: '门口机周' }),
+  );
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.42, 0.62),
+    new THREE.MeshBasicMaterial({ name: '门口机内' }),
+  );
+  screen.name = '立方体035_1';
+  screen.rotation.y = Math.PI / 2;
+  const uv = screen.geometry.getAttribute('uv');
+  for (let index = 0; index < uv.count; index++) {
+    uv.setXY(index, 0.25 + uv.getX(index) * 0.5, 0.2 + uv.getY(index) * 0.6);
+  }
+  terminal.add(shell, screen);
+  root.add(terminal);
+
+  const parts = getWardInteriorAssetParts(root);
+
+  assert.equal(parts.bakedBeds.length, 2);
+  assert.equal(parts.bakedBeds[0].bedTerminalScreen.name, '立方体035_1');
+  assert.equal(parts.bakedBeds[0].bedTerminalScreen.parent?.name, '检测设施002');
+  assert.equal(getWardInteriorBedPlacementDebugInfo(parts)[0].screenSource, 'model');
+  const normalizedUv = parts.bakedBeds[0].bedTerminalScreen.geometry.getAttribute('uv');
+  const uvValues = Array.from({ length: normalizedUv.count }, (_, index) => [
+    normalizedUv.getX(index),
+    normalizedUv.getY(index),
+  ]);
+  assert.deepEqual(
+    uvValues.reduce(
+      (bounds, [u, v]) => ({
+        minU: Math.min(bounds.minU, u),
+        maxU: Math.max(bounds.maxU, u),
+        minV: Math.min(bounds.minV, v),
+        maxV: Math.max(bounds.maxV, v),
+      }),
+      { minU: Infinity, maxU: -Infinity, minV: Infinity, maxV: -Infinity },
+    ),
+    { minU: 0, maxU: 1, minV: 0, maxV: 1 },
+  );
+  assert.deepEqual(
+    uvValues.map(([u, v]) => [Number(u.toFixed(3)), Number(v.toFixed(3))]),
+    [[1, 1], [1, 0], [0, 1], [0, 0]],
+  );
+});
+
+test('replaces only the inner screen material group on a multi-material terminal mesh', () => {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute([
+      0, 0, 0, 0, 1, 0, 0, 0, 1,
+      0.02, 0, 0, 0.02, 0, 1, 0.02, 1, 0,
+    ], 3),
+  );
+  geometry.addGroup(0, 3, 0);
+  geometry.addGroup(3, 3, 1);
+  const shell = new THREE.MeshStandardMaterial({ name: '门口机周' });
+  const screen = new THREE.MeshStandardMaterial({ name: '门口机内' });
+  const mesh = new THREE.Mesh(geometry, [shell, screen]);
+  const dynamic = new THREE.MeshBasicMaterial({ name: '门口机内·动态模板' });
+
+  setWardInteriorBedTerminalMaterial(mesh, dynamic);
+
+  assert.ok(Array.isArray(mesh.material));
+  assert.equal(mesh.material.length, 2);
+  assert.equal(mesh.material[0], shell);
+  assert.equal(mesh.material[1], dynamic);
+  assert.equal(mesh.geometry.groups[1].materialIndex, 1);
+  assert.equal(mesh.userData.wardInteriorTerminalMaterialIndex, 1);
 });
 
 test('keeps baked rooms at native Blender scale without stretching', () => {
