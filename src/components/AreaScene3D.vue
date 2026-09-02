@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
 import { AreaScene, type AreaCameraDebugState, type AreaModelState, type AreaNodePickInfo } from '@/core/area-scene';
-import SceneModelLoading from '@/components/SceneModelLoading.vue';
 import { buildAreaStructureSignature } from '@/core/area-scene-identity';
 import type { RoomSummary } from '@/core/area-summary';
 import { twinSceneToAreaPhase, type TwinAreaEntity, type TwinSceneType } from '@/types/twin';
@@ -33,7 +32,6 @@ const cameraDebugTitle = computed(() =>
 const cameraDebugOpen = ref(true);
 const cameraDebugState = ref<AreaCameraDebugState | null>(null);
 const cameraDebugCopied = ref(false);
-const corridorModelState = ref<AreaModelState>('loading');
 const pickedNode = ref<AreaNodePickInfo | null>(null);
 
 const emit = defineEmits<{
@@ -83,7 +81,6 @@ function mountScene() {
     onRoomClick: index => emit('roomClick', index),
     onNodePick: info => (pickedNode.value = info),
     onModelState: state => emit('modelState', state),
-    onCorridorState: state => (corridorModelState.value = state),
     onCameraState: state => (cameraDebugState.value = state),
   });
   applyAreaToScene(true);
@@ -219,12 +216,6 @@ watch(() => props.active, (active) => {
 <template>
   <div class="area-scene-3d">
     <div ref="containerRef" class="area-scene-3d__canvas-host" />
-
-    <SceneModelLoading
-      v-if="areaPhase === 'corridor' && corridorModelState !== 'ready'"
-      title="正在准备病房走廊模型"
-      subtitle="首次加载需要一点时间，后续切换会直接打开"
-    />
 
     <div v-if="areaPhase === 'station'" class="area-scene-3d__shade" aria-hidden="true" />
 

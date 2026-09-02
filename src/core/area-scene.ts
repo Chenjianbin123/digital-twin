@@ -309,7 +309,6 @@ export class AreaScene {
   private pointer = new THREE.Vector2();
   private animationId = 0;
   private isActive = true;
-  private stationViewLogStep = 0;
   private stationViewLogTimer = 0;
   private timer = new THREE.Timer();
   private roomMeshes = new Map<number, RoomMeshGroup>();

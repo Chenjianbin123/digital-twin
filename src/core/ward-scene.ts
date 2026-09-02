@@ -109,7 +109,7 @@ export class WardScene {
   private bedMeshes = new Map<string, BedMeshGroup>();
   private ward: TwinWardEntity | null = null;
   private bedTerminalRefreshToken = new Map<string, number>();
-  private clock = new THREE.Clock();
+  private timer = new THREE.Timer();
   private onBedClick?: (bed: TwinBedEntity) => void;
   private onModelState?: (state: WardInteriorModelState) => void;
   private resizeObserver: ResizeObserver | null = null;
@@ -157,7 +157,7 @@ export class WardScene {
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = wardInteriorSceneConfig.appearance.exposure;
@@ -169,6 +169,7 @@ export class WardScene {
     this.scene.environment = this.environmentTexture;
     this.scene.environmentIntensity = wardInteriorSceneConfig.appearance.environmentIntensity;
     pmrem.dispose();
+    this.timer.connect(document);
 
     this.labelRenderer = new CSS2DRenderer();
     this.labelRenderer.setSize(width, height);
@@ -303,7 +304,7 @@ export class WardScene {
   private handleVisibilityChange = () => {
     this.pageHidden = document.hidden;
     if (!this.pageHidden)
-      this.clock.getDelta();
+      this.timer.reset();
   };
 
   private applyBedLabelElement(el: HTMLElement, bed: TwinBedEntity) {
@@ -2968,7 +2969,7 @@ export class WardScene {
     this.isActive = active;
     this.controls.enabled = active;
     if (active) {
-      this.clock.getDelta();
+      this.timer.reset();
       this.handleResize();
       if (!this.animationId)
         this.animate();
@@ -2987,15 +2988,16 @@ export class WardScene {
     }
   }
 
-  private animate = () => {
+  private animate = (timestamp?: number) => {
     if (!this.isActive)
       return;
     this.animationId = requestAnimationFrame(this.animate);
+    this.timer.update(timestamp);
     if (this.pageHidden)
       return;
 
-    const delta = this.clock.getDelta();
-    const elapsed = this.clock.elapsedTime;
+    const delta = this.timer.getDelta();
+    const elapsed = this.timer.getElapsed();
 
     if (this.cameraTransition) {
       this.cameraTransition.elapsed += delta;
@@ -3120,6 +3122,7 @@ export class WardScene {
     this.container.removeEventListener('click', this.handleClick);
     this.container.removeEventListener('wheel', this.cancelCameraTransition);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    this.timer.disconnect();
     this.controls.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();

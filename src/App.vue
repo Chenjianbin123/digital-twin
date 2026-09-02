@@ -8,6 +8,7 @@ import DashboardLeftPanel from '@/components/dashboard/DashboardLeftPanel.vue';
 import AreaSelectionView from '@/components/AreaSelectionView.vue';
 import AreaSwitcher from '@/components/AreaSwitcher.vue';
 import StartupLoader from '@/components/StartupLoader.vue';
+import SceneSwitchLoader from '@/components/SceneSwitchLoader.vue';
 import NurseStationPanel from '@/components/NurseStationPanel.vue';
 import NurseStationVisualScene from '@/components/NurseStationVisualScene.vue';
 import HospitalIntroPanel from '@/components/HospitalIntroPanel.vue';
@@ -435,6 +436,7 @@ onBeforeUnmount(() => {
         'digital-twin__main--ward': isWard || isWardInterior,
         'digital-twin__main--interior': isWardInterior,
         'digital-twin__main--panels-hidden': !panelsVisible,
+        'digital-twin__main--scene-switching': !!sceneSwitchFeedback,
       }"
     >
       <DashboardHeader
@@ -532,22 +534,6 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <Transition name="scene-switch">
-          <div
-            v-if="sceneSwitchFeedback"
-            class="digital-twin__scene-switch"
-            :class="`digital-twin__scene-switch--${sceneSwitchFeedback.tone}`"
-            aria-live="polite"
-          >
-            <span class="digital-twin__scene-switch-line" aria-hidden="true" />
-            <div class="digital-twin__scene-switch-copy">
-              <strong>{{ sceneSwitchFeedback.title }}</strong>
-              <span>{{ sceneSwitchFeedback.subtitle }}</span>
-            </div>
-            <i class="digital-twin__scene-switch-pulse" aria-hidden="true" />
-          </div>
-        </Transition>
-
         <div
           v-if="alertLocateNotice"
           class="digital-twin__locate-notice"
@@ -630,6 +616,8 @@ onBeforeUnmount(() => {
         @set-ward-interior-view="store.setWardInteriorView"
         @toggle-simulation="store.toggleSimulation()"
       />
+
+      <SceneSwitchLoader :feedback="sceneSwitchFeedback" />
 
       <aside
         v-show="panelsVisible"
@@ -718,18 +706,6 @@ onBeforeUnmount(() => {
 .startup-fade-leave-to {
   opacity: 0;
   filter: blur(8px);
-}
-
-.scene-switch-enter-active,
-.scene-switch-leave-active {
-  transition: opacity 0.22s ease, transform 0.22s ease, filter 0.22s ease;
-}
-
-.scene-switch-enter-from,
-.scene-switch-leave-to {
-  opacity: 0;
-  transform: translate(-50%, 12px) scale(0.96);
-  filter: blur(6px);
 }
 
 .digital-twin {
@@ -964,44 +940,6 @@ onBeforeUnmount(() => {
     background: rgba(255, 255, 255, 0.08);
   }
 
-  &__scene-switch {
-    position: absolute;
-    left: 50%;
-    bottom: 118px;
-    z-index: 34;
-    transform: translateX(-50%);
-    display: grid;
-    grid-template-columns: 74px minmax(0, 1fr) 26px;
-    align-items: center;
-    gap: 12px;
-    width: min(420px, calc(100vw - var(--scene-panel-width, 460px) - 80px));
-    min-height: 64px;
-    padding: 12px 14px;
-    border: 1px solid rgba(102, 226, 255, 0.34);
-    border-radius: 12px;
-    background: linear-gradient(135deg, rgba(6, 21, 35, 0.86), rgba(8, 40, 54, 0.72));
-    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 0 24px rgba(77, 208, 255, 0.08);
-    backdrop-filter: blur(12px);
-    pointer-events: none;
-
-    &--station {
-      border-color: rgba(129, 212, 250, 0.28);
-      background: linear-gradient(135deg, rgba(6, 18, 32, 0.88), rgba(22, 46, 68, 0.72));
-    }
-
-    &--interior {
-      border-color: rgba(126, 255, 178, 0.34);
-      background: linear-gradient(135deg, rgba(6, 25, 30, 0.88), rgba(20, 56, 46, 0.72));
-    }
-
-    @include down($bp-md) {
-      bottom: 108px;
-      width: min(360px, calc(100vw - 28px));
-      grid-template-columns: 54px minmax(0, 1fr) 22px;
-      padding: 10px 12px;
-    }
-  }
-
   &__locate-notice {
     position: absolute;
     top: 84px;
@@ -1020,86 +958,22 @@ onBeforeUnmount(() => {
     pointer-events: none;
   }
 
-  &__scene-switch-line {
-    position: relative;
-    height: 3px;
-    overflow: hidden;
-    border-radius: 999px;
-    background: rgba(98, 214, 255, 0.16);
-
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      width: 42%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, transparent, #79efff, transparent);
-      animation: scene-switch-line 0.76s ease-in-out infinite;
-    }
-  }
-
-  &__scene-switch-copy {
-    min-width: 0;
-
-    strong,
-    span {
-      display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    strong {
-      color: #f7fdff;
-      font-size: 16px;
-      line-height: 1.25;
-      letter-spacing: 0;
-    }
-
-    span {
-      margin-top: 3px;
-      color: rgba(194, 229, 244, 0.78);
-      font-size: 12px;
-      line-height: 1.3;
-    }
-  }
-
-  &__scene-switch-pulse {
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(121, 239, 255, 0.78);
-    border-radius: 50%;
-    box-shadow: 0 0 18px rgba(77, 208, 255, 0.42);
-    animation: scene-switch-pulse 0.82s ease-in-out infinite;
-  }
-
-@keyframes scene-switch-line {
-  0% {
-    transform: translateX(-110%);
-  }
-  100% {
-    transform: translateX(250%);
-  }
-}
-
-@keyframes scene-switch-pulse {
-  0%, 100% {
-    opacity: 0.72;
-    transform: scale(0.86);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.08);
-  }
-}
-
-
-
   &__main {
     position: relative;
     flex: 1;
     min-height: 0;
     overflow: hidden;
+
+    &--scene-switching {
+      :deep(.dash-bottom) {
+        pointer-events: none;
+      }
+
+      > .digital-twin__panel-toggle {
+        opacity: 0.48;
+        pointer-events: none;
+      }
+    }
 
     &--station {
       --scene-panel-width: clamp(340px, 26vw, 460px);

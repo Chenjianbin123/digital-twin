@@ -2,7 +2,7 @@
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
-import { WardScene, type WardInteriorModelState } from '@/core/ward-scene';
+import { WardScene } from '@/core/ward-scene';
 
 import { resolveBedStatus } from '@/core/bed-status';
 
@@ -12,7 +12,6 @@ import { getWardBedStats } from '@/types/twin';
 
 import type { CameraPresetId, TwinBedEntity, TwinWardEntity } from '@/types/twin';
 
-import SceneModelLoading from '@/components/SceneModelLoading.vue';
 
 
 
@@ -44,7 +43,6 @@ const containerRef = ref<HTMLElement | null>(null);
 
 let scene: WardScene | null = null;
 
-const modelState = ref<WardInteriorModelState>('loading');
 
 
 
@@ -89,8 +87,6 @@ onMounted(() => {
     container: containerRef.value,
 
     onBedClick: bed => emit('bedClick', bed),
-
-    onModelState: state => (modelState.value = state),
 
   });
 
@@ -167,12 +163,6 @@ onUnmounted(() => {
   <div class="ward-scene-3d">
 
     <div ref="containerRef" class="ward-scene-3d__canvas-host" />
-
-    <SceneModelLoading
-      v-if="modelState !== 'ready'"
-      title="正在准备病房内部模型"
-      subtitle="首次加载需要一点时间，后续切换会直接打开"
-    />
 
 
 

@@ -28,8 +28,9 @@ test('窄屏按视口倍率后退并同步选床聚焦距离', () => {
 });
 
 test('动画每帧只消耗一次时钟增量以保证相机过渡完成', () => {
-  assert.match(wardScene, /const delta = this\.clock\.getDelta\(\);\n\s*const elapsed = this\.clock\.elapsedTime;/);
-  assert.doesNotMatch(wardScene, /const elapsed = this\.clock\.getElapsedTime\(\);/);
+  assert.match(wardScene, /this\.timer\.update\(timestamp\);\n\s*if \(this\.pageHidden\)/);
+  assert.match(wardScene, /const delta = this\.timer\.getDelta\(\);\n\s*const elapsed = this\.timer\.getElapsed\(\);/);
+  assert.doesNotMatch(wardScene, /new THREE\.Clock\(\)/);
 });
 
 test('容器零尺寸时不写入无效相机宽高比', () => {
