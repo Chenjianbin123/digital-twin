@@ -8,7 +8,8 @@ import type {
 } from '../types/swp-events.ts';
 import type { TwinAreaEntity, TwinSceneType } from '../types/twin.ts';
 
-export type AlertTaskType = 'call' | 'env' | 'offline' | 'infusion';
+export type AlertTaskType = 'call' | 'env' | 'offline' | 'infusion' | 'inspection';
+export type AlertTaskSource = SwpEventSource | 'swp-inspection';
 export type AlertTaskSeverity = 'critical' | 'high' | 'medium';
 export type AlertTaskStatus = 'pending' | 'handling' | 'resolved';
 export type AlertWaitingLevel = 'normal' | 'attention' | 'urgent';
@@ -42,7 +43,7 @@ export interface AlertTask {
   description: string;
   actionText: string;
   canLocate?: boolean;
-  source?: SwpEventSource;
+  source?: AlertTaskSource;
   startedAt?: string;
   locationStatus?: SwpEventLocationStatus;
   locationSource?: SwpEventLocationSource;

@@ -17,6 +17,10 @@ import { analyzeEnvAlert } from '@/core/env-alert';
 import { resolveBedStatus } from '@/core/bed-status';
 import { summarizeArea } from '@/core/area-summary';
 import {
+  collectInspectionAlertTasks,
+  summarizeInspectionRooms,
+} from '@/core/inspection';
+import {
   allowAllAreaAccessPolicy,
   resolvePreferredAreaId,
   resolveRememberedAreaId,
@@ -56,6 +60,7 @@ import { startEnvSimulator, stopEnvSimulator } from '@/services/env-simulator';
 import { startRealtimeChannel, stopRealtimeChannel } from '@/services/realtime-channel';
 import { startRemoteAreaFetcher, stopRemoteAreaFetcher } from '@/services/remote-area-fetcher';
 import { startSwpEventPoller, stopSwpEventPoller } from '@/services/swp-event-poller';
+import { startInspectionPoller, stopInspectionPoller } from '@/services/inspection-poller';
 import {
   disableSwpCallAlerts,
   enableSwpCallAlerts,
@@ -86,6 +91,10 @@ import type {
   SwpEventSyncState,
   SwpResponseMetrics,
 } from '@/types/swp-events';
+import type {
+  InspectionSyncState,
+  NormalizedInspectionRecord,
+} from '@/types/inspection';
 
 const MAX_HISTORY = 30;
 const AREA_STORAGE_KEY = 'ward-digital-twin:last-area-id';
@@ -211,6 +220,13 @@ export const useTwinStore = defineStore('twin', () => {
     error: null,
     warning: null,
   });
+  const inspectionRecords = ref<NormalizedInspectionRecord[]>([]);
+  const inspectionSync = ref<InspectionSyncState>({
+    phase: 'idle',
+    lastSyncedAt: null,
+    error: null,
+    warning: null,
+  });
   const alertAckState = computed<AlertAckState>(() =>
     Object.fromEntries(Object.entries(alertAckRecords.value).map(([key, value]) => [key, {
       status: value.status,
@@ -272,6 +288,10 @@ export const useTwinStore = defineStore('twin', () => {
     area.value ? summarizeArea(area.value.rooms) : [],
   );
 
+  const inspectionRoomSummaries = computed(() =>
+    area.value ? summarizeInspectionRooms(inspectionRecords.value, area.value) : [],
+  );
+
   const alertTasks = computed(() => area.value
     ? mergeAlertTasks(
         collectSwpAlertTasks(
@@ -282,6 +302,10 @@ export const useTwinStore = defineStore('twin', () => {
         suppressLocalBedCallsShadowedBySwp(
           collectAlertTasks(area.value, alertAckState.value, selectedAreaId.value ?? undefined),
           swpEvents.value,
+        ),
+        collectInspectionAlertTasks(
+          inspectionRoomSummaries.value,
+          selectedAreaId.value ?? undefined,
         ),
       )
     : []);
@@ -773,6 +797,10 @@ export const useTwinStore = defineStore('twin', () => {
     return task.source === 'swp-call' && task.type === 'call';
   }
 
+  function isSourceManagedTask(task: AlertTask) {
+    return isDisplayOnlySwpCall(task) || task.source === 'swp-inspection';
+  }
+
   async function setAlertTaskStatus(taskId: string, status: AlertTaskStatus) {
     const task = alertTasks.value.find(item => item.id === taskId);
     const taskAreaId = selectedAreaId.value;
@@ -805,7 +833,7 @@ export const useTwinStore = defineStore('twin', () => {
     if (record) {
       try {
         let synced: boolean;
-        if (isDisplayOnlySwpCall(task)) {
+        if (isSourceManagedTask(task)) {
           synced = false;
         }
         else {
@@ -851,7 +879,7 @@ export const useTwinStore = defineStore('twin', () => {
 
   function markAlertHandling(taskId: string) {
     const task = alertTasks.value.find(item => item.id === taskId);
-    if (!task || isDisplayOnlySwpCall(task))
+    if (!task || isSourceManagedTask(task))
       return;
     void setAlertTaskStatus(taskId, 'handling');
   }
@@ -1009,6 +1037,8 @@ export const useTwinStore = defineStore('twin', () => {
     swpResponseMetrics.value = emptySwpResponseMetrics();
     swpEventSync.value = { phase: 'idle', lastSyncedAt: null, error: null, warning: null };
     swpResponseSync.value = { phase: 'idle', lastSyncedAt: null, error: null, warning: null };
+    inspectionRecords.value = [];
+    inspectionSync.value = { phase: 'idle', lastSyncedAt: null, error: null, warning: null };
   }
 
   function beginSwpEventSync(expectedAreaId: number) {
@@ -1113,11 +1143,52 @@ export const useTwinStore = defineStore('twin', () => {
     return true;
   }
 
+  function beginInspectionSync(expectedAreaId: number) {
+    if (selectedAreaId.value !== expectedAreaId || !area.value)
+      return false;
+    inspectionSync.value = {
+      ...inspectionSync.value,
+      phase: 'loading',
+      error: null,
+    };
+    return true;
+  }
+
+  function applyInspectionSnapshot(
+    expectedAreaId: number,
+    records: NormalizedInspectionRecord[],
+    syncedAt: string,
+  ) {
+    if (selectedAreaId.value !== expectedAreaId || !area.value)
+      return false;
+    inspectionRecords.value = records;
+    inspectionSync.value = {
+      phase: 'ready',
+      lastSyncedAt: syncedAt,
+      error: null,
+      warning: null,
+    };
+    return true;
+  }
+
+  function failInspectionSync(expectedAreaId: number, message: string) {
+    if (selectedAreaId.value !== expectedAreaId || !area.value)
+      return false;
+    inspectionSync.value = {
+      ...inspectionSync.value,
+      phase: 'error',
+      error: message,
+      warning: null,
+    };
+    return true;
+  }
+
   function stopRemoteServiceInstances() {
     stopRealtimeChannel();
     stopEnvFetcher();
     stopRemoteAreaFetcher();
     stopSwpEventPoller();
+    stopInspectionPoller();
   }
 
   function startRemoteServices() {
@@ -1130,6 +1201,8 @@ export const useTwinStore = defineStore('twin', () => {
     startRemoteAreaFetcher(store);
     if (dataSource.value === 'remote')
       void startSwpEventPoller(store);
+    if (dataSource.value === 'remote')
+      void startInspectionPoller(store);
   }
 
   function stopRemoteServices() {
@@ -1282,6 +1355,9 @@ export const useTwinStore = defineStore('twin', () => {
     swpResponseMetrics,
     swpEventSync,
     swpResponseSync,
+    inspectionRecords,
+    inspectionRoomSummaries,
+    inspectionSync,
     setAlertOperator,
     loadAreaOptions,
     enterArea,
@@ -1310,6 +1386,9 @@ export const useTwinStore = defineStore('twin', () => {
     beginSwpResponseSync,
     applySwpResponseMetrics,
     failSwpResponseSync,
+    beginInspectionSync,
+    applyInspectionSnapshot,
+    failInspectionSync,
     markAlertHandling,
     resolveAlertTask,
     restoreAlertTask,

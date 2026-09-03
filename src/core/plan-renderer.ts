@@ -123,18 +123,22 @@ export class PlanRenderer {
       return;
     }
 
-    const pad = Math.max(12, Math.min(w, h) * 0.018);
-    const headerH = Math.min(186, Math.max(this.px(155), h * 0.26));
-    const footerH = this.px(34);
+    const pad = Math.max(16, Math.min(w, h) * 0.018);
+    const topChromeReserve = Math.max(this.px(104), Math.min(h * 0.16, this.px(138)));
+    const bottomNavReserve = Math.max(this.px(106), Math.min(h * 0.14, this.px(132)));
+    const headerH = this.px(74);
+    const abnormalBeds = this.getAbnormalBeds(this.ward.beds);
+    const abnormalH = abnormalBeds.length ? this.px(34) : 0;
 
-    this.drawHeader(pad, pad, w - pad * 2, headerH);
-    const roomY = pad + headerH + 10;
-    const roomH = h - roomY - pad - footerH;
+    this.drawHeader(pad, topChromeReserve, w - pad * 2, headerH);
+    if (abnormalBeds.length)
+      this.drawAbnormalSummary(pad, topChromeReserve + headerH + this.px(8), w - pad * 2, abnormalH, abnormalBeds);
+    const roomY = topChromeReserve + headerH + this.px(14) + abnormalH;
+    const roomH = h - roomY - bottomNavReserve;
     const roomX = pad;
     const roomW = w - pad * 2;
     this.drawRoomShell(roomX, roomY, roomW, roomH);
     this.drawBeds(roomX, roomY, roomW, roomH);
-    this.drawFooter(pad, h - pad - footerH + 4, w - pad * 2, footerH);
   }
 
   private drawBackground(w: number, h: number) {
@@ -179,258 +183,81 @@ export class PlanRenderer {
         infusing++;
     }
 
-    this.fillRoundRect(x, y, w, h, 12, 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.1)');
+    const panelGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+    panelGrad.addColorStop(0, 'rgba(10,34,52,0.74)');
+    panelGrad.addColorStop(1, 'rgba(6,18,32,0.42)');
+    this.fillRoundRect(x, y, w, h, 14, panelGrad, 'rgba(83,213,255,0.24)');
 
     ctx.save();
     ctx.beginPath();
-    this.roundRectPath(x, y, w, h, 12);
+    this.roundRectPath(x, y, w, h, 14);
     ctx.clip();
-    const accent = ctx.createLinearGradient(x, y, x + w, y);
-    accent.addColorStop(0, 'rgba(79,195,247,0.12)');
-    accent.addColorStop(1, 'rgba(79,195,247,0)');
-    ctx.fillStyle = accent;
-    ctx.fillRect(x, y, w, h * 0.5);
+    const glow = ctx.createLinearGradient(x, y, x + w, y);
+    glow.addColorStop(0, 'rgba(83,213,255,0.16)');
+    glow.addColorStop(0.42, 'rgba(83,213,255,0.04)');
+    glow.addColorStop(1, 'rgba(255,128,171,0.08)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(x, y, w, h);
     ctx.restore();
 
-    const leftX = x + 14;
-    const staffPanelW = Math.min(this.px(184), w * 0.44);
-    const leftW = w - staffPanelW - this.px(22);
-    const staffPanelX = x + w - staffPanelW - 14;
+    const leftX = x + this.px(18);
+    const centerY = y + h / 2;
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#f3fbff';
+    ctx.font = `800 ${this.px(22)}px ${FONT}`;
+    ctx.fillText(ward.sickroomName, leftX, centerY - this.px(10));
 
-    ctx.fillStyle = '#f0f4f8';
-    ctx.font = `700 ${this.px(20)}px ${FONT}`;
-    ctx.fillText(ward.sickroomName, leftX, y + this.px(28));
+    this.drawHeaderStaffSummary(leftX, centerY + this.px(17), w * 0.48);
 
-    ctx.fillStyle = 'rgba(79,195,247,0.25)';
-    ctx.font = `700 ${this.px(10)}px ${FONT}`;
-    const roomTag = '2.5D';
-    const roomTagW = ctx.measureText(roomTag).width + this.px(12);
-    const roomTagX = leftX + ctx.measureText(ward.sickroomName).width + this.px(10);
-    this.fillRoundRect(roomTagX, y + this.px(14), roomTagW, this.px(18), 6, 'rgba(79,195,247,0.18)', 'rgba(79,195,247,0.35)');
-    ctx.fillStyle = '#4fc3f7';
-    ctx.fillText(roomTag, roomTagX + this.px(6), y + this.px(27));
-
-    ctx.fillStyle = '#8fa3b8';
-    const metaEntries: string[] = [];
-    if (ward.sickroomCode)
-      metaEntries.push(`编码 ${ward.sickroomCode}`);
-    const snIp = [`SN ${ward.deviceCode}`, ward.deviceIp ? `IP ${ward.deviceIp}` : ''].filter(Boolean).join('  ·  ');
-    metaEntries.push(snIp);
-
-    const metaBlockY = y + this.px(46);
-    const metaBottom = this.drawInfoBlock(
-      leftX,
-      metaBlockY,
-      Math.min(leftW, this.px(220)),
-      metaEntries,
-      12,
-      { text: '#8fa3b8', bg: 'rgba(0,0,0,0.2)', border: 'rgba(255,255,255,0.08)' },
-      6,
-    );
-
-    const chipY = metaBottom + this.px(8);
-    const chipW = this.px(72);
+    const chipH = this.px(50);
+    const chipY = y + (h - chipH) / 2;
+    const chipW = this.px(84);
     const chipGap = this.px(8);
-    let chipX = leftX;
-    this.drawStatChip(chipX, chipY, chipW, `${stats.occupied}/${stats.total}`, '在床', '#81c784');
-    chipX += chipW + chipGap;
-    this.drawStatChip(chipX, chipY, chipW, `${stats.empty}`, '空床', '#b0bec5');
-    chipX += chipW + chipGap;
-    if (chipX + chipW < leftX + leftW) {
-      this.drawStatChip(chipX, chipY, chipW, `${occRate}%`, '入住率', '#4fc3f7');
+    const chips: Array<[string, string, string]> = [
+      [`${stats.occupied}/${stats.total}`, '在床', '#73e0a9'],
+      [`${stats.empty}`, '空床', '#b8c7d4'],
+      [`${occRate}%`, '入住率', '#53d5ff'],
+    ];
+    if (calling)
+      chips.push([`${calling}`, '呼叫', '#ff5c8a']);
+    else if (infusing)
+      chips.push([`${infusing}`, '输液', '#ffb74d']);
+
+    let chipX = x + w - chipW * chips.length - chipGap * (chips.length - 1) - this.px(18);
+    for (const [value, label, color] of chips) {
+      this.drawHeaderMetricChip(chipX, chipY, chipW, chipH, value, label, color);
       chipX += chipW + chipGap;
     }
-    if (calling && chipX + chipW < leftX + leftW)
-      this.drawStatChip(chipX, chipY, chipW, `${calling}`, '呼叫', '#e91e63');
-    else if (infusing && chipX + chipW < leftX + leftW)
-      this.drawStatChip(chipX, chipY, chipW, `${infusing}`, '输液', '#ff9800');
 
-    this.drawHeaderStaffPanel(staffPanelX, y + this.px(8), staffPanelW, h - this.px(34));
-
-    const env = ward.doorEnvData;
-    const envY = y + h - this.px(30);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fillRect(leftX, envY - this.px(8), leftW, 1);
-
-    if (env) {
-      let ex = leftX;
-      if (env.temp != null && env.temp !== '')
-        ex = this.drawEnvChip(ex, envY, `${env.temp}°C`, '温度');
-      if (env.relativeHumid)
-        ex = this.drawEnvChip(ex + this.px(6), envY, env.relativeHumid, '湿度');
-      if (env.airQuality)
-        ex = this.drawEnvChip(ex + this.px(6), envY, env.airQuality, '空气');
-      if (env.noiseLevel)
-        this.drawEnvChip(ex + this.px(6), envY, env.noiseLevel, '噪音');
-    }
+    ctx.textBaseline = 'alphabetic';
   }
 
-  /** 通用信息块：多行条目、条目间留白、自动换行，返回块底部 Y */
-  private drawInfoBlock(
-    x: number,
-    y: number,
-    maxW: number,
-    entries: string[],
-    fontPx: number,
-    colors: { text: string; bg: string; border?: string },
-    entryGap = 4,
-  ): number {
-    if (!entries.length)
-      return y;
-
+  private drawHeaderStaffSummary(x: number, y: number, maxW: number) {
     const ctx = this.ctx;
-    const font = this.px(fontPx);
-    ctx.font = `600 ${font}px ${FONT}`;
-    const lineH = this.relaxedLineHeight(fontPx);
-    const padH = this.px(8);
-    const padV = this.px(10);
-    const innerW = maxW - padH * 2;
-    const entryGapPx = this.px(entryGap);
-
-    type Segment = { kind: 'line' | 'gap'; text?: string };
-    const segments: Segment[] = [];
-    for (let i = 0; i < entries.length; i++) {
-      if (i > 0)
-        segments.push({ kind: 'gap' });
-      for (const line of this.wrapLines(ctx, entries[i], innerW))
-        segments.push({ kind: 'line', text: line });
-    }
-
-    let contentH = 0;
-    for (const seg of segments) {
-      if (seg.kind === 'gap')
-        contentH += entryGapPx;
-      else
-        contentH += lineH;
-    }
-    const blockH = contentH + padV * 2;
-    this.fillRoundRect(x, y, maxW, blockH, 6, colors.bg, colors.border ?? 'transparent');
-
-    ctx.save();
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = colors.text;
-    let ty = y + padV;
-    for (const seg of segments) {
-      if (seg.kind === 'gap') {
-        ty += entryGapPx;
-        continue;
-      }
-      ctx.fillText(seg.text!, x + padH, ty);
-      ty += lineH;
-    }
-    ctx.restore();
-    return y + blockH;
-  }
-
-  /** 入院时间拆成日期 + 时间两行，便于阅读 */
-  private formatAdmissionEntries(raw?: string): string[] {
-    const trimmed = raw?.trim();
-    if (!trimmed)
-      return [];
-    const parts = trimmed.split(/\s+/);
-    if (parts.length >= 2)
-      return [`入院 ${parts[0]}`, parts.slice(1).join(' ')];
-    return [`入院 ${trimmed}`];
-  }
-
-  /** 顶栏 / 信息块等需要更松行距的场景 */
-  private relaxedLineHeight(fontPx: number, leading = 1.55): number {
-    const font = this.px(fontPx);
-    return Math.max(font + this.px(6), Math.round(font * leading));
-  }
-
-  /** 顶栏医护卡片行高（科主任 / 护士长） */
-  private staffPanelLineHeight(fontPx: number): number {
-    return this.relaxedLineHeight(fontPx, 1.62);
-  }
-
-  /** 顶栏右侧：科主任 + 护士长一行并排 */
-  private drawHeaderStaffPanel(x: number, y: number, w: number, h: number) {
-    const staff = buildMainStaffList(this.ward!.doorStaff, { primaryOnly: true });
-    if (!staff.length)
-      return;
-
-    const ctx = this.ctx;
-    const cols = staff.length;
-    const gap = this.px(8);
-    const colW = (w - this.px(20) - gap * (cols - 1)) / cols;
-    const rowY = y + this.px(30);
-    const roleFont = this.px(12);
-    const nameFont = this.px(14);
-    const roleRowH = this.staffPanelLineHeight(12);
-    const nameRowH = this.staffPanelLineHeight(14);
-    const roleNameGap = this.px(14);
-    const cellPadTop = this.px(10);
-    const cellPadBottom = this.px(6);
-
-    const layout = staff.map((person) => {
-      ctx.font = `700 ${nameFont}px ${FONT}`;
-      const nameLines = this.wrapLines(ctx, person.name, colW - this.px(16));
-      const textBlockH = roleRowH + roleNameGap + nameLines.length * nameRowH;
-      const cellH = textBlockH + cellPadTop + cellPadBottom;
-      return { person, nameLines, textBlockH, cellH };
-    });
-
-    const contentH = layout.reduce((max, item) => Math.max(max, item.cellH), 0);
-    const panelH = Math.max(h, rowY - y + contentH + this.px(8));
-    this.fillRoundRect(x, y, w, panelH, 10, 'rgba(0,0,0,0.28)', 'rgba(255,255,255,0.1)');
-
-    ctx.fillStyle = '#8fa3b8';
-    ctx.font = `600 ${this.px(10)}px ${FONT}`;
-    ctx.fillText('医护值班', x + this.px(10), y + this.px(16));
-
-    layout.forEach(({ person, nameLines, textBlockH }, i) => {
-      const cx = x + this.px(10) + i * (colW + gap);
-      const centerX = cx + colW / 2;
-      const accent = person.roleKey === 'deptDirector' ? '#4fc3f7' : '#f48fb1';
-      const startY = rowY + cellPadTop + (contentH - textBlockH - cellPadTop - cellPadBottom) / 2;
-
-      this.fillRoundRect(cx, rowY, colW, contentH, 8, 'rgba(0,0,0,0.18)', `${accent}44`);
-
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = accent;
-      ctx.font = `700 ${roleFont}px ${FONT}`;
-      ctx.fillText(person.role, centerX, startY);
-
-      ctx.fillStyle = '#f0f4f8';
-      ctx.font = `700 ${nameFont}px ${FONT}`;
-      let ny = startY + roleRowH + roleNameGap;
-      for (const line of nameLines) {
-        ctx.fillText(line, centerX, ny);
-        ny += nameRowH;
-      }
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'alphabetic';
-    });
-  }
-
-  private drawEnvChip(x: number, y: number, value: string, label: string): number {
-    const ctx = this.ctx;
-    ctx.font = `600 ${this.px(12)}px ${FONT}`;
-    const valW = ctx.measureText(value).width;
-    ctx.font = `500 ${this.px(10)}px ${FONT}`;
-    const w = Math.max(this.px(56), valW + this.px(28));
-    this.fillRoundRect(x, y, w, this.px(28), 8, 'rgba(0,0,0,0.2)', 'rgba(255,255,255,0.08)');
-    ctx.fillStyle = '#cfd8dc';
+    const staff = buildMainStaffList(this.ward?.doorStaff, { primaryOnly: true });
+    const summary = staff.length
+      ? staff.map(item => `${item.role} ${item.name}`).join('   ·   ')
+      : '医护信息 暂无';
+    ctx.fillStyle = 'rgba(196,221,236,0.78)';
     ctx.font = `700 ${this.px(12)}px ${FONT}`;
-    ctx.fillText(value, x + this.px(10), y + this.px(14));
-    ctx.fillStyle = '#8fa3b8';
-    ctx.font = `500 ${this.px(10)}px ${FONT}`;
-    ctx.fillText(label, x + this.px(10), y + this.px(25));
-    return x + w;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.ellipsisText(summary, maxW), x, y);
+    ctx.textBaseline = 'alphabetic';
   }
 
-  private drawStatChip(x: number, y: number, w: number, val: string, label: string, color: string) {
+  private drawHeaderMetricChip(x: number, y: number, w: number, h: number, val: string, label: string, color: string) {
     const ctx = this.ctx;
-    const h = this.px(40);
-    this.fillRoundRect(x, y, w, h, 8, 'rgba(0,0,0,0.22)', 'rgba(255,255,255,0.08)');
+    this.fillRoundRect(x, y, w, h, 9, 'rgba(5,14,28,0.34)', 'rgba(255,255,255,0.08)');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = color;
-    ctx.font = `700 ${this.px(18)}px ${FONT}`;
-    ctx.fillText(val, x + this.px(10), y + this.px(20));
-    ctx.fillStyle = '#8fa3b8';
-    ctx.font = `500 ${this.px(11)}px ${FONT}`;
-    ctx.fillText(label, x + this.px(10), y + this.px(34));
+    ctx.font = `800 ${this.px(19)}px ${FONT}`;
+    ctx.fillText(val, x + w / 2, y + h * 0.4);
+    ctx.fillStyle = 'rgba(196,221,236,0.72)';
+    ctx.font = `700 ${this.px(11)}px ${FONT}`;
+    ctx.fillText(label, x + w / 2, y + h * 0.74);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
   }
 
   private drawRoomShell(x: number, y: number, w: number, h: number) {
@@ -481,10 +308,6 @@ export class PlanRenderer {
     ctx.fillStyle = 'rgba(135,206,250,0.25)';
     ctx.fillRect(floorX + floorW - 46, floorY + 22, 32, 28);
 
-    ctx.fillStyle = '#8fa3b8';
-    ctx.font = `600 ${this.px(12)}px ${FONT}`;
-    ctx.fillText('门口', doorX + doorW / 2 - this.px(12), floorY + floorH - this.px(10));
-    ctx.fillText('窗', floorX + floorW - this.px(38), floorY + this.px(16));
   }
 
   private drawBeds(roomX: number, roomY: number, roomW: number, roomH: number) {
@@ -501,7 +324,7 @@ export class PlanRenderer {
     const rows = Math.ceil(ward.beds.length / cols);
     const bedH = (floorH - padY * (rows + 1)) / rows;
 
-    ward.beds.forEach((bed, i) => {
+    this.sortBedsForPlan(ward.beds).forEach((bed, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
       const x = floorX + padX + col * (bedW + padX);
@@ -513,18 +336,37 @@ export class PlanRenderer {
     });
   }
 
-  /** 按宽度自动换行，尽量展示完整内容 */
-  private cleanCareField(label: string, raw?: string): string | null {
-    const trimmed = raw?.trim();
-    if (!trimmed)
-      return null;
-    let value = trimmed;
-    while (value.startsWith(label))
-      value = value.slice(label.length);
-    value = value.trim();
-    if (!value)
-      return null;
-    return `${label}${value}`;
+  private getAbnormalBeds(beds: TwinBedEntity[]): TwinBedEntity[] {
+    return beds.filter((bed) => {
+      const state = resolveBedStatus(bed).state;
+      return PULSE_STATES.has(state);
+    });
+  }
+
+  private sortBedsForPlan(beds: TwinBedEntity[]): TwinBedEntity[] {
+    return [...beds].sort((a, b) => {
+      const aAbnormal = this.getAbnormalBeds([a]).length;
+      const bAbnormal = this.getAbnormalBeds([b]).length;
+      if (aAbnormal !== bAbnormal)
+        return bAbnormal - aAbnormal;
+      return 0;
+    });
+  }
+
+  private drawAbnormalSummary(x: number, y: number, w: number, h: number, beds: TwinBedEntity[]) {
+    const ctx = this.ctx;
+    const firstItems = beds.slice(0, 3).map((bed) => {
+      const status = resolveBedStatus(bed);
+      return `${bed.bedName} ${status.label}`;
+    });
+    const more = beds.length > firstItems.length ? `，另 ${beds.length - firstItems.length} 项` : '';
+    const text = `异常状态：${firstItems.join('  ·  ')}${more}`;
+    this.fillRoundRect(x, y, w, h, 12, 'rgba(255,77,141,0.12)', 'rgba(255,77,141,0.36)');
+    ctx.fillStyle = '#ff8db8';
+    ctx.font = `800 ${this.px(13)}px ${FONT}`;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.ellipsisText(text, w - this.px(24)), x + this.px(14), y + h / 2);
+    ctx.textBaseline = 'alphabetic';
   }
 
   /** 按宽度自动换行，尽量展示完整内容 */
@@ -591,13 +433,12 @@ export class PlanRenderer {
     const pulse = PULSE_STATES.has(status.state)
       ? 0.5 + Math.sin(this.pulsePhase) * 0.5
       : 0;
-    const footerReserve = this.px(28);
     const accentW = this.px(5);
-    const pad = this.px(10);
+    const pad = this.px(14);
     const textX = x + accentW + pad;
     const innerRight = x + w - pad;
     const maxTextW = innerRight - textX;
-    const contentBottom = y + h - footerReserve;
+    const contentBottom = y + h - this.px(14);
 
     if (pulse > 0) {
       ctx.save();
@@ -624,86 +465,34 @@ export class PlanRenderer {
     const badgeX = x + w - statusBadgeW - pad;
     this.drawStatusBadge(badgeX, y + pad, statusBadgeW, statusBadgeH, displayStatus.label, displayStatus.color, occupied ? pulse : 0);
 
-    let cy = y + this.px(28);
-    const nameMaxW = badgeX - textX - this.px(4);
+    let cy = y + this.px(30);
+    const nameMaxW = Math.max(this.px(92), badgeX - textX - this.px(8));
 
     ctx.fillStyle = '#263238';
-    ctx.font = `700 ${this.px(16)}px ${FONT}`;
-    cy = this.drawTextBlock(textX, cy, Math.max(nameMaxW, maxTextW), contentBottom, this.rowHeight(16), bed.bedName);
-    cy += this.px(5);
+    ctx.font = `800 ${this.px(18)}px ${FONT}`;
+    cy = this.drawTextBlock(textX, cy, nameMaxW, contentBottom, this.rowHeight(18), bed.bedName);
+    cy += this.px(8);
 
     if (occupied && bed.sickInfo) {
       const info = bed.sickInfo;
 
-      ctx.fillStyle = '#1a237e';
-      ctx.font = `700 ${this.px(15)}px ${FONT}`;
-      cy = this.drawPatientNameRow(
-        textX,
-        cy,
-        innerRight,
-        maxTextW,
-        contentBottom,
-        displayPatientName(info.sickName, true),
-        bed.nursingLevel,
-        bed.nursingColor,
-      );
-      cy += this.px(5);
-
-      const metaEntries: string[] = [];
-      const demo = [info.sickSex, info.sickAge ? `${info.sickAge}岁` : '', info.sickNo ? `No.${info.sickNo}` : ''].filter(Boolean).join(' · ');
-      if (demo)
-        metaEntries.push(demo);
-      metaEntries.push(...this.formatAdmissionEntries(info.sickInTime));
-
-      cy = this.drawInfoBlock(
-        textX - this.px(4),
-        cy,
-        maxTextW + this.px(8),
-        metaEntries,
-        12,
-        { text: '#546e7a', bg: 'rgba(0,0,0,0.045)', border: 'rgba(0,0,0,0.06)' },
-        8,
-      );
-      cy += this.px(6);
+      cy = this.drawCompactBedMeta(textX, cy, innerRight, contentBottom, info, bed.nursingLevel, bed.nursingColor);
+      cy += this.px(8);
 
       ctx.save();
       ctx.beginPath();
       ctx.rect(x + accentW, cy, w - accentW - this.px(2), contentBottom - cy);
       ctx.clip();
 
-      if (info.visitDoctorName || info.dutyNurseName) {
-        ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-        ctx.beginPath();
-        ctx.moveTo(textX, cy);
-        ctx.lineTo(innerRight, cy);
-        ctx.stroke();
-        cy += this.px(10);
-
-        const staffRow = this.relaxedLineHeight(12);
-        if (info.visitDoctorName)
-          cy = this.drawLabeledLine(textX, cy, '主治医生', info.visitDoctorName, maxTextW, staffRow, contentBottom, true);
-        if (info.dutyNurseName)
-          cy = this.drawLabeledLine(textX, cy, '责任护士', info.dutyNurseName, maxTextW, staffRow, contentBottom, true);
-      }
-
-      const careRow = this.relaxedLineHeight(12);
-      for (const note of [this.cleanCareField('饮食', info.sickDiet), this.cleanCareField('隔离', info.sickIsolation)]) {
-        if (!note)
-          continue;
-        cy = this.drawLabeledLine(textX, cy, note.slice(0, 2), note.slice(2), maxTextW, careRow, contentBottom, true);
-      }
+      cy = this.drawCompactStaffChips(textX, cy, maxTextW, contentBottom, info.visitDoctorName, info.dutyNurseName);
 
       if (info.sickAllergy?.trim()) {
-        cy += this.px(6);
-        ctx.fillStyle = '#c62828';
-        ctx.font = `700 ${this.px(12)}px ${FONT}`;
-        cy = this.drawTextBlock(textX, cy, maxTextW, contentBottom, careRow, `⚠ 过敏 ${info.sickAllergy.trim()}`);
+        cy += this.px(8);
+        this.drawWarningPill(textX, cy, Math.min(maxTextW, this.px(210)), `过敏 ${info.sickAllergy.trim()}`, '#f44336');
       }
-      if (info.sickSafetyPrecautions?.trim()) {
-        cy += this.px(6);
-        ctx.fillStyle = '#ef6c00';
-        ctx.font = `600 ${this.px(12)}px ${FONT}`;
-        cy = this.drawTextBlock(textX, cy, maxTextW, contentBottom, careRow, `⚠ ${info.sickSafetyPrecautions.trim()}`);
+      else if (info.sickSafetyPrecautions?.trim()) {
+        cy += this.px(8);
+        this.drawWarningPill(textX, cy, Math.min(maxTextW, this.px(210)), info.sickSafetyPrecautions.trim(), '#ff9800');
       }
 
       ctx.restore();
@@ -718,14 +507,6 @@ export class PlanRenderer {
       ctx.fillText('待入住', textX, cy);
     }
 
-    const footerY = y + h - this.px(12);
-    ctx.fillStyle = 'rgba(0,0,0,0.06)';
-    ctx.fillRect(x + pad, footerY - this.px(16), w - pad * 2, 1);
-
-    ctx.fillStyle = '#78909c';
-    ctx.font = `600 ${this.px(10)}px ${FONT}`;
-    ctx.fillText(`SN ${bed.deviceCode}`, textX, footerY);
-
     const statusText = bed.isCalling
       ? '● 呼叫中'
       : status.state === 'infusing'
@@ -734,6 +515,7 @@ export class PlanRenderer {
             ? `● ${status.label}`
             : '';
     if (statusText) {
+      const footerY = y + h - this.px(14);
       ctx.fillStyle = bed.isCalling ? '#e91e63' : status.state === 'infusing' ? '#ff9800' : status.color;
       ctx.font = `700 ${this.px(10)}px ${FONT}`;
       ctx.textAlign = 'right';
@@ -742,68 +524,113 @@ export class PlanRenderer {
     }
   }
 
-  /** 患者姓名 + 右侧护理级别徽章（同一行，姓名可换行） */
-  private drawPatientNameRow(
-    textX: number,
-    startY: number,
+  private drawCompactBedMeta(
+    x: number,
+    y: number,
     innerRight: number,
-    maxTextW: number,
-    contentBottom: number,
-    patientName: string,
+    bottomY: number,
+    info: NonNullable<TwinBedEntity['sickInfo']>,
     nursingLevel?: string,
     nursingColor?: string,
   ): number {
     const ctx = this.ctx;
-    const nameFont = 15;
-    const rowH = this.rowHeight(nameFont);
+    const maxW = innerRight - x;
+    const patientName = displayPatientName(info.sickName, true);
     const level = nursingLevel?.trim();
-    const badgeGap = this.px(6);
+    const badgeW = level ? Math.min(this.px(92), this.measureBadge(level) + this.px(20)) : 0;
+    const nameW = badgeW > 0 ? maxW - badgeW - this.px(8) : maxW;
 
-    let badgeW = 0;
-    let badgeH = 0;
-    let badgeLabel = '';
-    if (level) {
-      const measured = this.measureNursingBadge(level, Math.min(this.px(96), maxTextW * 0.42));
-      badgeW = measured.w;
-      badgeH = measured.h;
-      badgeLabel = measured.label;
-    }
+    ctx.fillStyle = '#14212b';
+    ctx.font = `800 ${this.px(17)}px ${FONT}`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(this.ellipsisText(patientName, nameW), x, y);
 
-    const nameMaxW = badgeW > 0 ? Math.max(this.px(48), maxTextW - badgeW - badgeGap) : maxTextW;
+    if (level && badgeW > 0)
+      this.drawNursingPill(innerRight - badgeW, y - this.px(22), badgeW, level, nursingColor ?? '#9c27b0');
 
-    ctx.fillStyle = '#1a237e';
-    ctx.font = `700 ${this.px(nameFont)}px ${FONT}`;
-    const endY = this.drawTextBlock(textX, startY, nameMaxW, contentBottom, rowH, patientName);
+    const meta = [info.sickSex, info.sickAge ? `${info.sickAge}岁` : '', info.sickNo ? `No.${info.sickNo}` : '']
+      .filter(Boolean)
+      .join(' · ');
+    const admissionDate = info.sickInTime?.trim()?.split(/\s+/)[0] ?? '';
+    const metaText = [meta, admissionDate ? `入院 ${admissionDate}` : ''].filter(Boolean).join('   ');
 
-    if (level && badgeW > 0) {
-      const badgeX = innerRight - badgeW;
-      const badgeY = startY - this.px(12);
-      const bg = nursingColor ?? '#ffb74d';
-      this.fillRoundRect(badgeX, badgeY, badgeW, badgeH, 6, bg, 'rgba(0,0,0,0.08)');
-      ctx.fillStyle = '#fff';
-      ctx.font = `700 ${this.px(10)}px ${FONT}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(badgeLabel, badgeX + badgeW / 2, badgeY + badgeH / 2);
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'alphabetic';
-    }
+    ctx.fillStyle = '#607d8b';
+    ctx.font = `700 ${this.px(12)}px ${FONT}`;
+    const metaY = y + this.px(25);
+    if (metaY < bottomY)
+      ctx.fillText(this.ellipsisText(metaText, maxW), x, metaY);
 
-    return endY;
+    return metaY + this.px(18);
   }
 
-  private measureNursingBadge(text: string, maxW: number): { w: number; h: number; label: string } {
-    const ctx = this.ctx;
-    const h = this.px(20);
-    ctx.font = `700 ${this.px(10)}px ${FONT}`;
-    let label = text;
-    if (ctx.measureText(label).width + this.px(12) > maxW) {
-      while (label.length > 1 && ctx.measureText(`${label}…`).width + this.px(12) > maxW)
-        label = label.slice(0, -1);
-      label = `${label}…`;
+  private drawCompactStaffChips(
+    x: number,
+    y: number,
+    maxW: number,
+    bottomY: number,
+    doctor?: string,
+    nurse?: string,
+  ): number {
+    const entries: Array<readonly [string, string, string]> = [];
+    if (doctor?.trim())
+      entries.push(['医生', this.stripRolePrefix(doctor, '主治医生'), '#4fc3f7']);
+    if (nurse?.trim())
+      entries.push(['护士', this.stripRolePrefix(nurse, '责任护士'), '#73e0a9']);
+    if (!entries.length || y + this.px(26) > bottomY)
+      return y;
+
+    let cx = x;
+    const gap = this.px(8);
+    for (const [label, value, color] of entries) {
+      const text = `${label} ${value}`;
+      const chipW = Math.min(this.px(148), this.measureTextWidth(text, 12) + this.px(22));
+      if (cx + chipW > x + maxW)
+        break;
+      this.drawSoftPill(cx, y, chipW, this.px(24), this.ellipsisText(text, chipW - this.px(18)), color);
+      cx += chipW + gap;
     }
-    const w = Math.min(maxW, ctx.measureText(label).width + this.px(12));
-    return { w, h, label };
+    return y + this.px(30);
+  }
+
+  private drawNursingPill(x: number, y: number, w: number, text: string, color: string) {
+    this.fillRoundRect(x, y, w, this.px(24), 8, `${color}26`, `${color}99`);
+    const ctx = this.ctx;
+    ctx.fillStyle = color;
+    ctx.font = `800 ${this.px(12)}px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.ellipsisText(text, w - this.px(12)), x + w / 2, y + this.px(12));
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  private drawSoftPill(x: number, y: number, w: number, h: number, text: string, color: string) {
+    this.fillRoundRect(x, y, w, h, h / 2, `${color}18`, `${color}55`);
+    const ctx = this.ctx;
+    ctx.fillStyle = color;
+    ctx.font = `800 ${this.px(12)}px ${FONT}`;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + this.px(10), y + h / 2);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  private drawWarningPill(x: number, y: number, w: number, text: string, color: string) {
+    this.drawSoftPill(x, y, w, this.px(24), `⚠ ${this.ellipsisText(text, w - this.px(30))}`, color);
+  }
+
+  private measureTextWidth(text: string, fontPx: number): number {
+    this.ctx.font = `700 ${this.px(fontPx)}px ${FONT}`;
+    return this.ctx.measureText(text).width;
+  }
+
+  private ellipsisText(text: string, maxW: number): string {
+    const ctx = this.ctx;
+    if (!text || ctx.measureText(text).width <= maxW)
+      return text;
+    let value = text;
+    while (value.length > 1 && ctx.measureText(`${value}…`).width > maxW)
+      value = value.slice(0, -1);
+    return `${value}…`;
   }
 
   /** 去掉姓名里重复的角色前缀 */
@@ -827,47 +654,6 @@ export class PlanRenderer {
     return value;
   }
 
-  /** 标签 + 内容分行绘制，避免与上方徽章重叠 */
-  private drawLabeledLine(
-    x: number,
-    y: number,
-    label: string,
-    value: string,
-    maxW: number,
-    lineH: number,
-    bottomY = Number.POSITIVE_INFINITY,
-    trailingGap = false,
-  ): number {
-    const ctx = this.ctx;
-    const cleanValue = this.stripRolePrefix(value, label);
-    const labelText = `${label} `;
-    ctx.font = `600 ${this.px(12)}px ${FONT}`;
-    const labelW = ctx.measureText(labelText).width;
-    const valueLines = this.wrapLines(ctx, cleanValue, maxW - labelW - this.px(4));
-    let cy = y;
-    let drawn = 0;
-
-    for (let i = 0; i < valueLines.length; i++) {
-      if (cy + lineH > bottomY)
-        break;
-      if (i === 0) {
-        ctx.fillStyle = '#78909c';
-        ctx.fillText(labelText, x, cy);
-        ctx.fillStyle = '#37474f';
-        ctx.fillText(valueLines[i], x + labelW, cy);
-      }
-      else {
-        ctx.fillStyle = '#37474f';
-        ctx.fillText(valueLines[i], x + labelW, cy);
-      }
-      cy += lineH;
-      drawn++;
-    }
-    if (drawn > 0 && trailingGap)
-      cy += this.px(4);
-    return cy;
-  }
-
   private drawStatusBadge(x: number, y: number, w: number, h: number, label: string, color: string, pulse: number) {
     const alpha = pulse > 0 ? 0.25 + pulse * 0.35 : 0.22;
     this.fillRoundRect(x, y, w, h, 9, `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`, `${color}88`);
@@ -882,15 +668,6 @@ export class PlanRenderer {
   private measureBadge(text: string): number {
     this.ctx.font = `700 ${this.px(11)}px ${FONT}`;
     return this.ctx.measureText(text).width;
-  }
-
-  private drawFooter(x: number, y: number, w: number, _h: number) {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(143,163,184,0.85)';
-    ctx.font = `600 ${this.px(13)}px ${FONT}`;
-    ctx.textAlign = 'center';
-    ctx.fillText('点击床位查看详情  ·  异常态（呼叫 / 输液）会闪烁高亮', x + w / 2, y + this.px(14));
-    ctx.textAlign = 'left';
   }
 
   private drawEmptyHint(w: number, h: number, text: string) {

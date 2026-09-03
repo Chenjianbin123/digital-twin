@@ -2,49 +2,109 @@
 import { computed, ref, watch } from 'vue';
 import { resolveFileUrl } from '@/utils/file-url';
 
+const DEFAULT_DOCTOR_AVATAR = '/images/staff-default-doctor.png';
+const DEFAULT_NURSE_AVATAR = '/images/staff-default-nurse.png';
+
 const props = withDefaults(defineProps<{
   pic?: string;
   name: string;
   size?: 'lg' | 'md' | 'sm';
-  role?: 'director' | 'nurse' | 'default';
+  role?: 'doctor' | 'director' | 'nurse' | 'default';
+  placeholderLabel?: string;
 }>(), {
   size: 'md',
   role: 'default',
+  placeholderLabel: '',
 });
 
-const loadFailed = ref(false);
+const primaryLoadFailed = ref(false);
+const defaultLoadFailed = ref(false);
 
-const src = computed(() => resolveFileUrl(props.pic));
+function isTemplateOrIconImage(value: string) {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, '');
+  if (!normalized)
+    return false;
+  return [
+    '/swp_upload/picture/template/',
+    '/template/',
+    '/doorbtn/',
+    '/bedbtn/',
+    '/img/sip.',
+    '/img/network.',
+    'monitor.',
+    'beddevice',
+    'statusbar',
+    'qrcode',
+    'button',
+    'menu-inactive',
+  ].some(token => normalized.includes(token));
+}
+
+const safePrimarySrc = computed(() => {
+  const pic = props.pic?.trim() ?? '';
+  if (!pic || isTemplateOrIconImage(pic))
+    return '';
+  return pic;
+});
+
+const src = computed(() => resolveFileUrl(safePrimarySrc.value));
+
+const defaultAvatarSrc = computed(() => {
+  const role = props.role;
+  if (role === 'doctor' || role === 'director')
+    return DEFAULT_DOCTOR_AVATAR;
+  if (role === 'nurse')
+    return DEFAULT_NURSE_AVATAR;
+  return '';
+});
+
+const activeSrc = computed(() => {
+  if (src.value && !primaryLoadFailed.value)
+    return src.value;
+  if (defaultAvatarSrc.value && !defaultLoadFailed.value)
+    return defaultAvatarSrc.value;
+  return '';
+});
 
 watch(() => props.pic, () => {
-  loadFailed.value = false;
+  primaryLoadFailed.value = false;
+  defaultLoadFailed.value = false;
 });
 
-function onError() {
-  loadFailed.value = true;
+watch(() => props.role, () => {
+  defaultLoadFailed.value = false;
+});
+
+function handleImageError() {
+  if (activeSrc.value === src.value)
+    primaryLoadFailed.value = true;
+  else
+    defaultLoadFailed.value = true;
 }
+
+const placeholderText = computed(() => props.placeholderLabel || props.name.charAt(0));
 </script>
 
 <template>
   <img
-    v-if="src && !loadFailed"
+    v-if="activeSrc"
     class="staff-avatar"
     :class="[
       `staff-avatar--${size}`,
       role !== 'default' ? `staff-avatar--${role}` : '',
     ]"
-    :src="src"
+    :src="activeSrc"
     :alt="name"
     loading="lazy"
     referrerpolicy="no-referrer"
-    @error="onError"
+    @error="handleImageError"
   >
   <div
     v-else
     class="staff-avatar staff-avatar--placeholder"
     :class="[`staff-avatar--${size}`, `staff-avatar--${role}`]"
   >
-    {{ name.charAt(0) }}
+    {{ placeholderText }}
   </div>
 </template>
 
@@ -78,6 +138,14 @@ function onError() {
       0 4px 16px rgba(2, 136, 209, 0.35);
   }
 
+  &--doctor {
+    border-color: rgba(72, 213, 255, 0.78);
+    box-shadow:
+      0 0 0 2px rgba(72, 213, 255, 0.24),
+      0 4px 18px rgba(1, 145, 210, 0.38),
+      inset 0 0 14px rgba(180, 246, 255, 0.18);
+  }
+
   &--nurse {
     border-color: rgba(244, 143, 177, 0.75);
     box-shadow:
@@ -109,8 +177,16 @@ function onError() {
       background: linear-gradient(135deg, #29b6f6, #0277bd);
     }
 
+    &.staff-avatar--doctor {
+      background:
+        radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.42), transparent 18%),
+        linear-gradient(135deg, #48d5ff, #0277bd 58%, #06456f);
+    }
+
     &.staff-avatar--nurse {
-      background: linear-gradient(135deg, #f06292, #c2185b);
+      background:
+        radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.38), transparent 18%),
+        linear-gradient(135deg, #ff94c2, #d82b73 58%, #7b1b58);
     }
   }
 }

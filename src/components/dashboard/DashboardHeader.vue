@@ -78,11 +78,18 @@ const dataStatusLabel = computed(() => ({
     </div>
 
     <div class="dash-header__side dash-header__side--right" :class="{ 'dash-header__side--compact': compact }">
+      <template v-if="!compact">
+        <div class="dash-header__status">
+          <span v-if="displayTemp" class="dash-header__temp">{{ displayTemp }}</span>
+          <span v-if="displayTemp" class="dash-header__divider" aria-hidden="true" />
+          <time class="dash-header__clock">{{ timeText }}</time>
+        </div>
+        <p class="dash-header__date">{{ dateText }}</p>
+      </template>
       <div class="dash-header__actions">
         <div v-if="operatorName" class="dash-header__operator" :title="`${operatorName}${operatorRole ? ` · ${operatorRole}` : ''}`">
           <span class="dash-header__operator-dot" aria-hidden="true" />
           <strong>{{ operatorName }}</strong>
-          <span v-if="operatorRole && !compact">{{ operatorRole }}</span>
         </div>
         <button
           type="button"
@@ -106,14 +113,6 @@ const dataStatusLabel = computed(() => ({
           <span class="dash-header__action-label">退出</span>
         </button>
       </div>
-      <template v-if="!compact">
-        <div class="dash-header__status">
-          <span v-if="displayTemp" class="dash-header__temp">{{ displayTemp }}</span>
-          <span v-if="displayTemp" class="dash-header__divider" aria-hidden="true" />
-          <time class="dash-header__clock">{{ timeText }}</time>
-        </div>
-        <p class="dash-header__date">{{ dateText }}</p>
-      </template>
     </div>
   </header>
 </template>

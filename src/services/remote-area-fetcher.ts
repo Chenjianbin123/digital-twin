@@ -20,7 +20,7 @@ async function refreshArea(store: TwinStore, run: NonNullable<typeof activeRun>)
   }
 }
 
-export function startRemoteAreaFetcher(store: TwinStore, intervalMs = 60_000) {
+export function startRemoteAreaFetcher(store: TwinStore, intervalMs = 300_000) {
   stopRemoteAreaFetcher();
   const run = { generation: runGeneration, isRefreshing: false };
   activeRun = run;

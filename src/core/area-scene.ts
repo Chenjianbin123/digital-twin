@@ -2837,9 +2837,12 @@ export class AreaScene {
 
   private hideNurseStationPlaceholderMaterialsOnMesh(mesh: THREE.Mesh) {
     const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const isMainDashboardMesh = mesh.name.startsWith('Screen_Main_Frame')
+      || mesh.parent?.name === 'Screen_Main_Frame';
     let changed = false;
     const next = materials.map((material) => {
-      if (!/UI_Blue|UI_Cyan|Clock_Red/i.test(material.name))
+      const isStaticMainDashboardText = isMainDashboardMesh && /白偏蓝/i.test(material.name);
+      if (!/UI_Blue|UI_Cyan|Clock_Red/i.test(material.name) && !isStaticMainDashboardText)
         return material;
       const hidden = material.clone();
       hidden.transparent = true;
@@ -2862,8 +2865,13 @@ export class AreaScene {
       'Detail_Header_Right_Text',
       'Detail_Header_Subtitle',
       'Detail_Header_Title',
+      // 旧版护士站模型主屏自带的数据占位文字，实时 Canvas 会完整替代它们。
+      'Main_Board_Title',
+      'Main_Board_Beds',
+      'Main_Board_Tasks',
     ]);
     const prefixes = [
+      'Main_Board_Bar_',
       'Nursing_Bed_',
       'Nursing_Row_',
       'Nursing_Level_',

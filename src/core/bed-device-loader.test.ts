@@ -72,6 +72,238 @@ test('maps bed terminal patient and nursing labels from bed endpoint data', () =
   assert.equal(result.isOnline, true);
 });
 
+test('preserves existing staff portraits when bed refresh returns template placeholder icons', () => {
+  const bed = {
+    ...createTwinBed(),
+    isOccupied: true,
+    sickInfo: {
+      bedCode: '90101',
+      bedName: '01',
+      sickName: '床头患者',
+      sickSex: '男',
+      sickAge: '68',
+      sickBirthday: '',
+      sickNo: 'A-1',
+      sickInTime: '',
+      nursingLevel: '一级护理',
+      nursingColor: '#f00',
+      sickAllergy: '',
+      sickIsolation: '',
+      sickDiet: '',
+      sickSafetyPrecautions: '',
+      visitDoctorName: '王医生',
+      visitDoctorUserDuty: '',
+      visitDoctorUserProfessional: '',
+      dutyNurseName: '李护士',
+      dutyNurseUserProfessional: '',
+      visitDoctorUserRemark: '',
+      dutyNurseUserRemark: '',
+      visitDoctorUserPic: '/swp_upload/picture/user/doctor-wang.jpg',
+      dutyNurseUserPic: '/swp_upload/picture/user/nurse-li.jpg',
+      areaHeadNurseName: '',
+      areaHeadNurseUserPic: '',
+    },
+  } satisfies TwinBedEntity;
+
+  applyBedDeviceInfoToTwinBed(bed, {
+    bedDeviceInfoVo: {
+      id: 752,
+      deviceName: '床头机1号',
+      deviceCode: 'SN1001',
+      deviceIp: '',
+      deviceTypeCode: '102',
+      deptId: 60,
+      deptName: '',
+      deptCode: '',
+      areaId: 72,
+      areaName: '',
+      areaCode: '',
+      sickroomId: 23,
+      sickroomName: '901房',
+      sickroomCode: '3091',
+      bedName: '01',
+      bedId: 41,
+      bedCode: '90101',
+      templateId: 42,
+      isOnline: '1',
+    },
+    bedSickInfoVo: {
+      sickName: '床头患者',
+      sickNo: 'A-1',
+      visitDoctorName: '王医生',
+      dutyNurseName: '李护士',
+      visitDoctorPic: '/swp_upload/picture/template/img/monitor.png',
+      dutyNursePic: '/swp_upload/picture/template/doorBtn/hushi.png',
+    },
+    bedSickNursingLabelList: [],
+  });
+
+  assert.equal(bed.sickInfo?.visitDoctorUserPic, '/swp_upload/picture/user/doctor-wang.jpg');
+  assert.equal(bed.sickInfo?.dutyNurseUserPic, '/swp_upload/picture/user/nurse-li.jpg');
+});
+
+test('uses refreshed staff portrait aliases when they are real image paths', () => {
+  const bed = createTwinBed();
+
+  applyBedDeviceInfoToTwinBed(bed, {
+    bedDeviceInfoVo: {
+      id: 752,
+      deviceName: '床头机1号',
+      deviceCode: 'SN1001',
+      deviceIp: '',
+      deviceTypeCode: '102',
+      deptId: 60,
+      deptName: '',
+      deptCode: '',
+      areaId: 72,
+      areaName: '',
+      areaCode: '',
+      sickroomId: 23,
+      sickroomName: '901房',
+      sickroomCode: '3091',
+      bedName: '01',
+      bedId: 41,
+      bedCode: '90101',
+      templateId: 42,
+      isOnline: '1',
+    },
+    bedSickInfoVo: {
+      sickName: '床头患者',
+      sickNo: 'A-1',
+      visitDoctorName: '王医生',
+      dutyNurseName: '李护士',
+      visitDoctorUserPic: '/swp_upload/picture/user/refreshed-doctor.jpg',
+      dutyNurseUserPic: '/swp_upload/picture/user/refreshed-nurse.jpg',
+    },
+    bedSickNursingLabelList: [],
+  });
+
+  assert.equal(bed.sickInfo?.visitDoctorUserPic, '/swp_upload/picture/user/refreshed-doctor.jpg');
+  assert.equal(bed.sickInfo?.dutyNurseUserPic, '/swp_upload/picture/user/refreshed-nurse.jpg');
+});
+
+test('skips template portrait candidates and uses later real staff portrait aliases', () => {
+  const bed = createTwinBed();
+
+  applyBedDeviceInfoToTwinBed(bed, {
+    bedDeviceInfoVo: {
+      id: 752,
+      deviceName: '床头机1号',
+      deviceCode: 'SN1001',
+      deviceIp: '',
+      deviceTypeCode: '102',
+      deptId: 60,
+      deptName: '',
+      deptCode: '',
+      areaId: 72,
+      areaName: '',
+      areaCode: '',
+      sickroomId: 23,
+      sickroomName: '901房',
+      sickroomCode: '3091',
+      bedName: '01',
+      bedId: 41,
+      bedCode: '90101',
+      templateId: 42,
+      isOnline: '1',
+    },
+    bedSickInfoVo: {
+      sickName: '床头患者',
+      sickNo: 'A-1',
+      visitDoctorName: '王医生',
+      dutyNurseName: '李护士',
+      visitDoctorPic: '/swp_upload/picture/template/202402/doctor-placeholder.png',
+      visitDoctorUserPic: '/swp_upload/picture/user/refreshed-doctor.jpg',
+      dutyNursePic: '/swp_upload/picture/template/img/monitor.png',
+      dutyNurseUserPic: '/swp_upload/picture/user/refreshed-nurse.jpg',
+    },
+    bedSickNursingLabelList: [],
+  });
+
+  assert.equal(bed.sickInfo?.visitDoctorUserPic, '/swp_upload/picture/user/refreshed-doctor.jpg');
+  assert.equal(bed.sickInfo?.dutyNurseUserPic, '/swp_upload/picture/user/refreshed-nurse.jpg');
+});
+
+test('does not store template icons as staff portraits when no real portrait exists', () => {
+  const bed = createTwinBed();
+
+  applyBedDeviceInfoToTwinBed(bed, {
+    bedDeviceInfoVo: {
+      id: 752,
+      deviceName: '床头机1号',
+      deviceCode: 'SN1001',
+      deviceIp: '',
+      deviceTypeCode: '102',
+      deptId: 60,
+      deptName: '',
+      deptCode: '',
+      areaId: 72,
+      areaName: '',
+      areaCode: '',
+      sickroomId: 23,
+      sickroomName: '901房',
+      sickroomCode: '3091',
+      bedName: '01',
+      bedId: 41,
+      bedCode: '90101',
+      templateId: 42,
+      isOnline: '1',
+    },
+    bedSickInfoVo: {
+      sickName: '床头患者',
+      sickNo: 'A-1',
+      visitDoctorName: '王医生',
+      dutyNurseName: '李护士',
+      visitDoctorPic: '/swp_upload/picture/template/202402/doctor-placeholder.png',
+      dutyNursePic: '/swp_upload/picture/template/doorBtn/hushi.png',
+    },
+    bedSickNursingLabelList: [],
+  });
+
+  assert.equal(bed.sickInfo?.visitDoctorUserPic, '');
+  assert.equal(bed.sickInfo?.dutyNurseUserPic, '');
+});
+
+test('uses generic swp uploaded picture assets as staff portraits', () => {
+  const bed = createTwinBed();
+
+  applyBedDeviceInfoToTwinBed(bed, {
+    bedDeviceInfoVo: {
+      id: 752,
+      deviceName: '床头机1号',
+      deviceCode: 'SN1001',
+      deviceIp: '',
+      deviceTypeCode: '102',
+      deptId: 60,
+      deptName: '',
+      deptCode: '',
+      areaId: 72,
+      areaName: '',
+      areaCode: '',
+      sickroomId: 23,
+      sickroomName: '901房',
+      sickroomCode: '3091',
+      bedName: '01',
+      bedId: 41,
+      bedCode: '90101',
+      templateId: 42,
+      isOnline: '1',
+    },
+    bedSickInfoVo: {
+      sickName: '床头患者',
+      sickNo: 'A-1',
+      visitDoctorName: '王医生',
+      dutyNurseName: '李护士',
+      visitDoctorPic: '/swp_upload/picture/202402/20240221161325302_47.png',
+      dutyNursePic: '/swp_upload/picture/202402/20240221161449058_95.png',
+    },
+    bedSickNursingLabelList: [],
+  });
+
+  assert.equal(bed.sickInfo?.visitDoctorUserPic, '/swp_upload/picture/202402/20240221161325302_47.png');
+  assert.equal(bed.sickInfo?.dutyNurseUserPic, '/swp_upload/picture/202402/20240221161449058_95.png');
+});
+
 test('clears stale patient fields when the bed endpoint reports an empty bed', () => {
   const bed = {
     ...createTwinBed(),

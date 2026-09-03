@@ -7,6 +7,12 @@ export interface WardSceneControlLimits {
   maxAzimuthAngle: number;
   minDistance: number;
   maxDistance: number;
+  pan: {
+    xLimit: number;
+    zLimit: number;
+    yMin: number;
+    yMax: number;
+  };
 }
 
 export function resolveWardSceneControlLimits(
@@ -22,5 +28,11 @@ export function resolveWardSceneControlLimits(
     maxAzimuthAngle: controls.maxAzimuthAngle,
     minDistance: controls.minDistance,
     maxDistance: Math.max(controls.maxDistanceBase, span * controls.maxDistanceSpanFactor),
+    pan: {
+      xLimit: roomWidth * controls.pan.xSpanFactor,
+      zLimit: roomDepth * controls.pan.zSpanFactor,
+      yMin: controls.pan.yMin,
+      yMax: controls.pan.yMax,
+    },
   };
 }

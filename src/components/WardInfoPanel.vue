@@ -9,6 +9,7 @@ import StatusHistory from '@/components/StatusHistory.vue';
 import { resolveBedStatus } from '@/core/bed-status';
 import { formatBedLabel, type AlertTask } from '@/core/alert-workflow';
 import type { EnvAlertResult } from '@/core/env-alert';
+import type { InspectionRoomSummary } from '@/types/inspection';
 import { getWardBedStats, type BedStatusMeta, type StatusHistoryEntry, type TwinAreaEntity, type TwinBedEntity, type TwinWardEntity } from '@/types/twin';
 
 
@@ -29,6 +30,8 @@ const props = defineProps<{
 
   activeAlertTask?: AlertTask | null;
 
+  inspectionSummary?: InspectionRoomSummary | null;
+
 }>();
 
 
@@ -44,6 +47,130 @@ const emit = defineEmits<{
 
 
 const bedStats = computed(() => props.ward ? getWardBedStats(props.ward) : null);
+
+function staffText(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function isTemplateOrIconImage(value: string) {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, '');
+  if (!normalized)
+    return false;
+  return [
+    '/swp_upload/picture/template/',
+    '/template/',
+    '/doorbtn/',
+    '/bedbtn/',
+    '/img/sip.',
+    '/img/network.',
+    'monitor.',
+    'beddevice',
+    'statusbar',
+    'qrcode',
+    'button',
+    'menu-inactive',
+  ].some(token => normalized.includes(token));
+}
+
+function staffPicText(...values: unknown[]) {
+  for (const value of values) {
+    const text = staffText(value);
+    if (text && !isTemplateOrIconImage(text))
+      return text;
+  }
+  return '';
+}
+
+const managedCareSourceSick = computed(() => {
+  const selectedSick = props.selectedBed?.sickInfo;
+  if (selectedSick)
+    return selectedSick;
+  return props.ward?.beds.find(bed => bed.sickInfo)?.sickInfo ?? null;
+});
+
+const managedCareStaff = computed(() => {
+  const sick = managedCareSourceSick.value;
+  if (!sick)
+    return [];
+
+  const sickRecord = sick as Record<string, unknown>;
+  const bedDoctorName = staffText(sick.visitDoctorName) || staffText(sick.bedDoctorName);
+  const bedDoctorPic = staffPicText(
+    sick.visitDoctorUserPic,
+    sickRecord.visitDoctorPic,
+    sickRecord.bedDoctorPic,
+    sickRecord.bedDoctorUserPic,
+    sickRecord.doctorPic,
+    sickRecord.doctorUserPic,
+  );
+  const bedDoctorSynopsis = staffText(sickRecord.visitDoctorSynopsis) || staffText(sick.visitDoctorUserRemark);
+  const dutyNurseName = staffText(sick.dutyNurseName);
+  const dutyNursePic = staffPicText(
+    sick.dutyNurseUserPic,
+    sickRecord.dutyNursePic,
+    sickRecord.nursePic,
+    sickRecord.nurseUserPic,
+  );
+  const dutyNurseSynopsis = staffText(sickRecord.dutyNurseSynopsis) || staffText(sick.dutyNurseUserRemark);
+
+  return [
+    {
+      role: '主治医生' as const,
+      roleKey: 'bedDoctor' as const,
+      name: bedDoctorName || '--',
+      pic: bedDoctorPic,
+      synopsis: bedDoctorSynopsis,
+      placeholderLabel: '医' as const,
+    },
+    {
+      role: '责任护士' as const,
+      roleKey: 'dutyNurse' as const,
+      name: dutyNurseName || '--',
+      pic: dutyNursePic,
+      synopsis: dutyNurseSynopsis,
+      placeholderLabel: '护' as const,
+    },
+  ];
+});
+
+const otherCareStaff = computed(() => {
+  const selectedBed = props.selectedBed;
+  const fallbackBed = props.ward?.beds.find(bed => bed.sickInfo || bed.bedDeviceInfo) ?? null;
+  const bed = selectedBed ?? fallbackBed;
+  const sick = bed?.sickInfo ?? null;
+  const directorName = staffText(bed?.bedDeviceInfo?.deptDirectorName);
+  const headNurseName = staffText(sick?.areaHeadNurseName);
+
+  return [
+    {
+      role: '主任医生' as const,
+      roleKey: 'deptDirector' as const,
+      name: directorName || '--',
+      placeholderLabel: '医' as const,
+    },
+    {
+      role: '护士长' as const,
+      roleKey: 'areaHeadNurse' as const,
+      name: headNurseName || '--',
+      placeholderLabel: '护' as const,
+    },
+  ];
+});
+
+const inspectionRecords = computed(() => {
+  const records = props.inspectionSummary?.records ?? [];
+  const scoped = props.selectedBed
+    ? records.filter(record => record.bedCode === props.selectedBed?.bedCode)
+    : records;
+  return scoped.slice(0, 3);
+});
+
+function inspectionTime(value: string | null | undefined) {
+  if (!value)
+    return '--';
+  const match = value.match(/(\d{2}):(\d{2})(?::\d{2})?$/);
+  return match ? `${match[1]}:${match[2]}` : value;
+}
 
 
 
@@ -100,6 +227,8 @@ function typeLabel(type: AlertTask['type']) {
     return '环境异常';
   if (type === 'offline')
     return '设备巡检';
+  if (type === 'inspection')
+    return '巡视超时';
   return '输液巡视';
 }
 
@@ -107,9 +236,15 @@ function isDisplayOnlySwpCall(task: AlertTask) {
   return task.source === 'swp-call' && task.type === 'call';
 }
 
+function isSourceManagedTask(task: AlertTask) {
+  return isDisplayOnlySwpCall(task) || task.source === 'swp-inspection';
+}
+
 function taskStatusText(task: AlertTask) {
   if (isDisplayOnlySwpCall(task))
     return '呼叫中';
+  if (task.source === 'swp-inspection')
+    return '待巡视';
   if (task.status !== 'handling')
     return '待处理';
   return '处理中';
@@ -162,13 +297,13 @@ function handlingActionText() {
       </div>
       <div class="task-card__actions">
         <button
-          v-if="!isDisplayOnlySwpCall(activeAlertTask) && activeAlertTask.status !== 'handling'"
+          v-if="!isSourceManagedTask(activeAlertTask) && activeAlertTask.status !== 'handling'"
           type="button"
           @click="emit('markAlertHandling', activeAlertTask.id)"
         >
           {{ handlingActionText() }}
         </button>
-        <span v-if="!isDisplayOnlySwpCall(activeAlertTask) && activeAlertTask.status === 'handling'">
+        <span v-if="!isSourceManagedTask(activeAlertTask) && activeAlertTask.status === 'handling'">
           等待状态恢复后自动结束
         </span>
       </div>
@@ -206,38 +341,47 @@ function handlingActionText() {
 
 
 
-    <section v-if="ward" class="ward-info-panel__door">
-
-      <h3>门口机</h3>
-
-      <dl class="door-meta">
-
-        <dt>设备名称</dt>
-
-        <dd>{{ ward.deviceName || '--' }}</dd>
-
-        <dt>设备 SN</dt>
-
-        <dd>{{ ward.deviceCode }}</dd>
-
-        <dt>设备 IP</dt>
-
-        <dd>{{ ward.deviceIp || '--' }}</dd>
-
-        <dt>病房编码</dt>
-
-        <dd>{{ ward.sickroomCode }}</dd>
-
-      </dl>
-
+    <section
+      v-if="inspectionSummary"
+      class="ward-info-panel__inspection"
+      :class="`ward-info-panel__inspection--${inspectionSummary.state}`"
+    >
+      <div class="inspection-card__head">
+        <div>
+          <span>巡视状态</span>
+          <strong>{{ inspectionSummary.stateLabel }}</strong>
+        </div>
+        <small v-if="inspectionSummary.latestAt">
+          最近 {{ inspectionTime(inspectionSummary.latestAt) }}
+        </small>
+      </div>
+      <ul v-if="inspectionRecords.length">
+        <li v-for="record in inspectionRecords" :key="record.id">
+          <i :class="`is-${record.state}`" aria-hidden="true" />
+          <span>
+            <strong>
+              {{ record.bedName ? formatBedLabel(record.bedName) : ward?.sickroomName }}
+            </strong>
+            <small>{{ record.nursingLevel || record.stateLabel }}</small>
+          </span>
+          <span class="inspection-card__operator">
+            <strong>{{ record.nurseName || '巡视人员待同步' }}</strong>
+            <small>{{ inspectionTime(record.occurredAt) }}</small>
+          </span>
+        </li>
+      </ul>
+      <p v-else>暂无巡视记录，等待真实巡视数据同步。</p>
+      <div class="inspection-card__foot">
+        最近巡视记录仅展示最新 3 条；现场产生新记录后状态自动更新。
+      </div>
     </section>
-
-
 
     <DoorStaffCards
       v-if="ward"
       :staff="ward.doorStaff"
       :dept-users="ward.doorDeptUsers"
+      :managed-care-staff="managedCareStaff"
+      :other-care-staff="otherCareStaff"
     />
 
 
@@ -502,11 +646,65 @@ function handlingActionText() {
 
 <style scoped lang="scss">
 
+@keyframes ward-panel-sweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-120%);
+  }
+
+  18%,
+  62% {
+    opacity: 0.72;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(240%);
+  }
+}
+
+@keyframes ward-panel-rail {
+  0%,
+  100% {
+    opacity: 0.32;
+    transform: translateY(-18%);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: translateY(72%);
+  }
+}
+
+@keyframes ward-panel-dot-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(77, 234, 255, 0.04), 0 0 8px currentColor;
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px rgba(77, 234, 255, 0.1), 0 0 16px currentColor;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ward-info-panel,
+  .ward-info-panel::before,
+  .ward-info-panel::after,
+  .ward-info-panel .bed-dot,
+  .ward-info-panel :deep(.door-staff-cards)::before,
+  .ward-info-panel :deep(.status-history)::before {
+    animation: none;
+  }
+}
+
 .ward-info-panel {
 
   height: 100%;
 
-  padding: 16px 18px 20px;
+  position: relative;
+  isolation: isolate;
+  padding: 18px 18px 24px;
 
   background: transparent;
 
@@ -517,6 +715,58 @@ function handlingActionText() {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(77, 208, 255, 0.35) transparent;
+  color: #e8f8ff;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(135deg, rgba(94, 231, 255, 0.1), transparent 28%),
+      repeating-linear-gradient(
+        90deg,
+        rgba(110, 231, 255, 0.028) 0,
+        rgba(110, 231, 255, 0.028) 1px,
+        transparent 1px,
+        transparent 34px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        rgba(110, 231, 255, 0.018) 0,
+        rgba(110, 231, 255, 0.018) 1px,
+        transparent 1px,
+        transparent 34px
+      );
+    opacity: 0.58;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 8px;
+    bottom: 0;
+    z-index: 0;
+    width: 2px;
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(108, 237, 255, 0.72) 26%,
+      rgba(108, 237, 255, 0.08) 48%,
+      rgba(108, 237, 255, 0.72) 72%,
+      transparent 100%
+    );
+    filter: blur(0.2px);
+    animation: ward-panel-rail 7s ease-in-out infinite;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
 
   &::-webkit-scrollbar { width: 4px; }
   &::-webkit-scrollbar-thumb {
@@ -532,9 +782,41 @@ function handlingActionText() {
 
     font-size: 13px;
     font-weight: 700;
+    letter-spacing: 0.08em;
 
     color: #9be8ff;
+    text-shadow: 0 0 10px rgba(77, 224, 255, 0.24);
 
+  }
+
+  &__door,
+  &__env,
+  &__bed,
+  &__inspection,
+  &__hint {
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(145deg, rgba(10, 42, 64, 0.58), rgba(5, 21, 38, 0.42)),
+      rgba(6, 20, 36, 0.28);
+    border-color: rgba(83, 222, 255, 0.2);
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(193, 247, 255, 0.08),
+      inset 3px 0 0 rgba(77, 224, 255, 0.22);
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 38%;
+      height: 1px;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(125, 238, 255, 0.88), transparent);
+      box-shadow: 0 0 12px rgba(77, 224, 255, 0.44);
+      animation: ward-panel-sweep 6.8s ease-in-out infinite;
+    }
   }
 
 
@@ -543,12 +825,51 @@ function handlingActionText() {
 
     margin-bottom: 14px;
     padding: 14px;
-    background: rgba(7, 22, 39, 0.22);
-    border: 1px solid rgba(77, 208, 255, 0.16);
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(145deg, rgba(14, 57, 82, 0.68), rgba(5, 21, 38, 0.42)),
+      rgba(7, 22, 39, 0.22);
+    border: 1px solid rgba(83, 222, 255, 0.28);
+    border-left: 3px solid rgba(83, 222, 255, 0.82);
     border-radius: 10px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow:
+      0 12px 26px rgba(0, 0, 0, 0.16),
+      inset 0 1px 0 rgba(193, 247, 255, 0.1),
+      inset 0 0 20px rgba(47, 199, 238, 0.06);
 
-    h2 { margin: 0; font-size: 22px; color: #fff; line-height: 1.2; }
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 48%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(149, 245, 255, 0.86));
+      box-shadow: 0 0 14px rgba(83, 222, 255, 0.42);
+    }
+
+    &::after {
+      content: 'WARD // LIVE';
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      color: rgba(156, 239, 255, 0.62);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+    }
+
+    h2 {
+      margin: 0;
+      padding-right: 92px;
+      font-size: 22px;
+      color: #fff;
+      line-height: 1.2;
+      letter-spacing: 0.04em;
+      text-shadow: 0 0 16px rgba(77, 224, 255, 0.35);
+    }
 
   }
 
@@ -568,9 +889,10 @@ function handlingActionText() {
 
   &__stats {
 
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 
-    gap: 10px;
+    gap: 8px;
 
     margin-bottom: 14px;
 
@@ -701,16 +1023,55 @@ function handlingActionText() {
 
     flex: 1;
 
-    padding: 12px 8px 11px;
+    position: relative;
+    min-height: 66px;
+    overflow: hidden;
+    padding: 12px 12px 10px;
 
-    text-align: center;
+    text-align: left;
 
-    background: rgba(6, 20, 36, 0.3);
+    background:
+      linear-gradient(145deg, rgba(9, 46, 68, 0.7), rgba(5, 24, 42, 0.46)),
+      rgba(6, 20, 36, 0.3);
 
-    border-radius: 8px;
+    border-radius: 9px;
 
-    border: 1px solid rgba(77, 208, 255, 0.12);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(83, 222, 255, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(193, 247, 255, 0.08),
+      0 6px 16px rgba(0, 0, 0, 0.1);
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 42%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(143, 243, 255, 0.78));
+      box-shadow: 0 0 10px rgba(77, 224, 255, 0.36);
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      right: 10px;
+      bottom: 9px;
+      width: 22px;
+      height: 22px;
+      border: 1px solid rgba(113, 232, 255, 0.24);
+      border-radius: 50%;
+      opacity: 0.72;
+    }
+
+    &:hover {
+      border-color: rgba(129, 237, 255, 0.52);
+      box-shadow:
+        inset 0 1px 0 rgba(193, 247, 255, 0.14),
+        0 0 18px rgba(55, 206, 255, 0.14);
+      transform: translateY(-1px);
+    }
 
 
 
@@ -718,11 +1079,13 @@ function handlingActionText() {
 
       display: block;
 
-      font-size: 20px;
+      font-size: 22px;
 
       font-weight: 700;
 
       color: #76e7ff;
+      line-height: 1;
+      text-shadow: 0 0 13px rgba(77, 224, 255, 0.42);
 
     }
 
@@ -730,9 +1093,11 @@ function handlingActionText() {
 
     &__label {
 
-      font-size: 11px;
+      margin-top: 6px;
+      font-size: 10px;
 
       color: rgba(174, 204, 229, 0.82);
+      letter-spacing: 0.08em;
 
     }
 
@@ -754,13 +1119,145 @@ function handlingActionText() {
 
     padding: 14px;
 
-    background: rgba(6, 20, 36, 0.28);
+    background:
+      linear-gradient(145deg, rgba(10, 42, 64, 0.58), rgba(5, 21, 38, 0.42)),
+      rgba(6, 20, 36, 0.28);
 
-    border: 1px solid rgba(77, 208, 255, 0.11);
+    border: 1px solid rgba(83, 222, 255, 0.2);
 
     border-radius: 10px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(193, 247, 255, 0.08),
+      inset 3px 0 0 rgba(77, 224, 255, 0.22);
 
+  }
+
+  &__inspection {
+    margin-bottom: 14px;
+    padding: 13px;
+    border: 1px solid rgba(88, 226, 198, 0.22);
+    border-radius: 10px;
+    box-shadow: inset 3px 0 0 rgba(88, 226, 198, 0.52);
+
+    &--due {
+      border-color: rgba(255, 190, 91, 0.3);
+      box-shadow: inset 3px 0 0 rgba(255, 190, 91, 0.72);
+    }
+
+    &--overdue {
+      border-color: rgba(255, 101, 91, 0.42);
+      box-shadow:
+        inset 3px 0 0 rgba(255, 101, 91, 0.86),
+        0 0 18px rgba(255, 75, 69, 0.07);
+    }
+
+    > p {
+      margin: 9px 0;
+      color: rgba(187, 216, 230, 0.76);
+      font-size: 11px;
+    }
+  }
+
+  .inspection-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    > div {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    span,
+    small {
+      color: rgba(177, 213, 228, 0.74);
+      font-size: 10px;
+    }
+
+    strong {
+      color: #8af4dc;
+      font-size: 14px;
+    }
+  }
+
+  &__inspection--due .inspection-card__head strong {
+    color: #ffd185;
+  }
+
+  &__inspection--overdue .inspection-card__head strong {
+    color: #ff9289;
+  }
+
+  &__inspection ul {
+    display: grid;
+    gap: 6px;
+    padding: 0;
+    margin: 10px 0 0;
+    list-style: none;
+
+    li {
+      display: grid;
+      grid-template-columns: 7px minmax(0, 1fr) minmax(82px, auto);
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.055);
+      border-radius: 7px;
+      background: rgba(3, 16, 28, 0.34);
+    }
+
+    i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #62e6c5;
+      box-shadow: 0 0 8px rgba(98, 230, 197, 0.6);
+
+      &.is-due {
+        background: #ffc45f;
+        box-shadow: 0 0 8px rgba(255, 196, 95, 0.62);
+      }
+
+      &.is-overdue {
+        background: #ff6e64;
+        box-shadow: 0 0 8px rgba(255, 110, 100, 0.72);
+      }
+    }
+
+    span {
+      display: grid;
+      min-width: 0;
+      gap: 2px;
+    }
+
+    strong {
+      overflow: hidden;
+      color: #eafaff;
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      color: rgba(171, 205, 220, 0.7);
+      font-size: 9px;
+    }
+  }
+
+  .inspection-card__operator {
+    text-align: right;
+  }
+
+  .inspection-card__foot {
+    margin-top: 9px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(97, 219, 239, 0.1);
+    color: rgba(158, 196, 212, 0.62);
+    font-size: 9px;
+    line-height: 1.45;
   }
 
 
@@ -793,12 +1290,17 @@ function handlingActionText() {
 
     padding: 14px;
 
-    background: rgba(6, 20, 36, 0.28);
+    background:
+      linear-gradient(145deg, rgba(10, 42, 64, 0.58), rgba(5, 21, 38, 0.42)),
+      rgba(6, 20, 36, 0.28);
 
-    border: 1px solid rgba(77, 208, 255, 0.11);
+    border: 1px solid rgba(83, 222, 255, 0.2);
 
     border-radius: 10px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(193, 247, 255, 0.08),
+      inset 3px 0 0 rgba(77, 224, 255, 0.22);
 
 
 
@@ -865,14 +1367,32 @@ function handlingActionText() {
     flex-direction: column;
     gap: 3px;
     padding: 9px 10px;
-    background: rgba(4, 16, 30, 0.26);
-    border: 1px solid rgba(255, 255, 255, 0.045);
+    background:
+      linear-gradient(135deg, rgba(8, 47, 69, 0.52), rgba(5, 22, 39, 0.3)),
+      rgba(4, 16, 30, 0.26);
+    border: 1px solid rgba(119, 231, 255, 0.14);
     border-radius: 8px;
+    box-shadow: inset 0 1px 0 rgba(193, 247, 255, 0.06);
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+
+    &:hover {
+      border-color: rgba(129, 237, 255, 0.4);
+      box-shadow: 0 0 14px rgba(55, 206, 255, 0.12);
+    }
   }
 
-  .env-label { font-size: 11px; color: rgba(144, 174, 199, 0.82); }
+  .env-label {
+    font-size: 10px;
+    color: rgba(144, 192, 214, 0.86);
+    letter-spacing: 0.08em;
+  }
 
-  .env-value { font-size: 17px; font-weight: 700; color: #e9f8ff; }
+  .env-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #e9f8ff;
+    text-shadow: 0 0 11px rgba(77, 224, 255, 0.3);
+  }
 
 
 
@@ -882,12 +1402,17 @@ function handlingActionText() {
 
     padding: 14px;
 
-    background: rgba(7, 22, 39, 0.22);
+    background:
+      linear-gradient(145deg, rgba(10, 42, 64, 0.58), rgba(5, 21, 38, 0.42)),
+      rgba(7, 22, 39, 0.22);
 
-    border: 1px solid rgba(77, 208, 255, 0.13);
+    border: 1px solid rgba(83, 222, 255, 0.22);
 
     border-radius: 10px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(193, 247, 255, 0.08),
+      inset 3px 0 0 rgba(77, 224, 255, 0.22);
 
   }
 
@@ -1107,11 +1632,32 @@ function handlingActionText() {
 
     margin-bottom: 14px;
     padding: 14px;
-    background: rgba(6, 20, 36, 0.26);
-    border: 1px solid rgba(77, 208, 255, 0.11);
+    background:
+      linear-gradient(145deg, rgba(10, 42, 64, 0.58), rgba(5, 21, 38, 0.42)),
+      rgba(6, 20, 36, 0.26);
+    border: 1px solid rgba(83, 222, 255, 0.2);
     border-radius: 10px;
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(193, 247, 255, 0.08),
+      inset 3px 0 0 rgba(77, 224, 255, 0.22);
 
-    p { color: rgba(174, 204, 229, 0.82); font-size: 13px; margin: 0 0 12px; }
+    p {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(195, 232, 248, 0.9);
+      font-size: 13px;
+      margin: 0 0 12px;
+      letter-spacing: 0.04em;
+
+      &::before {
+        content: '⌁';
+        color: #7cecff;
+        font-size: 17px;
+        text-shadow: 0 0 10px rgba(77, 224, 255, 0.72);
+      }
+    }
 
   }
 
@@ -1140,8 +1686,15 @@ function handlingActionText() {
       padding: 9px 0;
 
       border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
 
       font-size: 14px;
+
+      &:hover {
+        background: linear-gradient(90deg, rgba(77, 224, 255, 0.1), transparent);
+        border-bottom-color: rgba(131, 237, 255, 0.3);
+        transform: translateX(3px);
+      }
 
     }
 
@@ -1172,6 +1725,8 @@ function handlingActionText() {
       border-radius: 50%;
 
       flex-shrink: 0;
+      color: currentColor;
+      animation: ward-panel-dot-pulse 2.8s ease-in-out infinite;
 
     }
 
@@ -1214,9 +1769,151 @@ function handlingActionText() {
       font-size: 11px;
 
       color: rgba(144, 174, 199, 0.82);
+      letter-spacing: 0.04em;
 
     }
 
+  }
+
+  :deep(.door-staff-cards) {
+    position: relative;
+    margin-bottom: 14px;
+    padding: 15px 14px 14px;
+    background:
+      radial-gradient(circle at 16% 0%, rgba(82, 222, 255, 0.14), transparent 34%),
+      radial-gradient(circle at 86% 20%, rgba(245, 143, 177, 0.1), transparent 32%),
+      linear-gradient(145deg, rgba(10, 44, 67, 0.66), rgba(5, 22, 39, 0.42)),
+      rgba(6, 20, 36, 0.28);
+    border: 1px solid rgba(83, 222, 255, 0.22);
+    border-radius: 12px;
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(193, 247, 255, 0.08),
+      inset 3px 0 0 rgba(77, 224, 255, 0.22);
+  }
+
+  :deep(.door-staff-cards)::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 46%;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(143, 243, 255, 0.86));
+    box-shadow: 0 0 14px rgba(77, 224, 255, 0.42);
+    animation: ward-panel-sweep 7.4s ease-in-out infinite;
+  }
+
+  :deep(.door-staff-cards__head) {
+    margin-bottom: 12px;
+  }
+
+  :deep(.door-staff-cards__title) {
+    margin-bottom: 0;
+    color: #b9f4ff;
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 12px rgba(77, 224, 255, 0.34);
+  }
+
+  :deep(.door-staff-cards__primary) {
+    gap: 12px;
+  }
+
+  :deep(.door-staff-cards__other) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  :deep(.staff-role-card) {
+    min-height: 148px;
+    padding: 15px 10px 13px;
+    border-radius: 12px;
+    background:
+      radial-gradient(circle at 50% 12%, rgba(78, 223, 255, 0.12), transparent 46%),
+      linear-gradient(160deg, rgba(8, 48, 71, 0.66), rgba(5, 24, 41, 0.42)),
+      rgba(4, 16, 30, 0.26);
+    border-color: rgba(119, 231, 255, 0.16);
+    box-shadow:
+      inset 0 1px 0 rgba(193, 247, 255, 0.08),
+      0 5px 14px rgba(0, 0, 0, 0.12);
+  }
+
+  :deep(.staff-role-card--inline) {
+    min-height: 64px;
+    padding: 10px 12px;
+  }
+
+  :deep(.staff-role-card:hover) {
+    border-color: rgba(131, 237, 255, 0.46);
+    box-shadow:
+      inset 0 1px 0 rgba(193, 247, 255, 0.14),
+      0 0 18px rgba(55, 206, 255, 0.14);
+  }
+
+  :deep(.staff-role-card__name) {
+    text-shadow: 0 0 10px rgba(77, 224, 255, 0.22);
+  }
+
+  :deep(.door-staff-cards__dept) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    border-top-color: rgba(83, 222, 255, 0.18);
+  }
+
+  :deep(.door-staff-cards__dept li) {
+    min-width: 0;
+    padding: 8px 9px;
+    background: linear-gradient(135deg, rgba(7, 37, 58, 0.72), rgba(5, 20, 36, 0.48));
+    border: 1px solid rgba(119, 231, 255, 0.13);
+    border-radius: 10px;
+  }
+
+  :deep(.status-history) {
+    position: relative;
+    overflow: hidden;
+    margin-top: 16px;
+    padding: 13px;
+    background:
+      linear-gradient(145deg, rgba(10, 42, 64, 0.58), rgba(5, 21, 38, 0.42)),
+      rgba(6, 20, 36, 0.28);
+    border: 1px solid rgba(83, 222, 255, 0.2);
+    border-radius: 10px;
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(193, 247, 255, 0.08),
+      inset 3px 0 0 rgba(77, 224, 255, 0.22);
+  }
+
+  :deep(.status-history)::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 42%;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(125, 238, 255, 0.88), transparent);
+    box-shadow: 0 0 12px rgba(77, 224, 255, 0.44);
+    animation: ward-panel-sweep 8s ease-in-out infinite;
+  }
+
+  :deep(.status-history h3) {
+    color: #b9f4ff;
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 12px rgba(77, 224, 255, 0.34);
+  }
+
+  :deep(.status-history li) {
+    border-bottom-color: rgba(119, 231, 255, 0.1);
+    transition: background 180ms ease, transform 180ms ease;
+  }
+
+  :deep(.status-history li:hover) {
+    background: linear-gradient(90deg, rgba(77, 224, 255, 0.1), transparent);
+    transform: translateX(2px);
   }
 
   @include down($bp-md) {
@@ -1231,11 +1928,11 @@ function handlingActionText() {
     }
 
     &__stats {
-      flex-wrap: wrap;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .stat-chip {
-      min-width: calc(33.33% - 6px);
+      min-width: 0;
       padding: 8px 6px;
 
       &__val {
@@ -1245,6 +1942,12 @@ function handlingActionText() {
 
     .bed-patient {
       max-width: 90px;
+    }
+  }
+
+  @include down($bp-xs) {
+    &__stats {
+      grid-template-columns: 1fr;
     }
   }
 }

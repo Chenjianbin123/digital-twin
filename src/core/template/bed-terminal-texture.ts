@@ -16,7 +16,9 @@ export function createFallbackBedTerminalTexture(bed: TwinBedEntity, status: Bed
   canvas.height = 320;
   const ctx = canvas.getContext('2d')!;
   const isEmpty = !bed.isOccupied;
-  const patientName = displayPatientName(bed.sickInfo?.sickName, bed.isOccupied);
+  const patientName = bed.isOccupied
+    ? displayPatientName(bed.sickInfo?.sickName, true)
+    : '暂无患者信息';
   const accent = isEmpty ? '#546e7a' : '#1565c0';
 
   ctx.fillStyle = isEmpty ? '#141c28' : '#061018';
@@ -48,8 +50,8 @@ export function createFallbackBedTerminalTexture(bed: TwinBedEntity, status: Bed
   ctx.font = '20px sans-serif';
   ctx.fillText(status.label, 18, 196);
   ctx.fillStyle = '#607d8b';
-  ctx.font = '15px monospace';
-  ctx.fillText(bed.deviceCode, 18, 278);
+  ctx.font = '15px sans-serif';
+  ctx.fillText(isEmpty ? '空床待入住' : '床头屏实时状态', 18, 278);
 
   const dotColor = isEmpty ? '#78909c' : bed.isOnline ? '#76ff03' : '#ff5252';
   ctx.fillStyle = dotColor;
@@ -79,10 +81,16 @@ export function createBedTemplateStatusTexture(
   displayStatus: TemplateDisplayStatus,
   detail?: string,
 ): THREE.CanvasTexture {
+  const bedTemplateStatusDetails: Record<TemplateDisplayStatus, string> = {
+    loading: '正在加载床头屏信息',
+    missing: '暂无床头模板，请在平台配置后刷新',
+    error: '床头屏模板加载失败，请稍后重试',
+    'image-error': '床头屏模板已显示，部分图片暂不可用',
+  };
   const canvas = createTemplateStatusCanvas(
-    buildTemplateDisplayState(displayStatus, 'bed', detail),
+    buildTemplateDisplayState(displayStatus, 'bed', detail || bedTemplateStatusDetails[displayStatus]),
     'horizontal',
-    `${bed.bedName} ${bed.deviceCode}`.trim(),
+    `${bed.bedName} ${bed.isOccupied ? displayPatientName(bed.sickInfo?.sickName, true) : '暂无患者信息'}`.trim(),
   );
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;

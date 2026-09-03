@@ -17,6 +17,10 @@ import type {
   SwpResponseMetrics,
 } from "@/types/swp-events";
 import type {
+  InspectionRoomSummary,
+  InspectionSyncState,
+} from "@/types/inspection";
+import type {
   StatusHistoryEntry,
   TwinAreaEntity,
   TwinWardEntity,
@@ -35,6 +39,8 @@ const props = defineProps<{
   swpResponseMetrics?: SwpResponseMetrics;
   swpEventSync?: SwpEventSyncState;
   swpResponseSync?: SwpEventSyncState;
+  inspectionRoomSummaries?: InspectionRoomSummary[];
+  inspectionSync?: InspectionSyncState;
   wardDataStatus?: DataStatus;
 }>();
 
@@ -332,6 +338,45 @@ const responseSourceDetail = computed(() => {
   return `最近同步 ${new Date(props.swpResponseSync.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
 });
 
+const inspectionOverview = computed(() => {
+  const summaries = props.inspectionRoomSummaries ?? [];
+  return {
+    normal: summaries.filter(item => item.state === "normal").length,
+    due: summaries.filter(item => item.state === "due").length,
+    overdue: summaries.filter(item => item.state === "overdue").length,
+    noRecord: summaries.filter(item => item.state === "no-record").length,
+  };
+});
+
+const inspectionAttentionRooms = computed(() =>
+  (props.inspectionRoomSummaries ?? [])
+    .filter(item => item.state === "overdue" || item.state === "due")
+    .sort((a, b) => {
+      const rank = { overdue: 0, due: 1 };
+      return rank[a.state as "overdue" | "due"] - rank[b.state as "overdue" | "due"];
+    })
+    .slice(0, 3),
+);
+
+const inspectionSyncLabel = computed(() => {
+  if (props.inspectionSync?.phase === "error")
+    return "巡视数据同步异常";
+  if (props.inspectionSync?.phase === "loading")
+    return props.inspectionSync.lastSyncedAt ? "巡视数据刷新中" : "巡视数据同步中";
+  if (props.inspectionSync?.phase === "ready")
+    return props.inspectionSync.lastSyncedAt
+      ? `数据同步 ${new Date(props.inspectionSync.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`
+      : "巡视数据已同步";
+  return "巡视数据待同步";
+});
+
+function inspectionTime(value: string | null) {
+  if (!value)
+    return "--";
+  const match = value.match(/(\d{2}):(\d{2})(?::\d{2})?$/);
+  return match ? `${match[1]}:${match[2]}` : value;
+}
+
 const PRIORITY_RANK: Record<RoomPriority, number> = {
   calling: 0,
   danger: 1,
@@ -519,6 +564,51 @@ function handleRoomClick(index: number) {
       @resolve="emit('resolveAlert', $event)"
       @restore="emit('restoreAlert', $event)"
     />
+
+    <section class="inspection-overview">
+      <div class="inspection-overview__head">
+        <div>
+          <span>巡视总览</span>
+          <strong>真实巡视记录</strong>
+        </div>
+        <small>{{ inspectionSyncLabel }}</small>
+      </div>
+      <div class="inspection-overview__metrics">
+        <article class="inspection-metric inspection-metric--normal">
+          <span>已巡视</span>
+          <strong>{{ inspectionOverview.normal }}</strong>
+          <small>间病房</small>
+        </article>
+        <article class="inspection-metric inspection-metric--due">
+          <span>待关注</span>
+          <strong>{{ inspectionOverview.due }}</strong>
+          <small>间病房</small>
+        </article>
+        <article class="inspection-metric inspection-metric--overdue">
+          <span>巡视超时</span>
+          <strong>{{ inspectionOverview.overdue }}</strong>
+          <small>间病房</small>
+        </article>
+      </div>
+      <ul v-if="inspectionAttentionRooms.length" class="inspection-overview__rooms">
+        <li v-for="room in inspectionAttentionRooms" :key="room.roomCode">
+          <button type="button" @click="handleRoomClick(room.roomIndex)">
+            <span>
+              <strong>{{ room.roomName }}</strong>
+              <small>
+                {{ room.latestNurseName || "巡视人员待同步" }}
+                · {{ inspectionTime(room.latestAt) }}
+              </small>
+            </span>
+            <em :class="`is-${room.state}`">{{ room.stateLabel }}</em>
+          </button>
+        </li>
+      </ul>
+      <p v-else-if="inspectionOverview.noRecord">
+        {{ inspectionOverview.noRecord }} 间病房暂无巡视记录，等待数据同步。
+      </p>
+      <p v-else>当前没有巡视超时或待关注病房。</p>
+    </section>
 
     <section
       class="handoff-card"
@@ -1934,6 +2024,143 @@ function handleRoomClick(index: number) {
 
   .kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.inspection-overview {
+  padding: 11px;
+  border: 1px solid rgba(91, 210, 255, 0.2);
+  border-radius: 11px;
+  background:
+    radial-gradient(circle at 86% 14%, rgba(74, 222, 196, 0.09), transparent 34%),
+    linear-gradient(135deg, rgba(10, 42, 61, 0.72), rgba(5, 19, 34, 0.66));
+  box-shadow: inset 3px 0 0 rgba(81, 224, 197, 0.5);
+
+  &__head,
+  &__head > div,
+  &__metrics,
+  &__rooms button {
+    display: flex;
+  }
+
+  &__head {
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    > div {
+      align-items: baseline;
+      gap: 7px;
+    }
+
+    span {
+      color: #dffaff;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    strong,
+    small {
+      color: rgba(171, 216, 232, 0.72);
+      font-size: 10px;
+    }
+  }
+
+  &__metrics {
+    gap: 7px;
+    margin-top: 9px;
+  }
+
+  &__rooms {
+    display: grid;
+    gap: 5px;
+    padding: 0;
+    margin: 8px 0 0;
+    list-style: none;
+
+    button {
+      width: 100%;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 7px;
+      color: #eefcff;
+      background: rgba(3, 16, 28, 0.42);
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    button > span {
+      display: grid;
+      gap: 2px;
+      text-align: left;
+    }
+
+    strong {
+      font-size: 11px;
+    }
+
+    small {
+      color: rgba(192, 218, 232, 0.72);
+      font-size: 9px;
+    }
+
+    em {
+      padding: 3px 7px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-style: normal;
+      font-weight: 800;
+
+      &.is-overdue {
+        color: #ffd8ca;
+        background: rgba(210, 67, 44, 0.26);
+      }
+
+      &.is-due {
+        color: #ffe0a7;
+        background: rgba(179, 112, 24, 0.24);
+      }
+    }
+  }
+
+  > p {
+    margin: 8px 0 0;
+    color: rgba(190, 220, 232, 0.74);
+    font-size: 10px;
+  }
+}
+
+.inspection-metric {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  flex: 1;
+  gap: 1px 5px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 7px;
+  background: rgba(3, 17, 30, 0.38);
+
+  span,
+  small {
+    color: rgba(191, 219, 231, 0.72);
+    font-size: 9px;
+  }
+
+  strong {
+    grid-row: span 2;
+    color: #7ff6da;
+    font-size: 19px;
+  }
+
+  &--due strong {
+    color: #ffc768;
+  }
+
+  &--overdue strong {
+    color: #ff766c;
   }
 }
 

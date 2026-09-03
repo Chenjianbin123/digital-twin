@@ -34,6 +34,12 @@ export interface WardInteriorSceneConfig {
     minDistance: number;
     maxDistanceBase: number;
     maxDistanceSpanFactor: number;
+    pan: {
+      xSpanFactor: number;
+      zSpanFactor: number;
+      yMin: number;
+      yMax: number;
+    };
   };
   appearance: {
     background: number;
@@ -87,6 +93,7 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
     minDistance: 1.1,
     maxDistanceBase: 48,
     maxDistanceSpanFactor: 2.5,
+    pan: { xSpanFactor: 0.32, zSpanFactor: 0.3, yMin: 0.35, yMax: 1.65 },
   },
   appearance: {
     background: 0xd8d2c8,
@@ -106,4 +113,3 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
     maxBeds: 6,
   },
 };
-

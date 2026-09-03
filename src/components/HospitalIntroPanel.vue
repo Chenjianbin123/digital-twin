@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { HospitalInfo } from '@/types/hospital';
 import { htmlToPlainText } from '@/utils/html-text';
 import { resolveFileUrl } from '@/utils/file-url';
@@ -20,6 +20,15 @@ const props = defineProps<{
 const introText = computed(() => htmlToPlainText(props.info?.hospitalNote));
 
 const logoUrl = computed(() => resolveFileUrl(props.info?.hospitalLogoPic));
+const logoFailed = ref(false);
+
+watch(logoUrl, () => {
+  logoFailed.value = false;
+});
+
+function handleLogoError() {
+  logoFailed.value = true;
+}
 
 const visibleMetrics = computed(() =>
   (props.keyMetrics ?? []).filter(m => m.value != null && m.value !== '' && m.value !== '—'),
@@ -29,7 +38,7 @@ const hasContent = computed(() =>
   props.loading
   || !!introText.value
   || visibleMetrics.value.length > 0
-  || !!logoUrl.value
+  || (!!logoUrl.value && !logoFailed.value)
   || !!props.info?.hospitalName,
 );
 </script>
@@ -59,12 +68,13 @@ const hasContent = computed(() =>
         </article>
       </div>
 
-      <div v-if="logoUrl || info.hospitalName" class="hospital-intro__footer">
+      <div v-if="(logoUrl && !logoFailed) || info.hospitalName" class="hospital-intro__footer">
         <img
-          v-if="logoUrl"
+          v-if="logoUrl && !logoFailed"
           class="hospital-intro__logo"
           :src="logoUrl"
           :alt="info.hospitalName || '医院 Logo'"
+          @error="handleLogoError"
         >
         <span v-if="info.hospitalName" class="hospital-intro__name">{{ info.hospitalName }}</span>
       </div>

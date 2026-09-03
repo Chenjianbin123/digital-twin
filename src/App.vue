@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import DashboardAreaNav from '@/components/dashboard/DashboardAreaNav.vue';
 import DashboardBottomNav from '@/components/dashboard/DashboardBottomNav.vue';
 import DashboardHeader from '@/components/dashboard/DashboardHeader.vue';
@@ -16,6 +16,7 @@ import AreaInfoPanel from '@/components/AreaInfoPanel.vue';
 import EnvAlertBanner from '@/components/EnvAlertBanner.vue';
 import WardInfoPanel from '@/components/WardInfoPanel.vue';
 import WardLegend from '@/components/WardLegend.vue';
+import WardPlanBedDialog from '@/components/WardPlanBedDialog.vue';
 import SwpLoginGate from '@/components/SwpLoginGate.vue';
 import { formatBedLabel } from '@/core/alert-workflow';
 import type { AlertTask } from '@/core/alert-workflow';
@@ -108,6 +109,8 @@ const {
   swpResponseMetrics,
   swpEventSync,
   swpResponseSync,
+  inspectionRoomSummaries,
+  inspectionSync,
 } = storeToRefs(store);
 
 const dataStatus = computed(() => resolveDataStatus({
@@ -118,9 +121,19 @@ const dataStatus = computed(() => resolveDataStatus({
 }));
 
 const preloadedWard = computed(() => currentWard.value ?? area.value?.rooms[0] ?? null);
+const currentInspectionSummary = computed(() =>
+  currentRoomIndex.value >= 0
+    ? inspectionRoomSummaries.value[currentRoomIndex.value] ?? null
+    : null,
+);
 const stationSceneActive = computed(() => isNurseStation.value);
 const corridorSceneActive = computed(() => isWard.value);
 const interiorSceneActive = computed(() => isWardInterior.value && wardInteriorView.value === '3d');
+
+watch([() => isWardInterior.value, () => wardInteriorView.value], ([interior, view]) => {
+  if (interior && view === 'plan')
+    panelsVisible.value = false;
+});
 
 function handlingActionText() {
   return '处理中';
@@ -198,13 +211,15 @@ function alertSeverityLabel(severity: 'critical' | 'high' | 'medium') {
   return '提醒';
 }
 
-function alertTypeLabel(type: 'call' | 'env' | 'offline' | 'infusion') {
+function alertTypeLabel(type: AlertTask['type']) {
   if (type === 'call')
     return '床位呼叫';
   if (type === 'env')
     return '环境异常';
   if (type === 'offline')
     return '设备巡检';
+  if (type === 'inspection')
+    return '巡视超时';
   return '输液巡视';
 }
 
@@ -435,6 +450,7 @@ onBeforeUnmount(() => {
         'digital-twin__main--station': isNurseStation,
         'digital-twin__main--ward': isWard || isWardInterior,
         'digital-twin__main--interior': isWardInterior,
+        'digital-twin__main--plan': isWardInterior && wardInteriorView === 'plan',
         'digital-twin__main--panels-hidden': !panelsVisible,
         'digital-twin__main--scene-switching': !!sceneSwitchFeedback,
       }"
@@ -471,7 +487,10 @@ onBeforeUnmount(() => {
         v-if="isNurseStation || isWard || isWardInterior"
         type="button"
         class="digital-twin__panel-toggle"
-        :class="{ 'digital-twin__panel-toggle--hidden': !panelsVisible }"
+        :class="{
+          'digital-twin__panel-toggle--hidden': !panelsVisible,
+          'digital-twin__panel-toggle--plan': isWardInterior && wardInteriorView === 'plan',
+        }"
         :aria-label="panelsVisible ? '隐藏所有信息面板' : '显示所有信息面板'"
         :aria-pressed="!panelsVisible"
         @click="panelsVisible = !panelsVisible"
@@ -599,9 +618,17 @@ onBeforeUnmount(() => {
         />
         <WardPlanView
           v-if="isWardInterior && currentWard && wardInteriorView !== '3d'"
+          class="digital-twin__scene-layer"
+          :class="{ 'digital-twin__scene-layer--inactive': wardInteriorView !== 'plan' }"
           :ward="currentWard"
           :selected-bed="selectedBed"
           @bed-click="store.selectBed"
+        />
+
+        <WardPlanBedDialog
+          v-if="isWardInterior && wardInteriorView === 'plan' && selectedBed"
+          :bed="selectedBed"
+          @close="store.clearSelection"
         />
 
       </div>
@@ -625,6 +652,7 @@ onBeforeUnmount(() => {
         :class="{
           'digital-twin__panel--station': isNurseStation,
           'digital-twin__panel--overlay': !isNurseStation,
+          'digital-twin__panel--interior': isWardInterior,
         }"
       >
         <template v-if="isNurseStation">
@@ -641,6 +669,8 @@ onBeforeUnmount(() => {
             :swp-response-metrics="swpResponseMetrics"
             :swp-event-sync="swpEventSync"
             :swp-response-sync="swpResponseSync"
+            :inspection-room-summaries="inspectionRoomSummaries"
+            :inspection-sync="inspectionSync"
             :ward-data-status="dataStatus"
             @focus-room="store.focusRoom"
             @locate-alert="store.openAlertTask"
@@ -652,6 +682,7 @@ onBeforeUnmount(() => {
 
         <template v-else>
           <HospitalIntroPanel
+            v-if="isWard"
             :info="hospitalInfo"
             :loading="hospitalInfoLoading"
             :key-metrics="keyMetrics"
@@ -667,6 +698,7 @@ onBeforeUnmount(() => {
               :show-back-to-station="true"
               :alert-tasks="alertTasks"
               :alert-ack-records="alertAckRecords"
+              :inspection-room-summaries="inspectionRoomSummaries"
               @focus-room="store.focusRoom"
               @enter-room="store.enterRoom"
               @back-to-station="handleSceneTypeChange('nurse-station')"
@@ -683,6 +715,7 @@ onBeforeUnmount(() => {
               :env-alert="currentEnvAlert"
               :status-history="statusHistory"
               :active-alert-task="activeAlertTask"
+              :inspection-summary="currentInspectionSummary"
               @close="store.clearSelection"
               @mark-alert-handling="store.markAlertHandling"
             />
@@ -696,6 +729,80 @@ onBeforeUnmount(() => {
 
 
 <style scoped lang="scss">
+
+@keyframes digital-panel-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(22px, 0, 0);
+  }
+
+  65% {
+    opacity: 0.96;
+    transform: translate3d(-2px, 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes digital-panel-scan {
+  0%,
+  10% {
+    opacity: 0;
+    transform: translate3d(0, -125%, 0);
+  }
+
+  26% {
+    opacity: 0.72;
+  }
+
+  52% {
+    opacity: 0.42;
+  }
+
+  84%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 325%, 0);
+  }
+}
+
+@keyframes digital-panel-edge-pulse {
+  0%,
+  100% {
+    opacity: 0.68;
+    box-shadow:
+      0 0 12px rgba(64, 214, 255, 0.28),
+      0 0 24px rgba(64, 214, 255, 0.1);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 26px rgba(64, 214, 255, 0.58),
+      0 0 52px rgba(64, 214, 255, 0.22);
+  }
+}
+
+@keyframes digital-panel-grid-drift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0;
+  }
+
+  100% {
+    background-position: 0 0, 0 0, 48px 24px, -24px 48px, 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .digital-twin__panel,
+  .digital-twin__panel::before,
+  .digital-twin__panel::after {
+    animation: none;
+  }
+}
 
 .startup-fade-enter-active,
 .startup-fade-leave-active {
@@ -1032,6 +1139,24 @@ onBeforeUnmount(() => {
       background: linear-gradient(180deg, rgba(13, 69, 82, 0.64), rgba(6, 37, 52, 0.76));
     }
 
+    &--plan {
+      right: 22px;
+      bottom: 20px;
+      min-height: 30px;
+      padding: 0 10px 0 8px;
+      opacity: 0.78;
+      border-color: rgba(91, 219, 255, 0.24);
+      background: linear-gradient(180deg, rgba(8, 36, 58, 0.34), rgba(4, 18, 34, 0.46));
+      box-shadow:
+        0 0 18px rgba(77, 208, 255, 0.16),
+        inset 0 0 14px rgba(77, 208, 255, 0.06);
+
+      &:hover {
+        opacity: 1;
+        border-color: rgba(91, 219, 255, 0.58);
+      }
+    }
+
     @include down($bp-md) {
       right: 12px;
       bottom: calc(var(--mobile-panel-height) + 88px + env(safe-area-inset-bottom));
@@ -1041,11 +1166,16 @@ onBeforeUnmount(() => {
   }
 
   &__main--interior &__panel-toggle {
-    bottom: 154px;
+    bottom: 15px;
 
     @include down($bp-md) {
       bottom: calc(var(--mobile-panel-height) + 88px + env(safe-area-inset-bottom));
     }
+  }
+
+  &__main--plan &__panel-toggle {
+    right: 22px;
+    bottom: 20px;
   }
 
   &__panel-toggle-icon {
@@ -1177,8 +1307,10 @@ onBeforeUnmount(() => {
   &__panel {
     --panel-border: rgba(98, 214, 255, 0.2);
     --panel-line: rgba(98, 214, 255, 0.1);
-    --panel-surface: rgba(6, 18, 32, 0.3);
-    --panel-surface-soft: rgba(8, 24, 42, 0.24);
+    --panel-surface: rgba(6, 18, 32, 0.26);
+    --panel-surface-soft: rgba(8, 24, 42, 0.2);
+    --panel-glass-alpha: 0.42;
+    --panel-line-top: 58px;
 
     position: absolute;
     top: 0;
@@ -1191,84 +1323,285 @@ onBeforeUnmount(() => {
     pointer-events: none;
     overflow: hidden;
     padding-top: 58px;
-    background: rgba(6, 18, 32, 0.3);
+    isolation: isolate;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(9, 31, 52, 0.6) 0%,
+        rgba(5, 20, 36, 0.46) 48%,
+        rgba(3, 13, 26, 0.34) 100%
+      ),
+      linear-gradient(120deg, rgba(71, 218, 255, 0.08), transparent 42%),
+      repeating-linear-gradient(
+        90deg,
+        rgba(98, 214, 255, 0.026) 0,
+        rgba(98, 214, 255, 0.026) 1px,
+        transparent 1px,
+        transparent 48px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        rgba(98, 214, 255, 0.018) 0,
+        rgba(98, 214, 255, 0.018) 1px,
+        transparent 1px,
+        transparent 48px
+      ),
+      rgba(6, 18, 32, var(--panel-glass-alpha));
     border-left: 1px solid var(--panel-border);
-    box-shadow: -12px 0 30px rgba(0, 0, 0, 0.26), inset 1px 0 0 rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(3px);
+    box-shadow:
+      -18px 0 42px rgba(0, 0, 0, 0.24),
+      -1px 0 18px rgba(40, 204, 245, 0.08),
+      inset 1px 0 0 rgba(176, 243, 255, 0.08),
+      inset -1px 0 0 rgba(0, 0, 0, 0.12);
+    backdrop-filter: blur(16px) saturate(135%);
+    -webkit-backdrop-filter: blur(16px) saturate(135%);
+    will-change: background-position;
+    animation:
+      digital-panel-enter 0.52s cubic-bezier(0.22, 0.8, 0.24, 1) both,
+      digital-panel-grid-drift 12s linear 0.52s infinite;
 
     &::before {
       content: '';
       position: absolute;
-      top: 58px;
+      top: var(--panel-line-top);
       left: 0;
       right: 0;
       height: 1px;
-      background: rgba(98, 214, 255, 0.22);
+      z-index: 2;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(87, 224, 255, 0.18) 8%,
+        rgba(87, 224, 255, 0.82) 46%,
+        rgba(87, 224, 255, 0.22) 86%,
+        transparent 100%
+      );
+      box-shadow: 0 0 16px rgba(64, 214, 255, 0.3);
       pointer-events: none;
+      will-change: opacity, box-shadow;
+      animation: digital-panel-edge-pulse 3.8s ease-in-out infinite;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: var(--panel-line-top);
+      left: 0;
+      right: 0;
+      height: 34%;
+      z-index: 2;
+      pointer-events: none;
+      background:
+        linear-gradient(
+          180deg,
+          transparent 0%,
+          rgba(83, 222, 255, 0.12) 22%,
+          rgba(83, 222, 255, 0.34) 42%,
+          rgba(83, 222, 255, 0.56) 50%,
+          rgba(83, 222, 255, 0.34) 58%,
+          rgba(83, 222, 255, 0.12) 78%,
+          transparent 100%
+        ),
+        linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(130, 237, 255, 0.16) 50%,
+          transparent 100%
+        );
+      mix-blend-mode: screen;
+      filter: blur(0.6px) saturate(125%);
+      opacity: 0;
+      will-change: transform, opacity;
+      animation: digital-panel-scan 5.4s ease-in-out 0.2s infinite;
     }
 
     &--station {
       width: var(--scene-panel-width, 300px);
       padding-top: 42px;
-      background: linear-gradient(180deg, rgba(7, 20, 35, 0.56), rgba(5, 15, 27, 0.48));
-      border-left-color: rgba(77, 208, 255, 0.18);
-      box-shadow: -8px 0 22px rgba(0, 0, 0, 0.2), inset 1px 0 0 rgba(255, 255, 255, 0.025);
-
-      // 护士站顶部已有统一 dash-header 装饰线，避免与面板内部横线重叠。
-      &::before {
-        display: none;
-      }
+      --panel-glass-alpha: 0.38;
+      --panel-line-top: 42px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(8, 28, 47, 0.56) 0%,
+          rgba(5, 19, 34, 0.4) 52%,
+          rgba(3, 13, 25, 0.3) 100%
+        ),
+        linear-gradient(120deg, rgba(71, 218, 255, 0.07), transparent 45%),
+        repeating-linear-gradient(
+          90deg,
+          rgba(98, 214, 255, 0.022) 0,
+          rgba(98, 214, 255, 0.022) 1px,
+          transparent 1px,
+          transparent 48px
+        ),
+        repeating-linear-gradient(
+          0deg,
+          rgba(98, 214, 255, 0.015) 0,
+          rgba(98, 214, 255, 0.015) 1px,
+          transparent 1px,
+          transparent 48px
+        ),
+        rgba(6, 18, 32, var(--panel-glass-alpha));
+      border-left-color: rgba(77, 208, 255, 0.28);
+      box-shadow:
+        -14px 0 34px rgba(0, 0, 0, 0.22),
+        -1px 0 18px rgba(40, 204, 245, 0.07),
+        inset 1px 0 0 rgba(176, 243, 255, 0.06),
+        inset -1px 0 0 rgba(0, 0, 0, 0.1);
 
       @include down($bp-md) {
         width: 100%;
         max-height: var(--mobile-panel-height);
-        background: rgba(8, 18, 32, 0.5);
+        background:
+          linear-gradient(180deg, rgba(8, 28, 47, 0.58), rgba(4, 15, 28, 0.42)),
+          rgba(6, 18, 32, var(--panel-glass-alpha));
       }
     }
 
     &--overlay {
       width: var(--scene-panel-width, 400px);
-      background:
-        linear-gradient(180deg, rgba(5, 20, 34, 0.58), rgba(3, 14, 27, 0.45)),
-        repeating-linear-gradient(
-          0deg,
-          rgba(92, 223, 255, 0.018) 0,
-          rgba(92, 223, 255, 0.018) 1px,
-          transparent 1px,
-          transparent 4px
-        );
-      border-left-color: rgba(89, 222, 255, 0.3);
-      box-shadow:
-        -14px 0 34px rgba(0, 0, 0, 0.22),
-        -1px 0 18px rgba(40, 204, 245, 0.08),
-        inset 1px 0 0 rgba(175, 242, 255, 0.05);
-      backdrop-filter: blur(9px) saturate(120%);
+      --panel-glass-alpha: 0.46;
+      border-left-color: rgba(89, 222, 255, 0.34);
 
       &::before {
         background: linear-gradient(
           90deg,
-          rgba(83, 222, 255, 0.72),
-          rgba(83, 222, 255, 0.12) 72%,
+          rgba(83, 222, 255, 0.88),
+          rgba(83, 222, 255, 0.3) 58%,
           transparent
         );
-        box-shadow: 0 0 10px rgba(64, 214, 255, 0.22);
+        box-shadow: 0 0 12px rgba(64, 214, 255, 0.3);
+      }
+    }
+
+    &--interior {
+      --panel-glass-alpha: 0.54;
+      --panel-line-top: 54px;
+      background:
+        linear-gradient(
+          165deg,
+          rgba(11, 49, 73, 0.78) 0%,
+          rgba(5, 24, 43, 0.62) 45%,
+          rgba(4, 15, 29, 0.52) 100%
+        ),
+        linear-gradient(110deg, rgba(68, 229, 255, 0.13), transparent 38%),
+        repeating-linear-gradient(
+          90deg,
+          rgba(119, 231, 255, 0.032) 0,
+          rgba(119, 231, 255, 0.032) 1px,
+          transparent 1px,
+          transparent 42px
+        ),
+        repeating-linear-gradient(
+          0deg,
+          rgba(119, 231, 255, 0.022) 0,
+          rgba(119, 231, 255, 0.022) 1px,
+          transparent 1px,
+          transparent 42px
+        ),
+        rgba(6, 18, 32, var(--panel-glass-alpha));
+      border-left-color: rgba(83, 222, 255, 0.5);
+      box-shadow:
+        -24px 0 54px rgba(0, 0, 0, 0.3),
+        -2px 0 26px rgba(64, 214, 255, 0.16),
+        inset 2px 0 0 rgba(176, 243, 255, 0.13),
+        inset -1px 0 0 rgba(0, 0, 0, 0.16);
+
+      &::before {
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(97, 235, 255, 0.52) 8%,
+          rgba(158, 247, 255, 1) 46%,
+          rgba(79, 211, 255, 0.42) 84%,
+          transparent 100%
+        );
+        box-shadow:
+          0 0 18px rgba(64, 214, 255, 0.58),
+          0 0 42px rgba(64, 214, 255, 0.2);
       }
 
       &::after {
+        height: 46%;
+        background:
+          linear-gradient(
+            180deg,
+            transparent 0%,
+            rgba(83, 222, 255, 0.16) 20%,
+            rgba(83, 222, 255, 0.46) 46%,
+            rgba(161, 246, 255, 0.7) 50%,
+            rgba(83, 222, 255, 0.46) 54%,
+            rgba(83, 222, 255, 0.16) 80%,
+            transparent 100%
+          ),
+          linear-gradient(90deg, transparent, rgba(130, 237, 255, 0.2) 50%, transparent);
+        filter: blur(0.4px) saturate(145%);
+      }
+
+      :deep(.hospital-intro) {
+        position: relative;
+        margin: 0 14px 12px;
+        padding: 16px 16px 15px;
+        overflow: hidden;
+        background:
+          linear-gradient(145deg, rgba(12, 49, 74, 0.52), rgba(5, 23, 41, 0.34)),
+          rgba(7, 22, 39, 0.28);
+        border: 1px solid rgba(83, 222, 255, 0.24);
+        border-radius: 12px;
+        box-shadow:
+          0 12px 28px rgba(0, 0, 0, 0.14),
+          inset 0 1px 0 rgba(193, 247, 255, 0.1),
+          inset 3px 0 0 rgba(77, 224, 255, 0.52);
+      }
+
+      :deep(.hospital-intro)::before {
         content: '';
         position: absolute;
-        inset: 58px 0 0;
-        z-index: 0;
-        pointer-events: none;
+        top: 0;
+        right: 0;
+        width: 44%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(153, 246, 255, 0.82));
+        box-shadow: 0 0 14px rgba(83, 222, 255, 0.42);
+      }
+
+      :deep(.hospital-intro__title) {
+        color: #effcff;
+        text-shadow: 0 0 14px rgba(77, 224, 255, 0.38);
+      }
+
+      :deep(.hospital-intro__note) {
+        color: rgba(226, 245, 255, 0.9);
+        text-shadow: 0 0 8px rgba(62, 167, 206, 0.14);
+      }
+
+      :deep(.hospital-intro__metric) {
         background:
-          linear-gradient(135deg, rgba(74, 216, 255, 0.045), transparent 22%),
-          repeating-linear-gradient(
-            90deg,
-            transparent 0,
-            transparent 59px,
-            rgba(83, 222, 255, 0.025) 60px
-          );
-        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent 92%);
+          linear-gradient(135deg, rgba(8, 40, 63, 0.7), rgba(7, 25, 44, 0.46)),
+          rgba(6, 22, 40, 0.42);
+        border-color: rgba(83, 222, 255, 0.26);
+        box-shadow:
+          inset 0 1px 0 rgba(187, 246, 255, 0.08),
+          0 0 0 1px rgba(30, 139, 178, 0.08);
+        transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+      }
+
+      :deep(.hospital-intro__metric:hover) {
+        border-color: rgba(131, 237, 255, 0.58);
+        box-shadow:
+          inset 0 1px 0 rgba(187, 246, 255, 0.14),
+          0 0 18px rgba(55, 206, 255, 0.16);
+        transform: translateY(-1px);
+      }
+
+      :deep(.hospital-intro__metric-value) {
+        text-shadow: 0 0 14px rgba(77, 224, 255, 0.44);
+      }
+
+      :deep(.hospital-intro__footer) {
+        border-top-color: rgba(83, 222, 255, 0.2);
       }
     }
 
@@ -1311,11 +1644,18 @@ onBeforeUnmount(() => {
         display: none;
       }
 
+      &::after {
+        top: 0;
+        height: 42%;
+      }
+
     }
 
 
 
     > :deep(*) {
+      position: relative;
+      z-index: 1;
       pointer-events: auto;
     }
 

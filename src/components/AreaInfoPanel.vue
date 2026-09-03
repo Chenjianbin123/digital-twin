@@ -8,6 +8,7 @@ import { resolveBedStatus } from '@/core/bed-status';
 import type { AlertAckRecordMap } from '@/core/alert-ack';
 import type { RoomSummary } from '@/core/area-summary';
 import type { AlertTask } from '@/core/alert-workflow';
+import type { InspectionRoomSummary } from '@/types/inspection';
 import { displayPatientName } from '@/utils/mask-patient';
 import { getWardBedStats, type StatusHistoryEntry, type TwinAreaEntity, type TwinBedEntity, type TwinWardEntity } from '@/types/twin';
 
@@ -19,6 +20,7 @@ const props = defineProps<{
   showBackToStation?: boolean;
   alertTasks?: AlertTask[];
   alertAckRecords?: AlertAckRecordMap;
+  inspectionRoomSummaries?: InspectionRoomSummary[];
 }>();
 
 const emit = defineEmits<{
@@ -160,6 +162,17 @@ function patientDisplay(bed: TwinBedEntity) {
     return '待入住';
   return displayPatientName(bed.sickInfo?.sickName, bed.isOccupied);
 }
+
+function inspectionForRoom(roomIndex: number) {
+  return props.inspectionRoomSummaries?.find(item => item.roomIndex === roomIndex);
+}
+
+function inspectionTime(value: string | null | undefined) {
+  if (!value)
+    return '';
+  const match = value.match(/(\d{2}):(\d{2})(?::\d{2})?$/);
+  return match ? `${match[1]}:${match[2]}` : value;
+}
 </script>
 
 <template>
@@ -247,6 +260,20 @@ function patientDisplay(bed: TwinBedEntity) {
               <span class="room-card__badge">{{ summary.occupiedBeds }}/{{ summary.totalBeds }}</span>
             </header>
             <p class="room-card__status">{{ summary.statusText }}</p>
+            <div
+              v-if="inspectionForRoom(summary.roomIndex)"
+              class="room-card__inspection"
+              :class="`room-card__inspection--${inspectionForRoom(summary.roomIndex)!.state}`"
+            >
+              <span>{{ inspectionForRoom(summary.roomIndex)!.stateLabel }}</span>
+              <small v-if="inspectionForRoom(summary.roomIndex)!.latestAt">
+                最近巡视 {{ inspectionTime(inspectionForRoom(summary.roomIndex)!.latestAt) }}
+                <template v-if="inspectionForRoom(summary.roomIndex)!.latestNurseName">
+                  · {{ inspectionForRoom(summary.roomIndex)!.latestNurseName }}
+                </template>
+              </small>
+              <small v-else>暂无巡视记录</small>
+            </div>
 
             <template v-if="getRoom(summary.roomIndex)">
               <DoorStaffCards
@@ -779,6 +806,53 @@ function patientDisplay(bed: TwinBedEntity) {
       background: rgba(0, 120, 200, 0.28);
       box-shadow: 0 0 14px rgba(77, 208, 255, 0.22);
     }
+  }
+}
+
+.room-card__inspection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 7px 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(86, 226, 199, 0.18);
+  border-radius: 7px;
+  color: #8af4dc;
+  background: rgba(24, 119, 101, 0.12);
+
+  span {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  small {
+    overflow: hidden;
+    color: rgba(198, 224, 235, 0.74);
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &--due {
+    border-color: rgba(255, 189, 92, 0.24);
+    color: #ffd58c;
+    background: rgba(160, 96, 22, 0.14);
+  }
+
+  &--overdue {
+    border-color: rgba(255, 101, 91, 0.32);
+    color: #ff958c;
+    background: rgba(171, 52, 39, 0.16);
+    box-shadow: inset 2px 0 0 rgba(255, 101, 91, 0.7);
+  }
+
+  &--unknown,
+  &--no-record {
+    border-color: rgba(158, 184, 199, 0.14);
+    color: rgba(190, 213, 225, 0.68);
+    background: rgba(91, 112, 128, 0.08);
   }
 }
 

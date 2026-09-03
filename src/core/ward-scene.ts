@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { easeOutCubic } from '@/core/camera-easing';
 import { getCameraPreset, resolveWardCameraViewportScale } from '@/core/camera-presets';
 import { resolveWardSceneControlLimits } from '@/core/ward-scene-controls';
@@ -72,11 +72,9 @@ interface BedMeshGroup {
   bedTerminalTexture?: THREE.CanvasTexture;
   infusionPump?: THREE.Mesh;
   callRing?: THREE.Mesh;
-  label?: CSS2DObject;
   selectionRing?: THREE.Mesh;
   selectionBeam?: THREE.Mesh;
   selectionPillar?: THREE.Mesh;
-  deviceTag?: CSS2DObject;
   bedsideMonitor?: THREE.Mesh;
   bedsideMonitorTexture?: THREE.CanvasTexture;
   curtainPanels?: THREE.Mesh[];
@@ -241,6 +239,7 @@ export class WardScene {
 
   private onControlsChange = () => {
     this.suppressBedClick = true;
+    this.clampWardInteriorPanTarget();
     // window.clearTimeout(this.cameraViewLogTimer);
     // this.cameraViewLogTimer = window.setTimeout(() => this.logCameraView('拖动中'), 160);
   };
@@ -306,60 +305,6 @@ export class WardScene {
     if (!this.pageHidden)
       this.timer.reset();
   };
-
-  private applyBedLabelElement(el: HTMLElement, bed: TwinBedEntity) {
-    const status = resolveBedStatus(bed);
-    const isEmpty = !bed.isOccupied;
-    const selected = this.selectedBedCode === bed.bedCode;
-    let stateMod = 'bed-label-3d--occupied';
-    if (bed.isCalling)
-      stateMod = 'bed-label-3d--calling';
-    else if (status.state === 'infusing')
-      stateMod = 'bed-label-3d--infusing';
-    else if (status.state === 'offline' || status.state === 'lowBattery')
-      stateMod = 'bed-label-3d--device-alert';
-    else if (isEmpty)
-      stateMod = 'bed-label-3d--empty';
-
-    const compact = this.bedCount >= 4 ? ' bed-label-3d--compact' : '';
-    const selectedClass = selected ? ' bed-label-3d--selected' : '';
-    el.className = `bed-label-3d ${stateMod}${compact}${selectedClass}`;
-    el.style.pointerEvents = 'none';
-    const nursingColor = bed.nursingColor ?? bed.sickInfo?.nursingColor;
-    const name = displayPatientName(bed.sickInfo?.sickName, bed.isOccupied);
-    const nurse = bed.sickInfo?.dutyNurseName;
-    const level = bed.nursingLevel
-      ? `<span class="bed-label-3d__level">${bed.nursingLevel}</span>`
-      : '';
-    const badge = !isEmpty && status.state !== 'occupied' && status.state !== 'empty'
-      ? `<span class="bed-label-3d__badge">${status.label}</span>`
-      : '';
-    const statusLabel = isEmpty ? '待入住' : status.label;
-    const selectedExtra = selected
-      ? `<div class="bed-label-3d__selected-extra">
-          <span>${nurse ? `责任护士 ${nurse}` : '床旁设备联动'}</span>
-          <span>${bed.deviceCode ? `设备 ${bed.deviceCode}` : '床头屏在线'}</span>
-        </div>`
-      : '';
-    if (nursingColor)
-      el.style.setProperty('--nursing-accent', nursingColor);
-    else
-      el.style.removeProperty('--nursing-accent');
-    el.innerHTML = `
-      <div class="bed-label-3d__accent" aria-hidden="true"></div>
-      <div class="bed-label-3d__head">
-        <span class="bed-label-3d__dot"></span>
-        <span class="bed-label-3d__num">${bed.bedName}</span>
-        <span class="bed-label-3d__status">${statusLabel}</span>
-      </div>
-      <div class="bed-label-3d__name">${name}</div>
-      <div class="bed-label-3d__meta">
-        ${level}
-        ${badge}
-      </div>
-      ${selectedExtra}
-    `;
-  }
 
   private createFloorTexture() {
     return createHospitalFloorTexture(this.roomW / 2, this.roomD / 2);
@@ -997,15 +942,6 @@ export class WardScene {
     return resolveWardBedPose(index, total, this.roomW, this.roomD);
   }
 
-  private shouldShowBedOverlay(bed: TwinBedEntity) {
-    const status = resolveBedStatus(bed);
-    return this.selectedBedCode === bed.bedCode
-      || bed.isCalling
-      || status.state === 'infusing'
-      || status.state === 'offline'
-      || status.state === 'lowBattery';
-  }
-
   private createBedsideMonitorTexture(bed: TwinBedEntity, status: BedStatusMeta) {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
@@ -1067,33 +1003,6 @@ export class WardScene {
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.needsUpdate = true;
     return tex;
-  }
-
-  private createDeviceTagElement(bed: TwinBedEntity) {
-    const el = document.createElement('div');
-    el.style.pointerEvents = 'none';
-    this.applyDeviceTagElement(el, bed);
-    return el;
-  }
-
-  private applyDeviceTagElement(el: HTMLElement, bed: TwinBedEntity) {
-    const status = resolveBedStatus(bed);
-    const alerting = bed.isCalling || status.state === 'offline' || status.state === 'lowBattery' || status.state === 'infusing';
-    el.className = `bed-device-tag ${alerting ? 'bed-device-tag--alert' : 'bed-device-tag--normal'} bed-device-tag--${status.state}`;
-    const title = bed.isCalling
-      ? '呼叫中'
-      : status.state === 'offline'
-        ? '设备离线'
-        : status.state === 'lowBattery'
-          ? '低电量'
-          : status.state === 'infusing'
-            ? '输液监测'
-            : '设备正常';
-    el.innerHTML = `
-      <span class="bed-device-tag__dot"></span>
-      <strong>${title}</strong>
-      <small>${bed.deviceCode || '床旁终端'}</small>
-    `;
   }
 
   private addBedsideMonitor(
@@ -1933,8 +1842,6 @@ export class WardScene {
     this.bedTerminalRefreshToken.set(meshGroup.bedCode, token);
     meshGroup.bedTerminalTexture?.dispose();
     meshGroup.bedsideMonitorTexture?.dispose();
-    meshGroup.label?.removeFromParent();
-    meshGroup.deviceTag?.removeFromParent();
 
     if (meshGroup.group.userData.wardInteriorBakedBed) {
       this.disposeMesh(meshGroup.mattress, false);
@@ -1951,8 +1858,6 @@ export class WardScene {
       meshGroup.selectionRing = undefined;
       meshGroup.selectionPillar = undefined;
       meshGroup.selectionBeam = undefined;
-      meshGroup.label = undefined;
-      meshGroup.deviceTag = undefined;
       delete meshGroup.group.userData.bedCode;
       return;
     }
@@ -2221,6 +2126,7 @@ export class WardScene {
           fogDensity - Math.max(this.roomW, this.roomD) * wardInteriorSceneConfig.appearance.fogSpanFactor,
         )
       : null;
+    this.clampWardInteriorPanTarget();
     this.controls.update();
   }
 
@@ -2234,20 +2140,25 @@ export class WardScene {
     this.controls.maxDistance = limits.maxDistance;
   }
 
+  private clampWardInteriorPanTarget() {
+    const limits = resolveWardSceneControlLimits(this.roomW, this.roomD);
+    const clampedTarget = this.controls.target.clone();
+    clampedTarget.x = THREE.MathUtils.clamp(clampedTarget.x, -limits.pan.xLimit, limits.pan.xLimit);
+    clampedTarget.y = THREE.MathUtils.clamp(clampedTarget.y, limits.pan.yMin, limits.pan.yMax);
+    clampedTarget.z = THREE.MathUtils.clamp(clampedTarget.z, -limits.pan.zLimit, limits.pan.zLimit);
+    const correction = clampedTarget.sub(this.controls.target);
+    if (correction.lengthSq() <= 0)
+      return;
+    this.controls.target.add(correction);
+    this.camera.position.add(correction);
+  }
+
   private getBedScale() {
     return resolveBedVisualScale(this.bedCount);
   }
 
   private getRoomViewScale() {
     return Math.max(this.roomW / 14, this.roomD / 12);
-  }
-
-  private createBedLabel(bed: TwinBedEntity): CSS2DObject {
-    const el = document.createElement('div');
-    this.applyBedLabelElement(el, bed);
-    const label = new CSS2DObject(el);
-    label.position.set(0, this.bedCount >= 4 ? 1.5 : 1.68, 0);
-    return label;
   }
 
   private addBedCaster(group: THREE.Group, x: number, z: number) {
@@ -2308,14 +2219,6 @@ export class WardScene {
       toneMapped: false,
     });
 
-    const label = this.createBedLabel(bed);
-    label.position.y = 2.25;
-    group.add(label);
-
-    const deviceTag = new CSS2DObject(this.createDeviceTagElement(bed));
-    deviceTag.position.set(0.55, 2.05, 0.35);
-    group.add(deviceTag);
-
     const selection = this.createSelectionMeshes(status);
     group.add(selection.ring, selection.pulse, selection.beam);
 
@@ -2326,11 +2229,9 @@ export class WardScene {
       mattress: bound.mattress,
       bedTerminalScreen: bound.bedTerminalScreen,
       bedTerminalTexture,
-      label,
       selectionRing: selection.ring,
       selectionPillar: selection.pulse,
       selectionBeam: selection.beam,
-      deviceTag,
       bedsideMonitor: bound.bedsideMonitor,
       bedsideMonitorTexture,
       curtainPhase: group.position.x * 0.7 + group.position.z * 0.4,
@@ -2376,14 +2277,6 @@ export class WardScene {
       toneMapped: false,
     });
 
-    const label = this.createBedLabel(bed);
-    label.position.y = 2.25;
-    group.add(label);
-
-    const deviceTag = new CSS2DObject(this.createDeviceTagElement(bed));
-    deviceTag.position.set(1.15, 2.05, 0.2);
-    group.add(deviceTag);
-
     const selection = this.createSelectionMeshes(status);
     group.add(selection.ring, selection.pulse, selection.beam);
     this.scene.add(group);
@@ -2395,11 +2288,9 @@ export class WardScene {
       mattress: cloned.mattress,
       bedTerminalScreen: cloned.bedTerminalScreen,
       bedTerminalTexture,
-      label,
       selectionRing: selection.ring,
       selectionPillar: selection.pulse,
       selectionBeam: selection.beam,
-      deviceTag,
       bedsideMonitor: cloned.bedsideMonitor,
       bedsideMonitorTexture,
       curtainPhase: group.position.x * 0.7 + group.position.z * 0.4,
@@ -2581,13 +2472,6 @@ export class WardScene {
     indicator.position.set(-BED_WIDTH / 2 + 0.14, 1.42, HEADBOARD_Z + 0.22);
     group.add(indicator);
 
-    const label = this.createBedLabel(bed);
-    group.add(label);
-
-    const deviceTag = new CSS2DObject(this.createDeviceTagElement(bed));
-    deviceTag.position.set(BED_WIDTH / 2 + 0.18, 1.55, 0.2);
-    group.add(deviceTag);
-
     const curtainPanels = this.addBedCurtain(group, this.getCurtainMode());
 
     let infusionPump: THREE.Mesh | undefined;
@@ -2649,11 +2533,9 @@ export class WardScene {
       bedTerminalTexture,
       infusionPump,
       callRing,
-      label,
       selectionRing: selection.ring,
       selectionPillar: selection.pulse,
       selectionBeam: selection.beam,
-      deviceTag,
       bedsideMonitor,
       bedsideMonitorTexture,
       curtainPanels,
@@ -2731,15 +2613,6 @@ export class WardScene {
     if (meshGroup.bedTerminalScreen)
       void this.refreshBedTerminal(bed);
 
-    if (meshGroup.label?.element)
-      this.applyBedLabelElement(meshGroup.label.element as HTMLElement, bed);
-    if (meshGroup.deviceTag?.element)
-      this.applyDeviceTagElement(meshGroup.deviceTag.element as HTMLElement, bed);
-    if (meshGroup.label)
-      meshGroup.label.visible = this.shouldShowBedOverlay(bed);
-    if (meshGroup.deviceTag)
-      meshGroup.deviceTag.visible = this.shouldShowBedOverlay(bed);
-
     if (meshGroup.bedsideMonitor) {
       const oldTexture = meshGroup.bedsideMonitorTexture;
       const newTexture = this.createBedsideMonitorTexture(bed, status);
@@ -2805,12 +2678,6 @@ export class WardScene {
       mat.color.set(status.color);
     }
 
-    if (meshGroup.label?.element)
-      this.applyBedLabelElement(meshGroup.label.element as HTMLElement, bed);
-    if (meshGroup.label)
-      meshGroup.label.visible = this.shouldShowBedOverlay(bed);
-    if (meshGroup.deviceTag)
-      meshGroup.deviceTag.visible = this.shouldShowBedOverlay(bed);
   }
 
   private updateAllBedSelectionVisuals() {
@@ -2954,6 +2821,7 @@ export class WardScene {
         .sub(this.controls.target)
         .multiplyScalar(nextViewportScale / previousViewportScale)
         .add(this.controls.target);
+      this.clampWardInteriorPanTarget();
       this.controls.update();
     }
     this.camera.updateProjectionMatrix();
@@ -3004,6 +2872,7 @@ export class WardScene {
       const t = easeOutCubic(this.cameraTransition.elapsed / this.cameraTransition.duration);
       this.camera.position.lerpVectors(this.cameraTransition.fromPos, this.cameraTransition.toPos, t);
       this.controls.target.lerpVectors(this.cameraTransition.fromTarget, this.cameraTransition.toTarget, t);
+      this.clampWardInteriorPanTarget();
       if (t >= 1)
         this.cameraTransition = null;
     }
@@ -3060,18 +2929,6 @@ export class WardScene {
             const mat = meshGroup.selectionBeam.material as THREE.MeshBasicMaterial;
             mat.opacity = 0.075 + Math.sin(elapsed * 2.2) * 0.025;
           }
-        }
-
-        if (meshGroup.label?.element) {
-          const dist = this.camera.position.distanceTo(meshGroup.group.position);
-          const minScale = this.bedCount >= 5 ? 0.5 : this.bedCount >= 4 ? 0.55 : 0.65;
-          const selected = this.selectedBedCode === bed.bedCode;
-          const labelScale = THREE.MathUtils.clamp(
-            dist / (12 + this.bedCount * 0.5) * (selected ? 1.12 : 1),
-            selected ? Math.max(minScale, 0.78) : minScale,
-            selected ? 1.18 : 1,
-          );
-          (meshGroup.label.element as HTMLElement).style.transform = `translate(-50%, -100%) scale(${labelScale})`;
         }
 
         if (meshGroup.curtainPanels?.length) {

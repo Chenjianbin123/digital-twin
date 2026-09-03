@@ -13,6 +13,51 @@ function text(value: unknown, fallback = ''): string {
   return String(value);
 }
 
+function firstText(...values: unknown[]): string {
+  for (const value of values) {
+    const result = text(value).trim();
+    if (result)
+      return result;
+  }
+  return '';
+}
+
+function isTemplateOrIconImage(path: string): boolean {
+  const normalized = path.trim().toLowerCase().replace(/\s+/g, '');
+  if (!normalized)
+    return false;
+  return [
+    '/swp_upload/picture/template/',
+    '/template/',
+    '/doorbtn/',
+    '/bedbtn/',
+    '/img/sip.',
+    '/img/network.',
+    'monitor.',
+    'beddevice',
+    'statusbar',
+    'qrcode',
+    'button',
+    'menu-inactive',
+  ].some(token => normalized.includes(token));
+}
+
+function resolveStaffPortrait(
+  previous: DoorSickInfo | undefined,
+  previousKey: 'visitDoctorUserPic' | 'dutyNurseUserPic',
+  ...candidates: unknown[]
+): string {
+  for (const candidate of candidates) {
+    const next = firstText(candidate);
+    if (next && !isTemplateOrIconImage(next))
+      return next;
+  }
+  const last = text(previous?.[previousKey]).trim();
+  if (last && !isTemplateOrIconImage(last))
+    return last;
+  return '';
+}
+
 function positiveNumber(value: unknown): number | undefined {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
@@ -46,6 +91,7 @@ function mapBedSickInfo(
   sick: BedSickInfoVo | null | undefined,
   device: BedDeviceInfoVo,
   labels: NursingLabelItem[],
+  previous?: DoorSickInfo,
 ): DoorSickInfo | undefined {
   if (!hasPatientData(sick))
     return undefined;
@@ -74,8 +120,24 @@ function mapBedSickInfo(
     dutyNurseUserProfessional: '',
     visitDoctorUserRemark: text(sick?.visitDoctorSynopsis),
     dutyNurseUserRemark: text(sick?.dutyNurseSynopsis),
-    visitDoctorUserPic: '',
-    dutyNurseUserPic: '',
+    visitDoctorUserPic: resolveStaffPortrait(
+      previous,
+      'visitDoctorUserPic',
+      raw.visitDoctorUserPic,
+      raw.bedDoctorUserPic,
+      raw.doctorUserPic,
+      raw.visitDoctorPic,
+      raw.bedDoctorPic,
+      raw.doctorPic,
+    ),
+    dutyNurseUserPic: resolveStaffPortrait(
+      previous,
+      'dutyNurseUserPic',
+      raw.dutyNurseUserPic,
+      raw.nurseUserPic,
+      raw.dutyNursePic,
+      raw.nursePic,
+    ),
     areaHeadNurseName: text(sick?.areaHeadNurseName),
     areaHeadNurseUserPic: '',
     nursingLabels: labels,
@@ -125,7 +187,7 @@ export function applyBedDeviceInfoToTwinBed(
 ): TwinBedEntity {
   const device = data.bedDeviceInfoVo;
   const labels = mapNursingLabels(data.bedSickNursingLabelList);
-  const sick = mapBedSickInfo(data.bedSickInfoVo, device, labels);
+  const sick = mapBedSickInfo(data.bedSickInfoVo, device, labels, bed.sickInfo);
   const bedCode = text(device.bedCode, bed.bedCode);
   const bedName = text(device.bedName, bed.bedName);
   const deviceCode = text(device.deviceCode, bed.deviceCode);

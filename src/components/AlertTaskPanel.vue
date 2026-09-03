@@ -68,6 +68,8 @@ function typeLabel(type: AlertTask['type']) {
     return '环境';
   if (type === 'offline')
     return '设备';
+  if (type === 'inspection')
+    return '巡视超时';
   return '输液';
 }
 
@@ -79,7 +81,7 @@ function formatAckTime(taskId: string) {
 }
 
 function waitingLabel(task: AlertTask) {
-  return isDisplayOnlySwpCall(task)
+  return isSourceManagedTask(task)
     ? ''
     : formatAlertWaitingTime(task.startedAt, waitingNow.value);
 }
@@ -93,6 +95,8 @@ function formatTaskOccurredAt(task: AlertTask) {
 }
 
 function waitingClass(task: AlertTask) {
+  if (task.source === 'swp-inspection')
+    return '';
   const level = getAlertWaitingLevel(task.startedAt, waitingNow.value);
   if (level === 'attention')
     return 'alert-task--waiting-attention';
@@ -113,17 +117,23 @@ function isDisplayOnlySwpCall(task: AlertTask) {
   return task.source === 'swp-call' && task.type === 'call';
 }
 
+function isSourceManagedTask(task: AlertTask) {
+  return isDisplayOnlySwpCall(task) || task.source === 'swp-inspection';
+}
+
 function handlingActionText() {
   return '处理中';
 }
 
 function canMarkHandling(task: AlertTask) {
-  return !isDisplayOnlySwpCall(task) && task.status !== 'handling';
+  return !isSourceManagedTask(task) && task.status !== 'handling';
 }
 
 function taskStatusText(task: AlertTask) {
   if (isDisplayOnlySwpCall(task))
     return '呼叫中';
+  if (task.source === 'swp-inspection')
+    return '待巡视';
   if (task.status !== 'handling')
     return '待处理';
   return '处理中';
@@ -151,6 +161,7 @@ function taskStatusText(task: AlertTask) {
           `alert-task--${task.severity}`,
           `alert-task--${task.status}`,
           { 'alert-task--swp-call': isDisplayOnlySwpCall(task) },
+          { 'alert-task--inspection': task.source === 'swp-inspection' },
           waitingClass(task),
         ]"
       >
@@ -179,7 +190,8 @@ function taskStatusText(task: AlertTask) {
             <span v-if="task.roomName && task.canLocate !== false">{{ task.roomName }}</span>
             <span v-if="task.bedName && task.canLocate !== false">{{ formatBedLabel(task.bedName) }}</span>
             <span v-if="task.startedAt">
-              {{ isDisplayOnlySwpCall(task) ? '呼叫' : '发生' }} {{ formatTaskOccurredAt(task) }}
+              {{ isDisplayOnlySwpCall(task) ? '呼叫' : task.source === 'swp-inspection' ? '巡视' : '发生' }}
+              {{ formatTaskOccurredAt(task) }}
             </span>
             <span v-if="waitingLabel(task)" class="alert-task__meta-wait">
               {{ waitingLabel(task) }}
@@ -188,7 +200,7 @@ function taskStatusText(task: AlertTask) {
               {{ taskStatusText(task) }}
             </span>
           </div>
-          <div v-if="ackRecords[task.id] && !isDisplayOnlySwpCall(task)" class="alert-task__ack">
+          <div v-if="ackRecords[task.id] && !isSourceManagedTask(task)" class="alert-task__ack">
             <span>{{ ackRecords[task.id].operator }}</span>
             <span>{{ formatAckTime(task.id) }}</span>
             <span v-if="syncLabel(task.id)" :class="`alert-task__sync--${ackRecords[task.id].syncState}`">
@@ -227,7 +239,7 @@ function taskStatusText(task: AlertTask) {
             <i aria-hidden="true" />
             暂无法定位
           </span>
-          <span v-if="!isDisplayOnlySwpCall(task) && task.status === 'handling'" class="alert-task__recovery-tip">
+          <span v-if="!isSourceManagedTask(task) && task.status === 'handling'" class="alert-task__recovery-tip">
             等待状态恢复后自动结束
           </span>
         </div>
@@ -484,6 +496,31 @@ function taskStatusText(task: AlertTask) {
       inset 0 1px 0 rgba(255, 230, 235, 0.08),
       0 0 0 1px rgba(255, 89, 109, 0.14),
       0 9px 24px rgba(65, 0, 14, 0.24);
+  }
+
+  &--inspection {
+    border-color: rgba(255, 176, 82, 0.42);
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255, 157, 72, 0.11), transparent 36%),
+      linear-gradient(108deg, rgba(48, 30, 22, 0.76), rgba(8, 28, 43, 0.74) 52%, rgba(10, 47, 65, 0.68));
+    box-shadow:
+      inset 3px 0 0 rgba(255, 158, 75, 0.86),
+      inset 0 1px 0 rgba(255, 235, 215, 0.06),
+      0 8px 20px rgba(0, 0, 0, 0.18);
+
+    .alert-task__severity {
+      background: rgba(222, 112, 42, 0.72);
+    }
+
+    .alert-task__type {
+      color: #ffddb2;
+      background: rgba(194, 106, 42, 0.2);
+    }
+
+    .alert-task__meta-live {
+      color: #ffd8a3;
+      background: rgba(160, 91, 30, 0.18);
+    }
   }
 
   &__scan {

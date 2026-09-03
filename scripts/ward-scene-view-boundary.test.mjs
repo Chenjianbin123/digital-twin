@@ -15,9 +15,9 @@ test('病房内视角使用开放的缩放与旋转控制', () => {
   assert.match(wardConfig, /maxAzimuthAngle: Infinity/);
 });
 
-test('病房默认视角降低并更靠近床区', () => {
+test('病房默认视角使用当前原生模型近景镜头', () => {
   assert.match(cameraPresets, /wardInteriorSceneConfig\.camera\.presets/);
-  assert.match(wardConfig, /position: \[6\.4, 4\.8, 8\.8\], target: \[0, 1, -0\.8\]/);
+  assert.match(wardConfig, /position: \[0\.819, 1\.313, 5\.265\], target: \[0, 1, -0\.8\]/);
 });
 
 test('窄屏按视口倍率后退并同步选床聚焦距离', () => {
