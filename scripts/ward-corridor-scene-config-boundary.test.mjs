@@ -20,6 +20,9 @@ test('病房走廊场景参数集中在独立配置文件中', async () => {
   assert.match(config, /environmentIntensity: 0\.26/);
   assert.match(config, /floorMeshName: '地板'/);
   assert.match(config, /floorStripeColorScale: 0\.5/);
+  assert.match(config, /viewBounds:/);
+  assert.match(config, /ceilingMesh: '天花板'/);
+  assert.match(config, /wallMeshes: \['墙壁', '墙壁2'\]/);
   assert.match(config, /ceilingHeight: 2\.85/);
   assert.match(config, /halfWidth: 3\.2/);
   assert.match(config, /doorWidth: 2\.1/);

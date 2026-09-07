@@ -22,6 +22,20 @@ export interface WardInteriorSceneConfig {
     viewportScale: { referenceAspect: number; min: number; max: number };
     presetTransitionDuration: number;
     bedFocusTransitionDuration: number;
+    /**
+     * 视角硬边界取自 GLB 网格：
+     * 水平/地面/纵深=外壳包围盒，顶部=灯底部（与外壳取较低者）。
+     */
+    viewBounds: {
+      shellMesh: string;
+      lightMesh: string;
+      margins: {
+        floor: number;
+        ceiling: number;
+        wall: number;
+        depth: number;
+      };
+    };
   };
   controls: {
     dampingFactor: number;
@@ -81,6 +95,16 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
     viewportScale: { referenceAspect: 0.92, min: 1, max: 2 },
     presetTransitionDuration: 0.75,
     bedFocusTransitionDuration: 0.62,
+    viewBounds: {
+      shellMesh: '外壳',
+      lightMesh: '灯',
+      margins: {
+        floor: 0.2,
+        ceiling: 0.18,
+        wall: 0.2,
+        depth: 0.2,
+      },
+    },
   },
   controls: {
     dampingFactor: 0.06,

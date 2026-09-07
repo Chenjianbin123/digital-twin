@@ -7,6 +7,12 @@ import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { easeOutCubic } from '@/core/camera-easing';
 import { getCameraPreset, resolveWardCameraViewportScale } from '@/core/camera-presets';
 import { resolveWardSceneControlLimits } from '@/core/ward-scene-controls';
+import {
+  captureWardInteriorBoundMeshes,
+  clampPointToWardInteriorBounds,
+  getWardInteriorPaddedBounds,
+  type WardInteriorRawBoundMeshes,
+} from '@/core/ward-interior-view-bounds';
 import { wardInteriorSceneConfig } from '@/config/ward-interior-scene';
 import { getEnvSceneTint } from '@/core/env-alert';
 import type { EnvAlertLevel } from '@/core/env-alert';
@@ -122,6 +128,8 @@ export class WardScene {
   private wardInteriorModel: THREE.Group | null = null;
   private wardInteriorParts: WardInteriorAssetParts | null = null;
   private wardInteriorModelLoadToken = 0;
+  /** 外壳/灯网格原始包围；约束时每帧套用配置边距。 */
+  private wardInteriorBoundMeshes: WardInteriorRawBoundMeshes | null = null;
   private wardInteriorPlacementDiagnosticsLogged = false;
   private environmentTexture: THREE.Texture | null = null;
   private quiltTexture: THREE.CanvasTexture | null = null;
@@ -239,7 +247,7 @@ export class WardScene {
 
   private onControlsChange = () => {
     this.suppressBedClick = true;
-    this.clampWardInteriorPanTarget();
+    this.applyWardInteriorViewBoundsConstraint();
     // window.clearTimeout(this.cameraViewLogTimer);
     // this.cameraViewLogTimer = window.setTimeout(() => this.logCameraView('拖动中'), 160);
   };
@@ -1753,6 +1761,9 @@ export class WardScene {
         parts.bedPrototype.visible = false;
       hideWardInteriorCeiling(parts.architecture);
       fitWardInteriorEnvironment(parts, this.roomW, this.roomD, ROOM_H);
+      this.wardInteriorBoundMeshes = captureWardInteriorBoundMeshes(model);
+      if (!this.wardInteriorBoundMeshes)
+        console.warn('[WardScene] ward interior bound meshes missing; camera falls back to room pan limits');
       if (parts.mode === 'baked' && parts.baseBounds) {
         this.roomW = Math.max(parts.baseBounds.size.x, 4);
         this.roomD = Math.max(parts.baseBounds.size.z, 4);
@@ -1786,6 +1797,7 @@ export class WardScene {
           this.scene.remove(model);
           this.wardInteriorModel = null;
           this.wardInteriorParts = null;
+          this.wardInteriorBoundMeshes = null;
         }
         disposeWardInteriorModel(model);
       }
@@ -2126,7 +2138,7 @@ export class WardScene {
           fogDensity - Math.max(this.roomW, this.roomD) * wardInteriorSceneConfig.appearance.fogSpanFactor,
         )
       : null;
-    this.clampWardInteriorPanTarget();
+    this.applyWardInteriorViewBoundsConstraint();
     this.controls.update();
   }
 
@@ -2138,6 +2150,28 @@ export class WardScene {
     this.controls.maxAzimuthAngle = limits.maxAzimuthAngle;
     this.controls.minDistance = limits.minDistance;
     this.controls.maxDistance = limits.maxDistance;
+  }
+
+  /** 优先用 外壳/灯 网格盒钳制相机与观察点；缺失时回退到房间尺寸平移限制。 */
+  private applyWardInteriorViewBoundsConstraint() {
+    const raw = this.wardInteriorBoundMeshes;
+    if (raw) {
+      const bounds = getWardInteriorPaddedBounds(raw);
+      if (bounds) {
+        clampPointToWardInteriorBounds(this.controls.target, bounds);
+        clampPointToWardInteriorBounds(this.camera.position, bounds);
+        if (this.camera.position.distanceToSquared(this.controls.target) < 1e-4) {
+          this.controls.target.z = THREE.MathUtils.clamp(
+            this.camera.position.z - 1,
+            bounds.minZ,
+            bounds.maxZ,
+          );
+          clampPointToWardInteriorBounds(this.controls.target, bounds);
+        }
+        return;
+      }
+    }
+    this.clampWardInteriorPanTarget();
   }
 
   private clampWardInteriorPanTarget() {
@@ -2821,7 +2855,7 @@ export class WardScene {
         .sub(this.controls.target)
         .multiplyScalar(nextViewportScale / previousViewportScale)
         .add(this.controls.target);
-      this.clampWardInteriorPanTarget();
+      this.applyWardInteriorViewBoundsConstraint();
       this.controls.update();
     }
     this.camera.updateProjectionMatrix();
@@ -2872,7 +2906,7 @@ export class WardScene {
       const t = easeOutCubic(this.cameraTransition.elapsed / this.cameraTransition.duration);
       this.camera.position.lerpVectors(this.cameraTransition.fromPos, this.cameraTransition.toPos, t);
       this.controls.target.lerpVectors(this.cameraTransition.fromTarget, this.cameraTransition.toTarget, t);
-      this.clampWardInteriorPanTarget();
+      this.applyWardInteriorViewBoundsConstraint();
       if (t >= 1)
         this.cameraTransition = null;
     }
@@ -2949,7 +2983,9 @@ export class WardScene {
       }
     }
 
+    this.applyWardInteriorViewBoundsConstraint();
     this.controls.update();
+    this.applyWardInteriorViewBoundsConstraint();
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
   };
@@ -2962,6 +2998,7 @@ export class WardScene {
       disposeWardInteriorModel(this.wardInteriorModel);
       this.wardInteriorModel = null;
       this.wardInteriorParts = null;
+      this.wardInteriorBoundMeshes = null;
     }
     this.clearRoomShell();
     this.quiltTexture?.dispose();

@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { getWardCorridorCameraView } from './ward-corridor-camera.ts';
+import * as THREE from 'three';
+
+import {
+  captureWardCorridorBoundMeshes,
+  clampPointToWardCorridorBounds,
+  getWardCorridorCameraView,
+  getWardCorridorPaddedBounds,
+} from './ward-corridor-camera.ts';
 
 test('starts inside the corridor and looks down its long axis', () => {
   const view = getWardCorridorCameraView({
@@ -46,4 +53,49 @@ test('keeps a wider standoff from the far corridor wall for model framing', () =
 
   assert.ok(22 - view.position.z >= 2.4);
   assert.ok(view.position.y >= 2.1);
+});
+
+function makeBoundModel() {
+  const root = new THREE.Group();
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(6, 0.1, 40));
+  floor.name = '地板';
+  floor.position.set(0, 0, 0);
+  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(6, 0.1, 40));
+  ceiling.name = '天花板';
+  ceiling.position.set(0, 3.5, 0);
+  const wallA = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.5, 40));
+  wallA.name = '墙壁';
+  wallA.position.set(-3.1, 1.75, 0);
+  const wallB = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.5, 40));
+  wallB.name = '墙壁2';
+  wallB.position.set(3.1, 1.75, 0);
+  root.add(floor, ceiling, wallA, wallB);
+  root.updateMatrixWorld(true);
+  return root;
+}
+
+test('captures interior volume from 地板 / 墙壁 / 墙壁2 / 天花板', () => {
+  const raw = captureWardCorridorBoundMeshes(makeBoundModel());
+  assert.ok(raw);
+  assert.equal(raw!.widthAxis, 'x');
+  assert.ok(raw!.wallMin < raw!.wallMax);
+  assert.ok(raw!.floorMaxY < raw!.ceilingMinY);
+  assert.ok(raw!.lengthMin < raw!.lengthMax);
+});
+
+test('pads mesh bounds and clamps points inside the corridor', () => {
+  const raw = captureWardCorridorBoundMeshes(makeBoundModel());
+  assert.ok(raw);
+  const bounds = getWardCorridorPaddedBounds(raw!, {
+    floor: 0.2,
+    ceiling: 0.2,
+    wall: 0.2,
+    depth: 0.5,
+  });
+  assert.ok(bounds);
+  const outside = new THREE.Vector3(20, -5, 100);
+  clampPointToWardCorridorBounds(outside, bounds!);
+  assert.ok(outside.x >= bounds!.minX && outside.x <= bounds!.maxX);
+  assert.ok(outside.y >= bounds!.minY && outside.y <= bounds!.maxY);
+  assert.ok(outside.z >= bounds!.minZ && outside.z <= bounds!.maxZ);
 });

@@ -59,6 +59,12 @@ import {
   WARD_CORRIDOR_MODEL_URL,
   type WardCorridorSlot,
 } from '@/core/ward-corridor-model';
+import {
+  captureWardCorridorBoundMeshes,
+  clampPointToWardCorridorBounds,
+  getWardCorridorPaddedBounds,
+  type WardCorridorRawBoundMeshes,
+} from '@/core/ward-corridor-camera';
 import { resolveAreaCorridorControlLimits } from '@/core/area-corridor-controls';
 import { nurseStationSceneConfig } from '@/config/nurse-station-scene';
 import { wardCorridorSceneConfig } from '@/config/ward-corridor-scene';
@@ -348,6 +354,8 @@ export class AreaScene {
   private wardCorridorModelLoaded = false;
   private wardCorridorModelFailed = false;
   private wardCorridorModelLoadToken = 0;
+  /** 走廊边界网格原始包围（未加 margins）；约束时每帧套用配置边距。 */
+  private wardCorridorBoundMeshes: WardCorridorRawBoundMeshes | null = null;
   private wardCorridorBindings: WardCorridorModelBinding[] = [];
   private wardCorridorOverlayGroup: THREE.Group | null = null;
   private wardCorridorBindingSignature = '';
@@ -486,6 +494,7 @@ export class AreaScene {
   private onControlsChange = () => {
     this.suppressRoomClick = true;
     this.applyStationOrbitCeilingConstraint();
+    this.applyCorridorViewBoundsConstraint();
     // this.scheduleCorridorCameraLog('拖动中');
     this.emitCameraDebugState();
   };
@@ -3110,6 +3119,9 @@ export class AreaScene {
       // Keep the corridor's long axis aligned with the existing scene Z axis.
       model.rotation.y = Math.PI / 2;
       model.updateMatrixWorld(true);
+      this.wardCorridorBoundMeshes = captureWardCorridorBoundMeshes(model);
+      if (!this.wardCorridorBoundMeshes)
+        console.warn('[AreaScene] corridor bound meshes missing; camera will not be clamped to 地板/墙壁/天花板');
 
       this.wardCorridorModel = model;
       this.wardCorridorModelLoaded = true;
@@ -3125,6 +3137,7 @@ export class AreaScene {
     }
     catch (error) {
       this.wardCorridorModelFailed = true;
+      this.wardCorridorBoundMeshes = null;
       this.onCorridorState?.('fallback');
       console.warn('[AreaScene] failed to load ward corridor GLB, using generated fallback', error);
       this.updateCorridorImplementationVisibility();
@@ -4136,8 +4149,39 @@ export class AreaScene {
     this.controls.maxDistance = limits.maxDistance;
     this.camera.lookAt(target);
     this.controls.update();
+    this.applyCorridorViewBoundsConstraint();
     this.camera.updateProjectionMatrix();
     this.emitCameraDebugState();
+  }
+
+  /** 走廊：相机与观察点钳在 地板/墙壁/墙壁2/天花板 围成的内部盒内。 */
+  private applyCorridorViewBoundsConstraint() {
+    if (this.viewPhase !== 'corridor' || this.modelKind !== 'corridor')
+      return;
+    const raw = this.wardCorridorBoundMeshes;
+    if (!raw)
+      return;
+    const bounds = getWardCorridorPaddedBounds(raw);
+    if (!bounds)
+      return;
+
+    clampPointToWardCorridorBounds(this.controls.target, bounds);
+    clampPointToWardCorridorBounds(this.camera.position, bounds);
+
+    // 避免 target 与相机重合后 OrbitControls 方向失控
+    if (this.camera.position.distanceToSquared(this.controls.target) < 1e-4) {
+      const midY = THREE.MathUtils.clamp(
+        (bounds.minY + bounds.maxY) * 0.5,
+        bounds.minY,
+        bounds.maxY,
+      );
+      this.controls.target.set(
+        THREE.MathUtils.clamp((bounds.minX + bounds.maxX) * 0.5, bounds.minX, bounds.maxX),
+        midY,
+        THREE.MathUtils.clamp(this.camera.position.z - 1.2, bounds.minZ, bounds.maxZ),
+      );
+      clampPointToWardCorridorBounds(this.controls.target, bounds);
+    }
   }
 
   private buildDoorBladeTexture(summary: RoomSummary, room: TwinWardEntity): THREE.CanvasTexture {
@@ -5127,9 +5171,13 @@ export class AreaScene {
     // 先按当前半径刷新 polar 上限，再 update，避免上下拖动写穿地板/顶棚
     if (this.viewPhase === 'station')
       this.applyStationOrbitCeilingConstraint();
+    else if (this.viewPhase === 'corridor')
+      this.applyCorridorViewBoundsConstraint();
     this.controls.update();
     if (this.viewPhase === 'station')
       this.applyStationOrbitCeilingConstraint();
+    else if (this.viewPhase === 'corridor')
+      this.applyCorridorViewBoundsConstraint();
     this.updateCss2dLabelVisibility();
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
@@ -5152,6 +5200,7 @@ export class AreaScene {
     this.wardCorridorModelLoadToken++;
     this.hasLoadedNurseStationModel = false;
     this.nurseStationBoundMeshes = null;
+    this.wardCorridorBoundMeshes = null;
     cancelAnimationFrame(this.animationId);
     this.timer.dispose();
     this.resizeObserver?.disconnect();

@@ -26,6 +26,21 @@ export interface WardCorridorSceneConfig {
       targetY: { topOffset: number; max: number };
       targetZLengthFactor: number;
     };
+    /**
+     * 视角硬边界取自 GLB 网格：
+     * 地面=地板上表面，顶部=天花板下表面，左右=两堵墙内侧面；纵深取地板前后沿。
+     */
+    viewBounds: {
+      floorMesh: string;
+      ceilingMesh: string;
+      wallMeshes: [string, string];
+      margins: {
+        floor: number;
+        ceiling: number;
+        wall: number;
+        depth: number;
+      };
+    };
   };
   controls: {
     minPolarAngle: number;
@@ -90,6 +105,17 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
       zInset: { min: 1.25, max: 2.85, lengthFactor: 0.06 },
       targetY: { topOffset: 0.72, max: 1.55 },
       targetZLengthFactor: 0.15,
+    },
+    viewBounds: {
+      floorMesh: '地板',
+      ceilingMesh: '天花板',
+      wallMeshes: ['墙壁', '墙壁2'],
+      margins: {
+        floor: 0.22,
+        ceiling: 0.28,
+        wall: 0.22,
+        depth: 0.35,
+      },
     },
   },
   controls: {
