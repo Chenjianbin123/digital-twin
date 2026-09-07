@@ -16,11 +16,13 @@ export function buildShiftHandoffSummary(
 ): ShiftHandoffSummary {
   const callCount = tasks.filter(task => task.type === 'call').length;
   const deviceCount = tasks.filter(task => task.type === 'offline').length;
+  const vitalCount = tasks.filter(task => task.type === 'vital').length;
   const environmentRoomCount = new Set(
     tasks.filter(task => task.type === 'env').map(task => task.roomCode || task.roomName),
   ).size;
   const infusionCount = tasks.filter(task => task.type === 'infusion').length;
   const clinicalItems = [
+    vitalCount ? `生命体征预警 ${vitalCount} 项` : '',
     callCount ? `未结束呼叫 ${callCount} 项` : '',
     deviceCount ? `设备异常 ${deviceCount} 项` : '',
     environmentRoomCount ? `环境异常病房 ${environmentRoomCount} 间` : '',

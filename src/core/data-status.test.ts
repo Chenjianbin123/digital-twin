@@ -46,3 +46,60 @@ test('allows normal-operation wording only when ward and event data are current'
   assert.equal(result.level, 'ready');
   assert.equal(result.canDeclareNormal, true);
 });
+
+test('builds source freshness rows for the nurse station', () => {
+  const builder = (dataStatusModule as Record<string, unknown>).buildDataFreshnessItems;
+  assert.equal(typeof builder, 'function');
+  if (typeof builder !== 'function')
+    return;
+
+  const result = builder({
+    wardStatus: 'ready',
+    wardSyncedAtMs: Date.parse('2026-09-07T09:00:00+08:00'),
+    eventSync: {
+      phase: 'ready',
+      lastSyncedAt: '2026-09-07T09:00:10+08:00',
+      error: null,
+      warning: null,
+    },
+    responseSync: {
+      phase: 'error',
+      lastSyncedAt: '2026-09-07T08:58:00+08:00',
+      error: '接口失败',
+      warning: null,
+    },
+    inspectionSync: {
+      phase: 'loading',
+      lastSyncedAt: null,
+      error: null,
+      warning: null,
+    },
+  });
+
+  assert.deepEqual(result, [
+    {
+      key: 'ward',
+      label: '病区数据',
+      status: 'ready',
+      syncedAt: '2026-09-07T01:00:00.000Z',
+    },
+    {
+      key: 'events',
+      label: '呼叫报警',
+      status: 'ready',
+      syncedAt: '2026-09-07T01:00:10.000Z',
+    },
+    {
+      key: 'response',
+      label: '响应指标',
+      status: 'error',
+      syncedAt: '2026-09-07T00:58:00.000Z',
+    },
+    {
+      key: 'inspection',
+      label: '巡视记录',
+      status: 'loading',
+      syncedAt: null,
+    },
+  ]);
+});

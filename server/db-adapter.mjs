@@ -424,6 +424,10 @@ async function getTwin(areaCode = DEFAULT_AREA_CODE) {
                 pulse: latestVital.pulse,
                 breath: latestVital.breath,
                 bloodPressure: latestVital.blood_pressure,
+                bloodOxygen: latestVital.blood_oxygen
+                  ?? latestVital.oxygen_blood
+                  ?? latestVital.spo2
+                  ?? latestVital.blood_oxygen_saturation,
                 bloodSugar: latestVital.blood_sugar,
                 recordTime: formatDateTime(latestVital.record_time),
               }

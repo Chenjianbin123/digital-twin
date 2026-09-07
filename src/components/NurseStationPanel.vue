@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import AlertTaskPanel from "@/components/AlertTaskPanel.vue";
 import DoorStaffCards from "@/components/DoorStaffCards.vue";
 import DashSectionHeader from "@/components/dashboard/DashSectionHeader.vue";
+import NurseStationMetricChart from "@/components/dashboard/NurseStationMetricChart.vue";
 import type { AlertAckRecordMap } from "@/core/alert-ack";
 import type { RoomPriority, RoomSummary } from "@/core/area-summary";
 import type { AlertTask } from "@/core/alert-workflow";
-import { buildDataHealthSummary, type DataStatus } from "@/core/data-status";
+import {
+  buildDataFreshnessItems,
+  buildDataHealthSummary,
+  type DataStatus,
+} from "@/core/data-status";
 import {
   buildNurseStationLiveData,
   buildShiftHandoffSummary,
@@ -42,7 +47,11 @@ const props = defineProps<{
   inspectionRoomSummaries?: InspectionRoomSummary[];
   inspectionSync?: InspectionSyncState;
   wardDataStatus?: DataStatus;
+  wardDataSyncedAtMs?: number | null;
+  wallboard?: boolean;
 }>();
+
+const alertFilter = ref<"active" | "handling" | "all">("active");
 
 const emit = defineEmits<{
   focusRoom: [index: number];
@@ -51,13 +60,11 @@ const emit = defineEmits<{
   resolveAlert: [taskId: string];
   restoreAlert: [taskId: string];
   setCallAlertsEnabled: [enabled: boolean];
+  setWallboard: [enabled: boolean];
 }>();
 
 const primaryWard = computed<TwinWardEntity | null>(
   () => props.area.rooms[0] ?? null,
-);
-const stationSubtitle = computed(() =>
-  [props.area.areaName, props.area.deptName].filter(Boolean).join(" · "),
 );
 
 const metrics = computed(() => {
@@ -81,6 +88,7 @@ const metrics = computed(() => {
         : `event:${event.id}`,
     );
   }
+  const vitalWarnings = (props.alertTasks ?? []).filter(task => task.type === "vital").length;
   return {
     ...live,
     occupied: live.occupiedBeds,
@@ -88,6 +96,14 @@ const metrics = computed(() => {
     calling: callKeys.size,
     offlineBeds: live.offlineBedCount,
     envWarnings: live.envWarningCount,
+    vitalWarnings,
+    state: vitalWarnings
+      ? {
+          level: "urgent" as const,
+          label: "体征预警",
+          message: `${vitalWarnings} 项生命体征预警，请优先评估患者`,
+        }
+      : live.state,
   };
 });
 const occupancyRate = computed(() => {
@@ -125,6 +141,13 @@ const stationKpis = computed(() => [
     value: metrics.value.calling,
     unit: "项",
     tone: metrics.value.calling ? "alert" : "green",
+  },
+  {
+    key: "vital",
+    label: "体征预警",
+    value: metrics.value.vitalWarnings,
+    unit: "项",
+    tone: metrics.value.vitalWarnings ? "alert" : "green",
   },
   {
     key: "infusing",
@@ -190,6 +213,8 @@ const operationRows = computed(() => {
       value: waitingTasks ? `${waitingTasks} 项` : "低",
       sub: metrics.value.calling
         ? "存在床位呼叫"
+        : metrics.value.vitalWarnings
+          ? `${metrics.value.vitalWarnings} 项生命体征预警`
         : metrics.value.infusingCount
           ? `${metrics.value.infusingCount} 床输液待巡视`
           : "无紧急呼叫",
@@ -276,6 +301,16 @@ const dataHealth = computed(() =>
   }),
 );
 
+const dataFreshnessItems = computed(() =>
+  buildDataFreshnessItems({
+    wardStatus: props.wardDataStatus ?? "loading",
+    wardSyncedAtMs: props.wardDataSyncedAtMs,
+    eventSync: props.swpEventSync,
+    responseSync: props.swpResponseSync,
+    inspectionSync: props.inspectionSync,
+  }),
+);
+
 const displayedStationState = computed(() => {
   if (
     metrics.value.state.level !== "normal" ||
@@ -322,6 +357,15 @@ function dataHealthStatusLabel(status: DataStatus) {
   if (status === "warning") return "部分同步";
   if (status === "stale") return "已延迟";
   return "中断";
+}
+
+function freshnessTimeLabel(value: string | null) {
+  if (!value)
+    return "最近同步 --";
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime()))
+    return `最近同步 ${value}`;
+  return `最近同步 ${timestamp.toLocaleTimeString("zh-CN", { hour12: false })}`;
 }
 
 const responseSourceLabel = computed(() => {
@@ -387,10 +431,26 @@ const PRIORITY_RANK: Record<RoomPriority, number> = {
   empty: 6,
 };
 
+function roomVitalWarnings(roomCode: string) {
+  return (props.alertTasks ?? []).filter(
+    task => task.type === "vital" && task.roomCode === roomCode,
+  );
+}
+
+function roomHasVitalWarnings(room: RoomSummary) {
+  return roomVitalWarnings(room.sickroomCode).length > 0;
+}
+
 const attentionRooms = computed(() =>
   [...props.roomSummaries]
-    .filter((s) => s.priority !== "normal" && s.priority !== "empty")
-    .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority])
+    .filter((s) => (
+      (s.priority !== "normal" && s.priority !== "empty")
+      || roomHasVitalWarnings(s)
+    ))
+    .sort((a, b) => (
+      (roomHasVitalWarnings(a) ? -1 : PRIORITY_RANK[a.priority])
+      - (roomHasVitalWarnings(b) ? -1 : PRIORITY_RANK[b.priority])
+    ))
     .slice(0, 5),
 );
 
@@ -409,10 +469,12 @@ function roomPatrolText(room: RoomSummary) {
   const roomTasks = (props.alertTasks ?? []).filter(
     (task) => task.roomCode === room.sickroomCode,
   );
+  const vitalCount = roomTasks.filter(task => task.type === "vital").length;
   const urgentTaskCount = roomTasks.filter(
-    (task) => task.type !== "infusion",
+    (task) => task.type !== "infusion" && task.type !== "vital",
   ).length;
   const parts = [room.statusText];
+  if (vitalCount) parts.push(`生命体征预警 ${vitalCount}`);
   if (urgentTaskCount) parts.push(`待处理 ${urgentTaskCount}`);
   else if (room.infusingCount) parts.push(`待巡视 ${room.infusingCount}`);
   return parts.join(" · ");
@@ -481,6 +543,7 @@ function historyCategoryLabel(category: StatusHistoryEntry["category"]) {
   if (category === "env") return "环境";
   if (category === "call") return "呼叫";
   if (category === "device") return "设备";
+  if (category === "vital") return "体征";
   return "输液";
 }
 
@@ -488,25 +551,21 @@ function handleRoomClick(index: number) {
   emit("focusRoom", index);
 }
 
+function setAlertFilter(filter: "active" | "handling" | "all") {
+  alertFilter.value = filter;
+}
+
 </script>
 
 <template>
-  <section class="nurse-panel" aria-label="护士站工作台">
+  <section
+    class="nurse-panel"
+    :class="{ 'nurse-panel--wallboard': wallboard }"
+    aria-label="护士站工作台"
+  >
     <header class="station-hero">
       <span class="station-hero__scanline" aria-hidden="true" />
       <span class="station-hero__grid" aria-hidden="true" />
-      <div class="station-hero__top">
-        <div class="station-hero__title">
-          <span class="station-hero__eyebrow">护士站指挥中心</span>
-          <h1>智慧护士站</h1>
-          <p v-if="stationSubtitle">{{ stationSubtitle }}</p>
-        </div>
-        <!-- <div class="station-hero__clock">
-          <time>{{ clock.time }}</time>
-          <span>{{ clock.date }} · {{ shift.label }}</span>
-        </div> -->
-      </div>
-
       <div class="station-hero__body">
         <div class="station-state" :class="`station-state--${statusTone}`">
           <span class="station-state__signal" aria-hidden="true" />
@@ -514,6 +573,7 @@ function handleRoomClick(index: number) {
           <small>{{ statusModeLabel }}</small>
         </div>
         <div class="station-hero__status">
+          <span class="station-hero__eyebrow">护士站指挥中心</span>
           <div class="station-hero__status-head">
             <span
               :class="`station-hero__badge station-hero__badge--${statusTone}`"
@@ -523,6 +583,15 @@ function handleRoomClick(index: number) {
             <span class="station-hero__status-live">
               <i aria-hidden="true" />实时数据
             </span>
+            <button
+              type="button"
+              class="station-hero__wallboard-toggle"
+              :aria-pressed="wallboard"
+              :aria-label="wallboard ? '退出护士站大屏模式' : '进入护士站大屏模式'"
+              @click="emit('setWallboard', !wallboard)"
+            >
+              {{ wallboard ? "退出大屏" : "大屏模式" }}
+            </button>
           </div>
           <p>{{ displayedStationState.message }}</p>
           <div class="station-hero__chips">
@@ -538,6 +607,12 @@ function handleRoomClick(index: number) {
             <span class="station-hero__chip station-hero__chip--events"
               >真实事件 {{ swpEvents?.length ?? 0 }}</span
             >
+            <span
+              v-if="metrics.vitalWarnings"
+              class="station-hero__chip station-hero__chip--vital"
+            >
+              体征预警 {{ metrics.vitalWarnings }} 项
+            </span>
             <button
               type="button"
               class="station-hero__alert-toggle"
@@ -556,6 +631,7 @@ function handleRoomClick(index: number) {
       :tasks="alertTasks ?? []"
       :ack-records="alertAckRecords"
       :hidden-tasks="hiddenAlertTasks"
+      :filter="alertFilter"
       title="优先处理"
       :max-items="4"
       compact
@@ -563,6 +639,7 @@ function handleRoomClick(index: number) {
       @mark-handling="emit('markAlertHandling', $event)"
       @resolve="emit('resolveAlert', $event)"
       @restore="emit('restoreAlert', $event)"
+      @update:filter="setAlertFilter"
     />
 
     <section class="inspection-overview">
@@ -639,12 +716,25 @@ function handleRoomClick(index: number) {
           <small>{{ item.detail }}</small>
         </li>
       </ul>
+      <div class="data-health__freshness" aria-label="数据源同步时间">
+        <div
+          v-for="item in dataFreshnessItems"
+          :key="item.key"
+          class="data-health__freshness-item"
+        >
+          <span>{{ item.label }}</span>
+          <strong :class="`data-health__status--${item.status}`">
+            {{ dataHealthStatusLabel(item.status) }}
+          </strong>
+          <small>{{ freshnessTimeLabel(item.syncedAt) }}</small>
+        </div>
+      </div>
       <p v-if="!dataHealth.canDeclareNormal">
         数据未完全同步时，不能据此判断病区无异常，请结合现场设备确认。
       </p>
     </section>
 
-    <section class="kpi-grid" aria-label="护士站核心指标">
+    <!-- <section class="kpi-grid" aria-label="护士站核心指标">
       <article
         v-for="item in stationKpis"
         :key="item.key"
@@ -656,7 +746,9 @@ function handleRoomClick(index: number) {
           >{{ item.value }}<small>{{ item.unit }}</small></strong
         >
       </article>
-    </section>
+    </section> -->
+
+    <NurseStationMetricChart :kpis="stationKpis" />
 
     <section
       v-if="focusRooms.length"
@@ -674,7 +766,10 @@ function handleRoomClick(index: number) {
           <button
             type="button"
             class="focus-room"
-            :class="`focus-room--${room.priority}`"
+            :class="[
+              `focus-room--${room.priority}`,
+              { 'focus-room--vital': roomHasVitalWarnings(room) },
+            ]"
             :aria-label="`进入走廊并定位${room.sickroomName}`"
             @click="handleRoomClick(room.roomIndex)"
           >
@@ -952,6 +1047,152 @@ function handleRoomClick(index: number) {
       padding: 0 8px 8px;
     }
   }
+
+  &--wallboard {
+    gap: 12px;
+    padding: 16px 18px 20px;
+    scrollbar-color: rgba(91, 230, 255, 0.44) transparent;
+
+    .station-hero {
+      padding: 16px;
+      border-radius: 14px;
+      border-color: rgba(99, 229, 255, 0.42);
+      box-shadow:
+        0 18px 38px rgba(0, 0, 0, 0.24),
+        0 0 30px rgba(77, 208, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .station-hero__body {
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 18px;
+      padding-top: 13px;
+    }
+
+    .station-state {
+      width: 108px;
+      min-height: 96px;
+      padding: 13px;
+      border-radius: 10px;
+
+      strong {
+        font-size: 12px;
+      }
+
+      small {
+        font-size: 9px;
+      }
+    }
+
+    .station-hero__status p {
+      margin-top: 10px;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .station-hero__wallboard-toggle {
+      min-height: 30px;
+      padding-inline: 12px;
+      border-color: rgba(121, 236, 255, 0.48);
+      color: #e8fdff;
+      background: linear-gradient(
+        135deg,
+        rgba(37, 143, 180, 0.3),
+        rgba(8, 53, 78, 0.42)
+      );
+      box-shadow: 0 0 18px rgba(77, 208, 255, 0.14);
+    }
+
+    .station-hero__chips {
+      gap: 7px;
+      margin-top: 11px;
+
+      > span,
+      > button {
+        min-height: 28px;
+        padding: 5px 10px;
+        font-size: 11px;
+      }
+    }
+
+    :deep(.alert-task-panel) {
+      margin-bottom: 0;
+      padding: 14px;
+      border-radius: 14px;
+      border-color: rgba(100, 229, 255, 0.34);
+      box-shadow:
+        inset 0 1px 0 rgba(210, 246, 255, 0.08),
+        inset 0 0 42px rgba(24, 126, 171, 0.08),
+        0 16px 34px rgba(0, 0, 0, 0.24);
+    }
+
+    :deep(.alert-task-panel__toolbar) {
+      margin-top: 10px;
+      margin-bottom: 11px;
+    }
+
+    :deep(.alert-task-panel__list) {
+      max-height: none;
+      gap: 10px;
+    }
+
+    :deep(.alert-task) {
+      min-height: 102px;
+      padding: 13px 13px 16px 16px;
+      border-radius: 12px;
+    }
+
+    :deep(.alert-task__head strong) {
+      font-size: 14px;
+    }
+
+    :deep(.alert-task__main p) {
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    :deep(.inspection-overview),
+    .handoff-card,
+    .data-health {
+      border-radius: 12px;
+      padding: 13px 14px;
+    }
+
+    :deep(.inspection-overview__metrics) {
+      gap: 9px;
+    }
+
+    :deep(.inspection-metric) {
+      padding: 10px;
+
+      strong {
+        font-size: 24px;
+      }
+    }
+
+    :deep(.nurse-metric-chart) {
+      min-height: 252px;
+      padding: 15px 16px 13px;
+      border-radius: 14px;
+      border-color: rgba(100, 229, 255, 0.32);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.07),
+        0 16px 34px rgba(0, 0, 0, 0.18);
+    }
+
+    :deep(.nurse-metric-chart__head strong) {
+      font-size: 17px;
+    }
+
+    :deep(.nurse-metric-chart__canvas) {
+      height: 184px;
+      margin-top: 10px;
+    }
+
+    .nurse-panel__details {
+      display: none;
+    }
+  }
 }
 
 .station-hero,
@@ -1090,6 +1331,50 @@ function handleRoomClick(index: number) {
     }
   }
 
+  &__freshness {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 7px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(111, 214, 235, 0.12);
+  }
+
+  &__freshness-item {
+    min-width: 0;
+    padding: 5px 6px;
+    border: 1px solid rgba(111, 214, 235, 0.1);
+    border-radius: 6px;
+    background: rgba(3, 18, 30, 0.24);
+
+    > span,
+    > strong,
+    > small {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    > span {
+      color: rgba(200, 225, 240, 0.8);
+      font-size: 9px;
+      font-weight: 800;
+    }
+
+    > strong {
+      margin-top: 3px;
+      color: #bdf7c8;
+      font-size: 10px;
+    }
+
+    > small {
+      margin-top: 3px;
+      color: rgba(166, 194, 213, 0.66);
+      font-size: 8px;
+    }
+  }
+
   p {
     margin: 7px 0 0;
     color: #ffe0a5;
@@ -1118,6 +1403,10 @@ function handleRoomClick(index: number) {
 
   @include down($bp-md) {
     ul {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    &__freshness {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
@@ -1440,6 +1729,14 @@ function handleRoomClick(index: number) {
         border-color: rgba(117, 231, 255, 0.34);
         background: rgba(77, 208, 255, 0.12);
       }
+    }
+
+    > .station-hero__chip--vital {
+      color: #ffd2d7;
+      border-color: rgba(255, 105, 123, 0.42);
+      background:
+        linear-gradient(135deg, rgba(255, 76, 102, 0.2), rgba(117, 35, 57, 0.18));
+      box-shadow: 0 0 14px rgba(255, 76, 102, 0.08);
     }
 
     button {
@@ -1879,6 +2176,22 @@ function handleRoomClick(index: number) {
     background: rgba(232, 84, 128, 0.09);
     border-color: rgba(255, 137, 172, 0.2);
   }
+
+  &--vital {
+    background:
+      radial-gradient(circle at 10% 50%, rgba(255, 73, 97, 0.14), transparent 48%),
+      rgba(109, 29, 49, 0.12);
+    border-color: rgba(255, 112, 129, 0.36);
+
+    .focus-room__bar {
+      box-shadow: 0 0 12px rgba(255, 85, 105, 0.48);
+    }
+
+    .focus-room__side em {
+      color: #ffd0d4;
+      background: rgba(181, 49, 71, 0.28);
+    }
+  }
 }
 
 .env-grid {
@@ -2213,6 +2526,10 @@ function handleRoomClick(index: number) {
 
   .data-health ul {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .data-health__freshness {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

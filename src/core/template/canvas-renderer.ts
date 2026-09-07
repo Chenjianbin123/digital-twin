@@ -216,6 +216,8 @@ function drawCareLabels(
 
   for (const label of labels) {
     const text = label.labelName || '';
+    if (!text.trim())
+      continue;
     ctx.font = `500 ${Math.max(10, remPx * 0.65)}px "Microsoft YaHei", sans-serif`;
     const textW = ctx.measureText(text).width + 16;
     if (x + textW > maxX) {

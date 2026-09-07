@@ -47,11 +47,10 @@ test('reports interior GLB load state so the shared loading overlay can match th
 
 test('applies baked interior camera poses at native scale without live camera debug logs', () => {
   assert.match(wardScene, /usesNativeCameraPose/);
-  assert.match(wardScene, /logCameraView/);
-  assert.match(wardScene, /\[WardScene\] 视角/);
   assert.match(wardScene, /addEventListener\('end', this\.onControlsEnd\)/);
   assert.doesNotMatch(wardScene, /snapCameraToLockedView/);
   assert.doesNotMatch(wardScene, /\[WardScene\] 射线定机位/);
+  assert.doesNotMatch(wardScene, /console\.(?:info|log)\('\[WardScene\] 视角/);
 });
 
 test('does not flash or fall back to the generated room while loading room-v1', () => {
@@ -60,6 +59,53 @@ test('does not flash or fall back to the generated room while loading room-v1', 
   assert.match(wardScene, /failed to load room-v1 GLB/);
   assert.match(wardScene, /\+\+this\.wardInteriorModelLoadToken/);
   assert.match(wardScene, /disposeWardInteriorModel/);
+});
+
+test('does not build the generated room shell before GLB parts are ready', () => {
+  const updateStart = wardScene.indexOf('  updateWard(ward: TwinWardEntity)');
+  const updateEnd = wardScene.indexOf('  private updateBedVisual', updateStart);
+  const updateMethod = wardScene.slice(updateStart, updateEnd);
+
+  assert.doesNotMatch(updateMethod, /this\.wardInteriorParts\?\.mode !== 'baked'/);
+  assert.match(updateMethod, /this\.wardInteriorParts\?\.mode === 'prototype'/);
+});
+
+test('hard clamps ward interior orbit after OrbitControls updates the camera', () => {
+  const animateStart = wardScene.indexOf('  private animate = ');
+  const animateEnd = wardScene.indexOf('  dispose()', animateStart);
+  const animateMethod = wardScene.slice(animateStart, animateEnd);
+  const controlsUpdate = animateMethod.lastIndexOf('this.controls.update()');
+  const orbitClamp = animateMethod.lastIndexOf('this.enforceWardInteriorControlBounds()');
+  const render = animateMethod.indexOf('this.renderer.render(this.scene, this.camera)', controlsUpdate);
+
+  assert.ok(controlsUpdate >= 0);
+  assert.ok(orbitClamp > controlsUpdate);
+  assert.ok(render > orbitClamp);
+});
+
+test('uses one synchronized control-boundary path for drag, transitions and resize', () => {
+  assert.match(wardScene, /private enforcingControlBounds = false;/);
+  assert.match(wardScene, /private enforceWardInteriorControlBounds\(/);
+  assert.match(wardScene, /const dampingEnabled = this\.controls\.enableDamping/);
+  assert.match(wardScene, /this\.controls\.enableDamping = false;/);
+  assert.match(wardScene, /this\.controls\.enableDamping = dampingEnabled;/);
+
+  const changeStart = wardScene.indexOf('  private onControlsChange = ');
+  const changeEnd = wardScene.indexOf('  private onControlsEnd = ', changeStart);
+  const changeMethod = wardScene.slice(changeStart, changeEnd);
+  assert.match(changeMethod, /this\.enforceWardInteriorControlBounds\(\)/);
+  assert.doesNotMatch(changeMethod, /this\.clampWardInteriorPanTarget\(\)/);
+  assert.doesNotMatch(changeMethod, /this\.clampWardInteriorCameraOrbit\(\)/);
+
+  const resizeStart = wardScene.indexOf('  private handleResize()');
+  const resizeEnd = wardScene.indexOf('  setActive(active: boolean)', resizeStart);
+  const resizeMethod = wardScene.slice(resizeStart, resizeEnd);
+  assert.match(resizeMethod, /this\.enforceWardInteriorControlBounds\(\)/);
+
+  const transitionStart = wardScene.indexOf('    if (this.cameraTransition) {');
+  const transitionEnd = wardScene.indexOf('    const envPulse = ', transitionStart);
+  const transitionBlock = wardScene.slice(transitionStart, transitionEnd);
+  assert.match(transitionBlock, /this\.enforceWardInteriorControlBounds\(\)/);
 });
 
 test('tears down a partially mounted GLB without showing the generated room', () => {
@@ -78,7 +124,8 @@ test('removes CSS bed overlays before disposing a replaced bed group', () => {
   const disposeEnd = wardScene.indexOf('private clearBedMeshes', disposeStart);
   const disposeMethod = wardScene.slice(disposeStart, disposeEnd);
 
-  assert.match(disposeMethod, /meshGroup\.label\?\.removeFromParent\(\)/);
-  assert.match(disposeMethod, /meshGroup\.deviceTag\?\.removeFromParent\(\)/);
+  assert.match(disposeMethod, /meshGroup\.bedTerminalTexture\?\.dispose\(\)/);
+  assert.match(disposeMethod, /this\.scene\.remove\(meshGroup\.group\)/);
+  assert.doesNotMatch(disposeMethod, /meshGroup\.label/);
+  assert.doesNotMatch(disposeMethod, /meshGroup\.deviceTag/);
 });
-

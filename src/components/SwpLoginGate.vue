@@ -11,6 +11,9 @@ import {
 } from "@/core/auth-session";
 import type { AuthRole, AuthSession, AuthUser } from "@/types/auth";
 
+// 当前三个角色权限范围一致，暂时隐藏角色选择；后续区分权限时改为 true。
+const ENABLE_ROLE_SELECTION = false;
+
 const props = defineProps<{
   notice?: string;
 }>();
@@ -64,8 +67,15 @@ async function submitCredentials() {
     }
     writePendingAuth(user);
     pendingUser.value = user;
-    selectedRoleId.value = "";
     password.value = "";
+
+    if (!ENABLE_ROLE_SELECTION) {
+      selectedRoleId.value = String(user.roleList[0].id);
+      await submitRole();
+      return;
+    }
+
+    selectedRoleId.value = "";
     step.value = "role";
   } catch (error) {
     errorMessage.value = errorText(error, "登录失败，请稍后重试");
@@ -115,6 +125,13 @@ onMounted(() => {
   const pending = readPendingAuth();
   if (!pending?.user.roleList?.length) return;
   pendingUser.value = pending.user;
+
+  if (!ENABLE_ROLE_SELECTION) {
+    selectedRoleId.value = String(pending.user.roleList[0].id);
+    void submitRole();
+    return;
+  }
+
   step.value = "role";
 });
 </script>
@@ -179,8 +196,13 @@ onMounted(() => {
             <i>01</i>
             <span>账号验证</span>
           </span>
-          <b class="swp-login__step-line" aria-hidden="true" />
+          <b
+            v-if="ENABLE_ROLE_SELECTION"
+            class="swp-login__step-line"
+            aria-hidden="true"
+          />
           <span
+            v-if="ENABLE_ROLE_SELECTION"
             class="swp-login__step"
             :class="{ 'swp-login__step--active': step === 'role' }"
           >
@@ -282,7 +304,10 @@ onMounted(() => {
           </form>
         </div>
 
-        <div v-else class="swp-login__content swp-login__content--roles">
+        <div
+          v-else-if="ENABLE_ROLE_SELECTION"
+          class="swp-login__content swp-login__content--roles"
+        >
           <div class="swp-login__heading">
             <span class="swp-login__eyebrow">账号验证完成</span>
             <h2>确认值班角色</h2>

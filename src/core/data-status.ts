@@ -18,6 +18,13 @@ export interface DataHealthSummary {
   items: DataHealthItem[];
 }
 
+export interface DataFreshnessItem {
+  key: 'ward' | 'events' | 'response' | 'inspection';
+  label: string;
+  status: DataStatus;
+  syncedAt: string | null;
+}
+
 function wardStatusDetail(status: DataStatus): string {
   if (status === 'ready')
     return '病区数据已同步';
@@ -44,6 +51,58 @@ function eventHealth(sync: SwpEventSyncState): Pick<DataHealthItem, 'status' | '
     };
   }
   return { status: 'loading', detail: '实时事件同步中' };
+}
+
+function normalizeSyncedAt(value: string | number | null | undefined): string | null {
+  if (value == null || String(value).trim() === '')
+    return null;
+  const timestamp = new Date(value);
+  return Number.isNaN(timestamp.getTime()) ? String(value) : timestamp.toISOString();
+}
+
+function syncStatus(sync?: SwpEventSyncState): DataStatus {
+  if (!sync || sync.phase === 'idle' || sync.phase === 'loading')
+    return 'loading';
+  if (sync.phase === 'partial')
+    return 'warning';
+  if (sync.phase === 'error')
+    return 'error';
+  return 'ready';
+}
+
+export function buildDataFreshnessItems(input: {
+  wardStatus: DataStatus;
+  wardSyncedAtMs?: number | null;
+  eventSync?: SwpEventSyncState;
+  responseSync?: SwpEventSyncState;
+  inspectionSync?: SwpEventSyncState;
+}): DataFreshnessItem[] {
+  return [
+    {
+      key: 'ward',
+      label: '病区数据',
+      status: input.wardStatus,
+      syncedAt: normalizeSyncedAt(input.wardSyncedAtMs),
+    },
+    {
+      key: 'events',
+      label: '呼叫报警',
+      status: syncStatus(input.eventSync),
+      syncedAt: normalizeSyncedAt(input.eventSync?.lastSyncedAt),
+    },
+    {
+      key: 'response',
+      label: '响应指标',
+      status: syncStatus(input.responseSync),
+      syncedAt: normalizeSyncedAt(input.responseSync?.lastSyncedAt),
+    },
+    {
+      key: 'inspection',
+      label: '巡视记录',
+      status: syncStatus(input.inspectionSync),
+      syncedAt: normalizeSyncedAt(input.inspectionSync?.lastSyncedAt),
+    },
+  ];
 }
 
 export function buildDataHealthSummary(input: {

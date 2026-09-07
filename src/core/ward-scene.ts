@@ -6,7 +6,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { easeOutCubic } from '@/core/camera-easing';
 import { getCameraPreset, resolveWardCameraViewportScale } from '@/core/camera-presets';
-import { resolveWardSceneControlLimits } from '@/core/ward-scene-controls';
+import { clampWardSceneOrbit, resolveWardSceneControlLimits } from '@/core/ward-scene-controls';
 import {
   captureWardInteriorBoundMeshes,
   clampPointToWardInteriorBounds,
@@ -32,7 +32,6 @@ import {
   createHospitalWallTexture,
 } from '@/core/hospital-scene-details';
 import { loadParsedTemplate } from '@/core/template/template-cache';
-import { displayPatientName } from '@/utils/mask-patient';
 import { getWardRoomSize } from '@/types/twin';
 import { resolveWardBedPose } from '@/core/ward-room-layout';
 import {
@@ -74,22 +73,15 @@ interface BedMeshGroup {
   group: THREE.Group;
   indicator: THREE.Mesh;
   mattress: THREE.Mesh;
+  vitalWarningRing?: THREE.Mesh;
   bedTerminalScreen?: THREE.Mesh;
   bedTerminalTexture?: THREE.CanvasTexture;
-  infusionPump?: THREE.Mesh;
-  callRing?: THREE.Mesh;
-  selectionRing?: THREE.Mesh;
-  selectionBeam?: THREE.Mesh;
-  selectionPillar?: THREE.Mesh;
-  bedsideMonitor?: THREE.Mesh;
-  bedsideMonitorTexture?: THREE.CanvasTexture;
-  curtainPanels?: THREE.Mesh[];
-  curtainPhase?: number;
 }
 
 const SCENE_BG = wardInteriorSceneConfig.appearance.background;
 const ROOM_H = wardInteriorSceneConfig.room.height;
 const HEADBOARD_Z = BED_HEAD_Z;
+const WARD_INTERIOR_MAX_BEDS = wardInteriorSceneConfig.modelBedLayout.maxBeds;
 
 interface CameraTransition {
   elapsed: number;
@@ -111,6 +103,7 @@ export class WardScene {
   private animationId = 0;
   private isActive = true;
   private bedMeshes = new Map<string, BedMeshGroup>();
+  private vitalWarningBedCodes = new Set<string>();
   private ward: TwinWardEntity | null = null;
   private bedTerminalRefreshToken = new Map<string, number>();
   private timer = new THREE.Timer();
@@ -139,7 +132,10 @@ export class WardScene {
   private bedCount = 1;
   private lastBedCount = 0;
   private selectedBedCode: string | null = null;
+  private enforcingControlBounds = false;
   private pageHidden = document.hidden;
+  private prefersReducedMotion = typeof window !== 'undefined'
+    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 
   constructor(options: WardSceneOptions) {
     const { container, onBedClick, onModelState } = options;
@@ -183,7 +179,7 @@ export class WardScene {
     container.appendChild(this.renderer.domElement);
     container.appendChild(this.labelRenderer.domElement);
 
-    this.controls = new OrbitControls(this.camera, this.container);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = wardInteriorSceneConfig.controls.dampingFactor;
     this.controls.enableRotate = true;
@@ -193,6 +189,7 @@ export class WardScene {
     this.controls.rotateSpeed = wardInteriorSceneConfig.controls.rotateSpeed;
     this.applyOpenWardControls();
     this.controls.target.set(...wardInteriorSceneConfig.camera.initial.target);
+    this.enforceWardInteriorControlBounds();
     this.controls.addEventListener('start', this.onControlsStart);
     this.controls.addEventListener('change', this.onControlsChange);
     this.controls.addEventListener('end', this.onControlsEnd);
@@ -246,10 +243,15 @@ export class WardScene {
   };
 
   private onControlsChange = () => {
+    if (this.enforcingControlBounds)
+      return;
     this.suppressBedClick = true;
     this.applyWardInteriorViewBoundsConstraint();
     // window.clearTimeout(this.cameraViewLogTimer);
     // this.cameraViewLogTimer = window.setTimeout(() => this.logCameraView('拖动中'), 160);
+    window.requestAnimationFrame(() => {
+      this.applyWardInteriorViewBoundsConstraint();
+    });
   };
 
   private onControlsEnd = () => {
@@ -950,120 +952,6 @@ export class WardScene {
     return resolveWardBedPose(index, total, this.roomW, this.roomD);
   }
 
-  private createBedsideMonitorTexture(bed: TwinBedEntity, status: BedStatusMeta) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 160;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#07121f';
-    ctx.fillRect(0, 0, 256, 160);
-
-    ctx.fillStyle = '#0e2236';
-    ctx.fillRect(0, 0, 256, 28);
-    ctx.fillStyle = status.color;
-    ctx.fillRect(0, 0, 5, 160);
-
-    ctx.fillStyle = '#dff9ff';
-    ctx.font = 'bold 17px "Microsoft YaHei", sans-serif';
-    ctx.fillText(`${bed.bedName}  ${status.label}`, 14, 19);
-
-    const name = displayPatientName(bed.sickInfo?.sickName, bed.isOccupied);
-    ctx.fillStyle = '#90caf9';
-    ctx.font = '12px "Microsoft YaHei", sans-serif';
-    ctx.fillText(name, 14, 48);
-
-    const vitals = [
-      ['HR', bed.latestVitals?.pulse || '--', '#76ff03'],
-      ['SpO2', bed.latestVitals?.bloodSugar || '--', '#4fc3f7'],
-      ['BP', bed.latestVitals?.bloodPressure || '--', '#ffb74d'],
-    ];
-    vitals.forEach(([label, value, color], i) => {
-      const x = 14 + i * 78;
-      ctx.fillStyle = 'rgba(255,255,255,0.06)';
-      ctx.fillRect(x, 60, 68, 34);
-      ctx.fillStyle = color;
-      ctx.font = 'bold 15px "Consolas", "Microsoft YaHei", monospace';
-      ctx.fillText(value, x + 7, 82);
-      ctx.fillStyle = '#78909c';
-      ctx.font = '9px "Microsoft YaHei", sans-serif';
-      ctx.fillText(label, x + 7, 92);
-    });
-
-    ctx.strokeStyle = 'rgba(118,255,3,0.72)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let i = 0; i < 100; i++) {
-      const x = 14 + i * 2.2;
-      const y = 122 + Math.sin(i * 0.34) * 8 + (i % 16 === 0 ? -18 : 0);
-      if (i === 0)
-        ctx.moveTo(x, y);
-      else
-        ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgba(79,195,247,0.25)';
-    ctx.fillRect(14, 144, 212, 3);
-    ctx.fillStyle = status.color;
-    ctx.fillRect(14, 144, 124, 3);
-
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.needsUpdate = true;
-    return tex;
-  }
-
-  private addBedsideMonitor(
-    group: THREE.Group,
-    bed: TwinBedEntity,
-    status: BedStatusMeta,
-    isEmpty: boolean,
-  ): THREE.Mesh | undefined {
-    if (isEmpty)
-      return undefined;
-
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x263238, metalness: 0.45, roughness: 0.38 });
-    const standMat = new THREE.MeshStandardMaterial({ color: 0x607d8b, metalness: 0.6, roughness: 0.32 });
-
-    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.62, 10), standMat);
-    stand.position.set(BED_WIDTH / 2 + 0.22, 0.96, -0.34);
-    group.add(stand);
-
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.025, 0.025), standMat);
-    arm.position.set(BED_WIDTH / 2 + 0.13, 1.24, -0.34);
-    group.add(arm);
-
-    const monitor = new THREE.Group();
-    monitor.position.set(BED_WIDTH / 2 + 0.02, 1.28, -0.34);
-    monitor.rotation.y = -0.22;
-
-    const housing = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.28, 0.045), frameMat);
-    monitor.add(housing);
-
-    const texture = this.createBedsideMonitorTexture(bed, status);
-    const screen = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.36, 0.22),
-      new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }),
-    );
-    screen.position.z = 0.026;
-    monitor.add(screen);
-
-    const led = new THREE.Mesh(
-      new THREE.SphereGeometry(0.018, 10, 8),
-      new THREE.MeshStandardMaterial({
-        color: status.color,
-        emissive: new THREE.Color(status.emissive),
-        emissiveIntensity: 0.9,
-      }),
-    );
-    led.position.set(0.17, -0.11, 0.03);
-    monitor.add(led);
-
-    group.add(monitor);
-    screen.userData.monitorTexture = texture;
-    return screen;
-  }
-
   private addHeadwallUtilities(group: THREE.Group, status: BedStatusMeta, isEmpty: boolean) {
     const railMat = new THREE.MeshStandardMaterial({
       color: 0xdfe8ee,
@@ -1315,49 +1203,68 @@ export class WardScene {
     this.roomGroup.add(waste);
   }
 
-  private createSelectionMeshes(status: BedStatusMeta) {
+  private createSelectionMeshes(_status: BedStatusMeta) {
+    const selectionColor = new THREE.Color(0x4fc3ff);
     const ringMaterial = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(status.color),
+      color: selectionColor,
       transparent: true,
-      opacity: 0.52,
+      opacity: 0.28,
       depthWrite: false,
       side: THREE.DoubleSide,
     });
-    const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.17, 72), ringMaterial);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.88, 0.98, 72), ringMaterial);
     ring.rotation.x = -Math.PI / 2;
-    ring.position.set(0, 0.05, 0);
-    ring.scale.set(0.62, 1.24, 1);
+    ring.position.set(0, 0.045, 0);
+    ring.scale.set(0.58, 1.04, 1);
 
     const pulse = new THREE.Mesh(
-      new THREE.RingGeometry(1.22, 1.28, 72),
+      new THREE.RingGeometry(1.02, 1.07, 72),
       new THREE.MeshBasicMaterial({
-        color: new THREE.Color(status.color),
+        color: selectionColor,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.12,
         depthWrite: false,
         side: THREE.DoubleSide,
       }),
     );
     pulse.rotation.x = -Math.PI / 2;
-    pulse.position.set(0, 0.055, 0);
-    pulse.scale.set(0.62, 1.24, 1);
+    pulse.position.set(0, 0.052, 0);
+    pulse.scale.set(0.58, 1.04, 1);
 
     const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.42, 0.68, 2.4, 32, 1, true),
+      new THREE.CylinderGeometry(0.34, 0.46, 0.055, 32, 1, true),
       new THREE.MeshBasicMaterial({
-        color: new THREE.Color(status.color),
+        color: selectionColor,
         transparent: true,
-        opacity: 0.08,
+        opacity: 0.055,
         depthWrite: false,
         side: THREE.DoubleSide,
       }),
     );
-    beam.position.set(0, 1.28, 0);
+    beam.position.set(0, 0.085, 0);
     ring.visible = false;
     pulse.visible = false;
     beam.visible = false;
 
     return { ring, pulse, beam };
+  }
+
+  private anchorSelectionMeshesToBed(
+    group: THREE.Group,
+    mattress: THREE.Object3D,
+    selection: { ring: THREE.Mesh; pulse: THREE.Mesh; beam: THREE.Mesh },
+  ) {
+    group.updateWorldMatrix(true, true);
+    mattress.updateWorldMatrix(true, false);
+    const center = new THREE.Box3().setFromObject(mattress).getCenter(new THREE.Vector3());
+    const localCenter = group.worldToLocal(center.clone());
+
+    selection.ring.position.x = localCenter.x;
+    selection.ring.position.z = localCenter.z;
+    selection.pulse.position.x = localCenter.x;
+    selection.pulse.position.z = localCenter.z;
+    selection.beam.position.x = localCenter.x;
+    selection.beam.position.z = localCenter.z;
   }
 
   private addSmartWardFloorGuides(rw: number, rd: number) {
@@ -1802,6 +1709,7 @@ export class WardScene {
         disposeWardInteriorModel(model);
       }
       this.roomGroup.visible = false;
+      this.clearRoomShell();
       this.onModelState?.('fallback');
       console.warn('[WardScene] failed to load room-v1 GLB', error);
     }
@@ -1853,23 +1761,12 @@ export class WardScene {
     const token = (this.bedTerminalRefreshToken.get(meshGroup.bedCode) ?? 0) + 1;
     this.bedTerminalRefreshToken.set(meshGroup.bedCode, token);
     meshGroup.bedTerminalTexture?.dispose();
-    meshGroup.bedsideMonitorTexture?.dispose();
 
     if (meshGroup.group.userData.wardInteriorBakedBed) {
       this.disposeMesh(meshGroup.mattress, false);
       this.disposeMesh(meshGroup.indicator, false);
+      this.disposeMesh(meshGroup.vitalWarningRing, false);
       this.disposeMesh(meshGroup.bedTerminalScreen, false);
-      this.disposeMesh(meshGroup.bedsideMonitor, false);
-      this.disposeMesh(meshGroup.infusionPump);
-      this.disposeMesh(meshGroup.callRing);
-      this.disposeMesh(meshGroup.selectionRing);
-      this.disposeMesh(meshGroup.selectionPillar);
-      this.disposeMesh(meshGroup.selectionBeam);
-      meshGroup.infusionPump = undefined;
-      meshGroup.callRing = undefined;
-      meshGroup.selectionRing = undefined;
-      meshGroup.selectionPillar = undefined;
-      meshGroup.selectionBeam = undefined;
       delete meshGroup.group.userData.bedCode;
       return;
     }
@@ -1877,13 +1774,8 @@ export class WardScene {
     if (meshGroup.group.userData.wardInteriorModelBed) {
       this.disposeMesh(meshGroup.mattress, false);
       this.disposeMesh(meshGroup.indicator, false);
+      this.disposeMesh(meshGroup.vitalWarningRing, false);
       this.disposeMesh(meshGroup.bedTerminalScreen, false);
-      this.disposeMesh(meshGroup.bedsideMonitor, false);
-      this.disposeMesh(meshGroup.infusionPump);
-      this.disposeMesh(meshGroup.callRing);
-      this.disposeMesh(meshGroup.selectionRing);
-      this.disposeMesh(meshGroup.selectionPillar);
-      this.disposeMesh(meshGroup.selectionBeam);
     }
     else {
       this.disposeObject(meshGroup.group);
@@ -2182,9 +2074,62 @@ export class WardScene {
     clampedTarget.z = THREE.MathUtils.clamp(clampedTarget.z, -limits.pan.zLimit, limits.pan.zLimit);
     const correction = clampedTarget.sub(this.controls.target);
     if (correction.lengthSq() <= 0)
-      return;
+      return false;
     this.controls.target.add(correction);
     this.camera.position.add(correction);
+    return true;
+  }
+
+  private clampWardInteriorCameraOrbit() {
+    const limits = resolveWardSceneControlLimits(this.roomW, this.roomD);
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    const clamped = clampWardSceneOrbit({
+      phi: spherical.phi,
+      theta: spherical.theta,
+      radius: spherical.radius,
+    }, limits);
+
+    if (
+      Math.abs(clamped.phi - spherical.phi) < 1e-6
+      && Math.abs(clamped.theta - spherical.theta) < 1e-6
+      && Math.abs(clamped.radius - spherical.radius) < 1e-6
+    ) {
+      return false;
+    }
+
+    spherical.phi = clamped.phi;
+    spherical.theta = clamped.theta;
+    spherical.radius = clamped.radius;
+    this.camera.position.copy(
+      new THREE.Vector3().setFromSpherical(spherical).add(this.controls.target),
+    );
+    this.camera.updateProjectionMatrix();
+    return true;
+  }
+
+  private enforceWardInteriorControlBounds() {
+    if (this.enforcingControlBounds)
+      return;
+
+    this.enforcingControlBounds = true;
+    try {
+      this.applyOpenWardControls();
+      const panChanged = this.clampWardInteriorPanTarget();
+      const orbitChanged = this.clampWardInteriorCameraOrbit();
+      if (panChanged || orbitChanged) {
+        const dampingEnabled = this.controls.enableDamping;
+        this.controls.enableDamping = false;
+        this.controls.update();
+        this.controls.enableDamping = dampingEnabled;
+        this.clampWardInteriorPanTarget();
+        this.clampWardInteriorCameraOrbit();
+      }
+      this.camera.lookAt(this.controls.target);
+    }
+    finally {
+      this.enforcingControlBounds = false;
+    }
   }
 
   private getBedScale() {
@@ -2223,10 +2168,32 @@ export class WardScene {
     group.rotation.y = pose.rotationY;
   }
 
-  private createBakedModelBedMesh(bed: TwinBedEntity, index: number, total: number): BedMeshGroup {
+  private createVitalWarningRing(group: THREE.Group): THREE.Mesh {
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.94, 1.04, 48),
+      new THREE.MeshBasicMaterial({
+        color: 0xff526b,
+        transparent: true,
+        opacity: 0.68,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      }),
+    );
+    ring.name = '生命体征预警环';
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(0, 0.035, 0);
+    ring.scale.set(0.82, 1.56, 1);
+    ring.visible = false;
+    ring.userData.vitalWarningBaseScale = ring.scale.clone();
+    group.add(ring);
+    return ring;
+  }
+
+  private createBakedModelBedMesh(bed: TwinBedEntity, index: number, _total: number): BedMeshGroup | null {
     const slot = this.wardInteriorParts?.bakedBeds[index];
     if (!slot)
-      return this.createGeneratedBedMesh(bed, index, total);
+      return null;
 
     const bound = bindWardInteriorBakedBed(slot, bed.bedCode);
     const group = bound.group as THREE.Group;
@@ -2241,34 +2208,14 @@ export class WardScene {
       toneMapped: false,
     }));
 
-    const bedsideMonitorTexture = this.createBedsideMonitorTexture(bed, status);
-    configureWardInteriorCanvasTexture(bedsideMonitorTexture);
-    const monitorMaterials = Array.isArray(bound.bedsideMonitor.material)
-      ? bound.bedsideMonitor.material
-      : [bound.bedsideMonitor.material];
-    monitorMaterials.forEach(material => material.dispose());
-    bound.bedsideMonitor.material = new THREE.MeshBasicMaterial({
-      map: bedsideMonitorTexture,
-      side: THREE.DoubleSide,
-      toneMapped: false,
-    });
-
-    const selection = this.createSelectionMeshes(status);
-    group.add(selection.ring, selection.pulse, selection.beam);
-
     return {
       bedCode: bed.bedCode,
       group,
       indicator: bound.indicator,
       mattress: bound.mattress,
+      vitalWarningRing: this.createVitalWarningRing(group),
       bedTerminalScreen: bound.bedTerminalScreen,
       bedTerminalTexture,
-      selectionRing: selection.ring,
-      selectionPillar: selection.pulse,
-      selectionBeam: selection.beam,
-      bedsideMonitor: bound.bedsideMonitor,
-      bedsideMonitorTexture,
-      curtainPhase: group.position.x * 0.7 + group.position.z * 0.4,
     };
   }
 
@@ -2299,20 +2246,6 @@ export class WardScene {
       toneMapped: false,
     }));
 
-    const bedsideMonitorTexture = this.createBedsideMonitorTexture(bed, status);
-    configureWardInteriorCanvasTexture(bedsideMonitorTexture);
-    const monitorMaterials = Array.isArray(cloned.bedsideMonitor.material)
-      ? cloned.bedsideMonitor.material
-      : [cloned.bedsideMonitor.material];
-    monitorMaterials.forEach(material => material.dispose());
-    cloned.bedsideMonitor.material = new THREE.MeshBasicMaterial({
-      map: bedsideMonitorTexture,
-      side: THREE.DoubleSide,
-      toneMapped: false,
-    });
-
-    const selection = this.createSelectionMeshes(status);
-    group.add(selection.ring, selection.pulse, selection.beam);
     this.scene.add(group);
 
     return {
@@ -2320,29 +2253,21 @@ export class WardScene {
       group,
       indicator: cloned.indicator,
       mattress: cloned.mattress,
+      vitalWarningRing: this.createVitalWarningRing(group),
       bedTerminalScreen: cloned.bedTerminalScreen,
       bedTerminalTexture,
-      selectionRing: selection.ring,
-      selectionPillar: selection.pulse,
-      selectionBeam: selection.beam,
-      bedsideMonitor: cloned.bedsideMonitor,
-      bedsideMonitorTexture,
-      curtainPhase: group.position.x * 0.7 + group.position.z * 0.4,
     };
   }
 
   private createBedMesh(bed: TwinBedEntity, index: number, total: number): BedMeshGroup | null {
     if (!this.wardInteriorParts)
       return null;
-    if (this.wardInteriorParts.mode === 'baked') {
-      if (index < this.wardInteriorParts.bakedBeds.length)
-        return this.createBakedModelBedMesh(bed, index, total);
-      return null;
-    }
+    if (this.wardInteriorParts.mode === 'baked')
+      return this.createBakedModelBedMesh(bed, index, total);
     return this.createModelBedMesh(bed, index, total);
   }
 
-  private createGeneratedBedMesh(bed: TwinBedEntity, index: number, total: number): BedMeshGroup {
+  createGeneratedBedMesh(bed: TwinBedEntity, index: number, total: number): BedMeshGroup {
     const group = new THREE.Group();
     this.applyBedPose(group, index, total);
     group.userData.bedCode = bed.bedCode;
@@ -2444,9 +2369,6 @@ export class WardScene {
     );
     this.addHeadwallUtilities(group, status, isEmpty);
     this.addBedSafetyDetails(group, status, isEmpty);
-    const bedsideMonitor = this.addBedsideMonitor(group, bed, status, isEmpty);
-    const bedsideMonitorTexture = bedsideMonitor?.userData.monitorTexture as THREE.CanvasTexture | undefined;
-
     if (!isEmpty) {
       const caseMat = new THREE.MeshStandardMaterial({
         map: this.getPillowcaseTexture(),
@@ -2505,8 +2427,9 @@ export class WardScene {
     );
     indicator.position.set(-BED_WIDTH / 2 + 0.14, 1.42, HEADBOARD_Z + 0.22);
     group.add(indicator);
+    const vitalWarningRing = this.createVitalWarningRing(group);
 
-    const curtainPanels = this.addBedCurtain(group, this.getCurtainMode());
+    this.addBedCurtain(group, this.getCurtainMode());
 
     let infusionPump: THREE.Mesh | undefined;
     if (status.state === 'infusing') {
@@ -2557,34 +2480,34 @@ export class WardScene {
 
     this.scene.add(group);
     const selection = this.createSelectionMeshes(status);
+    this.anchorSelectionMeshesToBed(group, mattress, selection);
     group.add(selection.ring, selection.pulse, selection.beam);
     return {
       bedCode: bed.bedCode,
       group,
       indicator,
       mattress,
+      vitalWarningRing,
       bedTerminalScreen,
       bedTerminalTexture,
-      infusionPump,
-      callRing,
-      selectionRing: selection.ring,
-      selectionPillar: selection.pulse,
-      selectionBeam: selection.beam,
-      bedsideMonitor,
-      bedsideMonitorTexture,
-      curtainPanels,
-      curtainPhase: group.position.x * 0.7 + group.position.z * 0.4,
     };
   }
 
   updateWard(ward: TwinWardEntity) {
     this.ward = ward;
+    const dynamicBeds = ward.beds.slice(0, WARD_INTERIOR_MAX_BEDS);
+    if (ward.beds.length > WARD_INTERIOR_MAX_BEDS) {
+      console.warn(
+        `[WardScene] ${ward.sickroomName || ward.sickroomCode || '当前病房'} 返回 ${ward.beds.length} 张床位，`
+        + `场景最多展示前 ${WARD_INTERIOR_MAX_BEDS} 张`,
+      );
+    }
 
-    const count = Math.max(1, ward.beds.length);
+    const count = Math.max(1, dynamicBeds.length);
     if (count !== this.lastBedCount) {
       this.bedCount = count;
       this.lastBedCount = count;
-      if (this.wardInteriorParts?.mode !== 'baked') {
+      if (this.wardInteriorParts?.mode === 'prototype') {
         const { w, d } = getWardRoomSize(count);
         if (w !== this.roomW || d !== this.roomD) {
           this.roomW = w;
@@ -2599,7 +2522,7 @@ export class WardScene {
     }
 
     const existingCodes = new Set(this.bedMeshes.keys());
-    const newCodes = new Set(ward.beds.map(b => b.bedCode));
+    const newCodes = new Set(dynamicBeds.map(b => b.bedCode));
 
     for (const code of existingCodes) {
       if (!newCodes.has(code)) {
@@ -2609,22 +2532,21 @@ export class WardScene {
       }
     }
 
-    for (const [index, bed] of ward.beds.entries()) {
+    for (const [index, bed] of dynamicBeds.entries()) {
       if (!this.bedMeshes.has(bed.bedCode)) {
-        const created = this.createBedMesh(bed, index, ward.beds.length);
+        const created = this.createBedMesh(bed, index, dynamicBeds.length);
         if (created)
           this.bedMeshes.set(bed.bedCode, created);
       }
       const meshGroup = this.bedMeshes.get(bed.bedCode);
       if (meshGroup)
-        this.applyBedPose(meshGroup.group, index, ward.beds.length);
+        this.applyBedPose(meshGroup.group, index, dynamicBeds.length);
       this.updateBedVisual(bed);
     }
     if (this.wardInteriorParts)
-      syncWardInteriorBakedBedVisibility(this.wardInteriorParts, ward.beds.length);
+      syncWardInteriorBakedBedVisibility(this.wardInteriorParts, dynamicBeds.length);
     if (this.wardInteriorParts)
       this.logWardInteriorBedPlacementDiagnostics(this.wardInteriorParts);
-    this.updateAllBedSelectionVisuals();
   }
 
   private updateBedVisual(bed: TwinBedEntity) {
@@ -2644,81 +2566,20 @@ export class WardScene {
     indicatorMat.color.set(status.color);
     indicatorMat.emissive.set(status.emissive);
 
+    if (meshGroup.vitalWarningRing) {
+      const active = this.vitalWarningBedCodes.has(bed.bedCode);
+      meshGroup.vitalWarningRing.visible = active;
+      const ringMaterial = meshGroup.vitalWarningRing.material as THREE.MeshBasicMaterial;
+      ringMaterial.color.set(active ? 0xff526b : 0x5be7ff);
+      ringMaterial.opacity = active ? 0.68 : 0;
+      const baseScale = meshGroup.vitalWarningRing.userData.vitalWarningBaseScale;
+      if (baseScale instanceof THREE.Vector3)
+        meshGroup.vitalWarningRing.scale.copy(baseScale);
+    }
+
     if (meshGroup.bedTerminalScreen)
       void this.refreshBedTerminal(bed);
 
-    if (meshGroup.bedsideMonitor) {
-      const oldTexture = meshGroup.bedsideMonitorTexture;
-      const newTexture = this.createBedsideMonitorTexture(bed, status);
-      if (meshGroup.group.userData.wardInteriorModelBed)
-        configureWardInteriorCanvasTexture(newTexture);
-      const monitorMat = meshGroup.bedsideMonitor.material as THREE.MeshBasicMaterial;
-      monitorMat.map = newTexture;
-      monitorMat.needsUpdate = true;
-      meshGroup.bedsideMonitorTexture = newTexture;
-      oldTexture?.dispose();
-    }
-
-    const isInfusing = status.state === 'infusing';
-    if (isInfusing && !meshGroup.infusionPump) {
-      const pump = new THREE.Mesh(
-        new THREE.BoxGeometry(0.25, 0.5, 0.2),
-        new THREE.MeshStandardMaterial({ color: 0x607d8b, emissive: 0xff9800, emissiveIntensity: 0.3 }),
-      );
-      pump.position.set(1.1, 0.5, 0.3);
-      meshGroup.group.add(pump);
-      meshGroup.infusionPump = pump;
-    }
-    else if (!isInfusing && meshGroup.infusionPump) {
-      meshGroup.group.remove(meshGroup.infusionPump);
-      this.disposeMesh(meshGroup.infusionPump);
-      meshGroup.infusionPump = undefined;
-    }
-
-    if (bed.isCalling && !meshGroup.callRing) {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.35, 0.04, 8, 24),
-        new THREE.MeshStandardMaterial({
-          color: 0xe91e63,
-          emissive: 0xff1744,
-          emissiveIntensity: 0.8,
-        }),
-      );
-      ring.rotation.x = Math.PI / 2;
-      ring.position.set(0, 1.35, 0);
-      meshGroup.group.add(ring);
-      meshGroup.callRing = ring;
-    }
-    else if (!bed.isCalling && meshGroup.callRing) {
-      meshGroup.group.remove(meshGroup.callRing);
-      this.disposeMesh(meshGroup.callRing);
-      meshGroup.callRing = undefined;
-    }
-    this.updateBedSelectionVisual(bed);
-  }
-
-  private updateBedSelectionVisual(bed: TwinBedEntity) {
-    const meshGroup = this.bedMeshes.get(bed.bedCode);
-    if (!meshGroup)
-      return;
-
-    const selected = this.selectedBedCode === bed.bedCode;
-    const status = resolveBedStatus(bed);
-    for (const mesh of [meshGroup.selectionRing, meshGroup.selectionPillar, meshGroup.selectionBeam]) {
-      if (!mesh)
-        continue;
-      mesh.visible = selected;
-      const mat = mesh.material as THREE.MeshBasicMaterial;
-      mat.color.set(status.color);
-    }
-
-  }
-
-  private updateAllBedSelectionVisuals() {
-    if (!this.ward)
-      return;
-    for (const bed of this.ward.beds)
-      this.updateBedSelectionVisual(bed);
   }
 
   private usesNativeCameraPose() {
@@ -2771,9 +2632,20 @@ export class WardScene {
     if (this.selectedBedCode === bedCode)
       return;
     this.selectedBedCode = bedCode;
-    this.updateAllBedSelectionVisuals();
     if (bedCode)
       this.focusSelectedBed(bedCode);
+  }
+
+  setVitalWarningBedCodes(codes: string[]) {
+    this.vitalWarningBedCodes = new Set(
+      codes
+        .map(code => String(code).trim())
+        .filter(Boolean),
+    );
+    if (!this.ward)
+      return;
+    for (const bed of this.ward.beds)
+      this.updateBedVisual(bed);
   }
 
   private focusSelectedBed(bedCode: string) {
@@ -2931,61 +2803,32 @@ export class WardScene {
           const pulse = 0.55 + Math.sin(elapsed * 2.5) * 0.15;
           const indicatorMat = meshGroup.indicator.material as THREE.MeshStandardMaterial;
           indicatorMat.emissiveIntensity = pulse;
-          if (meshGroup.infusionPump) {
-            const pumpMat = meshGroup.infusionPump.material as THREE.MeshStandardMaterial;
-            pumpMat.emissiveIntensity = 0.25 + pulse * 0.25;
-          }
         }
-        if (bed.isCalling && meshGroup.callRing) {
-          const ringMat = meshGroup.callRing.material as THREE.MeshStandardMaterial;
-          ringMat.emissiveIntensity = 0.55 + Math.sin(elapsed * 4) * 0.25;
-          meshGroup.callRing.rotation.z = elapsed * 1.2;
-          meshGroup.callRing.scale.setScalar(1 + Math.sin(elapsed * 4) * 0.04);
-        }
-
-        if (this.selectedBedCode === bed.bedCode) {
-          const selectPulse = 1 + Math.sin(elapsed * 2.8) * 0.08;
-          const selectAlpha = 0.42 + Math.sin(elapsed * 3.2) * 0.12;
-          if (meshGroup.selectionRing) {
-            meshGroup.selectionRing.rotation.z = elapsed * 0.55;
-            meshGroup.selectionRing.scale.set(1.35 * selectPulse, 0.78 * selectPulse, 1);
-            const mat = meshGroup.selectionRing.material as THREE.MeshBasicMaterial;
-            mat.opacity = selectAlpha;
-          }
-          if (meshGroup.selectionPillar) {
-            const pillarScale = 1.08 + Math.sin(elapsed * 2.4) * 0.16;
-            meshGroup.selectionPillar.scale.set(1.35 * pillarScale, 0.78 * pillarScale, 1);
-            const mat = meshGroup.selectionPillar.material as THREE.MeshBasicMaterial;
-            mat.opacity = 0.22 + Math.sin(elapsed * 2.6) * 0.08;
-          }
-          if (meshGroup.selectionBeam) {
-            meshGroup.selectionBeam.rotation.y = elapsed * 0.45;
-            const mat = meshGroup.selectionBeam.material as THREE.MeshBasicMaterial;
-            mat.opacity = 0.075 + Math.sin(elapsed * 2.2) * 0.025;
-          }
-        }
-
-        if (meshGroup.curtainPanels?.length) {
-          const phase = meshGroup.curtainPhase ?? 0;
-          const sway = Math.sin(elapsed * 0.45 + phase) * 0.014;
-          const sway2 = Math.sin(elapsed * 0.38 + phase + 1.2) * 0.008;
-          const headBaseZ = HEADBOARD_Z - 0.24 - 0.045;
-          meshGroup.curtainPanels.forEach((panel, idx) => {
-            if (idx === 0) {
-              panel.position.z = headBaseZ + sway;
-              panel.rotation.x = sway2 * 0.35;
+        if (meshGroup.vitalWarningRing && this.vitalWarningBedCodes.has(bed.bedCode)) {
+          const ring = meshGroup.vitalWarningRing;
+          const material = ring.material as THREE.MeshBasicMaterial;
+          const baseScale = ring.userData.vitalWarningBaseScale;
+          if (baseScale instanceof THREE.Vector3) {
+            if (this.prefersReducedMotion) {
+              ring.scale.copy(baseScale);
+              material.opacity = 0.64;
             }
             else {
-              panel.rotation.z = (idx % 2 === 0 ? 1 : -1) * sway * 0.4;
+              const pulse = (Math.sin(elapsed * 2.2) + 1) / 2;
+              ring.scale.set(
+                baseScale.x * (1 + pulse * 0.07),
+                baseScale.y * (1 + pulse * 0.07),
+                baseScale.z,
+              );
+              material.opacity = 0.42 + pulse * 0.36;
             }
-          });
+          }
         }
       }
     }
 
     this.applyWardInteriorViewBoundsConstraint();
     this.controls.update();
-    this.applyWardInteriorViewBoundsConstraint();
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
   };

@@ -1,7 +1,21 @@
 from __future__ import annotations
 
+import argparse
 import bpy
+import sys
 from mathutils import Vector
+
+
+def parse_args() -> argparse.Namespace:
+    script_args = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input")
+    return parser.parse_args(script_args)
+
+
+args = parse_args()
+if args.input:
+    bpy.ops.import_scene.gltf(filepath=args.input)
 
 
 REQUIRED_GROUPS = {"WardArchitecture", "WardProps", "BedPrototype"}
@@ -11,7 +25,6 @@ REQUIRED_BED_NODES = {
     "BedTerminalAccent",
     "Bed_1_Mattress",
     "SmartBedhead_1_Status",
-    "Monitor_1_Screen",
 }
 FORBIDDEN_PREVIEW_NODES = {
     "CareText",

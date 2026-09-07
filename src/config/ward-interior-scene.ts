@@ -110,13 +110,16 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
     dampingFactor: 0.06,
     zoomSpeed: 1.2,
     rotateSpeed: 0.85,
-    minPolarAngle: 0.05,
-    maxPolarAngle: Math.PI - 0.05,
-    minAzimuthAngle: -Infinity,
-    maxAzimuthAngle: Infinity,
-    minDistance: 1.1,
-    maxDistanceBase: 48,
-    maxDistanceSpanFactor: 2.5,
+
+    minPolarAngle: 0,
+    maxPolarAngle: Math.PI / 2 + 0.01,
+
+    minAzimuthAngle: 0,
+    maxAzimuthAngle: 0.5,
+
+    minDistance: 3.6,
+    maxDistanceBase: 20,
+    maxDistanceSpanFactor: 0.48,
     pan: { xSpanFactor: 0.32, zSpanFactor: 0.3, yMin: 0.35, yMax: 1.65 },
   },
   appearance: {
@@ -134,6 +137,6 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
     horizontalMargin: 1,
     minScale: 0.7,
     maxScale: 1,
-    maxBeds: 6,
+    maxBeds: 7,
   },
 };

@@ -7,7 +7,7 @@ import StatusHistory from '@/components/StatusHistory.vue';
 import { resolveBedStatus } from '@/core/bed-status';
 import type { AlertAckRecordMap } from '@/core/alert-ack';
 import type { RoomSummary } from '@/core/area-summary';
-import type { AlertTask } from '@/core/alert-workflow';
+import { formatBedLabel, type AlertTask } from '@/core/alert-workflow';
 import type { InspectionRoomSummary } from '@/types/inspection';
 import { displayPatientName } from '@/utils/mask-patient';
 import { getWardBedStats, type StatusHistoryEntry, type TwinAreaEntity, type TwinBedEntity, type TwinWardEntity } from '@/types/twin';
@@ -63,7 +63,18 @@ const areaStats = computed(() => {
   }
 
   const occupancyRate = totalBeds > 0 ? Math.round((occupied / totalBeds) * 100) : 0;
-  const stableOccupied = Math.max(0, occupied - calling - infusing);
+  const vitalTasks = (props.alertTasks ?? []).filter(task => task.type === 'vital');
+  const nonStableBedKeys = new Set(
+    props.area.rooms.flatMap(room => room.beds
+      .filter(bed => bed.isCalling || resolveBedStatus(bed).state === 'infusing')
+      .map(bed => `${room.sickroomCode}:${bed.bedCode}`)),
+  );
+  for (const task of vitalTasks) {
+    if (task.roomCode && task.bedCode)
+      nonStableBedKeys.add(`${task.roomCode}:${task.bedCode}`);
+  }
+  const stableOccupied = Math.max(0, occupied - nonStableBedKeys.size);
+  const vitalWarnings = vitalTasks.length;
 
   return {
     roomCount: props.area.rooms.length,
@@ -76,8 +87,32 @@ const areaStats = computed(() => {
     offline,
     onlineDevices,
     occupancyRate,
+    vitalWarnings,
   };
 });
+
+const VITAL_METRIC_LABELS: Record<NonNullable<AlertTask['vitalMetric']>, string> = {
+  temperature: '体温',
+  heartRate: '心率',
+  respiratoryRate: '呼吸',
+  bloodPressure: '血压',
+  bloodOxygen: '血氧',
+  bloodSugar: '血糖',
+  mews: 'MEWS',
+  unknown: '体征',
+};
+
+function vitalWarningsForRoom(roomCode: string) {
+  return (props.alertTasks ?? [])
+    .filter(task => task.type === 'vital' && task.roomCode === roomCode)
+    .slice(0, 3);
+}
+
+function vitalWarningValue(task: AlertTask) {
+  const metric = task.vitalMetric ? VITAL_METRIC_LABELS[task.vitalMetric] : '体征';
+  const value = [task.vitalValue, task.vitalUnit].filter(Boolean).join('');
+  return value ? `${metric} ${value}` : metric;
+}
 
 const areaIntro = computed(() => {
   if (!props.area)
@@ -91,10 +126,11 @@ const bedMonitorRows = computed(() => {
     return [];
   const total = Math.max(stats.totalBeds, 1);
   return [
-    { key: 'stable', label: '在床稳定', tag: '常规', count: stats.stableOccupied, tone: 'cyan' },
-    { key: 'infusing', label: '输液中', tag: '输液', count: stats.infusing, tone: 'orange' },
-    { key: 'calling', label: '呼叫中', tag: '呼叫', count: stats.calling, tone: 'pink' },
-    { key: 'empty', label: '空床', tag: '空床', count: stats.empty, tone: 'slate' },
+    { key: 'stable', label: '在床稳定', tag: '常规', unit: '床', count: stats.stableOccupied, tone: 'cyan' },
+    { key: 'infusing', label: '输液中', tag: '输液', unit: '床', count: stats.infusing, tone: 'orange' },
+    { key: 'calling', label: '呼叫中', tag: '呼叫', unit: '床', count: stats.calling, tone: 'pink' },
+    { key: 'vital', label: '体征预警', tag: '体征', unit: '项', count: stats.vitalWarnings, tone: 'red' },
+    { key: 'empty', label: '空床', tag: '空床', unit: '床', count: stats.empty, tone: 'slate' },
   ]
     .filter(row => row.count > 0)
     .map(row => ({
@@ -203,7 +239,7 @@ function inspectionTime(value: string | null | undefined) {
       <ul class="monitor-list">
         <li v-for="row in bedMonitorRows" :key="row.key" class="monitor-row" :class="`monitor-row--${row.tone}`">
           <div class="monitor-row__left">
-            <span class="monitor-row__count">当前 <em>{{ row.count }}</em> 床</span>
+            <span class="monitor-row__count">当前 <em>{{ row.count }}</em> {{ row.unit }}</span>
             <div class="monitor-row__bar">
               <i :style="{ width: `${Math.max(row.percent, row.count > 0 ? 8 : 0)}%` }" />
             </div>
@@ -228,8 +264,9 @@ function inspectionTime(value: string | null | undefined) {
       </div>
     </section>
 
-    <section v-if="areaStats && (areaStats.calling || areaStats.infusing || areaStats.offline)" class="dash-section dash-section--alerts">
+    <section v-if="areaStats && (areaStats.calling || areaStats.vitalWarnings || areaStats.infusing || areaStats.offline)" class="dash-section dash-section--alerts">
       <span v-if="areaStats.calling" class="alert-chip alert-chip--call">呼叫 {{ areaStats.calling }} 床</span>
+      <span v-if="areaStats.vitalWarnings" class="alert-chip alert-chip--vital">生命体征预警 {{ areaStats.vitalWarnings }} 项</span>
       <span v-if="areaStats.infusing" class="alert-chip alert-chip--infuse">输液 {{ areaStats.infusing }} 床</span>
       <span v-if="areaStats.offline" class="alert-chip alert-chip--offline">离线 {{ areaStats.offline }} 床</span>
     </section>
@@ -260,6 +297,33 @@ function inspectionTime(value: string | null | undefined) {
               <span class="room-card__badge">{{ summary.occupiedBeds }}/{{ summary.totalBeds }}</span>
             </header>
             <p class="room-card__status">{{ summary.statusText }}</p>
+            <div
+              v-if="vitalWarningsForRoom(summary.sickroomCode).length"
+              class="room-card__vital"
+            >
+              <div class="room-card__vital-head">
+                <span>生命体征预警</span>
+                <strong>{{ vitalWarningsForRoom(summary.sickroomCode).length }} 项</strong>
+              </div>
+              <ul>
+                <li
+                  v-for="task in vitalWarningsForRoom(summary.sickroomCode)"
+                  :key="task.id"
+                >
+                  <span>
+                    {{ task.bedName ? formatBedLabel(task.bedName) : '病房' }}
+                    · {{ vitalWarningValue(task) }}
+                  </span>
+                  <button
+                    v-if="task.canLocate !== false"
+                    type="button"
+                    @click.stop="emit('locateAlert', task.id)"
+                  >
+                    定位
+                  </button>
+                </li>
+              </ul>
+            </div>
             <div
               v-if="inspectionForRoom(summary.roomIndex)"
               class="room-card__inspection"
@@ -616,6 +680,7 @@ function inspectionTime(value: string | null | undefined) {
   &--cyan i { background: linear-gradient(90deg, #006699, #4deaff); }
   &--orange i { background: linear-gradient(90deg, #e65100, #ffb74d); }
   &--pink i { background: linear-gradient(90deg, #c2185b, #f48fb1); }
+  &--red i { background: linear-gradient(90deg, #a5163e, #ff6f91); }
   &--slate i { background: linear-gradient(90deg, #37474f, #78909c); }
 }
 
@@ -682,6 +747,12 @@ function inspectionTime(value: string | null | undefined) {
   border-radius: 999px;
 
   &--call { color: #f48fb1; background: rgba(233, 30, 99, 0.15); border: 1px solid rgba(233, 30, 99, 0.3); }
+  &--vital {
+    color: #ffb4b8;
+    background: linear-gradient(135deg, rgba(255, 73, 97, 0.2), rgba(130, 35, 59, 0.14));
+    border: 1px solid rgba(255, 105, 120, 0.42);
+    box-shadow: 0 0 14px rgba(255, 73, 97, 0.08);
+  }
   &--infuse { color: #ffb74d; background: rgba(255, 152, 0, 0.12); border: 1px solid rgba(255, 152, 0, 0.28); }
   &--offline { color: #ef9a9a; background: rgba(244, 67, 54, 0.12); border: 1px solid rgba(244, 67, 54, 0.28); }
 }
@@ -777,6 +848,76 @@ function inspectionTime(value: string | null | undefined) {
     margin: 0 0 8px;
     font-size: 11px;
     color: rgba(170, 200, 225, 0.82);
+  }
+
+  &__vital {
+    margin: 7px 0 8px;
+    padding: 7px 8px;
+    border: 1px solid rgba(255, 103, 119, 0.34);
+    border-radius: 8px;
+    background:
+      radial-gradient(circle at 0% 0%, rgba(255, 79, 100, 0.15), transparent 45%),
+      rgba(66, 15, 32, 0.24);
+    box-shadow: inset 2px 0 0 rgba(255, 91, 111, 0.82);
+
+    &-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: #ffd3d7;
+      font-size: 10px;
+      font-weight: 800;
+
+      strong {
+        color: #ff9daa;
+        font-size: 10px;
+      }
+    }
+
+    ul {
+      display: grid;
+      gap: 4px;
+      padding: 0;
+      margin: 6px 0 0;
+      list-style: none;
+    }
+
+    li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+      color: rgba(255, 225, 228, 0.88);
+      font-size: 10px;
+
+      span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      button {
+        flex: 0 0 auto;
+        min-height: 22px;
+        padding: 0 7px;
+        border: 1px solid rgba(255, 160, 164, 0.36);
+        border-radius: 5px;
+        color: #ffe5e5;
+        background: rgba(184, 47, 65, 0.28);
+        font: inherit;
+        font-size: 9px;
+        font-weight: 800;
+        cursor: pointer;
+
+        &:hover {
+          border-color: rgba(255, 196, 195, 0.72);
+          background: rgba(205, 58, 77, 0.42);
+        }
+      }
+    }
   }
 
   &__beds {

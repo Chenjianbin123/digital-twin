@@ -1,11 +1,12 @@
 import type { useTwinStore } from '@/stores/twin-store';
 import type { StatusBarInfo } from '@/types/ward';
+import { normalizeRealtimeVitalMessage } from '@/core/realtime-vital-warning';
 
 type TwinStore = ReturnType<typeof useTwinStore>;
 
 interface RealtimeEnvelope {
   areaId?: number | string;
-  type?: 'bed-status' | 'bed-call' | 'area-refresh';
+  type?: 'bed-status' | 'bed-call' | 'vital-warning' | 'area-refresh';
   payload?: unknown;
 }
 
@@ -49,6 +50,10 @@ function normalizeEnvelope(raw: unknown): RealtimeEnvelope | null {
 function applyRealtimeMessage(store: TwinStore, areaId: number, generation: number, raw: unknown) {
   if (!isCurrentRun(store, areaId, generation))
     return;
+  if (normalizeRealtimeVitalMessage(raw)) {
+    store.applyRealtimeVitalWarning(areaId, raw);
+    return;
+  }
   const envelope = normalizeEnvelope(raw);
   if (!envelope?.type || Number(envelope.areaId) !== areaId)
     return;
@@ -62,6 +67,15 @@ function applyRealtimeMessage(store: TwinStore, areaId: number, generation: numb
     const payload = envelope.payload as { bedCode?: string; calling?: boolean } | undefined;
     if (payload?.bedCode)
       store.setBedCalling(areaId, payload.bedCode, payload.calling !== false);
+  }
+  else if (envelope.type === 'vital-warning') {
+    const payload = normalizeRealtimeVitalMessage(envelope.payload)
+      ? envelope.payload
+      : {
+          Cmd: 'sendMewsAlarm',
+          Message: envelope.payload,
+        };
+    store.applyRealtimeVitalWarning(areaId, payload);
   }
   else if (envelope.type === 'area-refresh') {
     if (store.dataSource === 'remote')

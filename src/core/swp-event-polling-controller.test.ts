@@ -233,3 +233,20 @@ test('uses low-frequency polling while hidden and refreshes immediately when vis
   assert.equal(scheduledIntervals[scheduledIntervals.length - 1], 60_000);
   controller.stop();
 });
+
+test('uses a 60-second active polling interval by default', async () => {
+  const store = makeStore();
+  let scheduledInterval: number | undefined;
+  const controller = createSwpEventPollingController({
+    loadSnapshot: async () => makeSnapshot(),
+    schedule: (_callback, intervalMs) => {
+      scheduledInterval = intervalMs;
+      return 'timer';
+    },
+    cancelSchedule: () => {},
+  });
+
+  assert.equal(await controller.start(store), true);
+  assert.equal(scheduledInterval, 60_000);
+  controller.stop();
+});

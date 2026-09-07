@@ -12,7 +12,6 @@ export interface WardInteriorBakedBedSlot {
   mattress: THREE.Mesh;
   indicator: THREE.Mesh;
   bedTerminalScreen: THREE.Mesh;
-  bedsideMonitor: THREE.Mesh;
 }
 
 export interface WardInteriorTerminalCandidateDebug {
@@ -64,7 +63,6 @@ export interface WardInteriorBedParts {
   mattress: THREE.Mesh;
   indicator: THREE.Mesh;
   bedTerminalScreen: THREE.Mesh;
-  bedsideMonitor: THREE.Mesh;
 }
 
 const originalPropPositions = new WeakMap<THREE.Object3D, THREE.Vector3>();
@@ -483,22 +481,12 @@ function organizeBakedWardInterior(root: THREE.Object3D): WardInteriorAssetParts
       bedTerminalScreen.userData.wardInteriorTerminalSurface = true;
     }
 
-    const bedsideMonitor = createProxyScreen('BakedBedsideMonitor', 0.36, 0.28);
-    bedsideMonitor.position.set(
-      headX + localSize.x * 0.18,
-      Math.max(1.15, localCenter.y + localSize.y * 0.35),
-      localBox.max.z + 0.22,
-    );
-    bedsideMonitor.rotation.y = -Math.PI / 2.4;
-    group.add(bedsideMonitor);
-
     bakedBeds.push({
       index,
       group,
       mattress,
       indicator,
       bedTerminalScreen,
-      bedsideMonitor,
     });
   });
 
@@ -593,7 +581,6 @@ function getPrototypeWardInteriorParts(root: THREE.Object3D): WardInteriorAssetP
   requireMesh(bedPrototype, 'Bed_1_Mattress');
   requireMesh(bedPrototype, 'SmartBedhead_1_Status');
   requireMesh(bedPrototype, 'BedTerminalSurface');
-  requireMesh(bedPrototype, 'Monitor_1_Screen');
 
   return {
     mode: 'prototype',
@@ -683,18 +670,18 @@ export function cloneWardInteriorBed(
   const mattress = requireMesh(group, 'Bed_1_Mattress');
   const indicator = requireMesh(group, 'SmartBedhead_1_Status');
   const bedTerminalScreen = requireMesh(group, 'BedTerminalSurface');
-  const bedsideMonitor = requireMesh(group, 'Monitor_1_Screen');
+  const bedsideMonitor = group.getObjectByName('Monitor_1_Screen') as THREE.Mesh | undefined;
+  if (bedsideMonitor?.parent)
+    bedsideMonitor.parent.remove(bedsideMonitor);
 
   for (const mesh of [mattress, indicator, bedTerminalScreen])
     cloneMeshMaterial(mesh);
-  cloneMeshMaterial(bedsideMonitor);
 
   return {
     group,
     mattress,
     indicator,
     bedTerminalScreen,
-    bedsideMonitor,
   };
 }
 
@@ -702,7 +689,7 @@ export function bindWardInteriorBakedBed(
   slot: WardInteriorBakedBedSlot,
   bedCode: string,
 ): WardInteriorBedParts {
-  const { group, mattress, indicator, bedTerminalScreen, bedsideMonitor } = slot;
+  const { group, mattress, indicator, bedTerminalScreen } = slot;
   group.visible = true;
   group.userData = {
     ...group.userData,
@@ -714,14 +701,15 @@ export function bindWardInteriorBakedBed(
   ensureMattressStandardMaterial(mattress);
   cloneMeshMaterial(indicator);
   cloneMeshMaterial(bedTerminalScreen);
-  cloneMeshMaterial(bedsideMonitor);
+  const bedsideMonitor = group.getObjectByName('Monitor_1_Screen') as THREE.Mesh | undefined;
+  if (bedsideMonitor?.parent)
+    bedsideMonitor.parent.remove(bedsideMonitor);
 
   return {
     group,
     mattress,
     indicator,
     bedTerminalScreen,
-    bedsideMonitor,
   };
 }
 

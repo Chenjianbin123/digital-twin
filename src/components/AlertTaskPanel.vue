@@ -9,17 +9,21 @@ import {
 } from '@/core/alert-workflow';
 import type { AlertAckRecordMap } from '@/core/alert-ack';
 
+type AlertTaskFilter = 'active' | 'handling' | 'all';
+
 const props = withDefaults(defineProps<{
   tasks: AlertTask[];
   title?: string;
   maxItems?: number;
   compact?: boolean;
+  filter?: AlertTaskFilter;
   ackRecords?: AlertAckRecordMap;
   hiddenTasks?: AlertTask[];
 }>(), {
   title: '待处理告警',
   maxItems: 5,
   compact: false,
+  filter: 'active',
   ackRecords: () => ({}),
   hiddenTasks: () => [],
 });
@@ -29,15 +33,33 @@ const emit = defineEmits<{
   markHandling: [taskId: string];
   resolve: [taskId: string];
   restore: [taskId: string];
+  'update:filter': [filter: AlertTaskFilter];
 }>();
 
 const showAllTasks = ref(false);
-const hasExpandableTasks = computed(() => props.tasks.length > props.maxItems);
+const filterOptions: Array<{ key: AlertTaskFilter; label: string }> = [
+  { key: 'active', label: '未处理' },
+  { key: 'handling', label: '处理中' },
+  { key: 'all', label: '全部' },
+];
+const taskCounts = computed(() => ({
+  active: props.tasks.filter(task => task.status === 'pending').length,
+  handling: props.tasks.filter(task => task.status === 'handling').length,
+  all: props.tasks.length,
+}));
+const filteredTasks = computed(() => {
+  if (props.filter === 'handling')
+    return props.tasks.filter(task => task.status === 'handling');
+  if (props.filter === 'all')
+    return props.tasks;
+  return props.tasks.filter(task => task.status === 'pending');
+});
+const hasExpandableTasks = computed(() => filteredTasks.value.length > props.maxItems);
 const visibleTasks = computed(() =>
-  showAllTasks.value ? props.tasks : props.tasks.slice(0, props.maxItems),
+  showAllTasks.value ? filteredTasks.value : filteredTasks.value.slice(0, props.maxItems),
 );
 const overflowCount = computed(() =>
-  showAllTasks.value ? 0 : Math.max(0, props.tasks.length - props.maxItems),
+  showAllTasks.value ? 0 : Math.max(0, filteredTasks.value.length - props.maxItems),
 );
 const waitingNow = ref(new Date());
 let waitingTimer: ReturnType<typeof setInterval> | null = null;
@@ -70,6 +92,8 @@ function typeLabel(type: AlertTask['type']) {
     return '设备';
   if (type === 'inspection')
     return '巡视超时';
+  if (type === 'vital')
+    return '生命体征';
   return '输液';
 }
 
@@ -117,8 +141,12 @@ function isDisplayOnlySwpCall(task: AlertTask) {
   return task.source === 'swp-call' && task.type === 'call';
 }
 
+function isVitalWarning(task: AlertTask) {
+  return task.source === 'swp-call' && task.type === 'vital';
+}
+
 function isSourceManagedTask(task: AlertTask) {
-  return isDisplayOnlySwpCall(task) || task.source === 'swp-inspection';
+  return isDisplayOnlySwpCall(task) || isVitalWarning(task) || task.source === 'swp-inspection';
 }
 
 function handlingActionText() {
@@ -132,6 +160,8 @@ function canMarkHandling(task: AlertTask) {
 function taskStatusText(task: AlertTask) {
   if (isDisplayOnlySwpCall(task))
     return '呼叫中';
+  if (isVitalWarning(task))
+    return '预警中';
   if (task.source === 'swp-inspection')
     return '待巡视';
   if (task.status !== 'handling')
@@ -145,11 +175,31 @@ function taskStatusText(task: AlertTask) {
     class="alert-task-panel"
     :class="{ 'alert-task-panel--compact': compact }"
   >
-    <DashSectionHeader :title="title" :count="tasks.length" />
+    <DashSectionHeader :title="title" :count="filteredTasks.length" />
+
+    <div class="alert-task-panel__toolbar">
+      <div class="alert-task-panel__filters" role="tablist" aria-label="告警任务筛选">
+        <button
+          v-for="option in filterOptions"
+          :key="option.key"
+          type="button"
+          role="tab"
+          :aria-selected="filter === option.key"
+          :class="{ 'is-active': filter === option.key }"
+          @click="emit('update:filter', option.key)"
+        >
+          {{ option.label }}
+          <strong>{{ taskCounts[option.key] }}</strong>
+        </button>
+      </div>
+      <span class="alert-task-panel__summary">
+        未处理 {{ taskCounts.active }} · 处理中 {{ taskCounts.handling }}
+      </span>
+    </div>
 
     <div v-if="!visibleTasks.length" class="alert-task-panel__empty">
       <strong>暂无待处理告警</strong>
-      <span>系统会自动汇总呼叫、环境、设备和输液异常</span>
+      <span>系统会自动汇总呼叫、生命体征、环境、设备和输液异常</span>
     </div>
 
     <ul v-else class="alert-task-panel__list">
@@ -161,21 +211,22 @@ function taskStatusText(task: AlertTask) {
           `alert-task--${task.severity}`,
           `alert-task--${task.status}`,
           { 'alert-task--swp-call': isDisplayOnlySwpCall(task) },
+          { 'alert-task--vital': isVitalWarning(task) },
           { 'alert-task--inspection': task.source === 'swp-inspection' },
           waitingClass(task),
         ]"
       >
         <i
-          v-if="isDisplayOnlySwpCall(task)"
+          v-if="isDisplayOnlySwpCall(task) || isVitalWarning(task)"
           class="alert-task__scan"
           aria-hidden="true"
         />
         <div class="alert-task__main">
           <div class="alert-task__head">
             <span
-              v-if="isDisplayOnlySwpCall(task)"
+              v-if="isDisplayOnlySwpCall(task) || isVitalWarning(task)"
               class="alert-task__signal"
-              aria-label="活动呼叫信号"
+              :aria-label="isVitalWarning(task) ? '生命体征预警信号' : '活动呼叫信号'"
             >
               <i aria-hidden="true" />
             </span>
@@ -190,7 +241,7 @@ function taskStatusText(task: AlertTask) {
             <span v-if="task.roomName && task.canLocate !== false">{{ task.roomName }}</span>
             <span v-if="task.bedName && task.canLocate !== false">{{ formatBedLabel(task.bedName) }}</span>
             <span v-if="task.startedAt">
-              {{ isDisplayOnlySwpCall(task) ? '呼叫' : task.source === 'swp-inspection' ? '巡视' : '发生' }}
+              {{ isDisplayOnlySwpCall(task) ? '呼叫' : isVitalWarning(task) ? '预警' : task.source === 'swp-inspection' ? '巡视' : '发生' }}
               {{ formatTaskOccurredAt(task) }}
             </span>
             <span v-if="waitingLabel(task)" class="alert-task__meta-wait">
@@ -233,11 +284,14 @@ function taskStatusText(task: AlertTask) {
             {{ handlingActionText() }}
           </button>
           <span
-            v-if="isDisplayOnlySwpCall(task) && task.canLocate === false"
+            v-if="(isDisplayOnlySwpCall(task) || isVitalWarning(task)) && task.canLocate === false"
             class="alert-task__unlocated"
           >
             <i aria-hidden="true" />
             暂无法定位
+          </span>
+          <span v-if="isVitalWarning(task)" class="alert-task__recovery-tip">
+            后端状态恢复后自动结束
           </span>
           <span v-if="!isSourceManagedTask(task) && task.status === 'handling'" class="alert-task__recovery-tip">
             等待状态恢复后自动结束
@@ -289,6 +343,75 @@ function taskStatusText(task: AlertTask) {
 
   &--compact {
     padding: 10px;
+  }
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 8px 0 9px;
+  }
+
+  &__filters {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    padding: 3px;
+    border: 1px solid rgba(91, 210, 255, 0.16);
+    border-radius: 8px;
+    background: rgba(4, 18, 31, 0.42);
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 25px;
+      padding: 0 7px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: rgba(181, 214, 230, 0.74);
+      background: transparent;
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: color 180ms ease, background 180ms ease, border-color 180ms ease;
+
+      strong {
+        min-width: 14px;
+        padding: 1px 4px;
+        border-radius: 999px;
+        color: rgba(215, 241, 250, 0.82);
+        background: rgba(113, 199, 224, 0.1);
+        font-size: 9px;
+      }
+
+      &:hover {
+        color: rgba(231, 251, 255, 0.96);
+        background: rgba(77, 208, 255, 0.1);
+      }
+
+      &.is-active {
+        border-color: rgba(91, 220, 255, 0.34);
+        color: #e8fbff;
+        background: rgba(31, 139, 173, 0.26);
+        box-shadow: 0 0 12px rgba(77, 208, 255, 0.1);
+
+        strong {
+          color: #e8fbff;
+          background: rgba(77, 208, 255, 0.24);
+        }
+      }
+    }
+  }
+
+  &__summary {
+    flex-shrink: 0;
+    color: rgba(178, 211, 228, 0.68);
+    font-size: 10px;
+    white-space: nowrap;
   }
 
   &__list {
@@ -496,6 +619,44 @@ function taskStatusText(task: AlertTask) {
       inset 0 1px 0 rgba(255, 230, 235, 0.08),
       0 0 0 1px rgba(255, 89, 109, 0.14),
       0 9px 24px rgba(65, 0, 14, 0.24);
+  }
+
+  &--vital {
+    border-color: rgba(255, 93, 107, 0.66);
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255, 62, 91, 0.18), transparent 36%),
+      linear-gradient(108deg, rgba(52, 12, 27, 0.82), rgba(9, 28, 43, 0.78) 52%, rgba(18, 43, 55, 0.72));
+    box-shadow:
+      inset 3px 0 0 rgba(255, 74, 96, 0.98),
+      inset 0 1px 0 rgba(255, 226, 230, 0.08),
+      0 0 0 1px rgba(255, 74, 96, 0.08),
+      0 10px 24px rgba(0, 0, 0, 0.22);
+
+    .alert-task__signal {
+      border-color: rgba(255, 191, 112, 0.72);
+      background: radial-gradient(circle, rgba(255, 132, 72, 0.24), rgba(255, 79, 97, 0.05) 70%);
+
+      &::before,
+      &::after {
+        border-color: rgba(255, 154, 94, 0.56);
+      }
+
+      i {
+        background: #ffbf72;
+        box-shadow: 0 0 9px rgba(255, 191, 114, 0.98);
+      }
+    }
+
+    .alert-task__type {
+      color: #ffd1b0;
+      background: rgba(214, 95, 48, 0.24);
+    }
+
+    .alert-task__meta-live {
+      color: #ffd2c0;
+      background: rgba(158, 55, 48, 0.22);
+      border-color: rgba(255, 140, 117, 0.22);
+    }
   }
 
   &--inspection {
@@ -817,6 +978,14 @@ function taskStatusText(task: AlertTask) {
 
   .alert-task__locate:hover::after {
     left: 125%;
+  }
+
+  .alert-task--vital:hover {
+    border-color: rgba(255, 134, 133, 0.9);
+    box-shadow:
+      inset 3px 0 0 rgba(255, 74, 96, 1),
+      0 10px 26px rgba(0, 0, 0, 0.26),
+      0 0 20px rgba(255, 74, 96, 0.12);
   }
 }
 

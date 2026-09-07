@@ -39,6 +39,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 
   close: [];
+  bedClick: [bed: TwinBedEntity];
   markAlertHandling: [taskId: string];
   resolveAlert: [taskId: string];
 
@@ -47,6 +48,9 @@ const emit = defineEmits<{
 
 
 const bedStats = computed(() => props.ward ? getWardBedStats(props.ward) : null);
+const visibleNursingLabels = computed(() => (
+  props.selectedBed?.nursingLabels?.filter(label => label.labelName.trim()) ?? []
+));
 
 function staffText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -223,6 +227,8 @@ function severityLabel(severity: AlertTask['severity']) {
 function typeLabel(type: AlertTask['type']) {
   if (type === 'call')
     return '床位呼叫';
+  if (type === 'vital')
+    return '生命体征';
   if (type === 'env')
     return '环境异常';
   if (type === 'offline')
@@ -233,14 +239,20 @@ function typeLabel(type: AlertTask['type']) {
 }
 
 function isDisplayOnlySwpCall(task: AlertTask) {
-  return task.source === 'swp-call' && task.type === 'call';
+  return task.source === 'swp-call' && (task.type === 'call' || task.type === 'vital');
+}
+
+function isVitalWarning(task: AlertTask) {
+  return task.source === 'swp-call' && task.type === 'vital';
 }
 
 function isSourceManagedTask(task: AlertTask) {
-  return isDisplayOnlySwpCall(task) || task.source === 'swp-inspection';
+  return isDisplayOnlySwpCall(task) || isVitalWarning(task) || task.source === 'swp-inspection';
 }
 
 function taskStatusText(task: AlertTask) {
+  if (isVitalWarning(task))
+    return '预警中';
   if (isDisplayOnlySwpCall(task))
     return '呼叫中';
   if (task.source === 'swp-inspection')
@@ -252,6 +264,32 @@ function taskStatusText(task: AlertTask) {
 
 function handlingActionText() {
   return '标记处理中';
+}
+
+const VITAL_METRIC_LABELS: Record<NonNullable<AlertTask['vitalMetric']>, string> = {
+  temperature: '体温',
+  heartRate: '心率',
+  respiratoryRate: '呼吸',
+  bloodPressure: '血压',
+  bloodOxygen: '血氧',
+  bloodSugar: '血糖',
+  mews: 'MEWS',
+  unknown: '体征',
+};
+
+function vitalMetricLabel(task: AlertTask) {
+  return task.vitalMetric ? VITAL_METRIC_LABELS[task.vitalMetric] : '体征';
+}
+
+function vitalValueLabel(task: AlertTask) {
+  return [task.vitalValue, task.vitalUnit].filter(Boolean).join('') || '异常值待同步';
+}
+
+function alertTime(value?: string) {
+  if (!value)
+    return '';
+  const match = value.match(/(\d{2}):(\d{2})(?::\d{2})?$/);
+  return match ? `${match[1]}:${match[2]}` : value;
 }
 
 </script>
@@ -281,6 +319,7 @@ function handlingActionText() {
       class="ward-info-panel__task"
       :class="[
         `ward-info-panel__task--${activeAlertTask.severity}`,
+        { 'ward-info-panel__task--vital': isVitalWarning(activeAlertTask) },
         { 'ward-info-panel__task--handling': activeAlertTask.status === 'handling' },
       ]"
     >
@@ -290,10 +329,16 @@ function handlingActionText() {
         <em>{{ taskStatusText(activeAlertTask) }}</em>
       </div>
       <p>{{ activeAlertTask.description }}</p>
+      <div v-if="isVitalWarning(activeAlertTask)" class="task-card__vital-reading">
+        <span>{{ vitalMetricLabel(activeAlertTask) }}</span>
+        <strong>{{ vitalValueLabel(activeAlertTask) }}</strong>
+        <small v-if="activeAlertTask.vitalThreshold">参考阈值 {{ activeAlertTask.vitalThreshold }}</small>
+      </div>
       <div class="task-card__meta">
-        <span>{{ activeAlertTask.roomName }}</span>
+        <span v-if="activeAlertTask.roomName">{{ activeAlertTask.roomName }}</span>
         <span v-if="activeAlertTask.bedName">{{ formatBedLabel(activeAlertTask.bedName) }}</span>
         <span v-if="activeAlertTask.patientName">{{ maskSickName(activeAlertTask.patientName) }}</span>
+        <span v-if="activeAlertTask.startedAt">发生 {{ alertTime(activeAlertTask.startedAt) }}</span>
       </div>
       <div class="task-card__actions">
         <button
@@ -305,6 +350,9 @@ function handlingActionText() {
         </button>
         <span v-if="!isSourceManagedTask(activeAlertTask) && activeAlertTask.status === 'handling'">
           等待状态恢复后自动结束
+        </span>
+        <span v-if="isVitalWarning(activeAlertTask)">
+          后端状态恢复后自动结束
         </span>
       </div>
     </section>
@@ -442,7 +490,10 @@ function handlingActionText() {
 
       <div class="ward-info-panel__bed-header">
 
-        <h3>{{ selectedBed.bedName }}</h3>
+        <div class="bed-detail-identity">
+          <span>BED</span>
+          <h3>{{ selectedBed.bedName }}</h3>
+        </div>
 
         <button class="close-btn" @click="emit('close')">
 
@@ -452,47 +503,42 @@ function handlingActionText() {
 
       </div>
 
-      <div class="status-badge" :style="{ backgroundColor: selectedStatus.color }">
+      <div class="bed-detail-section bed-detail-section--status">
+        <div class="status-badge" :style="{ backgroundColor: selectedStatus.color }">
+          <i />
+          {{ selectedStatus.label }}
+        </div>
 
-        {{ selectedStatus.label }}
+        <div v-if="selectedBed.isCalling" class="call-alert">
+          床位正在呼叫护士站
+        </div>
 
-      </div>
+        <div v-if="visibleNursingLabels.length" class="nursing-tags">
+          <span
 
+            v-for="tag in visibleNursingLabels"
 
+            :key="tag.labelCode || tag.labelName"
 
-      <div v-if="selectedBed.isCalling" class="call-alert">
+            class="nursing-tag"
 
-        床位正在呼叫护士站
+            :style="{ '--tag-color': tag.labelColor, '--tag-text-color': tag.labelTextColor ?? '#fff' }"
 
-      </div>
+          >
 
+            {{ tag.labelName }}
 
-
-      <div v-if="selectedBed.nursingLabels?.length" class="nursing-tags">
-
-        <span
-
-          v-for="tag in selectedBed.nursingLabels"
-
-          :key="tag.labelCode"
-
-          class="nursing-tag"
-
-          :style="{ backgroundColor: tag.labelColor, color: tag.labelTextColor ?? '#fff' }"
-
-        >
-
-          {{ tag.labelName }}
-
-        </span>
-
+          </span>
+        </div>
       </div>
 
 
 
       <template v-if="selectedBed.sickInfo">
 
-        <dl class="patient-info">
+        <section class="bed-detail-section bed-detail-section--patient">
+          <div class="bed-detail-section__title">患者档案</div>
+          <dl class="patient-info">
 
           <dt>患者</dt>
 
@@ -546,7 +592,8 @@ function handlingActionText() {
 
           </dd>
 
-        </dl>
+          </dl>
+        </section>
 
       </template>
 
@@ -570,14 +617,19 @@ function handlingActionText() {
             <strong>{{ selectedBed.latestVitals.bloodPressure || '--' }}</strong>
           </span>
           <span>
+            <small>血氧</small>
+            <strong>{{ selectedBed.latestVitals.bloodOxygen || '--' }}</strong>
+          </span>
+          <span>
             <small>血糖</small>
             <strong>{{ selectedBed.latestVitals.bloodSugar || '--' }}</strong>
           </span>
           <span>
             <small>记录时间</small>
-            <strong>{{ selectedBed.latestVitals.recordTime || '--' }}</strong>
-          </span>
+          <strong>{{ selectedBed.latestVitals.recordTime || '--' }}</strong>
+        </span>
         </div>
+        <p class="vitals-card__note">最新体征记录来自真实数据源；是否预警以当前后端预警事件为准。</p>
       </section>
 
       <p v-if="!selectedBed.sickInfo" class="empty-bed-tip">
@@ -612,21 +664,29 @@ function handlingActionText() {
 
         <li v-for="bed in ward.beds" :key="bed.bedCode">
 
-          <span class="bed-name">
+          <button
+            type="button"
+            class="bed-list__item"
+            :class="{ 'bed-list__item--selected': selectedBed?.bedCode === bed.bedCode }"
+            :aria-label="`选择${bed.bedName}`"
+            @click="emit('bedClick', bed)"
+          >
+            <span class="bed-name">
 
-            <i class="bed-dot" :style="{ backgroundColor: bedStatusColor(bed) }" />
+              <i class="bed-dot" :style="{ backgroundColor: bedStatusColor(bed) }" />
 
-            {{ bed.bedName }}
+              {{ bed.bedName }}
 
-          </span>
+            </span>
 
-          <span class="bed-meta">
+            <span class="bed-meta">
 
-            <span class="bed-patient">{{ displayPatientName(bed.sickInfo?.sickName, bed.isOccupied) }}</span>
+              <span class="bed-patient">{{ displayPatientName(bed.sickInfo?.sickName, bed.isOccupied) }}</span>
 
-            <span class="bed-status">{{ bedStatusLabel(bed) }}</span>
+              <span class="bed-status">{{ bedStatusLabel(bed) }}</span>
 
-          </span>
+            </span>
+          </button>
 
         </li>
 
@@ -914,6 +974,30 @@ function handlingActionText() {
       box-shadow: inset 3px 0 0 rgba(255, 82, 82, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.035);
     }
 
+    &--vital {
+      border-color: rgba(255, 91, 111, 0.62);
+      background:
+        radial-gradient(circle at 4% 0%, rgba(255, 74, 96, 0.18), transparent 44%),
+        linear-gradient(135deg, rgba(58, 13, 28, 0.42), rgba(6, 20, 36, 0.36));
+      box-shadow:
+        inset 3px 0 0 rgba(255, 76, 98, 0.98),
+        inset 0 1px 0 rgba(255, 231, 234, 0.08),
+        0 0 20px rgba(255, 76, 98, 0.08);
+
+      .task-card__head span {
+        background: rgba(255, 76, 98, 0.84);
+      }
+
+      .task-card__head strong {
+        color: #ffd4d8;
+      }
+
+      .task-card__head em {
+        color: #ffc4ca;
+        background: rgba(167, 48, 66, 0.3);
+      }
+    }
+
     &--medium {
       border-color: rgba(77, 208, 255, 0.24);
       background: linear-gradient(135deg, rgba(8, 40, 56, 0.3), rgba(6, 20, 36, 0.34));
@@ -985,6 +1069,41 @@ function handlingActionText() {
       background: rgba(255, 255, 255, 0.06);
       font-size: 11px;
       font-weight: 750;
+    }
+  }
+
+  .task-card__vital-reading {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 7px;
+    margin: 9px 0 8px;
+    padding: 8px 9px;
+    border: 1px solid rgba(255, 119, 130, 0.28);
+    border-radius: 8px;
+    background: rgba(105, 25, 42, 0.2);
+
+    span {
+      color: rgba(255, 211, 215, 0.76);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    strong {
+      color: #ffacb6;
+      font-size: 16px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 12px rgba(255, 99, 120, 0.26);
+    }
+
+    small {
+      min-width: 0;
+      overflow: hidden;
+      color: rgba(255, 220, 223, 0.66);
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 
@@ -1434,39 +1553,92 @@ function handlingActionText() {
 
   .close-btn {
 
-    background: none;
-
-    border: none;
-
-    color: #94bdd8;
-
-    font-size: 22px;
+    background: rgba(84, 205, 255, 0.08);
+    border: 1px solid rgba(110, 228, 255, 0.28);
+    color: #b6ebff;
+    font-size: 24px;
     line-height: 1;
     width: 30px;
     height: 30px;
     border-radius: 8px;
 
     cursor: pointer;
+    transition: 180ms ease;
 
-    &:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+    &:hover {
+      color: #fff;
+      border-color: rgba(128, 239, 255, 0.7);
+      background: rgba(81, 212, 255, 0.18);
+      box-shadow: 0 0 14px rgba(64, 229, 255, 0.24);
+    }
 
   }
 
 
 
+  .bed-detail-identity {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+
+    span {
+      color: rgba(134, 225, 255, 0.66);
+      font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: 0.18em;
+    }
+
+    h3 {
+      margin: 0;
+      color: #f0fbff;
+      font-size: 27px;
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 18px rgba(64, 229, 255, 0.24);
+    }
+  }
+
+  .bed-detail-section {
+    position: relative;
+    margin-top: 12px;
+    padding: 11px;
+    border: 1px solid rgba(100, 222, 255, 0.14);
+    border-radius: 10px;
+    background:
+      linear-gradient(135deg, rgba(65, 231, 255, 0.09), transparent 40%),
+      rgba(2, 20, 35, 0.26);
+    box-shadow:
+      inset 0 1px 0 rgba(191, 247, 255, 0.08),
+      0 0 18px rgba(64, 229, 255, 0.06);
+  }
+
+  .bed-detail-section__title {
+    margin-bottom: 9px;
+    color: #90eaff;
+    font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.14em;
+  }
+
   .status-badge {
 
-    display: inline-block;
-
-    margin: 10px 0;
-
-    padding: 4px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 5px 11px;
 
     border-radius: 999px;
 
-    font-size: 13px;
+    color: #f6fcff;
+    font-size: 12px;
+    font-weight: 700;
 
-    color: #fff;
+    i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.92);
+      animation: ward-panel-dot-pulse 1.8s ease-in-out infinite;
+    }
 
   }
 
@@ -1478,9 +1650,8 @@ function handlingActionText() {
 
     flex-wrap: wrap;
 
-    gap: 6px;
-
-    margin-bottom: 10px;
+    gap: 7px;
+    margin-top: 10px;
 
   }
 
@@ -1488,11 +1659,15 @@ function handlingActionText() {
 
   .nursing-tag {
 
-    padding: 3px 8px;
-
-    border-radius: 999px;
-
+    padding: 4px 9px;
+    border: 1px solid color-mix(in srgb, var(--tag-color) 78%, #c9f7ff);
+    border-radius: 5px;
+    color: var(--tag-text-color);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--tag-color) 84%, #17324a), color-mix(in srgb, var(--tag-color) 42%, #06111e));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.13), 0 0 10px color-mix(in srgb, var(--tag-color) 26%, transparent);
     font-size: 11px;
+    font-weight: 650;
+    line-height: 1.25;
 
   }
 
@@ -1500,15 +1675,28 @@ function handlingActionText() {
 
   .patient-info {
 
-    margin: 12px 0 0;
+    margin: 0;
 
     display: grid;
     grid-template-columns: 76px 1fr;
-    gap: 8px 12px;
+    gap: 9px 12px;
 
-    dt { margin: 0; font-size: 12px; color: rgba(144, 174, 199, 0.82); &:first-child { margin-top: 0; } }
+    dt {
+      margin: 0;
+      font-size: 11px;
+      color: rgba(151, 206, 229, 0.72);
+      letter-spacing: 0.04em;
+      &:first-child { margin-top: 0; }
+    }
 
-    dd { margin: 0; font-size: 13px; color: rgba(232, 244, 255, 0.94); min-width: 0; word-break: break-word; }
+    dd {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+      color: rgba(236, 248, 255, 0.96);
+      min-width: 0;
+      word-break: break-word;
+    }
 
   }
 
@@ -1528,6 +1716,13 @@ function handlingActionText() {
       color: #9be8ff;
       font-size: 12px;
       font-weight: 700;
+    }
+
+    &__note {
+      margin: 9px 0 0;
+      color: rgba(177, 212, 227, 0.7);
+      font-size: 10px;
+      line-height: 1.45;
     }
   }
 
@@ -1674,21 +1869,25 @@ function handlingActionText() {
 
 
     li {
+      margin: 0;
 
+    }
+
+    .bed-list__item {
+      width: 100%;
       display: flex;
-
       justify-content: space-between;
-
       align-items: center;
-
       gap: 8px;
-
       padding: 9px 0;
-
+      border: 0;
       border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
-
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      transition: background 180ms ease, border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
       font-size: 14px;
+      cursor: pointer;
 
       &:hover {
         background: linear-gradient(90deg, rgba(77, 224, 255, 0.1), transparent);
@@ -1696,6 +1895,13 @@ function handlingActionText() {
         transform: translateX(3px);
       }
 
+      &:focus-visible,
+      &--selected {
+        background: linear-gradient(90deg, rgba(77, 224, 255, 0.14), rgba(77, 224, 255, 0.02));
+        border-bottom-color: rgba(131, 237, 255, 0.45);
+        box-shadow: inset 0 0 0 1px rgba(131, 237, 255, 0.18);
+        outline: none;
+      }
     }
 
 

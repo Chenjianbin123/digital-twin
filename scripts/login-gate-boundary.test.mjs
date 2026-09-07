@@ -112,3 +112,10 @@ test('login gate keeps the digital-twin scene visible through a translucent card
   assert.match(loginGate, /backdrop-filter:\s*blur\(18px\)/);
   assert.match(loginGate, /rgba\(3, 13, 21, 0\.58\)/);
 });
+
+test('login gate hides role selection while roles share the same access scope', () => {
+  assert.match(loginGate, /const ENABLE_ROLE_SELECTION = false/);
+  assert.match(loginGate, /if \(!ENABLE_ROLE_SELECTION\)/);
+  assert.match(loginGate, /selectedRoleId\.value = String\(user\.roleList\[0\]\.id\)/);
+  assert.match(loginGate, /await submitRole\(\)/);
+});

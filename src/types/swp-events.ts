@@ -14,6 +14,8 @@ interface SwpEventLocationFields {
   deptId?: SwpIdentifier;
   sickroomId?: SwpIdentifier;
   sickroomCode?: SwpIdentifier;
+  sickroomName?: SwpIdentifier;
+  bedName?: SwpIdentifier;
   bedCode?: SwpIdentifier;
   deviceCode?: SwpIdentifier;
 }
@@ -37,6 +39,7 @@ export interface SwpCallRecord extends SwpEventLocationFields {
   mediaPath?: string;
   remark?: string;
   eventStatus?: SwpIdentifier;
+  [key: string]: unknown;
 }
 
 export interface SwpAlarmRecord extends SwpEventLocationFields {
@@ -48,6 +51,7 @@ export interface SwpAlarmRecord extends SwpEventLocationFields {
   alarmStartTime?: string;
   alarmProcessTime?: string;
   eventStatus?: SwpIdentifier;
+  [key: string]: unknown;
 }
 
 export interface SwpArrivalRecord {
@@ -82,18 +86,29 @@ export interface SwpEventLocation {
 export type SwpEventLocationSource =
   | 'sickroom-id'
   | 'sickroom-code'
+  | 'sickroom-name'
   | 'bed-code'
+  | 'bed-name'
   | 'device-code'
   | 'call-from-code';
 
 export type SwpEventSource = 'swp-call' | 'swp-alarm';
 export type SwpEventLocationStatus = 'matched' | 'missing-identifiers' | 'unmatched-identifiers';
+export type NormalizedVitalMetric =
+  | 'temperature'
+  | 'heartRate'
+  | 'respiratoryRate'
+  | 'bloodPressure'
+  | 'bloodOxygen'
+  | 'bloodSugar'
+  | 'mews'
+  | 'unknown';
 
 export interface NormalizedSwpEvent {
   id: string;
   source: SwpEventSource;
   areaId: number;
-  taskType: 'call' | 'infusion';
+  taskType: 'call' | 'infusion' | 'vital';
   severity: 'critical' | 'high';
   startedAt?: string;
   timestampMs: number;
@@ -103,6 +118,10 @@ export interface NormalizedSwpEvent {
   locationStatus: SwpEventLocationStatus;
   locationSource?: SwpEventLocationSource;
   locationLabel: string;
+  vitalMetric?: NormalizedVitalMetric;
+  vitalValue?: string;
+  vitalUnit?: string;
+  vitalThreshold?: string;
 }
 
 export interface SwpResponseMetrics {

@@ -5,6 +5,7 @@ import {
 } from '@/api/swp-events';
 import {
   createSwpEventPollingController,
+  DEFAULT_SWP_EVENT_INTERVAL_MS,
   type SwpEventPollingStore,
 } from '@/core/swp-event-polling-controller';
 import {
@@ -31,7 +32,7 @@ type PollingStore = SwpEventPollingStore
 
 export function startSwpEventPoller(
   store: PollingStore,
-  eventIntervalMs = 15_000,
+  eventIntervalMs = DEFAULT_SWP_EVENT_INTERVAL_MS,
   responseIntervalMs = 60_000,
 ) {
   void responseController.start(store, responseIntervalMs);

@@ -52,6 +52,7 @@ export interface TwinBedEntity {
     pulse?: string;
     breath?: string;
     bloodPressure?: string;
+    bloodOxygen?: string;
     bloodSugar?: string;
     recordTime?: string;
   };
@@ -110,7 +111,7 @@ export interface BedStatusMeta {
   emissive: string;
 }
 
-export type HistoryCategory = 'infusion' | 'env' | 'call' | 'device';
+export type HistoryCategory = 'infusion' | 'env' | 'call' | 'device' | 'vital';
 
 export interface StatusHistoryEntry {
   id: string;
@@ -148,6 +149,15 @@ const BED_LAYOUTS: Record<number, Array<{ x: number; z: number }>> = {
     { x: -5.2, z: 4 },
     { x: 5.2, z: 4 },
   ],
+  7: [
+    { x: -6.3, z: -4 },
+    { x: 0, z: -4 },
+    { x: 6.3, z: -4 },
+    { x: -6.3, z: 3.5 },
+    { x: 0, z: 3.5 },
+    { x: 6.3, z: 3.5 },
+    { x: 0, z: 0 },
+  ],
 };
 
 const WARD_ROOM_SIZES: Record<number, { w: number; d: number }> = {
@@ -157,16 +167,17 @@ const WARD_ROOM_SIZES: Record<number, { w: number; d: number }> = {
   4: { w: 16, d: 12 },
   5: { w: 17, d: 13 },
   6: { w: 18, d: 14 },
+  7: { w: 23, d: 14.8 },
 };
 
 /** 按床位数返回病房内径，多人间自动放大 */
 export function getWardRoomSize(bedCount: number): { w: number; d: number } {
-  const count = Math.min(6, Math.max(1, bedCount));
-  return WARD_ROOM_SIZES[count] ?? WARD_ROOM_SIZES[6];
+  const count = Math.min(7, Math.max(1, bedCount));
+  return WARD_ROOM_SIZES[count] ?? WARD_ROOM_SIZES[7];
 }
 
 function getBedPosition(index: number, total: number): { x: number; z: number } {
-  const layout = BED_LAYOUTS[total] ?? BED_LAYOUTS[6];
+  const layout = BED_LAYOUTS[total] ?? BED_LAYOUTS[7];
   return layout[index] ?? layout[layout.length - 1] ?? { x: 0, z: 0 };
 }
 

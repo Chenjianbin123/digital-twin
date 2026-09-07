@@ -56,6 +56,7 @@ def parse_args() -> argparse.Namespace:
     script_args = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--blend-output", type=Path)
     return parser.parse_args(script_args)
 
 
@@ -293,6 +294,13 @@ def main() -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
 
     groups = organize_scene()
+    if args.blend_output:
+        blend_output = args.blend_output.expanduser().resolve()
+        assert blend_output.suffix.lower() == ".blend", f"blend output must be .blend: {blend_output}"
+        assert not blend_output.exists(), f"blend output already exists: {blend_output}"
+        blend_output.parent.mkdir(parents=True, exist_ok=True)
+        bpy.ops.wm.save_as_mainfile(filepath=str(blend_output), compress=True)
+        print(f"Saved dynamic-bed Blender source: {blend_output}")
     bpy.ops.object.select_all(action="DESELECT")
     for group in groups:
         group.select_set(True)

@@ -2,6 +2,8 @@ import type { NormalizedSwpEvent, SwpEventSource } from '../types/swp-events.ts'
 import type { TwinAreaEntity } from '../types/twin.ts';
 import { createBrowserPollingVisibility, type PollingVisibility } from './polling-visibility.ts';
 
+export const DEFAULT_SWP_EVENT_INTERVAL_MS = 60_000;
+
 export interface SwpEventSnapshot {
   events: NormalizedSwpEvent[];
   refreshedSources?: SwpEventSource[];
@@ -54,7 +56,7 @@ export function createSwpEventPollingController(
   let timer: unknown = null;
   let activeRun: PollingRun | null = null;
   let unsubscribeVisibility: (() => void) | null = null;
-  let activeIntervalMs = 15_000;
+  let activeIntervalMs = DEFAULT_SWP_EVENT_INTERVAL_MS;
   let backgroundIntervalMs = 60_000;
 
   function clearTimer() {
@@ -135,7 +137,10 @@ export function createSwpEventPollingController(
     activeRun = null;
   }
 
-  async function start(store: SwpEventPollingStore, intervalMs = 15_000): Promise<boolean> {
+  async function start(
+    store: SwpEventPollingStore,
+    intervalMs = DEFAULT_SWP_EVENT_INTERVAL_MS,
+  ): Promise<boolean> {
     stop();
     const areaId = store.selectedAreaId;
     const area = store.area;

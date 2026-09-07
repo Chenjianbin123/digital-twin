@@ -12,6 +12,8 @@ function categoryLabel(category: StatusHistoryEntry['category']) {
     return '呼叫';
   if (category === 'device')
     return '设备';
+  if (category === 'vital')
+    return '体征';
   return '输液';
 }
 </script>
@@ -85,6 +87,10 @@ function categoryLabel(category: StatusHistoryEntry['category']) {
 
   &__item--call .label {
     color: #f48fb1;
+  }
+
+  &__item--vital .label {
+    color: #ff9faa;
   }
 
   &__item--device .label {

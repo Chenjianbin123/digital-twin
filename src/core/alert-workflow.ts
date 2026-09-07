@@ -5,10 +5,11 @@ import type {
   SwpEventLocationSource,
   SwpEventLocationStatus,
   SwpEventSource,
+  NormalizedVitalMetric,
 } from '../types/swp-events.ts';
 import type { TwinAreaEntity, TwinSceneType } from '../types/twin.ts';
 
-export type AlertTaskType = 'call' | 'env' | 'offline' | 'infusion' | 'inspection';
+export type AlertTaskType = 'call' | 'env' | 'offline' | 'infusion' | 'inspection' | 'vital';
 export type AlertTaskSource = SwpEventSource | 'swp-inspection';
 export type AlertTaskSeverity = 'critical' | 'high' | 'medium';
 export type AlertTaskStatus = 'pending' | 'handling' | 'resolved';
@@ -48,6 +49,10 @@ export interface AlertTask {
   locationStatus?: SwpEventLocationStatus;
   locationSource?: SwpEventLocationSource;
   resolveText?: string;
+  vitalMetric?: NormalizedVitalMetric;
+  vitalValue?: string;
+  vitalUnit?: string;
+  vitalThreshold?: string;
 }
 
 export interface AlertAckStateEntry {
@@ -327,12 +332,13 @@ export function collectSwpAlertTasks(
   const tasks: AlertTask[] = [];
   for (const event of events) {
     const location = event.location;
-    const isDisplayOnlyCall = event.source === 'swp-call' && event.taskType === 'call';
+    const isSourceManagedSwpTask = event.source === 'swp-call'
+      && (event.taskType === 'call' || event.taskType === 'vital');
     const equivalentLocalId = event.taskType === 'call' && location?.bedCode
       ? scopedTaskId(`call:${location.roomCode}:${location.bedCode}`, areaScope)
       : '';
     const explicitStatus = getTaskStatus(event.id, ackState, event.startedAt);
-    const status = isDisplayOnlyCall
+    const status = isSourceManagedSwpTask
       ? 'pending'
       : ackState[event.id]
         ? explicitStatus
@@ -347,7 +353,7 @@ export function collectSwpAlertTasks(
       severity: event.severity,
       status,
       roomIndex: location?.roomIndex ?? -1,
-      roomName: location?.roomName ?? (isDisplayOnlyCall ? '' : event.locationLabel),
+      roomName: location?.roomName ?? (isSourceManagedSwpTask ? '' : event.locationLabel),
       roomCode: location?.roomCode ?? '',
       bedCode: location?.bedCode,
       bedName: location?.bedName,
@@ -360,6 +366,10 @@ export function collectSwpAlertTasks(
       startedAt: event.startedAt,
       locationStatus: event.locationStatus,
       ...(event.locationSource ? { locationSource: event.locationSource } : {}),
+      ...(event.vitalMetric ? { vitalMetric: event.vitalMetric } : {}),
+      ...(event.vitalValue ? { vitalValue: event.vitalValue } : {}),
+      ...(event.vitalUnit ? { vitalUnit: event.vitalUnit } : {}),
+      ...(event.vitalThreshold ? { vitalThreshold: event.vitalThreshold } : {}),
     });
   }
   return tasks.sort(compareAlertTasks);

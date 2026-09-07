@@ -63,6 +63,31 @@ let dataStatusTimer: number | null = null;
 let hasBootstrapped = false;
 let bootGeneration = 0;
 const dataStatusNow = ref(Date.now());
+const NURSE_STATION_WALLBOARD_KEY = 'ward-digital-twin:nurse-station-wallboard';
+
+function readBooleanPreference(key: string) {
+  if (typeof window === 'undefined')
+    return false;
+  try {
+    return window.localStorage.getItem(key) === 'true';
+  }
+  catch {
+    return false;
+  }
+}
+
+function writeBooleanPreference(key: string, value: boolean) {
+  if (typeof window === 'undefined')
+    return;
+  try {
+    window.localStorage.setItem(key, String(value));
+  }
+  catch {
+    // Wallboard preference is optional and must not block the workspace.
+  }
+}
+
+const nurseStationWallboard = ref(readBooleanPreference(NURSE_STATION_WALLBOARD_KEY));
 
 const {
   area,
@@ -126,6 +151,18 @@ const currentInspectionSummary = computed(() =>
     ? inspectionRoomSummaries.value[currentRoomIndex.value] ?? null
     : null,
 );
+const vitalWarningBedCodes = computed(() => {
+  const ward = preloadedWard.value;
+  if (!ward)
+    return [];
+  return alertTasks.value
+    .filter(task =>
+      task.type === 'vital'
+      && task.roomCode === ward.sickroomCode
+      && !!task.bedCode,
+    )
+    .map(task => task.bedCode as string);
+});
 const stationSceneActive = computed(() => isNurseStation.value);
 const corridorSceneActive = computed(() => isWard.value);
 const interiorSceneActive = computed(() => isWardInterior.value && wardInteriorView.value === '3d');
@@ -133,6 +170,10 @@ const interiorSceneActive = computed(() => isWardInterior.value && wardInteriorV
 watch([() => isWardInterior.value, () => wardInteriorView.value], ([interior, view]) => {
   if (interior && view === 'plan')
     panelsVisible.value = false;
+});
+
+watch(nurseStationWallboard, value => {
+  writeBooleanPreference(NURSE_STATION_WALLBOARD_KEY, value);
 });
 
 function handlingActionText() {
@@ -144,10 +185,12 @@ function canMarkHandling(task: AlertTask) {
 }
 
 function isDisplayOnlySwpCall(task: AlertTask) {
-  return task.source === 'swp-call' && task.type === 'call';
+  return task.source === 'swp-call' && (task.type === 'call' || task.type === 'vital');
 }
 
 function taskStatusText(task: AlertTask) {
+  if (task.source === 'swp-call' && task.type === 'vital')
+    return '预警中';
   if (isDisplayOnlySwpCall(task))
     return '呼叫中';
   if (task.status !== 'handling')
@@ -214,6 +257,8 @@ function alertSeverityLabel(severity: 'critical' | 'high' | 'medium') {
 function alertTypeLabel(type: AlertTask['type']) {
   if (type === 'call')
     return '床位呼叫';
+  if (type === 'vital')
+    return '生命体征预警';
   if (type === 'env')
     return '环境异常';
   if (type === 'offline')
@@ -237,6 +282,12 @@ function handleSceneTypeChange(type: typeof sceneType.value) {
       sceneSwitchTimer = null;
     }, feedback.durationMs);
   }
+}
+
+function setNurseStationWallboard(enabled: boolean) {
+  nurseStationWallboard.value = enabled;
+  if (enabled)
+    panelsVisible.value = true;
 }
 
 async function handleAreaSwitch(areaId: number) {
@@ -392,6 +443,8 @@ function handleStorage(event: StorageEvent) {
     store.reloadAlertAckRecords();
   if (event.key === SWP_CALL_ALERTS_STORAGE_KEY)
     store.reloadCallAlertsEnabled();
+  if (event.key === NURSE_STATION_WALLBOARD_KEY)
+    nurseStationWallboard.value = event.newValue === 'true';
 }
 
 onMounted(() => {
@@ -451,6 +504,7 @@ onBeforeUnmount(() => {
         'digital-twin__main--ward': isWard || isWardInterior,
         'digital-twin__main--interior': isWardInterior,
         'digital-twin__main--plan': isWardInterior && wardInteriorView === 'plan',
+        'digital-twin__main--wallboard': isNurseStation && nurseStationWallboard,
         'digital-twin__main--panels-hidden': !panelsVisible,
         'digital-twin__main--scene-switching': !!sceneSwitchFeedback,
       }"
@@ -532,7 +586,7 @@ onBeforeUnmount(() => {
               <template v-if="activeAlertTask.bedName"> · {{ formatBedLabel(activeAlertTask.bedName) }}</template>
             </strong>
             <p>
-              <span>{{ alertTypeLabel(activeAlertTask.type) }}</span>
+              <span>{{ activeAlertTask.type === 'vital' ? '生命体征预警' : alertTypeLabel(activeAlertTask.type) }}</span>
               {{ activeAlertTask.description }}
             </p>
           </div>
@@ -547,6 +601,9 @@ onBeforeUnmount(() => {
             >
               {{ handlingActionText() }}
             </button>
+            <span v-if="activeAlertTask.type === 'vital'">
+              后端状态恢复后自动结束
+            </span>
             <span v-if="!isDisplayOnlySwpCall(activeAlertTask) && activeAlertTask.status === 'handling'">
               等待状态恢复后自动结束
             </span>
@@ -613,6 +670,7 @@ onBeforeUnmount(() => {
           :camera-preset="cameraPreset"
           :env-alert-level="currentEnvAlert.level"
           :selected-bed-code="selectedBed?.bedCode ?? null"
+          :vital-warning-bed-codes="vitalWarningBedCodes"
           :active="interiorSceneActive"
           @bed-click="store.selectBed"
         />
@@ -634,6 +692,7 @@ onBeforeUnmount(() => {
       </div>
 
       <DashboardBottomNav
+        v-if="!(isNurseStation && nurseStationWallboard)"
         :scene-type="sceneType"
         :ward-interior-view="wardInteriorView"
         :is-simulating="isSimulating"
@@ -672,11 +731,14 @@ onBeforeUnmount(() => {
             :inspection-room-summaries="inspectionRoomSummaries"
             :inspection-sync="inspectionSync"
             :ward-data-status="dataStatus"
+            :ward-data-synced-at-ms="lastFetchedAtMs"
+            :wallboard="nurseStationWallboard"
             @focus-room="store.focusRoom"
             @locate-alert="store.openAlertTask"
             @mark-alert-handling="store.markAlertHandling"
             @restore-alert="store.restoreAlertTask"
             @set-call-alerts-enabled="store.setCallAlertsEnabled"
+            @set-wallboard="setNurseStationWallboard"
           />
         </template>
 
@@ -717,6 +779,7 @@ onBeforeUnmount(() => {
               :active-alert-task="activeAlertTask"
               :inspection-summary="currentInspectionSummary"
               @close="store.clearSelection"
+              @bed-click="store.selectBed"
               @mark-alert-handling="store.markAlertHandling"
             />
           </div>
@@ -1087,6 +1150,14 @@ onBeforeUnmount(() => {
       --mobile-panel-height: min(42vh, 500px);
     }
 
+    &--wallboard {
+      --scene-panel-width: clamp(440px, 34vw, 620px);
+      --mobile-panel-height: min(54vh, 640px);
+      background:
+        radial-gradient(circle at 20% 0%, rgba(54, 184, 255, 0.08), transparent 32%),
+        #040b15;
+    }
+
     &--ward {
       --scene-panel-width: clamp(340px, 24vw, 430px);
 
@@ -1251,6 +1322,41 @@ onBeforeUnmount(() => {
       min-height: 34px;
       padding: 0 10px;
     }
+  }
+
+  &__main--wallboard &__panel {
+    width: var(--scene-panel-width, 560px);
+    padding-top: 50px;
+    border-left-color: rgba(100, 231, 255, 0.42);
+    box-shadow:
+      -24px 0 58px rgba(0, 0, 0, 0.34),
+      -2px 0 30px rgba(40, 204, 245, 0.13),
+      inset 2px 0 0 rgba(176, 243, 255, 0.12),
+      inset -1px 0 0 rgba(0, 0, 0, 0.14);
+
+    @include down($bp-md) {
+      width: 100%;
+      max-height: var(--mobile-panel-height);
+      padding-top: 0;
+    }
+  }
+
+  &__main--wallboard &__panel-toggle {
+    right: calc(var(--scene-panel-width, 560px) + 16px);
+    bottom: 18px;
+
+    @include down($bp-md) {
+      right: 12px;
+      bottom: calc(var(--mobile-panel-height) + 100px + env(safe-area-inset-bottom));
+    }
+  }
+
+  &__main--wallboard &__scene {
+    right: 0;
+  }
+
+  &__main--wallboard :deep(.dash-left) {
+    display: none;
   }
 
   &__main--ward:not(&__main--panels-hidden) :deep(.dash-bottom),

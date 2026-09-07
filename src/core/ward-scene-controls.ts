@@ -1,5 +1,11 @@
 import { wardInteriorSceneConfig } from '../config/ward-interior-scene.ts';
 
+export interface WardSceneOrbitValues {
+  phi: number;
+  theta: number;
+  radius: number;
+}
+
 export interface WardSceneControlLimits {
   minPolarAngle: number;
   maxPolarAngle: number;
@@ -12,6 +18,17 @@ export interface WardSceneControlLimits {
     zLimit: number;
     yMin: number;
     yMax: number;
+  };
+}
+
+export function clampWardSceneOrbit(
+  orbit: WardSceneOrbitValues,
+  limits: WardSceneControlLimits,
+): WardSceneOrbitValues {
+  return {
+    phi: Math.min(Math.max(orbit.phi, limits.minPolarAngle), limits.maxPolarAngle),
+    theta: Math.min(Math.max(orbit.theta, limits.minAzimuthAngle), limits.maxAzimuthAngle),
+    radius: Math.min(Math.max(orbit.radius, limits.minDistance), limits.maxDistance),
   };
 }
 

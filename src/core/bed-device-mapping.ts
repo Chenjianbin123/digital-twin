@@ -78,7 +78,7 @@ function mapNursingLabels(
   labels: BedSickNursingLabelItem[] | null | undefined,
 ): NursingLabelItem[] {
   return (labels ?? [])
-    .filter(item => text(item.labelCode).trim() || text(item.labelName).trim())
+    .filter(item => text(item.labelName).trim())
     .map(item => ({
       labelCode: text(item.labelCode),
       labelName: text(item.labelName),

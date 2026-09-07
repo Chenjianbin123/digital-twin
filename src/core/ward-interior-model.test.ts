@@ -121,17 +121,16 @@ test('clones a bed with shared geometry and isolated dynamic materials', () => {
   assert.notEqual(first.mattress.material, second.mattress.material);
   assert.notEqual(first.indicator.material, second.indicator.material);
   assert.notEqual(first.bedTerminalScreen.material, second.bedTerminalScreen.material);
-  assert.notEqual(first.bedsideMonitor?.material, second.bedsideMonitor?.material);
 });
 
-test('rejects cloning a bed without the required bedside monitor screen', () => {
+test('clones a bed without retaining the bedside monitor screen', () => {
   const prototype = createBedPrototype();
-  prototype.remove(prototype.getObjectByName('Monitor_1_Screen')!);
+  const monitor = prototype.getObjectByName('Monitor_1_Screen')!;
 
-  assert.throws(
-    () => cloneWardInteriorBed(prototype, 'BED-01'),
-    /Monitor_1_Screen/,
-  );
+  const cloned = cloneWardInteriorBed(prototype, 'BED-01');
+
+  assert.equal(cloned.group.getObjectByName('Monitor_1_Screen'), undefined);
+  assert.equal(prototype.getObjectByName('Monitor_1_Screen'), monitor);
 });
 
 test('configures CanvasTexture for glTF UV orientation', () => {
@@ -169,7 +168,6 @@ test('organizes baked Chinese-named beds with proxy screens', () => {
   assert.equal(parts.bakedBeds[0].mattress.name, '床');
   assert.equal(parts.bakedBeds[1].mattress.name, '床.001');
   assert.ok(parts.bakedBeds[0].bedTerminalScreen);
-  assert.ok(parts.bakedBeds[0].bedsideMonitor);
   assert.equal(parts.bakedBeds[0].group.parent, parts.architecture);
   assert.equal(parts.bakedBeds[0].mattress.parent, parts.bakedBeds[0].group);
 
@@ -352,12 +350,12 @@ test('hides model ceiling occluders for the overhead ward camera', () => {
   assert.equal(backWall.visible, true);
 });
 
-test('keeps every configured bed inside the room for one to six beds', () => {
+test('keeps every configured bed inside the room for one to seven beds', () => {
   assert.deepEqual(resolveWardInteriorModelBedPose(0, 0, 12, 10), null);
 
-  for (let total = 1; total <= 6; total++) {
-    const roomW = total <= 2 ? 13 : total === 3 ? 14.8 : total === 4 ? 16 : total === 5 ? 17 : 18;
-    const roomD = total <= 2 ? 10.8 : total === 3 ? 11.5 : total === 4 ? 12 : total === 5 ? 13 : 14;
+  for (let total = 1; total <= 7; total++) {
+    const roomW = total <= 2 ? 13 : total === 3 ? 14.8 : total === 4 ? 16 : total === 5 ? 17 : total === 6 ? 18 : 23;
+    const roomD = total <= 2 ? 10.8 : total === 3 ? 11.5 : total === 4 ? 12 : total === 5 ? 13 : total === 6 ? 14 : 14.8;
     for (let index = 0; index < total; index++) {
       const pose = resolveWardInteriorModelBedPose(index, total, roomW, roomD);
       assert.ok(pose);
@@ -368,12 +366,12 @@ test('keeps every configured bed inside the room for one to six beds', () => {
   }
 });
 
-test('scales full Blender bed modules to avoid overlap for one to six beds', () => {
+test('scales full Blender bed modules to avoid overlap for one to seven beds', () => {
   const moduleWidth = 3.92;
 
-  for (let total = 1; total <= 6; total++) {
-    const roomW = total <= 2 ? 13 : total === 3 ? 14.8 : total === 4 ? 16 : total === 5 ? 17 : 18;
-    const roomD = total <= 2 ? 10.8 : total === 3 ? 11.5 : total === 4 ? 12 : total === 5 ? 13 : 14;
+  for (let total = 1; total <= 7; total++) {
+    const roomW = total <= 2 ? 13 : total === 3 ? 14.8 : total === 4 ? 16 : total === 5 ? 17 : total === 6 ? 18 : 23;
+    const roomD = total <= 2 ? 10.8 : total === 3 ? 11.5 : total === 4 ? 12 : total === 5 ? 13 : total === 6 ? 14 : 14.8;
     const poses = Array.from(
       { length: total },
       (_, index) => resolveWardInteriorModelBedPose(index, total, roomW, roomD)!,

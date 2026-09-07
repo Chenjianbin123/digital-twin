@@ -21,6 +21,8 @@ const props = defineProps<{
 
   selectedBedCode?: string | null;
 
+  vitalWarningBedCodes?: string[];
+
   active?: boolean;
 
 }>();
@@ -66,6 +68,8 @@ onMounted(() => {
 
   scene.setSelectedBedCode(props.selectedBedCode ?? null);
 
+  scene.setVitalWarningBedCodes(props.vitalWarningBedCodes ?? []);
+
   scene.setActive(props.active !== false);
 
 });
@@ -104,6 +108,12 @@ watch(() => props.selectedBedCode, (bedCode) => {
 
 });
 
+watch(() => props.vitalWarningBedCodes, (codes) => {
+
+  scene?.setVitalWarningBedCodes(codes ?? []);
+
+}, { deep: true });
+
 watch(() => props.active, (active) => {
 
   scene?.setActive(active !== false);
@@ -126,7 +136,10 @@ onUnmounted(() => {
 
 <template>
 
-  <div class="ward-scene-3d">
+  <div
+    class="ward-scene-3d"
+    :data-vital-warning="vitalWarningBedCodes?.length ? 'active' : 'idle'"
+  >
 
     <div ref="containerRef" class="ward-scene-3d__canvas-host" />
 

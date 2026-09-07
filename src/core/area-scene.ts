@@ -9,6 +9,10 @@ import { summarizeArea, summarizeRoom, type RoomSummary } from '@/core/area-summ
 import { buildRoomStructureSignature } from '@/core/area-scene-identity';
 import { resolveBedStatus } from '@/core/bed-status';
 import { buildNurseStationLiveData } from '@/core/nurse-station-live-data';
+import {
+  buildNurseStationHandoffRows,
+  buildNurseStationPatientRows,
+} from '@/core/nurse-station-screen-data';
 import { easeOutCubic } from '@/core/camera-easing';
 import {
   getDoorMeshScreenSize,
@@ -192,9 +196,11 @@ const CORRIDOR_EXPOSURE = wardCorridorSceneConfig.appearance.exposure;
 const CORRIDOR_ENV_MAP_INTENSITY = wardCorridorSceneConfig.appearance.envMapIntensity;
 const CORRIDOR_ENVIRONMENT_INTENSITY = wardCorridorSceneConfig.appearance.environmentIntensity;
 const DEBUG_DASHBOARD_SCREEN_BORDER = false;
-const NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS = new Set([
+const NURSE_STATION_DYNAMIC_BOARD_OBJECTS = new Set([
   'Nursing_Board_Title',
   'Patient_Status_Bar_02',
+]);
+const NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS = new Set([
   'Detail_Header_Center',
   'Detail_Header_Left',
   'Detail_Header_Right',
@@ -1163,10 +1169,14 @@ export class AreaScene {
     this.disposeCorridorModelDisplays();
   }
 
-  private getAreaBoardStats() {
-    const live = buildNurseStationLiveData(this.area ?? {
+  private getNurseStationLiveData() {
+    return buildNurseStationLiveData(this.area ?? {
       areaName: '', areaCode: '', deptName: '', rooms: [],
     }, this.summaries);
+  }
+
+  private getAreaBoardStats() {
+    const live = this.getNurseStationLiveData();
     return {
       totalRooms: live.rooms,
       totalBeds: live.totalBeds,
@@ -1697,6 +1707,7 @@ export class AreaScene {
   private createNurseRearShiftTexture() {
     const { canvas, ctx } = this.createBoardCanvas(900, 640);
     const info = this.getNurseStationDisplayInfo();
+    const rows = buildNurseStationHandoffRows(this.summaries, this.getNurseStationLiveData());
     const bg = ctx.createLinearGradient(0, 0, 900, 640);
     bg.addColorStop(0, '#071521');
     bg.addColorStop(1, '#123039');
@@ -1712,26 +1723,43 @@ export class AreaScene {
     ctx.font = 'bold 58px "Microsoft YaHei", sans-serif';
     ctx.fillText('护理交班', 42, 54);
 
-    const liveRoom = this.summaries
-      .slice()
-      .sort((left, right) => right.callingCount - left.callingCount || right.occupiedBeds - left.occupiedBeds)[0];
-    const rows = [
-      ['护士长', info.dutyNurseName ?? '暂无数据'],
-      ['责任医生', info.dutyDoctorName ?? '暂无数据'],
-      ['实时交班', liveRoom ? `${liveRoom.sickroomName} ${liveRoom.statusText}` : '暂无数据'],
-    ];
-    rows.forEach(([label, value], index) => {
-      const y = 138 + index * 112;
+    this.drawBoardPill(ctx, info.areaName ?? '智慧病区', 650, 27, 206, 50, {
+      bg: 'rgba(77, 208, 225, 0.14)',
+      fg: '#bdeff7',
+      stroke: 'rgba(123, 223, 242, 0.52)',
+      fontSize: 23,
+    });
+    ctx.fillStyle = '#9ccfd8';
+    ctx.font = '20px "Microsoft YaHei", sans-serif';
+    this.drawTruncatedText(
+      ctx,
+      `护士长：${info.dutyNurseName ?? '暂无数据'} · 责任医生：${info.dutyDoctorName ?? '暂无数据'}`,
+      42,
+      84,
+      560,
+    );
+
+    rows.forEach((row, index) => {
+      const y = 128 + index * 116;
+      const cardHeight = 96;
       ctx.fillStyle = 'rgba(255,255,255,0.065)';
-      this.drawBoardRoundRect(ctx, 42, y, 816, 88, 16);
+      this.drawBoardRoundRect(ctx, 42, y, 816, cardHeight, 16);
       ctx.fill();
-      ctx.fillStyle = '#9ccfd8';
-      ctx.font = '34px "Microsoft YaHei", sans-serif';
-      ctx.fillText(label, 76, y + 44);
-      ctx.textAlign = 'right';
+      ctx.fillStyle = row.accentColor;
+      ctx.fillRect(42, y + 14, 9, cardHeight - 28);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 42px "Microsoft YaHei", sans-serif';
-      this.drawTruncatedText(ctx, value, 824 - Math.min(420, ctx.measureText(value).width), y + 44, 420);
+      ctx.font = 'bold 35px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'left';
+      this.drawTruncatedText(ctx, row.roomName, 78, y + 34, 270);
+      ctx.fillStyle = '#b7d5dd';
+      ctx.font = '24px "Microsoft YaHei", sans-serif';
+      this.drawTruncatedText(ctx, row.detail, 78, y + 70, 500);
+      this.drawBoardPill(ctx, row.status, 628, y + 25, 198, 46, {
+        bg: `${row.accentColor}28`,
+        fg: '#ffffff',
+        stroke: `${row.accentColor}88`,
+        fontSize: 22,
+      });
       ctx.textAlign = 'left';
     });
 
@@ -1739,12 +1767,21 @@ export class AreaScene {
     this.drawBoardRoundRect(ctx, 42, 500, 816, 92, 16);
     ctx.fill();
     ctx.fillStyle = '#ffcf8a';
-    ctx.font = 'bold 34px "Microsoft YaHei", sans-serif';
-    ctx.fillText('公告', 74, 532);
+    ctx.font = 'bold 30px "Microsoft YaHei", sans-serif';
+    ctx.fillText('公告', 74, 524);
     ctx.fillStyle = '#e7f2f4';
-    ctx.font = '31px "Microsoft YaHei", sans-serif';
-    this.drawTruncatedText(ctx, info.bulletin ?? '暂无公告', 74, 566, 742);
-    return this.makeBoardTexture(canvas);
+    ctx.font = '26px "Microsoft YaHei", sans-serif';
+    this.drawTruncatedText(ctx, info.bulletin ?? '暂无公告', 74, 562, 742);
+    const texture = this.makeBoardTexture(canvas);
+    // 护理交班覆盖层使用 PlaneGeometry，白板模型的高度轴与 Canvas
+    // 原点方向相反；同时模型左右轴与模板坐标相反。这里单独做 180°
+    // 方向校正，避免在 attach/刷新时出现标题倒置、左右内容互换。
+    texture.flipY = false;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.repeat.x = -1;
+    texture.offset.x = 1;
+    texture.needsUpdate = true;
+    return texture;
   }
 
   private createNurseRearDashboardTexture() {
@@ -1926,12 +1963,7 @@ export class AreaScene {
 
   private createNurseRearPriorityTexture() {
     const { canvas, ctx } = this.createBoardCanvas(900, 640);
-    const sortedRooms = [...this.summaries]
-      .sort((a, b) => {
-        const rank = { calling: 0, danger: 1, offline: 2, infusing: 3, warning: 4, normal: 5, empty: 6 };
-        return rank[a.priority] - rank[b.priority];
-      })
-      .slice(0, 3);
+    const rows = buildNurseStationPatientRows(this.summaries, this.getNurseStationLiveData());
     const bg = ctx.createLinearGradient(0, 0, 900, 640);
     bg.addColorStop(0, '#071521');
     bg.addColorStop(1, '#123039');
@@ -1954,30 +1986,30 @@ export class AreaScene {
       fontSize: 30,
     });
 
-    if (!sortedRooms.length) {
+    if (rows.length === 1 && rows[0]?.roomName === '病区') {
       ctx.fillStyle = '#9fe5d8';
       ctx.font = 'bold 50px "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('暂无患者数据', 450, 330);
+      ctx.fillText(rows[0].detail, 450, 330);
     }
-    sortedRooms.forEach((room, index) => {
+    else rows.forEach((row, index) => {
       const y = 138 + index * 150;
       ctx.fillStyle = 'rgba(255,255,255,0.065)';
       this.drawBoardRoundRect(ctx, 42, y, 816, 118, 18);
       ctx.fill();
-      ctx.fillStyle = room.accentColor;
+      ctx.fillStyle = row.accentColor;
       ctx.fillRect(42, y + 18, 10, 82);
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 46px "Microsoft YaHei", sans-serif';
-      this.drawTruncatedText(ctx, room.sickroomName, 80, y + 42, 300);
+      this.drawTruncatedText(ctx, row.roomName, 80, y + 42, 300);
       ctx.fillStyle = '#9ccfd8';
       ctx.font = '32px "Microsoft YaHei", sans-serif';
-      ctx.fillText(`${room.occupiedBeds}/${room.totalBeds} 在床 · 呼叫 ${room.callingCount} · 输液 ${room.infusingCount}`, 80, y + 82);
-      this.drawBoardPill(ctx, room.statusText, 600, y + 36, 210, 50, {
-        bg: `${room.accentColor}30`,
+      this.drawTruncatedText(ctx, row.detail, 80, y + 82, 500);
+      this.drawBoardPill(ctx, row.status, 600, y + 36, 210, 50, {
+        bg: `${row.accentColor}30`,
         fg: '#ffffff',
-        stroke: `${room.accentColor}aa`,
-        fontSize: 31,
+        stroke: `${row.accentColor}aa`,
+        fontSize: 25,
       });
     });
     return this.makeBoardTexture(canvas);
@@ -2102,7 +2134,13 @@ export class AreaScene {
     kind: NurseStationBoardKind,
     root: THREE.Object3D = screen,
   ) {
-    texture.flipY = true;
+    // 其它护士站屏幕沿用既有纹理方向；护理交班需要独立修正 180° 反向。
+    texture.flipY = kind === 'whiteboard' ? false : true;
+    if (kind === 'whiteboard') {
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.repeat.x = -1;
+      texture.offset.x = 1;
+    }
     texture.needsUpdate = true;
     const oldMaterials = Array.isArray(screen.material) ? screen.material : [screen.material];
     for (const oldMaterial of oldMaterials) {
@@ -2186,6 +2224,37 @@ export class AreaScene {
     ].sort((a, b) => a.size - b.size);
     const depthAxis = axes[0].axis;
     const surfaceAxes = axes.slice(1).sort((a, b) => b.size - a.size);
+    const getAxisValue = (vector: THREE.Vector3, axis: 'x' | 'y' | 'z') =>
+      axis === 'x' ? vector.x : axis === 'y' ? vector.y : vector.z;
+    const setAxisValue = (vector: THREE.Vector3, axis: 'x' | 'y' | 'z', value: number) => {
+      if (axis === 'x')
+        vector.x = value;
+      else if (axis === 'y')
+        vector.y = value;
+      else
+        vector.z = value;
+    };
+    const axisVector = (axis: 'x' | 'y' | 'z', sign = 1) => {
+      if (axis === 'x')
+        return new THREE.Vector3(sign, 0, 0);
+      if (axis === 'y')
+        return new THREE.Vector3(0, sign, 0);
+      return new THREE.Vector3(0, 0, sign);
+    };
+    // 覆盖层必须放在相机所在的一侧。护士站模型的屏幕通常朝向 -X，
+    // 不能再固定使用 bounds.max，否则会被 GLB 自带的静态内容挡住。
+    const cameraLocal = root.worldToLocal(
+      this.worldFromNurseLocal(STATION_CAM_LOCAL.clone()),
+    );
+    const frontSign = getAxisValue(cameraLocal, depthAxis) < getAxisValue(center, depthAxis) ? -1 : 1;
+    const widthAxis = axisVector(surfaceAxes[0].axis);
+    const heightAxis = axisVector(surfaceAxes[1].axis);
+    const desiredNormal = axisVector(depthAxis, frontSign);
+    let normal = widthAxis.clone().cross(heightAxis).normalize();
+    if (normal.dot(desiredNormal) < 0) {
+      widthAxis.negate();
+      normal = widthAxis.clone().cross(heightAxis).normalize();
+    }
     // 使用实际可见面尺寸，模板 100% 覆盖屏幕，不再缩小到屏幕内部一小块。
     const overlayFitScaleX = kind === 'dashboard' ? 1.24 : 1;
     // 后墙主屏进一步收窄高度，避免覆盖下方工作台屏幕；宽度保持原比例。
@@ -2241,18 +2310,16 @@ export class AreaScene {
     overlayMaterial.transparent = overlayOpacity < 1;
     overlayMaterial.opacity = overlayOpacity;
     overlay.name = `nurse-station-screen-overlay-${kind}`;
-    if (depthAxis === 'z') {
-      overlay.position.set(center.x, center.y, (bounds?.max.z ?? size.z / 2) + surfaceOffset);
-    }
-    else if (depthAxis === 'y') {
-      overlay.rotation.x = -Math.PI / 2;
-      overlay.position.set(center.x, (bounds?.min.y ?? -size.y / 2) - surfaceOffset, center.z);
-    }
-    else {
-      overlay.rotation.y = Math.PI / 2;
-      overlay.position.set((bounds?.max.x ?? size.x / 2) + surfaceOffset, center.y, center.z);
-    }
+    const frontSurface = frontSign < 0
+      ? getAxisValue(bounds.min, depthAxis)
+      : getAxisValue(bounds.max, depthAxis);
+    overlay.position.copy(center);
+    setAxisValue(overlay.position, depthAxis, frontSurface + frontSign * surfaceOffset);
+    overlay.quaternion.setFromRotationMatrix(
+      new THREE.Matrix4().makeBasis(widthAxis, heightAxis, normal),
+    );
     overlay.userData.displayDepthAxis = depthAxis;
+    overlay.userData.displayFrontSign = frontSign;
     overlay.userData.displayPosition = {
       x: Number(overlay.position.x.toFixed(4)),
       y: Number(overlay.position.y.toFixed(4)),
@@ -2818,18 +2885,18 @@ export class AreaScene {
       const texture = videoTexture?.texture ?? this.createNurseStationBoardTexture(kind);
       const overlay = this.attachNurseStationTextureOverlay(object, texture, kind, displayRoot);
       this.nurseStationBoardDisplays.push({ kind, screen: overlay, texture, video: videoTexture?.video });
-      // console.info('[NurseStationDisplay] bound', {
-      //   kind,
-      //   objectName: object.name,
-      //   displayRootName: displayRoot?.name ?? object.parent?.name,
-      //   selectedMaterial: (overlay.userData.displayMaterialNames as string[] | undefined)?.join(', ') || materialNames[0] || '(none)',
-      //   overlayWidth: overlay.userData.displayWidth,
-      //   overlayHeight: overlay.userData.displayHeight,
-      //   depthAxis: overlay.userData.displayDepthAxis,
-      //   overlayPosition: overlay.userData.displayPosition,
-      //   overlayParent: overlay.parent?.name,
-      //   mode: 'overlay',
-      // });
+      console.info('[NurseStationDisplay] bound', JSON.stringify({
+        kind,
+        objectName: object.name,
+        displayRootName: displayRoot?.name ?? object.parent?.name,
+        selectedMaterial: (overlay.userData.displayMaterialNames as string[] | undefined)?.join(', ') || '(none)',
+        overlayWidth: overlay.userData.displayWidth,
+        overlayHeight: overlay.userData.displayHeight,
+        depthAxis: overlay.userData.displayDepthAxis,
+        overlayPosition: overlay.userData.displayPosition,
+        overlayParent: overlay.parent?.name,
+        mode: 'overlay',
+      }));
     }
     // if (!this.nurseStationBoardDisplays.length)
     //   console.warn('[NurseStationDisplay] no display mesh was bound');
@@ -2848,10 +2915,29 @@ export class AreaScene {
     const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     const isMainDashboardMesh = mesh.name.startsWith('Screen_Main_Frame')
       || mesh.parent?.name === 'Screen_Main_Frame';
+    // 后墙两块动态屏的 GLB 自带内容不是统一的 UI_* 占位材质：
+    // Nursing_Board_Title 下的 Whiteboard_Ink、Patient_Status_Bar_02
+    // 下的 白偏蓝 会在透明覆盖层之后再次绘制，必须只隐藏这两个屏幕的
+    // 静态内容，保留 Brushed_Metal / Monitor_Bezel 等外框。
+    const ancestorNames = new Set<string>();
+    let ancestor: THREE.Object3D | null = mesh;
+    while (ancestor) {
+      ancestorNames.add(ancestor.name);
+      ancestor = ancestor.parent;
+    }
+    const isRearWhiteboard = ancestorNames.has('Nursing_Board_Title');
+    const isRearPatientStatus = ancestorNames.has('Patient_Status_Bar_02');
     let changed = false;
     const next = materials.map((material) => {
       const isStaticMainDashboardText = isMainDashboardMesh && /白偏蓝/i.test(material.name);
-      if (!/UI_Blue|UI_Cyan|Clock_Red/i.test(material.name) && !isStaticMainDashboardText)
+      const isStaticRearScreenContent =
+        (isRearWhiteboard && /Whiteboard_Ink/i.test(material.name))
+        || (isRearPatientStatus && /白偏蓝/i.test(material.name));
+      if (
+        !/UI_Blue|UI_Cyan|Clock_Red/i.test(material.name)
+        && !isStaticMainDashboardText
+        && !isStaticRearScreenContent
+      )
         return material;
       const hidden = material.clone();
       hidden.transparent = true;
@@ -2889,7 +2975,8 @@ export class AreaScene {
       'Patient_Status_Bar_',
     ];
     model.traverse((object) => {
-      const preserve = NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS.has(object.name);
+      const preserve = NURSE_STATION_PRESERVED_PLACEHOLDER_OBJECTS.has(object.name)
+        || NURSE_STATION_DYNAMIC_BOARD_OBJECTS.has(object.name);
       if (
         !preserve
         && (exactNames.has(object.name) || prefixes.some(prefix => object.name.startsWith(prefix)))
@@ -3072,8 +3159,10 @@ export class AreaScene {
       model.name = 'blender-nurse-station';
       this.prepareLoadedModel(model, { envMapIntensity: STATION_ENV_MAP_INTENSITY });
       this.fitNurseStationModel(model);
-      this.attachNurseStationBoardDisplays(model);
+      // 先挂到护士站根节点，再计算覆盖层相对相机的正面方向，
+      // 让 root.worldToLocal() 使用包含护士站整体位移的完整世界矩阵。
       parent.add(model);
+      this.attachNurseStationBoardDisplays(model);
       this.nurseStationModel = model;
       this.captureNurseStationViewBounds(model);
       this.hasLoadedNurseStationModel = true;

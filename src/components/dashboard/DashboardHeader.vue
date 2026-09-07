@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useLiveClock } from '@/composables/use-live-clock';
 
 const props = defineProps<{
   areaName?: string;
@@ -22,15 +21,6 @@ const emit = defineEmits<{
   openAreaSwitch: [];
   logout: [];
 }>();
-
-const { timeText, dateText } = useLiveClock();
-
-const displayTemp = computed(() => {
-  const t = props.envTemp;
-  if (!t)
-    return null;
-  return t.includes('°') ? t : `${t}°C`;
-});
 
 const dataStatusLabel = computed(() => ({
   loading: '同步中', ready: '已同步', warning: '有告警', stale: '已过期', error: '同步失败',
@@ -78,14 +68,6 @@ const dataStatusLabel = computed(() => ({
     </div>
 
     <div class="dash-header__side dash-header__side--right" :class="{ 'dash-header__side--compact': compact }">
-      <template v-if="!compact">
-        <div class="dash-header__status">
-          <span v-if="displayTemp" class="dash-header__temp">{{ displayTemp }}</span>
-          <span v-if="displayTemp" class="dash-header__divider" aria-hidden="true" />
-          <time class="dash-header__clock">{{ timeText }}</time>
-        </div>
-        <p class="dash-header__date">{{ dateText }}</p>
-      </template>
       <div class="dash-header__actions">
         <div v-if="operatorName" class="dash-header__operator" :title="`${operatorName}${operatorRole ? ` · ${operatorRole}` : ''}`">
           <span class="dash-header__operator-dot" aria-hidden="true" />
@@ -146,7 +128,6 @@ const dataStatusLabel = computed(() => ({
 
     &--right {
       align-items: flex-end;
-      padding-top: 2px;
 
       &.dash-header__side--compact {
         flex-direction: row;
@@ -504,11 +485,6 @@ const dataStatusLabel = computed(() => ({
     .dash-header__side--left {
       padding-top: 2px;
       gap: 0;
-    }
-
-    .dash-header__side--right {
-      justify-self: end;
-      padding-top: 5px;
     }
 
     .dash-header__center {

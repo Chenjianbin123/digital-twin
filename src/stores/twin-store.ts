@@ -16,6 +16,8 @@ import { mapDoorListToTwinArea } from '@/types/twin';
 import { analyzeEnvAlert } from '@/core/env-alert';
 import { resolveBedStatus } from '@/core/bed-status';
 import { summarizeArea } from '@/core/area-summary';
+import { normalizeRealtimeVitalMessage } from '@/core/realtime-vital-warning';
+import { normalizeSwpEvents } from '@/core/swp-event-normalizer';
 import {
   collectInspectionAlertTasks,
   summarizeInspectionRooms,
@@ -159,6 +161,45 @@ interface AreaSnapshot {
 interface FetchAreaSnapshotOptions {
   refreshDeviceList?: boolean;
   preserveLastValidRooms?: boolean;
+}
+
+function collectRoomIdentityKeys(room: TwinWardEntity | null | undefined): string[] {
+  if (!room)
+    return [];
+  return [
+    ['sickroomCode', room.sickroomCode],
+    ['sickroomId', room.sickroomId],
+    ['deviceCode', room.deviceCode],
+    ['sickroomName', room.sickroomName],
+  ].flatMap(([name, value]) => {
+    const normalized = String(value ?? '').trim();
+    return normalized ? [`${name}:${normalized}`] : [];
+  });
+}
+
+function restoreRoomIndexByIdentity(
+  nextRooms: TwinWardEntity[],
+  previousRoom: TwinWardEntity | null | undefined,
+  previousRoomIndex: number,
+): number {
+  const previousKeys = new Set(collectRoomIdentityKeys(previousRoom));
+  if (!previousKeys.size)
+    return previousRoomIndex >= 0 && previousRoomIndex < nextRooms.length ? previousRoomIndex : -1;
+
+  return nextRooms.findIndex(room =>
+    collectRoomIdentityKeys(room).some(key => previousKeys.has(key)),
+  );
+}
+
+function resolvePreservedBedCode(
+  room: TwinWardEntity | null | undefined,
+  previousBedCode: string | null,
+): string | null {
+  if (!room || !previousBedCode)
+    return null;
+  return room.beds.some(bed => bed.bedCode === previousBedCode)
+    ? previousBedCode
+    : null;
 }
 
 export const useTwinStore = defineStore('twin', () => {
@@ -615,6 +656,7 @@ export const useTwinStore = defineStore('twin', () => {
     const requestToken = areaRequestGuard.begin();
     const previousSceneType = sceneType.value;
     const previousRoomIndex = currentRoomIndex.value;
+    const previousRoom = currentWard.value;
     const previousBedCode = selectedBedCode.value;
     const previousInteriorView = wardInteriorView.value;
     const loadingToken = options.silent ? null : refreshLoadingGuard.begin();
@@ -634,10 +676,8 @@ export const useTwinStore = defineStore('twin', () => {
       dataWarnings.value = snapshot.warnings;
       if (options.preserveScene) {
         sceneType.value = previousSceneType;
-        currentRoomIndex.value = previousRoomIndex >= 0 && previousRoomIndex < snapshot.area.rooms.length
-          ? previousRoomIndex
-          : -1;
-        selectedBedCode.value = previousBedCode;
+        currentRoomIndex.value = restoreRoomIndexByIdentity(snapshot.area.rooms, previousRoom, previousRoomIndex);
+        selectedBedCode.value = resolvePreservedBedCode(currentWard.value, previousBedCode);
         wardInteriorView.value = previousInteriorView;
         if (previousSceneType === 'ward-interior' && currentRoomIndex.value >= 0)
           await loadCurrentWardBedDetails();
@@ -663,6 +703,7 @@ export const useTwinStore = defineStore('twin', () => {
   async function loadArea(options: LoadAreaOptions = {}) {
     const previousSceneType = sceneType.value;
     const previousRoomIndex = currentRoomIndex.value;
+    const previousRoom = currentWard.value;
     const previousBedCode = selectedBedCode.value;
     const previousWardInteriorView = wardInteriorView.value;
 
@@ -720,10 +761,8 @@ export const useTwinStore = defineStore('twin', () => {
       }
       if (options.preserveScene) {
         sceneType.value = previousSceneType;
-        currentRoomIndex.value = previousRoomIndex >= 0 && previousRoomIndex < area.value.rooms.length
-          ? previousRoomIndex
-          : -1;
-        selectedBedCode.value = previousBedCode;
+        currentRoomIndex.value = restoreRoomIndexByIdentity(area.value.rooms, previousRoom, previousRoomIndex);
+        selectedBedCode.value = resolvePreservedBedCode(currentWard.value, previousBedCode);
         wardInteriorView.value = previousWardInteriorView;
       }
       else {
@@ -786,6 +825,8 @@ export const useTwinStore = defineStore('twin', () => {
   function categoryForAlert(task: AlertTask): StatusHistoryEntry['category'] {
     if (task.type === 'call')
       return 'call';
+    if (task.type === 'vital')
+      return 'vital';
     if (task.type === 'env')
       return 'env';
     if (task.type === 'offline')
@@ -794,7 +835,7 @@ export const useTwinStore = defineStore('twin', () => {
   }
 
   function isDisplayOnlySwpCall(task: AlertTask) {
-    return task.source === 'swp-call' && task.type === 'call';
+    return task.source === 'swp-call' && (task.type === 'call' || task.type === 'vital');
   }
 
   function isSourceManagedTask(task: AlertTask) {
@@ -1073,7 +1114,11 @@ export const useTwinStore = defineStore('twin', () => {
       if (previousIds.has(event.id))
         continue;
       pushHistory({
-        category: event.taskType === 'call' ? 'call' : 'infusion',
+        category: event.taskType === 'call'
+          ? 'call'
+          : event.taskType === 'vital'
+            ? 'vital'
+            : 'infusion',
         bedCode: event.location?.bedCode ?? '',
         bedName: event.location?.bedName ?? '-',
         label: event.title,
@@ -1087,6 +1132,44 @@ export const useTwinStore = defineStore('twin', () => {
       lastSyncedAt: snapshot.syncedAt ?? new Date().toISOString(),
       error: null,
       warning: snapshot.warning ?? null,
+    };
+    return true;
+  }
+
+  function applyRealtimeVitalWarning(expectedAreaId: number, raw: unknown) {
+    if (selectedAreaId.value !== expectedAreaId || !area.value)
+      return false;
+    const record = normalizeRealtimeVitalMessage(raw);
+    if (!record)
+      return false;
+    const events = normalizeSwpEvents({
+      areaId: expectedAreaId,
+      area: area.value,
+      calls: [{ ...record, areaId: record.areaId ?? expectedAreaId }],
+      alarms: [],
+    });
+    const event = events.find(item => item.taskType === 'vital');
+    if (!event)
+      return false;
+    const previous = swpEvents.value.find(item => item.id === event.id);
+    if (!previous) {
+      pushHistory({
+        category: 'vital',
+        bedCode: event.location?.bedCode ?? '',
+        bedName: event.location?.bedName ?? '-',
+        label: event.title,
+        roomName: event.location?.roomName ?? event.locationLabel,
+      });
+    }
+    swpEvents.value = [
+      ...swpEvents.value.filter(item => item.id !== event.id),
+      event,
+    ].sort((a, b) => b.timestampMs - a.timestampMs || a.id.localeCompare(b.id));
+    swpEventSync.value = {
+      phase: 'ready',
+      lastSyncedAt: new Date().toISOString(),
+      error: null,
+      warning: null,
     };
     return true;
   }
@@ -1382,6 +1465,7 @@ export const useTwinStore = defineStore('twin', () => {
     updateEnv,
     beginSwpEventSync,
     applySwpEventSnapshot,
+    applyRealtimeVitalWarning,
     failSwpEventSync,
     beginSwpResponseSync,
     applySwpResponseMetrics,

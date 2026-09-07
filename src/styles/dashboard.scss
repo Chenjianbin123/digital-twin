@@ -5,6 +5,9 @@ $dash-cyan-dim: rgba(77, 208, 255, 0.75);
 $dash-panel-bg: linear-gradient(180deg, rgba(10, 25, 41, 0.72) 0%, rgba(8, 20, 36, 0.82) 100%);
 $dash-glass-border: rgba(77, 208, 255, 0.28);
 
+// 护士站大屏模式的根类由 App.vue 应用：.digital-twin__main--wallboard。
+// 具体的 scoped 布局覆盖位于 App.vue 与 NurseStationPanel.vue，避免影响走廊和病房场景。
+
 @mixin dash-glass-panel {
   background: $dash-panel-bg;
   backdrop-filter: blur(16px) saturate(1.3);

@@ -6,6 +6,7 @@ import type {
   SwpEventLocationSource,
   SwpEventLocationStatus,
   SwpIdentifier,
+  NormalizedVitalMetric,
   SwpResponseMetrics,
   SwpResponseTimelinessRecord,
 } from '../types/swp-events.ts';
@@ -20,11 +21,18 @@ interface NormalizeSwpEventsOptions {
 
 type LocationRecord = Pick<
   SwpCallRecord,
-  'sickroomId' | 'sickroomCode' | 'bedCode' | 'deviceCode'
+  'sickroomId' | 'sickroomCode' | 'sickroomName' | 'bedName' | 'bedCode' | 'deviceCode'
 > & Partial<Pick<SwpCallRecord, 'callFrom'>>;
 
 function text(value: unknown): string {
   return value == null ? '' : String(value).trim();
+}
+
+function normalizedBedName(value: unknown): string {
+  const normalized = text(value).replace(/\s+/g, '').replace(/床$/u, '');
+  if (/^\d+$/u.test(normalized))
+    return String(Number(normalized));
+  return normalized;
 }
 
 function isActiveEvent(status: SwpIdentifier | undefined): boolean {
@@ -47,6 +55,8 @@ function parseTimestamp(value?: string): number {
 function findLocation(area: TwinAreaEntity, record: LocationRecord): SwpEventLocation | null {
   const sickroomId = text(record.sickroomId);
   const sickroomCode = text(record.sickroomCode);
+  const sickroomName = text(record.sickroomName);
+  const bedName = text(record.bedName);
   const bedCode = text(record.bedCode);
   const deviceCode = text(record.deviceCode);
 
@@ -66,29 +76,45 @@ function findLocation(area: TwinAreaEntity, record: LocationRecord): SwpEventLoc
       roomMatches.push(matches[0]);
   }
 
-  function addBedIdentifier(value: string, pick: (bed: TwinAreaEntity['rooms'][number]['beds'][number]) => unknown) {
+  function addBedIdentifier(
+    value: string,
+    pick: (bed: TwinAreaEntity['rooms'][number]['beds'][number]) => unknown,
+    normalize: (candidate: unknown) => string = text,
+  ) {
     if (!value)
       return;
     const matches: Array<{ roomIndex: number; bedIndex: number }> = [];
     area.rooms.forEach((room, roomIndex) => {
       room.beds.forEach((bed, bedIndex) => {
-        if (text(pick(bed)) === value)
+        const candidate = normalize(pick(bed));
+        const expected = normalize(value);
+        if (candidate === expected)
           matches.push({ roomIndex, bedIndex });
       });
     });
-    if (matches.length > 1)
+    const scopedMatches = roomMatches.length === 1
+      ? matches.filter(match => match.roomIndex === roomMatches[0])
+      : matches;
+    if (roomMatches.length === 1 && matches.length > 0 && scopedMatches.length === 0) {
+      // Explicit room and bed identities disagree; do not silently downgrade
+      // to a room-only location or guess a bed from another room.
       ambiguous = true;
-    else if (matches.length === 1)
-      bedMatches.push(matches[0]);
+    }
+    else if (scopedMatches.length > 1)
+      ambiguous = true;
+    else if (scopedMatches.length === 1)
+      bedMatches.push(scopedMatches[0]);
   }
 
   addRoomIdentifier(sickroomId, room => room.sickroomId);
   addRoomIdentifier(sickroomCode, room => room.sickroomCode);
+  addRoomIdentifier(sickroomName, room => room.sickroomName);
   addRoomIdentifier(deviceCode, room => room.deviceCode);
+  addBedIdentifier(bedName, bed => bed.bedName, normalizedBedName);
   addBedIdentifier(bedCode, bed => bed.bedCode);
   addBedIdentifier(deviceCode, bed => bed.deviceCode);
 
-  if (!sickroomId && !sickroomCode && !bedCode && !deviceCode) {
+  if (!sickroomId && !sickroomCode && !sickroomName && !bedName && !bedCode && !deviceCode) {
     const exactCallSource = text(record.callFrom);
     addRoomIdentifier(exactCallSource, room => room.sickroomCode);
     addRoomIdentifier(exactCallSource, room => room.deviceCode);
@@ -135,12 +161,18 @@ function resolveLocationSource(
     : undefined;
   const sickroomId = text(record.sickroomId);
   const sickroomCode = text(record.sickroomCode);
+  const sickroomName = text(record.sickroomName);
+  const bedName = text(record.bedName);
   const bedCode = text(record.bedCode);
   const deviceCode = text(record.deviceCode);
   if (sickroomId && sickroomId === text(room?.sickroomId))
     return 'sickroom-id';
+  if (sickroomName && sickroomName === text(room?.sickroomName))
+    return 'sickroom-name';
   if (bedCode && bedCode === text(bed?.bedCode))
     return 'bed-code';
+  if (bedName && normalizedBedName(bedName) === normalizedBedName(bed?.bedName))
+    return 'bed-name';
   if (
     deviceCode
     && (deviceCode === text(room?.deviceCode) || deviceCode === text(bed?.deviceCode))
@@ -149,7 +181,7 @@ function resolveLocationSource(
   if (sickroomCode && sickroomCode === text(room?.sickroomCode))
     return 'sickroom-code';
 
-  if (!sickroomId && !sickroomCode && !bedCode && !deviceCode) {
+  if (!sickroomId && !sickroomCode && !sickroomName && !bedName && !bedCode && !deviceCode) {
     const callFrom = text(record.callFrom);
     if (
       callFrom
@@ -171,7 +203,14 @@ function resolveLocationStatus(
 ): SwpEventLocationStatus {
   if (location)
     return 'matched';
-  const hasIdentifiers = [record.sickroomId, record.sickroomCode, record.bedCode, record.deviceCode]
+  const hasIdentifiers = [
+    record.sickroomId,
+    record.sickroomCode,
+    record.sickroomName,
+    record.bedName,
+    record.bedCode,
+    record.deviceCode,
+  ]
     .some(value => !!text(value));
   return hasIdentifiers ? 'unmatched-identifiers' : 'missing-identifiers';
 }
@@ -208,12 +247,15 @@ function stableSourceId(
         record.areaId,
         record.sickroomId,
         record.sickroomCode,
+        record.sickroomName,
+        record.bedName,
         record.bedCode,
         record.deviceCode,
         (record as SwpCallRecord).callStartTime,
         (record as SwpCallRecord).callFrom,
         (record as SwpCallRecord).callTo,
         (record as SwpCallRecord).callModeName,
+        (record as SwpCallRecord).callMessage,
       ]
     : [
         record.areaId,
@@ -245,15 +287,190 @@ function formatCallLocation(location: SwpEventLocation): string {
   return [location.roomName, bedLabel].filter(Boolean).join(' ');
 }
 
+const VITAL_METRIC_LABELS: Record<NormalizedVitalMetric, string> = {
+  temperature: '体温',
+  heartRate: '心率',
+  respiratoryRate: '呼吸',
+  bloodPressure: '血压',
+  bloodOxygen: '血氧',
+  bloodSugar: '血糖',
+  mews: 'MEWS',
+  unknown: '体征',
+};
+
+function recordValue(record: SwpCallRecord, keys: string[]): string {
+  for (const key of keys) {
+    const value = record[key];
+    const normalized = text(value);
+    if (normalized)
+      return normalized;
+  }
+  return '';
+}
+
+function cleanVitalValue(value: string): { value: string; unit: string } {
+  const normalized = value.trim();
+  if (!normalized)
+    return { value: '', unit: '' };
+  const match = normalized.match(/^(-?[\d.]+(?:\s*\/\s*-?[\d.]+)?)\s*(.*)$/);
+  if (!match)
+    return { value: normalized, unit: '' };
+  return {
+    value: match[1].replace(/\s+/g, ''),
+    unit: match[2].trim(),
+  };
+}
+
+function vitalMetricFromText(value: string): NormalizedVitalMetric {
+  if (/血氧|氧饱和|spo2|oxygen/i.test(value))
+    return 'bloodOxygen';
+  if (/心率|脉搏|ecg|heart\s*rate|pulse/i.test(value))
+    return 'heartRate';
+  if (/呼吸|呼吸频率|respiratory|breath/i.test(value))
+    return 'respiratoryRate';
+  if (/血压|收缩压|舒张压|pressure|ssy|szy/i.test(value))
+    return 'bloodPressure';
+  if (/血糖|glucose|sugar/i.test(value))
+    return 'bloodSugar';
+  if (/体温|温度|temperature|\btw\b/i.test(value))
+    return 'temperature';
+  if (/mews/i.test(value))
+    return 'mews';
+  return 'unknown';
+}
+
+function vitalField(
+  record: SwpCallRecord,
+  metric: NormalizedVitalMetric,
+): { value: string; unit: string } {
+  const keys: Record<Exclude<NormalizedVitalMetric, 'unknown'>, string[]> = {
+    temperature: ['temperature', 'temperatureBody', 'temp', 'tw'],
+    heartRate: ['heartRate', 'rateHeart', 'pulse', 'ecg'],
+    respiratoryRate: ['respiratoryRate', 'breath', 'respiratory', 'hx'],
+    bloodPressure: ['bloodPressure', 'pressure', 'ssy', 'systolicBp'],
+    bloodOxygen: ['bloodOxygen', 'oxygenBlood', 'spo2', 'blood_oxygen', 'oxygen'],
+    bloodSugar: ['bloodSugar', 'glucose', 'blood_sugar'],
+    mews: ['mewsScore', 'mews', 'score'],
+  };
+  const raw = recordValue(record, keys[metric as Exclude<NormalizedVitalMetric, 'unknown'>] ?? []);
+  return cleanVitalValue(raw);
+}
+
+function parseVitalText(value: string): { metric: NormalizedVitalMetric; value: string; unit: string } | null {
+  const normalized = value.trim();
+  if (!normalized)
+    return null;
+  const metric = vitalMetricFromText(normalized);
+  if (metric === 'unknown')
+    return null;
+  const cleaned = cleanVitalValue(
+    normalized
+      .replace(/^(?:生命体征预警|体征报警|生命体征)\s*[:：-]?\s*/i, '')
+      .replace(/^(?:体温|温度|心率|脉搏|呼吸(?:频率)?|血压|收缩压|舒张压|血氧(?:饱和度)?|spo2|血糖|mews)\s*[:：]?\s*/i, ''),
+  );
+  return {
+    metric,
+    value: cleaned.value,
+    unit: cleaned.unit,
+  };
+}
+
+export function isVitalSignsCall(record: SwpCallRecord): boolean {
+  const code = text(record.callModeCode);
+  const label = text(record.callModeName);
+  return code === '8' || /体征|生命体征|mews/i.test(label);
+}
+
+interface VitalDetails {
+  metric: NormalizedVitalMetric;
+  value?: string;
+  unit?: string;
+  threshold?: string;
+  summary: string;
+}
+
+function extractVitalDetails(record: SwpCallRecord): VitalDetails {
+  const fields: Array<{
+    metric: Exclude<NormalizedVitalMetric, 'unknown' | 'mews'>;
+    label: string;
+  }> = [
+    { metric: 'temperature', label: '体温' },
+    { metric: 'heartRate', label: '心率' },
+    { metric: 'respiratoryRate', label: '呼吸' },
+    { metric: 'bloodPressure', label: '血压' },
+    { metric: 'bloodOxygen', label: '血氧' },
+    { metric: 'bloodSugar', label: '血糖' },
+  ];
+  const values: Array<{ metric: NormalizedVitalMetric; value: string; unit: string; label: string }> = [];
+  for (const field of fields) {
+    const direct = vitalField(record, field.metric);
+    if (direct.value)
+      values.push({ ...direct, metric: field.metric, label: field.label });
+  }
+
+  const mews = vitalField(record, 'mews');
+  if (mews.value)
+    values.push({ ...mews, metric: 'mews', label: VITAL_METRIC_LABELS.mews });
+
+  const messages = [recordValue(record, ['callMessage']), recordValue(record, ['remark'])]
+    .filter(Boolean);
+  for (const message of messages) {
+    const parsed = parseVitalText(message);
+    if (parsed?.value) {
+      const existing = values.find(item => item.metric === parsed.metric && item.value === parsed.value);
+      if (existing) {
+        if (!existing.unit && parsed.unit)
+          existing.unit = parsed.unit;
+      }
+      else {
+        values.push({ ...parsed, label: VITAL_METRIC_LABELS[parsed.metric] });
+      }
+    }
+  }
+
+  const threshold = recordValue(record, [
+    'vitalThreshold',
+    'warningThreshold',
+    'warnThreshold',
+    'threshold',
+    'limit',
+  ]);
+  const alarmLevel = recordValue(record, [
+    'mewsAlarmLevel',
+    'vitalAlarmLevel',
+    'alarmLevel',
+    'warningLevel',
+  ]);
+  const summaryParts = [
+    alarmLevel ? `风险${alarmLevel}` : '',
+    ...values.map(item => `${item.label} ${item.value}${item.unit}`),
+  ].filter(Boolean);
+  const summary = values.length
+    ? summaryParts.join(' · ')
+    : alarmLevel
+      ? `风险${alarmLevel}`
+      : messages[0] || '生命体征出现异常，请及时评估患者';
+  const primary = values[0];
+  return {
+    metric: primary?.metric ?? 'unknown',
+    value: primary?.value,
+    unit: primary?.unit,
+    threshold: threshold || undefined,
+    summary,
+  };
+}
+
 function formatCallDescription(
   record: SwpCallRecord,
   location: SwpEventLocation | null,
+  vitalDetails?: VitalDetails,
 ): string {
   const message = formatCallMessage(record.callMessage);
   const source = text(record.callFromName) || text(record.callFrom);
+  const subject = location ? formatCallLocation(location) : source || '患者';
   return joinDescription([
-    `${location ? formatCallLocation(location) : source || '患者'}呼叫护士站`,
-    message,
+    vitalDetails ? `${subject}检测到生命体征异常` : `${subject}呼叫护士站`,
+    vitalDetails?.summary || message,
   ]);
 }
 
@@ -266,20 +483,28 @@ function normalizeCall(
   const locationSource = resolveLocationSource(area, record, location);
   const startedAt = text(record.callStartTime) || undefined;
   const timestampMs = parseTimestamp(record.callStartTime);
+  const isVital = isVitalSignsCall(record);
+  const vitalDetails = isVital ? extractVitalDetails(record) : undefined;
   return {
     id: `swp:call:${areaId}:${stableSourceId('call', record)}`,
     source: 'swp-call',
     areaId,
-    taskType: 'call',
+    taskType: isVital ? 'vital' : 'call',
     severity: 'critical',
     startedAt,
     timestampMs,
-    title: record.callModeName ? text(record.callModeName) : '患者呼叫',
-    description: formatCallDescription(record, location),
+    title: isVital ? '生命体征预警' : record.callModeName ? text(record.callModeName) : '患者呼叫',
+    description: formatCallDescription(record, location, vitalDetails),
     location,
     locationStatus: resolveLocationStatus(record, location),
     ...(locationSource ? { locationSource } : {}),
     locationLabel: location?.roomName || area.areaName,
+    ...(vitalDetails ? {
+      vitalMetric: vitalDetails.metric,
+      ...(vitalDetails.value ? { vitalValue: vitalDetails.value } : {}),
+      ...(vitalDetails.unit ? { vitalUnit: vitalDetails.unit } : {}),
+      ...(vitalDetails.threshold ? { vitalThreshold: vitalDetails.threshold } : {}),
+    } : {}),
   };
 }
 

@@ -25,7 +25,7 @@ assert.match(station, /呼叫提醒/);
 assert.match(station, /:max-items="4"/);
 assert.match(station, /calling: callKeys\.size/);
 assert.ok(
-  (store.match(/if \(!task \|\| isDisplayOnlySwpCall\(task\)\)\s*return;/g) ?? []).length >= 1,
+  (store.match(/if \(!task \|\| isSourceManagedTask\(task\)\)\s*return;/g) ?? []).length >= 1,
 );
 assert.match(store, /活动任务只能由真实来源状态恢复后自动结束/);
 assert.doesNotMatch(store, /void setAlertTaskStatus\(taskId, 'resolved'\)/);

@@ -7,12 +7,12 @@ const cameraPresets = readFileSync(new URL('../src/core/camera-presets.ts', impo
 const wardControls = readFileSync(new URL('../src/core/ward-scene-controls.ts', import.meta.url), 'utf8');
 const wardConfig = readFileSync(new URL('../src/config/ward-interior-scene.ts', import.meta.url), 'utf8');
 
-test('病房内视角使用开放的缩放与旋转控制', () => {
+test('病房内视角使用安全范围内的缩放与旋转控制', () => {
   assert.match(wardScene, /resolveWardSceneControlLimits\(this\.roomW, this\.roomD\)/);
   assert.match(wardControls, /wardInteriorSceneConfig\.controls/);
-  assert.match(wardConfig, /minDistance: 1\.1/);
-  assert.match(wardConfig, /minAzimuthAngle: -Infinity/);
-  assert.match(wardConfig, /maxAzimuthAngle: Infinity/);
+  assert.match(wardConfig, /minDistance: 3\.6/);
+  assert.match(wardConfig, /minAzimuthAngle: 0,/);
+  assert.match(wardConfig, /maxAzimuthAngle: 0\.5/);
 });
 
 test('病房默认视角使用当前原生模型近景镜头', () => {

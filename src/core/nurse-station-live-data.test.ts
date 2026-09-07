@@ -77,12 +77,14 @@ test('builds a current-shift handoff summary from active clinical tasks and sync
     { ...baseTask, id: 'device-1', type: 'offline', severity: 'high', title: '设备离线' },
     { ...baseTask, id: 'env-1', type: 'env', severity: 'medium', bedCode: undefined, title: '病房环境预警' },
     { ...baseTask, id: 'infusion-1', type: 'infusion', severity: 'medium', title: '输液巡视' },
+    { ...baseTask, id: 'vital-1', type: 'vital', severity: 'critical', title: '生命体征预警' },
   ];
 
   assert.deepEqual(builder(tasks, { phase: 'partial', lastSyncedAt: null, error: null, warning: '部分失败' }), {
     level: 'attention',
     title: '本班需重点交接',
     items: [
+      '生命体征预警 1 项',
       '未结束呼叫 1 项',
       '设备异常 1 项',
       '环境异常病房 1 间',
