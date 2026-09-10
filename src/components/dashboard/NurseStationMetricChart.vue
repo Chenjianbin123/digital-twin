@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import * as echarts from "echarts/core";
-import { BarChart } from "echarts/charts";
-import { GridComponent, TooltipComponent } from "echarts/components";
-import { CanvasRenderer } from "echarts/renderers";
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-
-echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer]);
+import { computed } from "vue";
+import type { NurseStationRealtimeStatus } from "@/core/nurse-station-view-model";
 
 interface NurseStationKpi {
   key: string;
@@ -13,160 +8,74 @@ interface NurseStationKpi {
   value: number | string;
   unit: string;
   tone: string;
+  percent?: number | null;
+  detail?: string;
 }
 
 const props = defineProps<{
   kpis: NurseStationKpi[];
+  realtimeStatus: NurseStationRealtimeStatus;
 }>();
 
-const chartElement = ref<HTMLDivElement>();
-const hasNumericData = computed(() =>
-  props.kpis.some(item => typeof item.value === "number" && Number.isFinite(item.value)),
-);
-let chart: echarts.ECharts | undefined;
-let resizeObserver: ResizeObserver | undefined;
+const hasData = computed(() => props.kpis.length > 0);
 
-const toneColors: Record<string, string> = {
-  cyan: "#68e5ff",
-  blue: "#7aa8ff",
-  green: "#9df4bf",
-  alert: "#ff86b3",
-  infusion: "#8de7ff",
-  warn: "#ffd080",
-};
-const scaleByKey: Record<string, number> = {
-  occupied: 30,
-  empty: 30,
-  calls: 20,
-  vital: 20,
-  infusing: 20,
-  online: 20,
-};
-
-function renderChart() {
-  if (!chart || !hasNumericData.value) {
-    chart?.clear();
-    return;
-  }
-  const data = props.kpis
-    .filter(item => typeof item.value === "number" && Number.isFinite(item.value))
-    .map(item => ({
-      name: item.label,
-      value: Math.min(
-        100,
-        ((item.value as number) / (scaleByKey[item.key] ?? Math.max(item.value as number, 1))) * 100,
-      ),
-      rawValue: item.value as number,
-      unit: item.unit,
-      itemStyle: { color: toneColors[item.tone] ?? "#68e5ff" },
-    }));
-  chart.setOption({
-    animationDuration: 650,
-    animationEasing: "cubicOut",
-    textStyle: { fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif' },
-    grid: { left: 112, right: 52, top: 12, bottom: 18 },
-    tooltip: {
-      trigger: "item",
-      confine: true,
-      backgroundColor: "rgba(5, 20, 34, 0.94)",
-      borderColor: "rgba(104, 229, 255, 0.42)",
-      textStyle: { color: "#e9fbff" },
-      formatter: (params: { data: { name: string; rawValue: number; unit: string } }) => {
-        const item = params.data;
-        return `${item.name}：${item.rawValue}${item.unit}`;
-      },
-    },
-    xAxis: {
-      type: "value",
-      max: 100,
-      min: 0,
-      splitNumber: 5,
-      axisLabel: {
-        show: false,
-        color: "rgba(190, 225, 238, 0.58)",
-        fontSize: 9,
-        formatter: "{value}%",
-      },
-      splitLine: { lineStyle: { color: "rgba(104, 229, 255, 0.1)" } },
-      axisLine: { lineStyle: { color: "rgba(104, 229, 255, 0.2)" } },
-    },
-    yAxis: {
-      type: "category",
-      inverse: true,
-      data: data.map(item => item.name),
-      axisLabel: {
-        color: "#d8f5fa",
-        fontSize: 14,
-        fontWeight: "bold",
-      },
-      axisLine: { lineStyle: { color: "rgba(104, 229, 255, 0.18)" } },
-      axisTick: { show: false },
-    },
-    series: [{
-      type: "bar",
-      barMaxWidth: 14,
-      barCategoryGap: "32%",
-      showBackground: true,
-      backgroundStyle: { color: "rgba(104, 229, 255, 0.08)", borderRadius: 8 },
-      label: {
-        show: true,
-        position: "right",
-        color: "#f1fdff",
-        fontSize: 14,
-        fontWeight: "bold",
-        formatter: (params: { value: number; dataIndex: number }) =>
-          `${data[params.dataIndex]?.rawValue ?? params.value}${data[params.dataIndex]?.unit ?? ""}`,
-      },
-      data,
-      itemStyle: { borderRadius: [0, 8, 8, 0] },
-    }],
-  }, true);
+function clampedPercent(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value))
+    return null;
+  return Math.min(100, Math.max(0, value));
 }
-
-onMounted(async () => {
-  await nextTick();
-  if (!chartElement.value) return;
-  chart = echarts.init(chartElement.value, undefined, { renderer: "canvas" });
-  resizeObserver = new ResizeObserver(() => chart?.resize());
-  resizeObserver.observe(chartElement.value);
-  renderChart();
-});
-
-watch(() => props.kpis, renderChart, { deep: true });
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  chart?.dispose();
-  chart = undefined;
-});
 </script>
 
 <template>
-  <section class="nurse-metric-chart" aria-label="病区指标图表">
+  <section class="nurse-metric-chart" aria-label="病区核心指标">
     <header class="nurse-metric-chart__head">
       <div>
-        <span class="nurse-metric-chart__eyebrow">实时指标分析</span>
-        <strong>病区运行指标</strong>
+        <span class="nurse-metric-chart__eyebrow">当前业务快照</span>
+        <strong>病区核心指标</strong>
       </div>
-      <span class="nurse-metric-chart__status">
-        <i aria-hidden="true" />实时数据
+      <span
+        class="nurse-metric-chart__status"
+        :class="`nurse-metric-chart__status--${realtimeStatus.status}`"
+        :title="realtimeStatus.detail"
+      >
+        <i aria-hidden="true" />{{ realtimeStatus.label }}
       </span>
     </header>
-    <div v-if="hasNumericData" ref="chartElement" class="nurse-metric-chart__canvas" />
+
+    <div v-if="hasData" class="nurse-metric-chart__grid">
+      <article
+        v-for="item in kpis"
+        :key="item.key"
+        class="metric-item"
+        :class="`metric-item--${item.tone}`"
+      >
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}<small>{{ item.unit }}</small></strong>
+        <div
+          v-if="clampedPercent(item.percent) != null"
+          class="metric-item__progress"
+          role="meter"
+          :aria-label="`${item.label}${clampedPercent(item.percent)}%`"
+          :aria-valuenow="clampedPercent(item.percent) ?? undefined"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <i :style="{ width: `${clampedPercent(item.percent)}%` }" />
+        </div>
+        <small v-if="item.detail" class="metric-item__detail">{{ item.detail }}</small>
+      </article>
+    </div>
     <div v-else class="nurse-metric-chart__empty">暂无可用指标</div>
   </section>
 </template>
 
 <style scoped lang="scss">
 .nurse-metric-chart {
-  min-height: 200px;
-  padding: 12px 14px 10px;
+  min-height: 154px;
+  padding: 12px 14px;
   border: 1px solid rgba(104, 229, 255, 0.2);
   border-radius: 12px;
-  background:
-    radial-gradient(circle at 90% 0, rgba(87, 226, 255, 0.12), transparent 38%),
-    linear-gradient(145deg, rgba(13, 46, 65, 0.78), rgba(5, 20, 35, 0.7));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: linear-gradient(145deg, rgba(13, 46, 65, 0.78), rgba(5, 20, 35, 0.7));
 
   &__head {
     display: flex;
@@ -178,8 +87,8 @@ onBeforeUnmount(() => {
   &__eyebrow,
   &__status {
     display: block;
-    color: rgba(174, 220, 235, 0.64);
-    font-size: 10px;
+    color: rgba(174, 220, 235, 0.72);
+    font-size: 12px;
   }
 
   &__head strong {
@@ -194,28 +103,111 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 5px;
     color: #9df4bf;
+
+    i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    &--loading,
+    &--warning,
+    &--stale { color: #ffd080; }
+    &--error { color: #ff86b3; }
   }
 
-  &__status i {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #9df4bf;
-    box-shadow: 0 0 8px rgba(157, 244, 191, 0.9);
-  }
-
-  &__canvas {
-    width: 100%;
-    height: 140px;
-    margin-top: 6px;
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
   }
 
   &__empty {
     display: grid;
-    min-height: 140px;
+    min-height: 96px;
     place-items: center;
     color: rgba(190, 225, 238, 0.62);
     font-size: 12px;
   }
+}
+
+.metric-item {
+  color: #8de7ff; min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(104, 229, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+
+  > span,
+  &__detail {
+    display: block;
+    overflow: hidden;
+    color: rgba(190, 225, 238, 0.72);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  > strong {
+    display: block;
+    margin-top: 5px;
+    color: #68e5ff;
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+
+    small {
+      margin-left: 3px;
+      color: rgba(220, 241, 247, 0.7);
+      font-size: 12px;
+    }
+  }
+
+  &__progress {
+    height: 4px;
+    margin-top: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: currentColor;
+    }
+  }
+
+  &__detail { margin-top: 5px; }
+  &--blue { color: #7aa8ff; }
+  &--green { color: #9df4bf; }
+  &--alert { color: #ff86b3; }
+  &--infusion { color: #8de7ff; }
+  &--warn { color: #ffd080; }
+}
+
+@media (max-width: 1199px) {
+  .nurse-metric-chart__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.nurse-metric-chart {
+  padding: 16px; background: #102936; border-color: #759bad38;
+  &__head { flex-wrap: wrap; gap: 8px 16px; }
+  &__head strong { font-size: 14px; font-weight: 600; margin-top: 5px; }
+  &__status i { box-shadow: none; }
+  &__grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 16px; }
+}
+.metric-item {
+  padding: 12px; background: #0a202d; border-color: #7eabb329; border-radius: 8px;
+  > span { color: #adc5d1; }
+  > strong { font-size: 26px; font-weight: 600; color: inherit; margin-top: 10px; overflow-wrap: anywhere; }
+  &__detail { white-space: normal; line-height: 1.5; color: #9db8c7; }
+  &__progress { margin-top: 10px; height: 3px; }
+}
+@container nurse-panel (max-width: 380px) {
+  .nurse-metric-chart { padding: 12px; }
+  .nurse-metric-chart__grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 </style>

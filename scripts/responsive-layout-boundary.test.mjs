@@ -32,8 +32,10 @@ test('bottom navigation stays above the panel on compact desktop and mobile view
 
 test('area selection adapts to short screens without forcing a fixed-height card', () => {
   assert.match(areaSelection, /@media \(max-height: 720px\)/);
-  assert.match(areaSelection, /width:\s*min\(760px,\s*calc\(100% - clamp\(/);
-  assert.match(areaSelection, /min-height:\s*100svh/);
+  assert.match(areaSelection, /width:\s*min\(2200px,\s*calc\(100% - clamp\(/);
+  assert.match(areaSelection, /&__results\s*\{[^}]*min-height:\s*0/);
+  assert.match(areaSelection, /&__results\s*\{[^}]*overflow:\s*auto/);
+  assert.match(areaSelection, /&__footer\s*\{[^}]*flex-shrink:\s*0/);
 });
 
 test('nurse station cards reflow before the panel becomes a bottom sheet', () => {

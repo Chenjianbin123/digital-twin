@@ -1,6 +1,8 @@
 export interface NurseStationSceneConfig {
   model: {
     url: string;
+    layout: 'legacy' | 'reference-v2';
+    /** 仅 legacy 布局按包围盒缩放；reference-v2 保留建模单位。 */
     maxSize: { x: number; y: number; z: number };
   };
   position: { x: number; z: number };
@@ -61,18 +63,19 @@ export interface NurseStationSceneConfig {
 /** 护士站模型、构图和交互限制。调整护士站外观时优先修改这里。 */
 export const nurseStationSceneConfig: NurseStationSceneConfig = {
   model: {
-    url: "/models/smart-ward-nurse-station/1-1.glb?v=20260901-h-n2-v1",
+    url: "/models/smart-ward-nurse-station/nurse-station-design-v2.glb?v=20260909",
+    layout: 'reference-v2',
     maxSize: { x: 11.04, y: 2.3895, z: 5.102 },
   },
   position: { x: 0, z: 14 },
   appearance: {
-    background: 0xcfdad4,
+    background: 0xdbe2e2,
     /** 首屏视野角：数值越小，模型越大；数值越大，看到的环境越多。 */
-    deskFov: 30,
+    deskFov: 38,
 
-    exposure: 1.18,
-    envMapIntensity: 0.42,
-    environmentIntensity: 0.4,
+    exposure: 1,
+    envMapIntensity: 1,
+    environmentIntensity: 0.5,
   },
   camera: {
     /**
@@ -81,21 +84,21 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
      * - y：减小后模型整体更靠画面上方，增大后更靠下方。
      * - z：调整前后纵深，通常保持不动。
      */
-    target: { x: 0.42, y: 0.812, z: 0.257 },
-    initialDistance: 3.523,
-    initialAngle: { azimuthDeg: -88.3, elevationDeg: 4.56 },
-    limitsEnabled: true,
+    target: { x: 0, y: 1.65, z: -1.2 },
+    initialDistance: 10.99,
+    initialAngle: { azimuthDeg: -13.15, elevationDeg: 0.78 },
+    limitsEnabled: false,
     pan: { xLimit: 0.42, yMin: 0.42, yMax: 1.35 },
-    distance: { min: 1.6, max: 8 },
+    distance: { min: 0.6, max: 18 },
     azimuthLimit: Math.PI / 12,
-    polar: { min: Math.PI / 2.12, max: Math.PI / 2.05 },
-    ceilingY: 2.95,
+    polar: { min: Math.PI / 6, max: Math.PI / 1.8 },
+    ceilingY: 3.34,
     ceilingCameraMargin: 0.12,
     ceilingTargetMargin: 0.48,
     floorCameraMargin: 0.18,
     viewBounds: {
       floorMesh: "地板",
-      ceilingMesh: "顶支架.002",
+      ceilingMesh: "Ceiling",
       wallMeshes: ["墙壁", "墙壁2"],
       margins: {
         floor: 0.28,

@@ -13,20 +13,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "echarts": "^6.1.0",
-    "js-md5": "^0.7.3",
-    "mysql2": "^3.22.5",
+    "mysql2": "^3.24.4",
     "pinia": "^2.3.0",
     "three": "^0.184.0",
-    "vue": "^3.5.13"
+    "vue": "^3.5.42"
   },
   "devDependencies": {
-    "@types/js-md5": "^0.7.0",
     "@types/three": "^0.184.0",
-    "@vitejs/plugin-vue": "^5.2.1",
-    "sass": "^1.83.0",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "sass": "^1.104.0",
     "typescript": "^5.7.2",
-    "vite": "^5.4.11",
-    "vue-tsc": "^2.1.10"
+    "vite": "^8.2.2",
+    "vue-tsc": "^3.3.11"
   }
 }

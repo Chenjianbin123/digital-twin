@@ -11,22 +11,21 @@ const panel = await readFile(
   'utf8',
 );
 
-test('护士站指标图使用 ECharts 并支持空数据与尺寸自适应', () => {
-  assert.match(chart, /from ['"]echarts\/core['"]/);
-  assert.match(chart, /BarChart/);
-  assert.match(chart, /scaleByKey/);
-  assert.match(chart, /barCategoryGap/);
-  assert.match(chart, /borderRadius/);
-  assert.match(chart, /axisLabel:\s*\{\s*show:\s*false/);
-  assert.match(chart, /height: 140px/);
-  assert.match(chart, /fontSize: 14/);
-  assert.match(chart, /ResizeObserver/);
+test('护士站指标面板只对有真实分母的指标展示比例', () => {
+  assert.doesNotMatch(chart, /echarts/);
+  assert.doesNotMatch(chart, /scaleByKey/);
+  assert.match(chart, /percent\?: number \| null/);
+  assert.match(chart, /role="meter"/);
+  assert.match(chart, /aria-valuemax="100"/);
+  assert.match(chart, /clampedPercent/);
   assert.match(chart, /暂无可用指标/);
-  assert.match(chart, /\.dispose\(\)/);
   assert.match(chart, /props\.kpis/);
 });
 
-test('护士站面板把实时核心指标传给 ECharts 图表', () => {
+test('护士站面板传入真实比例和统一的新鲜度状态', () => {
   assert.match(panel, /NurseStationMetricChart/);
   assert.match(panel, /:kpis="stationKpis"/);
+  assert.match(panel, /:realtime-status="viewModel\.realtime"/);
+  assert.match(panel, /percent: occupancyRate\.value/);
+  assert.match(panel, /percent: metrics\.value\.deviceHealthRate/);
 });

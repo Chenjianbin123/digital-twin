@@ -1,5 +1,10 @@
 // 数字孪生大屏 — 共享视觉变量与 mixin
 
+// 按 CSS 视口增长，不跟随设备像素比，避免系统缩放被重复补偿。
+@function dash-font($size) {
+  @return max(12px, calc(#{$size} * var(--dashboard-font-unit, 1px)));
+}
+
 $dash-cyan: #4deaff;
 $dash-cyan-dim: rgba(77, 208, 255, 0.75);
 $dash-panel-bg: linear-gradient(180deg, rgba(10, 25, 41, 0.72) 0%, rgba(8, 20, 36, 0.82) 100%);

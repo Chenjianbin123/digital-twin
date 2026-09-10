@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url);
+const distDir = fileURLToPath(new URL('../dist/', import.meta.url));
 const indexPath = new URL('../dist/index.html', import.meta.url);
 
 test('production bundle contains the current empty-bed warning guard', (t) => {
@@ -11,22 +12,20 @@ test('production bundle contains the current empty-bed warning guard', (t) => {
     t.skip('run npm run build before checking the production bundle');
     return;
   }
-  const index = readFileSync(indexPath, 'utf8');
-  const match = index.match(/src="\/assets\/([^"]+\.js)"/);
-  assert.ok(match, 'digital-twin/index.html must reference a JavaScript bundle');
+  const assetsDir = join(distDir, 'assets');
+  const bundle = readdirSync(assetsDir)
+    .filter(name => name.endsWith('.js'))
+    .map(name => readFileSync(join(assetsDir, name), 'utf8'))
+    .join('\\n');
 
-  const bundlePath = join(root.pathname, 'dist', 'assets', match[1]);
-  assert.ok(existsSync(bundlePath), `missing referenced bundle: ${bundlePath}`);
-
-  const bundle = readFileSync(bundlePath, 'utf8');
   assert.match(
     bundle,
-    /shouldWarnForMissingBedDevice/,
-    'static bundle is stale and still uses the pre-fix bed template loader',
+    /空床.*无患者.*未入住.*未分配/,
+    'production bundles must contain the current empty-bed warning policy',
   );
   assert.match(
     bundle,
-    /!text\([^)]*deviceCode\)[^&]*&&[^.]*\.isOccupied/,
-    'static bundle must keep the occupied-bed-only warning guard',
+    /未关联床头机设备/,
+    'production bundles must retain the missing-device warning path',
   );
 });

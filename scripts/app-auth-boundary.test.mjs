@@ -4,10 +4,9 @@ import test from 'node:test';
 
 const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8');
 const header = readFileSync(new URL('../src/components/dashboard/DashboardHeader.vue', import.meta.url), 'utf8');
-const env = readFileSync(new URL('../.env.development', import.meta.url), 'utf8');
 
 test('root app gates ward bootstrap behind a confirmed authentication session', () => {
-  assert.match(app, /import SwpLoginGate/);
+  assert.match(app, /const SwpLoginGate = defineAsyncComponent/);
   assert.match(app, /readAuthSession/);
   assert.match(app, /async function bootstrapDigitalTwin\(\)/);
   assert.match(app, /if \(authSession\.value\)[\s\S]*?bootstrapDigitalTwin\(\)/);
@@ -25,8 +24,4 @@ test('dashboard header exposes a clear logout command', () => {
   assert.match(header, /logout: \[\]/);
   assert.match(header, /aria-label="退出登录"/);
   assert.match(header, /emit\('logout'\)/);
-});
-
-test('development environment uses the authenticated remote SWP data source', () => {
-  assert.match(env, /^VITE_DATA_SOURCE=remote$/m);
 });

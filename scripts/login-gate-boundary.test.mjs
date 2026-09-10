@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { compileString } from 'sass';
 
 const loginGate = readFileSync(new URL('../src/components/SwpLoginGate.vue', import.meta.url), 'utf8');
+
+const loginStyles = readFileSync(new URL('../src/styles/swp-login.scss', import.meta.url), 'utf8');
+const compiledStyles = compileString(loginStyles).css;
 
 test('login gate uses the selected nurse-station visual and accessible credentials form', () => {
   assert.match(loginGate, /login-bg\.jpg/);
@@ -24,12 +28,13 @@ test('login gate requires explicit SWP role confirmation before emitting authent
 });
 
 test('login gate has a bounded mobile layout', () => {
-  assert.match(loginGate, /@media \(max-width: 768px\)/);
-  assert.match(loginGate, /min-height: 100dvh/);
-  assert.match(loginGate, /overflow-wrap: anywhere/);
+  assert.ok(loginGate.includes('<style scoped lang="scss" src="@/styles/swp-login.scss"'));
+  assert.match(compiledStyles, /@media \(max-width: 768px\)/);
+  assert.match(compiledStyles, /height: 100dvh/);
+  assert.match(compiledStyles, /overflow-wrap: anywhere/);
 });
 
-test('login gate presents a Chinese-only sign-in surface', () => {
+test('login gate keeps sign-in instructions in Chinese', () => {
   assert.match(loginGate, /智慧病房数字孪生平台/);
   assert.match(loginGate, /登录/);
 
@@ -51,38 +56,29 @@ test('login gate presents a Chinese-only sign-in surface', () => {
 
 test('login gate uses an adaptive desktop card layout', () => {
   assert.match(loginGate, /swp-login__card/);
-  assert.match(loginGate, /@media \(min-width: 1200px\)/);
-  assert.match(loginGate, /@media \(min-width: 769px\) and \(max-width: 1199px\)/);
-  assert.match(loginGate, /width: min\(100% - 48px, 560px\)/);
-  assert.match(loginGate, /max-height: calc\(100dvh - 64px\)/);
+  assert.match(compiledStyles, /\.swp-login__rail\s*\{[^}]*width: clamp\(/);
+  assert.match(compiledStyles, /\.swp-login__card\s*\{[^}]*max-height: 100%/);
+  assert.match(compiledStyles, /\.swp-login__card\s*\{[^}]*overflow-y: auto/);
 });
 
 test('login gate handles short and reduced-motion viewports', () => {
-  assert.match(loginGate, /@media \(max-height: 720px\)/);
-  assert.match(loginGate, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(loginGate, /100svh/);
-  assert.match(loginGate, /env\(safe-area-inset-bottom\)/);
+  assert.match(compiledStyles, /@media \(max-height:/);
+  assert.match(compiledStyles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(compiledStyles, /env\(safe-area-inset-bottom\)/);
 });
 
 test('login gate copy matches the smart-ward digital-twin context', () => {
   assert.match(loginGate, /进入智慧病房/);
-  assert.match(loginGate, /授权入口/);
+  assert.match(loginGate, /工作空间/);
   assert.match(loginGate, /查看授权病区的实时态势/);
   assert.match(loginGate, /设备联动/);
   assert.match(loginGate, /护理协同/);
 });
 
 test('login gate adds layered technology motion with a reduced-motion fallback', () => {
-  assert.match(loginGate, /swp-login__tech-grid/);
-  assert.match(loginGate, /swp-login__scanline/);
-  assert.match(loginGate, /swp-login__signal/);
-  assert.match(loginGate, /@keyframes login-grid-drift/);
-  assert.match(loginGate, /@keyframes login-scan/);
-  assert.match(loginGate, /@keyframes login-card-sweep/);
-  assert.match(
-    loginGate,
-    /\.swp-login__tech-grid[\s\S]*animation:\s*none !important/,
-  );
+  assert.match(loginGate, /class="swp-login__spatial" aria-hidden="true"/);
+  assert.match(compiledStyles, /@keyframes login-cube-float/);
+  assert.match(compiledStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.swp-login__cube\s*\{\s*animation: none/);
 });
 
 test('login gate makes the two-stage access flow visible in the card hierarchy', () => {
@@ -96,21 +92,14 @@ test('login gate makes the two-stage access flow visible in the card hierarchy',
 });
 
 test('login gate uses layered accent styling instead of a single flat cyan surface', () => {
-  assert.match(loginGate, /--login-warm/);
-  assert.match(loginGate, /login-card-breathe/);
-  assert.match(loginGate, /login-amber-pulse/);
-  assert.match(loginGate, /&::before/);
-  assert.match(loginGate, /swp-login__support-item/);
+  assert.match(compiledStyles, /\.swp-login__card\s*\{[^}]*background: linear-gradient/);
+  assert.match(compiledStyles, /\.swp-login__card::before\s*\{[^}]*pointer-events: none/);
+  assert.match(compiledStyles, /button:focus-visible\s*\{[^}]*outline:/);
 });
 
 test('login gate keeps the digital-twin scene visible through a translucent card', () => {
-  assert.match(loginGate, /--login-panel-alpha:\s*0\.62/);
-  assert.match(
-    loginGate,
-    /--login-panel:\s*rgba\(7, 25, 38, var\(--login-panel-alpha\)\)/,
-  );
-  assert.match(loginGate, /backdrop-filter:\s*blur\(18px\)/);
-  assert.match(loginGate, /rgba\(3, 13, 21, 0\.58\)/);
+  assert.match(compiledStyles, /backdrop-filter: blur\(/);
+  assert.match(compiledStyles, /@media \(prefers-reduced-transparency: reduce\)[\s\S]*?backdrop-filter: none/);
 });
 
 test('login gate hides role selection while roles share the same access scope', () => {

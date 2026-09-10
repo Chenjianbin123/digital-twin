@@ -3,9 +3,11 @@ import { computed, nextTick, onMounted, onUnmounted, ref, toRaw, watch } from 'v
 import { AreaScene, type AreaCameraDebugState, type AreaModelState, type AreaNodePickInfo } from '@/core/area-scene';
 import { buildAreaStructureSignature } from '@/core/area-scene-identity';
 import type { RoomSummary } from '@/core/area-summary';
+import type { NurseStationViewModel } from '@/core/nurse-station-view-model';
 import { twinSceneToAreaPhase, type TwinAreaEntity, type TwinSceneType } from '@/types/twin';
 
 const props = defineProps<{
+  theme?: 'light' | 'dark';
   area: TwinAreaEntity;
   areaId: number | null;
   roomSummaries?: RoomSummary[];
@@ -14,13 +16,15 @@ const props = defineProps<{
   sceneType?: TwinSceneType;
   modelKind?: 'station' | 'corridor';
   active?: boolean;
+  nurseStationViewModel?: NurseStationViewModel;
 }>();
 
 const areaPhase = computed(() =>
   twinSceneToAreaPhase(props.sceneType ?? 'nurse-station'),
 );
 // 开发调试开关：true 显示护士站/病房走廊视角参数面板，false 隐藏。
-const CAMERA_DEBUG_PANEL_ENABLED = false;
+const CAMERA_DEBUG_PANEL_ENABLED = true;
+
 const cameraDebugEnabled = computed(() =>
   CAMERA_DEBUG_PANEL_ENABLED
   && import.meta.env.DEV
@@ -45,6 +49,8 @@ let scene: AreaScene | null = null;
 let layoutObserver: ResizeObserver | null = null;
 let mountRetryTimer: ReturnType<typeof setTimeout> | null = null;
 let mountRetryCount = 0;
+let disposed = false;
+let mountFailed = false;
 
 function resetStationView() {
   if (areaPhase.value === 'station')
@@ -66,8 +72,10 @@ function applyAreaToScene(full = true) {
 }
 
 function mountScene() {
+  if (mountFailed)
+    return true;
   const host = containerRef.value;
-  if (!host || scene)
+  if (disposed || !host || scene)
     return false;
 
   const w = host.clientWidth;
@@ -75,15 +83,26 @@ function mountScene() {
   if (w < 16 || h < 16)
     return false;
 
-  scene = new AreaScene({
-    container: host,
-    modelKind: props.modelKind ?? (areaPhase.value === 'corridor' ? 'corridor' : 'station'),
-    onRoomClick: index => emit('roomClick', index),
-    onNodePick: info => (pickedNode.value = info),
-    onModelState: state => emit('modelState', state),
-    onCameraState: state => (cameraDebugState.value = state),
-  });
+  try {
+    scene = new AreaScene({
+      container: host,
+      modelKind: props.modelKind ?? (areaPhase.value === 'corridor' ? 'corridor' : 'station'),
+      onRoomClick: index => emit('roomClick', index),
+      onNodePick: info => (pickedNode.value = info),
+      onModelState: state => emit('modelState', state),
+      onCorridorState: state => emit('modelState', state),
+      onCameraState: state => (cameraDebugState.value = state),
+    });
+    scene.setTheme(props.theme ?? 'light');
+  }
+  catch (error) {
+    mountFailed = true;
+    emit('modelState', 'fallback');
+    console.warn('[AreaScene3D] renderer initialization failed', error);
+    return true;
+  }
   applyAreaToScene(true);
+  scene.setNurseStationViewModel(props.nurseStationViewModel ? toRaw(props.nurseStationViewModel) : null);
   scene.setViewPhase(areaPhase.value, false);
   scene.setActive(props.active !== false);
   requestAnimationFrame(() => scene?.refreshLayout());
@@ -127,6 +146,8 @@ async function copyCameraDebugText() {
 }
 
 function tryMountScene() {
+  if (disposed)
+    return;
   if (mountScene())
     return;
 
@@ -165,6 +186,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  disposed = true;
   if (mountRetryTimer)
     clearTimeout(mountRetryTimer);
   layoutObserver?.disconnect();
@@ -195,6 +217,10 @@ watch(
   { deep: true },
 );
 
+watch(() => props.nurseStationViewModel, (viewModel) => {
+  scene?.setNurseStationViewModel(viewModel ? toRaw(viewModel) : null);
+});
+
 watch(() => props.focusedRoomIndex, (index, prev) => {
   if (index === undefined || index < 0) {
     if (prev !== undefined && prev >= 0)
@@ -207,6 +233,8 @@ watch(() => props.focusedRoomIndex, (index, prev) => {
     return;
   scene?.focusRoom(index);
 });
+
+watch(() => props.theme, theme => scene?.setTheme(theme ?? 'light'));
 
 watch(() => props.active, (active) => {
   scene?.setActive(active !== false);

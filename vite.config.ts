@@ -34,9 +34,21 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [vue()],
+    build: {
+      rollupOptions: {
+        input: {
+          main: fileURLToPath(new URL('./index.html', import.meta.url)),
+          stationPreview: fileURLToPath(new URL('./nurse-station-preview.html', import.meta.url)),
+        },
+      },
+      // Three.js is a single lazy-loaded module (~573 kB minified, ~145 kB gzip).
+      // Keep the threshold just above that known chunk; the entry budget is regression-tested separately.
+      chunkSizeWarningLimit: 600,
+    },
     css: {
       preprocessorOptions: {
         scss: {
+          api: 'modern',
           additionalData: `@use "@/styles/breakpoints.scss" as *;\n@use "@/styles/dashboard.scss" as *;\n`,
         },
       },
@@ -51,12 +63,14 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       open: true,
       proxy: {
-        '/swp': {
-          target: apiTarget,
-          changeOrigin: true,
-        },
+        // /swp is also a prefix of /swp_upload, so the file route must be
+        // registered first or template images will be sent to the API port.
         '/swp_upload': {
           target: fileTarget,
+          changeOrigin: true,
+        },
+        '/swp': {
+          target: apiTarget,
           changeOrigin: true,
         },
         '/db-adapter': {
@@ -69,12 +83,12 @@ export default defineConfig(({ mode }) => {
     preview: {
       port: 5173,
       proxy: {
-        '/swp': {
-          target: apiTarget,
-          changeOrigin: true,
-        },
         '/swp_upload': {
           target: fileTarget,
+          changeOrigin: true,
+        },
+        '/swp': {
+          target: apiTarget,
           changeOrigin: true,
         },
         '/db-adapter': {

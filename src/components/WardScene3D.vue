@@ -2,7 +2,7 @@
 
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 
-import { WardScene } from '@/core/ward-scene';
+import { WardScene, type WardInteriorModelState } from '@/core/ward-scene';
 
 import type { EnvAlertLevel } from '@/core/env-alert';
 
@@ -32,6 +32,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 
   bedClick: [bed: TwinBedEntity];
+  modelState: [state: WardInteriorModelState];
 
 }>();
 
@@ -50,13 +51,21 @@ onMounted(() => {
 
     return;
 
-  scene = new WardScene({
+  try {
+    scene = new WardScene({
 
-    container: containerRef.value,
+      container: containerRef.value,
 
-    onBedClick: bed => emit('bedClick', bed),
+      onBedClick: bed => emit('bedClick', bed),
+      onModelState: state => emit('modelState', state),
 
-  });
+    });
+  }
+  catch (error) {
+    emit('modelState', 'fallback');
+    console.warn('[WardScene3D] renderer initialization failed', error);
+    return;
+  }
 
   scene.updateWard(props.ward);
 

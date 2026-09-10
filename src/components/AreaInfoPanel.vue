@@ -396,7 +396,7 @@ function inspectionTime(value: string | null | undefined) {
   &__intro {
     margin: 0 0 14px;
     padding: 10px 12px;
-    font-size: 12px;
+    font-size: dash-font(12);
     line-height: 1.55;
     color: rgba(221, 239, 255, 0.9);
     text-align: justify;
@@ -414,7 +414,7 @@ function inspectionTime(value: string | null | undefined) {
     border-radius: 8px;
     background: rgba(8, 33, 58, 0.34);
     color: #9be8ff;
-    font-size: 12px;
+    font-size: dash-font(12);
     font-weight: 600;
     cursor: pointer;
 
@@ -430,7 +430,7 @@ function inspectionTime(value: string | null | undefined) {
     gap: 10px;
     margin-top: 10px;
     padding: 6px 14px;
-    font-size: 11px;
+    font-size: dash-font(11);
     font-weight: 600;
     color: #4deaff;
     background: linear-gradient(90deg, rgba(0, 132, 199, 0.28), rgba(0, 88, 160, 0.12));
@@ -479,7 +479,7 @@ function inspectionTime(value: string | null | undefined) {
 
   &__title {
     margin: 0;
-    font-size: 15px;
+    font-size: dash-font(15);
     font-weight: 700;
     letter-spacing: 1.2px;
     color: #ffffff;
@@ -489,7 +489,7 @@ function inspectionTime(value: string | null | undefined) {
 
   &__count {
     padding: 1px 8px;
-    font-size: 11px;
+    font-size: dash-font(11);
     font-weight: 700;
     color: #4deaff;
     background: rgba(0, 120, 200, 0.22);
@@ -574,13 +574,13 @@ function inspectionTime(value: string | null | undefined) {
   }
 
   &__label {
-    font-size: 10px;
+    font-size: dash-font(10);
     color: rgba(180, 210, 235, 0.92);
     letter-spacing: 0.3px;
   }
 
   &__value {
-    font-size: 18px;
+    font-size: dash-font(18);
     font-weight: 800;
     font-variant-numeric: tabular-nums;
     color: #4deaff;
@@ -589,7 +589,7 @@ function inspectionTime(value: string | null | undefined) {
 
     small {
       margin-left: 2px;
-      font-size: 11px;
+      font-size: dash-font(11);
       font-weight: 600;
       color: rgba(180, 230, 255, 0.95);
     }
@@ -623,13 +623,13 @@ function inspectionTime(value: string | null | undefined) {
   &__count {
     display: block;
     margin-bottom: 6px;
-    font-size: 11px;
+    font-size: dash-font(11);
     color: rgba(180, 205, 230, 0.9);
 
     em {
       font-style: normal;
       font-weight: 800;
-      font-size: 14px;
+      font-size: dash-font(14);
       color: #fff;
       margin: 0 2px;
     }
@@ -660,7 +660,7 @@ function inspectionTime(value: string | null | undefined) {
   }
 
   &__percent {
-    font-size: 13px;
+    font-size: dash-font(13);
     font-weight: 700;
     color: #4deaff;
     font-variant-numeric: tabular-nums;
@@ -669,7 +669,7 @@ function inspectionTime(value: string | null | undefined) {
 
   &__tag {
     padding: 2px 8px;
-    font-size: 10px;
+    font-size: dash-font(10);
     font-weight: 600;
     border-radius: 3px;
     border: 1px solid rgba(77, 208, 255, 0.35);
@@ -714,13 +714,13 @@ function inspectionTime(value: string | null | undefined) {
   }
 
   &__label {
-    font-size: 11px;
+    font-size: dash-font(11);
     color: rgba(190, 220, 245, 0.92);
     margin-bottom: 4px;
   }
 
   &__value {
-    font-size: 28px;
+    font-size: dash-font(28);
     font-weight: 800;
     line-height: 1;
     color: #4deaff;
@@ -730,7 +730,7 @@ function inspectionTime(value: string | null | undefined) {
 
   &__sub {
     margin-top: 5px;
-    font-size: 10px;
+    font-size: dash-font(10);
     color: rgba(77, 208, 255, 0.82);
   }
 
@@ -742,7 +742,7 @@ function inspectionTime(value: string | null | undefined) {
 
 .alert-chip {
   padding: 5px 12px;
-  font-size: 11px;
+  font-size: dash-font(11);
   font-weight: 600;
   border-radius: 999px;
 
@@ -813,7 +813,7 @@ function inspectionTime(value: string | null | undefined) {
   }
 
   &__name {
-    font-size: 14px;
+    font-size: dash-font(14);
     font-weight: 700;
     color: #fff;
     line-height: 1.25;
@@ -822,7 +822,7 @@ function inspectionTime(value: string | null | undefined) {
   &__priority {
     width: fit-content;
     padding: 1px 6px;
-    font-size: 10px;
+    font-size: dash-font(10);
     font-weight: 600;
     border-radius: 999px;
     color: rgba(180, 210, 235, 0.9);
@@ -835,7 +835,7 @@ function inspectionTime(value: string | null | undefined) {
   &__badge {
     flex-shrink: 0;
     padding: 2px 8px;
-    font-size: 11px;
+    font-size: dash-font(11);
     font-weight: 700;
     color: #8deeff;
     background: rgba(0, 116, 178, 0.22);
@@ -846,7 +846,7 @@ function inspectionTime(value: string | null | undefined) {
 
   &__status {
     margin: 0 0 8px;
-    font-size: 11px;
+    font-size: dash-font(11);
     color: rgba(170, 200, 225, 0.82);
   }
 
@@ -866,12 +866,12 @@ function inspectionTime(value: string | null | undefined) {
       justify-content: space-between;
       gap: 8px;
       color: #ffd3d7;
-      font-size: 10px;
+      font-size: dash-font(10);
       font-weight: 800;
 
       strong {
         color: #ff9daa;
-        font-size: 10px;
+        font-size: dash-font(10);
       }
     }
 
@@ -890,7 +890,7 @@ function inspectionTime(value: string | null | undefined) {
       gap: 8px;
       min-width: 0;
       color: rgba(255, 225, 228, 0.88);
-      font-size: 10px;
+      font-size: dash-font(10);
 
       span {
         min-width: 0;
@@ -908,7 +908,7 @@ function inspectionTime(value: string | null | undefined) {
         color: #ffe5e5;
         background: rgba(184, 47, 65, 0.28);
         font: inherit;
-        font-size: 9px;
+        font-size: dash-font(9);
         font-weight: 800;
         cursor: pointer;
 
@@ -933,7 +933,7 @@ function inspectionTime(value: string | null | undefined) {
     width: 100%;
     margin-top: 6px;
     padding: 8px;
-    font-size: 12px;
+    font-size: dash-font(12);
     font-weight: 600;
     font-family: inherit;
     color: #d6f4ff;
@@ -964,14 +964,14 @@ function inspectionTime(value: string | null | undefined) {
 
   span {
     flex-shrink: 0;
-    font-size: 10px;
+    font-size: dash-font(10);
     font-weight: 800;
   }
 
   small {
     overflow: hidden;
     color: rgba(198, 224, 235, 0.74);
-    font-size: 9px;
+    font-size: dash-font(9);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -1004,7 +1004,7 @@ function inspectionTime(value: string | null | undefined) {
   align-items: center;
   min-height: 30px;
   padding: 6px 8px;
-  font-size: 10px;
+  font-size: dash-font(10);
   background: rgba(3, 17, 32, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.045);
   border-left: 2px solid var(--bed-accent, #00d4ff);
@@ -1032,7 +1032,7 @@ function inspectionTime(value: string | null | undefined) {
   border-radius: 10px;
 
   h3 {
-    font-size: 13px;
+    font-size: dash-font(13);
     font-weight: 700;
     letter-spacing: 0.5px;
     color: #4deaff;
@@ -1054,7 +1054,7 @@ function inspectionTime(value: string | null | undefined) {
 }
 
 @include down($bp-sm) {
-  .metric-grid__value { font-size: 15px; }
-  .person-card__value { font-size: 22px; }
+  .metric-grid__value { font-size: dash-font(15); }
+  .person-card__value { font-size: dash-font(22); }
 }
 </style>

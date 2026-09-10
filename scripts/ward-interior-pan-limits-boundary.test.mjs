@@ -22,9 +22,9 @@ test('病房内优先用外壳/灯网格钳制，缺失时回退房间平移限�
   assert.match(scene, /clampPointToWardInteriorBounds\(this\.controls\.target/);
   assert.match(scene, /clampPointToWardInteriorBounds\(this\.camera\.position/);
   assert.match(scene, /this\.clampWardInteriorPanTarget\(\);/);
-  assert.match(scene, /this\.applyWardInteriorViewBoundsConstraint\(\);\s*\/\/ window\.clearTimeout\(this\.cameraViewLogTimer\);/);
-  assert.match(scene, /this\.applyWardInteriorViewBoundsConstraint\(\);\s*this\.controls\.update\(\);/);
-  assert.match(scene, /this\.controls\.target\.lerpVectors\(this\.cameraTransition\.fromTarget, this\.cameraTransition\.toTarget, t\);\s*this\.applyWardInteriorViewBoundsConstraint\(\);/);
+  assert.match(scene, /this\.enforceWardInteriorControlBounds\(\);\s*\/\/ window\.clearTimeout\(this\.cameraViewLogTimer\);/);
+  assert.match(scene, /this\.controls\.update\(\);\s*this\.enforceWardInteriorControlBounds\(\);/);
+  assert.match(scene, /this\.controls\.target\.lerpVectors\(this\.cameraTransition\.fromTarget, this\.cameraTransition\.toTarget, t\);\s*this\.enforceWardInteriorControlBounds\(\);/);
 });
 
 test('病房内拖拽、尺寸变化和相机过渡共用统一边界约束', () => {
@@ -34,6 +34,6 @@ test('病房内拖拽、尺寸变化和相机过渡共用统一边界约束', ()
   assert.match(scene, /clampedTarget\.y = THREE\.MathUtils\.clamp\(clampedTarget\.y, limits\.pan\.yMin, limits\.pan\.yMax\);/);
   assert.match(scene, /clampedTarget\.z = THREE\.MathUtils\.clamp\(clampedTarget\.z, -limits\.pan\.zLimit, limits\.pan\.zLimit\);/);
   assert.match(scene, /this\.camera\.position\.add\(correction\);/);
-  assert.match(scene, /private onControlsChange[\s\S]*?this\.applyWardInteriorViewBoundsConstraint\(\)/);
-  assert.match(scene, /this\.controls\.target\.lerpVectors\(this\.cameraTransition\.fromTarget, this\.cameraTransition\.toTarget, t\);[\s\S]*?this\.applyWardInteriorViewBoundsConstraint\(\)/);
+  assert.match(scene, /private onControlsChange[\s\S]*?this\.enforceWardInteriorControlBounds\(\)/);
+  assert.match(scene, /this\.controls\.target\.lerpVectors\(this\.cameraTransition\.fromTarget, this\.cameraTransition\.toTarget, t\);[\s\S]*?this\.enforceWardInteriorControlBounds\(\)/);
 });

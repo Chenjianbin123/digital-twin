@@ -1,0 +1,53 @@
+/* 主题仅作用于外围工作台，不改变模型材质、模型内屏幕和登录场景。
+   使用显式覆盖优先级兼容既有组件 scoped 样式，避免主题依赖组件加载顺序。 */
+.digital-twin[data-theme='light'] {
+  --station-surface: #ffffff;
+  --station-inset: #f5f8f7;
+  --station-border: #d8e2df;
+  --station-muted: #5a716f;
+  .dash-header.dash-header { background: #f4f7f5f5; border-color: #d2ded9; box-shadow: 0 2px 10px #344b4510; }
+  .dash-header__title { color: #294c4a !important; }
+  .dash-header__dept, .dash-header__operator strong { color: #526b68 !important; }
+  .dash-header button, .digital-twin__panel-toggle { background: #e7eeeb !important; color: #365f5c !important; border-color: #c9d9d2 !important; }
+  .dash-header__area-icon { color: #477b7a !important; }
+  .dash-header__tag, .dash-header__data-status { color: #356b59 !important; background: #e3eee8 !important; border-color: #cbded3 !important; }
+  .dash-header__data-status--warning, .dash-header__tag--mock { color: #895c1e !important; background: #fbf2df !important; }
+  .dash-header__data-status--error, .dash-header__data-status--stale { color: #a43d4e !important; background: #fbecef !important; }
+  .digital-twin__panel, .digital-twin__panel-body, .nurse-panel { background: #eef2f0 !important; color: #314f4d; border-color: #d3dfda !important; box-shadow: none !important; }
+  .nurse-panel { scrollbar-color: #afc4bb #eef2f0; }
+  .nurse-panel :is(span, p, small, strong, h2, h3, em, summary) { color: #4f6865 !important; text-shadow: none !important; }
+  .nurse-panel :is(.station-hero__eyebrow, .station-section-title, .dash-head__title, .alert-task__head strong, .focus-room__main strong) { color: #294c48 !important; }
+  .nurse-panel :is(.station-hero, .inspection-overview, .handoff-card, .data-health, .surface-panel, .nurse-metric-chart, .nurse-panel__details, .alert-task-panel) { background: #fff !important; border-color: #d7e2dc !important; box-shadow: none !important; }
+  .nurse-panel :is(.inspection-metric, .metric-item, .focus-room, .data-health__freshness-item, .env-card, .ops-row, .alert-task-panel__more) { background: #f3f7f4 !important; border-color: #dce5df !important; box-shadow: none !important; }
+  .nurse-panel .alert-task { background: #fff !important; border-color: #e3e9e5 !important; border-left-color: var(--task-accent) !important; }
+  .nurse-panel .alert-task--critical { --task-accent: #b95567; }
+  .nurse-panel .alert-task--high { --task-accent: #a67525; }
+  .nurse-panel .alert-task__severity { color: #a13d51 !important; background: #faebee !important; }
+  .nurse-panel .alert-task--high .alert-task__severity { color: #865a19 !important; background: #fbf1dd !important; }
+  .nurse-panel :is(.station-state--alert, .station-state--warn) { background: #fcf0f1 !important; border-color: #edcdd3 !important; }
+  .nurse-panel .station-state--warn { background: #fcf5e9 !important; border-color: #e8d6b6 !important; }
+  .nurse-panel .station-state--alert :is(small, .station-hero__badge) { color: #a13d51 !important; }
+  .nurse-panel .station-state--alert .station-hero__badge { background: #f7e0e5 !important; }
+  .nurse-panel .station-hero__overview-metrics strong, .nurse-panel .metric-item > strong { color: #376e66 !important; }
+  .nurse-panel .inspection-metric--normal strong { color: #26725b !important; }
+  .nurse-panel .inspection-metric--due strong { color: #936116 !important; }
+  .nurse-panel .inspection-metric--overdue strong, .nurse-panel .metric-item--alert > strong { color: #ad4054 !important; }
+  .nurse-panel :is(.station-hero__identity-icon, .station-section-icon, .alert-task-panel__heading-icon) { color: #477b7a !important; background: #eaf2ed !important; border-color: #c9dcd1 !important; }
+  .nurse-panel button { background: #eaf1ed !important; border-color: #cbddd2 !important; color: #365f55 !important; box-shadow: none !important; }
+  .nurse-panel button:hover:not(:disabled) { background: #dce9e1 !important; }
+  .nurse-panel :is(.alert-task-panel__filters, .station-hero__chip) { background: #f1f5f2 !important; border-color: #dae5de !important; }
+  .nurse-panel .alert-task-panel__filters button.is-active { background: #d8e9df !important; border-color: #adcbbb !important; }
+  .nurse-panel .alert-task-panel__filters button strong, .nurse-panel .dash-head__count { background: #e2eee6 !important; border-color: #c9dbce !important; color: #3c695b !important; }
+  .nurse-panel .alert-task__meta-live { background: #e6f1eb !important; color: #326e59 !important; border-color: #cbdfd1 !important; }
+  .nurse-panel .station-hero__status-live, .nurse-panel .data-health__status--ready { color: #32725c !important; }
+  .nurse-panel :is(.data-health__status--warning, .data-health__status--stale, .data-health__status--loading) { color: #8c601d !important; }
+  .nurse-panel .data-health__status--error { color: #ab4254 !important; }
+  .nurse-panel .metric-item__progress, .nurse-panel .ops-row__track { background: #dce5df !important; }
+  .nurse-panel .metric-item__progress i { background: #578e7b !important; }
+  .nurse-panel .data-health > p { background: #faf4e8 !important; color: #795c2f !important; }
+  .nurse-panel :is(.station-hero__overview-foot, .station-hero__overview-metrics > div, .data-health li, .data-health__freshness, .handoff-card li, .inspection-overview > p) { border-color: #dde6e0 !important; }
+  .dash-bottom :is(.dash-bottom__main, .dash-bottom__sub, .dash-bottom__sim) { background: #f6f8f5f5 !important; border-color: #c9d9ce !important; box-shadow: 0 4px 18px #31493b18 !important; }
+  .dash-bottom :is(button, span) { color: #486c61 !important; text-shadow: none !important; }
+  .dash-bottom__item--active, .dash-bottom__sub-item--active { background: #dcebe0 !important; border-color: #b4cfbc !important; box-shadow: none !important; }
+  .dash-bottom__icon { background-color: #e7efe8 !important; border-color: #9dbfae !important; box-shadow: none !important; }
+}

@@ -9,9 +9,9 @@ const twinStore = readFileSync(new URL('../src/stores/twin-store.ts', import.met
 const deviceCache = readFileSync(new URL('../src/utils/device-cache.ts', import.meta.url), 'utf8');
 
 test('SWP login hashes passwords and omits stale authentication', () => {
-  assert.match(authApi, /import md5 from 'js-md5'/);
+  assert.match(authApi, /import \{ md5Hex \} from '@\/core\/md5'/);
   assert.match(authApi, /const LOGIN_PATH = 'system\/sysUser\/login'/);
-  assert.match(authApi, /userPassword: md5\(password\)/);
+  assert.match(authApi, /userPassword: md5Hex\(password\)/);
   assert.match(authApi, /postJson<AuthUser>[\s\S]*?auth: 'omit'/);
 });
 

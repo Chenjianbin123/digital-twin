@@ -1,28 +1,22 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
+import { useDashboardTheme } from '@/core/use-dashboard-theme';
+import '@/styles/dashboard-theme.scss';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import DashboardAreaNav from '@/components/dashboard/DashboardAreaNav.vue';
 import DashboardBottomNav from '@/components/dashboard/DashboardBottomNav.vue';
 import DashboardHeader from '@/components/dashboard/DashboardHeader.vue';
+import NurseStationPreviewLink from '@/components/NurseStationPreviewLink.vue';
 import DashboardLeftPanel from '@/components/dashboard/DashboardLeftPanel.vue';
 import AreaSelectionView from '@/components/AreaSelectionView.vue';
 import AreaSwitcher from '@/components/AreaSwitcher.vue';
-import StartupLoader from '@/components/StartupLoader.vue';
 import SceneSwitchLoader from '@/components/SceneSwitchLoader.vue';
-import NurseStationPanel from '@/components/NurseStationPanel.vue';
-import NurseStationVisualScene from '@/components/NurseStationVisualScene.vue';
-import HospitalIntroPanel from '@/components/HospitalIntroPanel.vue';
-import AreaInfoPanel from '@/components/AreaInfoPanel.vue';
 import EnvAlertBanner from '@/components/EnvAlertBanner.vue';
-import WardInfoPanel from '@/components/WardInfoPanel.vue';
-import WardLegend from '@/components/WardLegend.vue';
-import WardPlanBedDialog from '@/components/WardPlanBedDialog.vue';
-import SwpLoginGate from '@/components/SwpLoginGate.vue';
 import { formatBedLabel } from '@/core/alert-workflow';
 import type { AlertTask } from '@/core/alert-workflow';
 import { buildAreaSceneIdentity } from '@/core/area-scene-identity';
 import { prepareAreaSelection } from '@/core/area-selection-bootstrap';
-import { resolveSceneSwitchFeedback, type SceneSwitchFeedback } from '@/core/scene-transition';
+import { useSceneLoading } from '@/core/use-scene-loading';
 import { getWardBedStats } from '@/types/twin';
 import { useTwinStore } from '@/stores/twin-store';
 import { clearAreaDiscoveryCache } from '@/api/area-context';
@@ -34,15 +28,25 @@ import {
   readAuthSession,
 } from '@/core/auth-session';
 import type { AuthSession } from '@/types/auth';
-import type { AreaModelState } from '@/core/area-scene';
 import { resolveDataStatus } from '@/core/data-status';
+import { buildNurseStationViewModel } from '@/core/nurse-station-view-model';
 import { ALERT_ACK_STORAGE_KEY } from '@/core/alert-ack';
 import { SWP_CALL_ALERTS_STORAGE_KEY } from '@/services/swp-call-notifier';
 
+const { theme, toggleTheme } = useDashboardTheme();
 const store = useTwinStore();
+const StartupLoader = defineAsyncComponent(() => import('@/components/StartupLoader.vue'));
 const AreaScene3D = defineAsyncComponent(() => import('@/components/AreaScene3D.vue'));
 const WardScene3D = defineAsyncComponent(() => import('@/components/WardScene3D.vue'));
 const WardPlanView = defineAsyncComponent(() => import('@/components/WardPlanView.vue'));
+const NurseStationPanel = defineAsyncComponent(() => import('@/components/NurseStationPanel.vue'));
+const NurseStationVisualScene = defineAsyncComponent(() => import('@/components/NurseStationVisualScene.vue'));
+const HospitalIntroPanel = defineAsyncComponent(() => import('@/components/HospitalIntroPanel.vue'));
+const AreaInfoPanel = defineAsyncComponent(() => import('@/components/AreaInfoPanel.vue'));
+const WardInfoPanel = defineAsyncComponent(() => import('@/components/WardInfoPanel.vue'));
+const WardLegend = defineAsyncComponent(() => import('@/components/WardLegend.vue'));
+const WardPlanBedDialog = defineAsyncComponent(() => import('@/components/WardPlanBedDialog.vue'));
+const SwpLoginGate = defineAsyncComponent(() => import('@/components/SwpLoginGate.vue'));
 const authSession = ref<AuthSession | null>(readAuthSession());
 const authNotice = ref('');
 const bootProgress = ref(0);
@@ -52,13 +56,10 @@ const bootPhase = ref('初始化智慧病房资源');
 const isAreaSwitcherOpen = ref(false);
 const bootError = ref<string | null>(null);
 const isBootRetrying = ref(false);
-const sceneSwitchFeedback = ref<SceneSwitchFeedback | null>(null);
 const panelsVisible = ref(true);
-const stationModelState = ref<AreaModelState>('loading');
 const MIN_STARTUP_DURATION = 1400;
 let bootTimer: ReturnType<typeof setInterval> | null = null;
 let bootStartedAt = 0;
-let sceneSwitchTimer: number | null = null;
 let dataStatusTimer: number | null = null;
 let hasBootstrapped = false;
 let bootGeneration = 0;
@@ -145,6 +146,24 @@ const dataStatus = computed(() => resolveDataStatus({
   nowMs: dataStatusNow.value,
 }));
 
+const nurseStationViewModel = computed(() => area.value
+  ? buildNurseStationViewModel({
+      areaId: selectedAreaId.value,
+      area: area.value,
+      roomSummaries: roomSummaries.value,
+      configuredDeviceCount: deviceCodes.value.length,
+      alertTasks: alertTasks.value,
+      swpEvents: swpEvents.value,
+      swpResponseMetrics: swpResponseMetrics.value,
+      swpEventSync: swpEventSync.value,
+      swpResponseSync: swpResponseSync.value,
+      inspectionRoomSummaries: inspectionRoomSummaries.value,
+      inspectionSync: inspectionSync.value,
+      wardDataStatus: dataStatus.value,
+      wardDataSyncedAtMs: lastFetchedAtMs.value,
+    })
+  : null);
+
 const preloadedWard = computed(() => currentWard.value ?? area.value?.rooms[0] ?? null);
 const currentInspectionSummary = computed(() =>
   currentRoomIndex.value >= 0
@@ -166,6 +185,14 @@ const vitalWarningBedCodes = computed(() => {
 const stationSceneActive = computed(() => isNurseStation.value);
 const corridorSceneActive = computed(() => isWard.value);
 const interiorSceneActive = computed(() => isWardInterior.value && wardInteriorView.value === '3d');
+const sceneScope = computed(() => authSession.value && area.value
+  ? buildAreaSceneIdentity(selectedAreaId.value)
+  : null);
+const requestedScene = computed(() => isWardInterior.value && wardInteriorView.value === 'plan'
+  ? null
+  : sceneType.value);
+const { scenes, feedback: sceneSwitchFeedback, retry: retryScene } = useSceneLoading(sceneScope, requestedScene);
+const stationModelState = computed(() => scenes.value['nurse-station'].state);
 
 watch([() => isWardInterior.value, () => wardInteriorView.value], ([interior, view]) => {
   if (interior && view === 'plan')
@@ -269,19 +296,7 @@ function alertTypeLabel(type: AlertTask['type']) {
 }
 
 function handleSceneTypeChange(type: typeof sceneType.value) {
-  const feedback = resolveSceneSwitchFeedback(sceneType.value, type);
-  if (sceneSwitchTimer) {
-    window.clearTimeout(sceneSwitchTimer);
-    sceneSwitchTimer = null;
-  }
-  sceneSwitchFeedback.value = feedback;
   store.setSceneType(type);
-  if (feedback) {
-    sceneSwitchTimer = window.setTimeout(() => {
-      sceneSwitchFeedback.value = null;
-      sceneSwitchTimer = null;
-    }, feedback.durationMs);
-  }
 }
 
 function setNurseStationWallboard(enabled: boolean) {
@@ -361,7 +376,7 @@ function finishBootProgress(generation: number) {
   window.setTimeout(() => {
     if (generation !== bootGeneration)
       return;
-    bootPhase.value = '场景装配完成';
+    bootPhase.value = '正在进入工作空间';
     bootTargetProgress.value = 100;
   }, finishDelay);
   const waitForComplete = window.setInterval(() => {
@@ -474,7 +489,7 @@ onBeforeUnmount(() => {
     @authenticated="handleAuthenticated"
   />
 
-  <div v-else class="digital-twin">
+  <div v-else class="digital-twin" :data-theme="theme">
     <Transition name="startup-fade">
       <StartupLoader
         v-if="showStartupLoader"
@@ -510,6 +525,8 @@ onBeforeUnmount(() => {
       }"
     >
       <DashboardHeader
+        :theme="theme"
+        @toggle-theme="toggleTheme"
         :area-name="area.areaName"
         :dept-name="area.deptName"
         :env-temp="envTemp"
@@ -523,7 +540,11 @@ onBeforeUnmount(() => {
         @refresh="store.reset()"
         @open-area-switch="isAreaSwitcherOpen = true"
         @logout="handleLogout"
-      />
+      >
+        <template #actions>
+          <NurseStationPreviewLink v-if="isNurseStation" />
+        </template>
+      </DashboardHeader>
 
       <AreaSwitcher
         v-if="area && selectedAreaId != null"
@@ -633,23 +654,24 @@ onBeforeUnmount(() => {
         <WardLegend v-if="(isWard || isWardInterior) && panelsVisible" />
 
         <NurseStationVisualScene
+          :theme="theme"
+          v-if="nurseStationViewModel && scenes['nurse-station'].requested"
+          :key="scenes['nurse-station'].key"
           class="digital-twin__scene-layer"
           :class="{ 'digital-twin__scene-layer--inactive': !stationSceneActive }"
-          :area="area"
-          :room-summaries="roomSummaries"
-          :device-count="deviceCodes.length"
+          :view-model="nurseStationViewModel"
           :overlays-visible="panelsVisible"
           :model-state="stationModelState"
           :active="stationSceneActive"
           @room-click="store.enterRoom"
-          @model-state="stationModelState = $event"
+          @model-state="scenes['nurse-station'].onState"
         />
 
         <AreaScene3D
-          v-if="area"
+          v-if="area && scenes.ward.requested"
           class="digital-twin__scene-layer"
           :class="{ 'digital-twin__scene-layer--inactive': !corridorSceneActive }"
-          :key="buildAreaSceneIdentity(selectedAreaId)"
+          :key="scenes.ward.key"
           :area-id="selectedAreaId"
           :area="area"
           :room-summaries="roomSummaries"
@@ -658,12 +680,14 @@ onBeforeUnmount(() => {
           scene-type="ward"
           model-kind="corridor"
           :active="corridorSceneActive"
+          @model-state="scenes.ward.onState"
           @room-click="store.enterRoom"
           @focus-room="store.focusRoom"
         />
 
         <WardScene3D
-          v-if="preloadedWard"
+          v-if="preloadedWard && scenes['ward-interior'].requested"
+          :key="scenes['ward-interior'].key"
           class="digital-twin__scene-layer"
           :class="{ 'digital-twin__scene-layer--inactive': !interiorSceneActive }"
           :ward="preloadedWard"
@@ -672,6 +696,7 @@ onBeforeUnmount(() => {
           :selected-bed-code="selectedBed?.bedCode ?? null"
           :vital-warning-bed-codes="vitalWarningBedCodes"
           :active="interiorSceneActive"
+          @model-state="scenes['ward-interior'].onState"
           @bed-click="store.selectBed"
         />
         <WardPlanView
@@ -703,7 +728,11 @@ onBeforeUnmount(() => {
         @toggle-simulation="store.toggleSimulation()"
       />
 
-      <SceneSwitchLoader :feedback="sceneSwitchFeedback" />
+      <SceneSwitchLoader
+        :feedback="sceneSwitchFeedback"
+        @retry="retryScene"
+        @return-station="handleSceneTypeChange('nurse-station')"
+      />
 
       <aside
         v-show="panelsVisible"
@@ -716,22 +745,21 @@ onBeforeUnmount(() => {
       >
         <template v-if="isNurseStation">
           <NurseStationPanel
+            v-if="nurseStationViewModel"
+            :view-model="nurseStationViewModel"
             :area="area"
-            :room-summaries="roomSummaries"
+            :room-summaries="nurseStationViewModel.roomSummaries"
             :status-history="statusHistory"
-            :device-count="deviceCodes.length"
-            :alert-tasks="alertTasks"
+            :alert-tasks="nurseStationViewModel.alertTasks"
             :hidden-alert-tasks="hiddenAlertTasks"
             :alert-ack-records="alertAckRecords"
             :call-alerts-enabled="callAlertsEnabled"
-            :swp-events="swpEvents"
+            :swp-events="nurseStationViewModel.swpEvents"
             :swp-response-metrics="swpResponseMetrics"
             :swp-event-sync="swpEventSync"
             :swp-response-sync="swpResponseSync"
             :inspection-room-summaries="inspectionRoomSummaries"
             :inspection-sync="inspectionSync"
-            :ward-data-status="dataStatus"
-            :ward-data-synced-at-ms="lastFetchedAtMs"
             :wallboard="nurseStationWallboard"
             @focus-room="store.focusRoom"
             @locate-alert="store.openAlertTask"
@@ -901,6 +929,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 
   --mobile-panel-height: min(45vh, 520px);
+  --dashboard-font-unit: clamp(1px, 0.05208333vw, 1.5px);
   --mobile-control-gap: calc(12px + env(safe-area-inset-bottom));
 
 
@@ -1129,16 +1158,13 @@ onBeforeUnmount(() => {
   }
 
   &__main {
+    container-type: size;
     position: relative;
     flex: 1;
     min-height: 0;
     overflow: hidden;
 
     &--scene-switching {
-      :deep(.dash-bottom) {
-        pointer-events: none;
-      }
-
       > .digital-twin__panel-toggle {
         opacity: 0.48;
         pointer-events: none;
@@ -1146,12 +1172,12 @@ onBeforeUnmount(() => {
     }
 
     &--station {
-      --scene-panel-width: clamp(340px, 26vw, 460px);
+      --scene-panel-width: clamp(360px, 26vw, 680px);
       --mobile-panel-height: min(42vh, 500px);
     }
 
     &--wallboard {
-      --scene-panel-width: clamp(440px, 34vw, 620px);
+      --scene-panel-width: clamp(440px, 34vw, 880px);
       --mobile-panel-height: min(54vh, 640px);
       background:
         radial-gradient(circle at 20% 0%, rgba(54, 184, 255, 0.08), transparent 32%),
@@ -1159,10 +1185,10 @@ onBeforeUnmount(() => {
     }
 
     &--ward {
-      --scene-panel-width: clamp(340px, 24vw, 430px);
+      --scene-panel-width: clamp(340px, 24vw, 640px);
 
       @include up($bp-xl) {
-        --scene-panel-width: 430px;
+        --scene-panel-width: clamp(384px, 24vw, 640px);
       }
 
       @include between($bp-md, $bp-lg) {
@@ -1193,7 +1219,8 @@ onBeforeUnmount(() => {
     letter-spacing: 0;
     cursor: pointer;
     backdrop-filter: blur(8px);
-    transition: right 180ms ease, bottom 180ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
+    // 几何位置必须随断点立即更新，避免缩放过程中按钮穿过侧栏或移出屏幕。
+    transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 
     &:hover {
       border-color: rgba(215, 255, 249, 0.62);
@@ -1304,9 +1331,9 @@ onBeforeUnmount(() => {
   }
 
   &__main--station:not(&__main--panels-hidden) :deep(.dash-bottom) {
-    transform: translateX(-50%) scale(0.9);
+    transform: translateX(-50%);
     transform-origin: 50% 100%;
-    opacity: 0.9;
+    opacity: 1;
 
     @include down($bp-md) {
       bottom: calc(var(--mobile-panel-height) + 10px + env(safe-area-inset-bottom));
@@ -1417,6 +1444,7 @@ onBeforeUnmount(() => {
     --panel-surface-soft: rgba(8, 24, 42, 0.2);
     --panel-glass-alpha: 0.42;
     --panel-line-top: 58px;
+    container: scene-panel / inline-size;
 
     position: absolute;
     top: 0;
@@ -1788,4 +1816,41 @@ onBeforeUnmount(() => {
   }
 }
 
+// 导航居中于未被侧栏遮挡的区域，而不是整个窗口。
+.digital-twin__main--ward .digital-twin__panel {
+  // 医院介绍与病区数据共用滚动区，短屏上不能让介绍挤掉数据面板。
+  overflow-y: auto;
+  pointer-events: auto;
+}
+.digital-twin__main--ward .digital-twin__panel-body {
+  flex: 0 0 auto;
+  overflow: visible;
+  > :deep(*) { flex: none; height: auto; overflow-y: visible; }
+}
+@media (min-width: 1024px) {
+  .digital-twin__main:not(.digital-twin__main--panels-hidden) :deep(.dash-bottom) {
+    left: 50%;
+    max-width: calc(100% - 24px);
+  }
+}
+
+@media (max-width: 1023px) {
+  .digital-twin__main {
+    --mobile-panel-height: min(42vh, 42cqh, 500px);
+  }
+  .digital-twin__main .digital-twin__panel {
+    height: var(--mobile-panel-height);
+  }
+  .digital-twin .digital-twin__main .digital-twin__panel-toggle:not(.digital-twin__panel-toggle--hidden) {
+    right: 12px;
+    bottom: calc(var(--mobile-panel-height) + 10px + env(safe-area-inset-bottom));
+    min-height: 40px;
+  }
+  .digital-twin__main:not(.digital-twin__main--panels-hidden) :deep(.dash-bottom) {
+    max-width: calc(100% - 128px);
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+}
 </style>

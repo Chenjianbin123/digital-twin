@@ -36,13 +36,18 @@ const interiorItems = computed(() => [
         :key="item.key"
         type="button"
         class="dash-bottom__item"
+        :aria-pressed="props.sceneType === item.type"
         :class="{
           'dash-bottom__item--active': props.sceneType === item.type,
           'dash-bottom__item--corridor': item.type === 'ward',
         }"
         @click="emit('setSceneType', item.type)"
       >
-        <span class="dash-bottom__icon" :class="`dash-bottom__icon--${item.icon}`" aria-hidden="true" />
+        <svg class="dash-bottom__scene-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path v-if="item.icon === 'station'" d="M4 21v-7h16v7M2 21h20M7 14V4h10v10M10 8h4M12 6v4"/>
+          <path v-else-if="item.icon === 'ward'" d="M3 21V3h18v18M8 21V8h8v13M3 3l5 5m13-5-5 5M11 15h1"/>
+          <path v-else d="M3 20V6m0 9h18v5M3 11h6v4m0-5h10a2 2 0 0 1 2 2v3M6 8h1"/>
+        </svg>
         <span class="dash-bottom__label">{{ item.label }}</span>
       </button>
     </div>
@@ -123,7 +128,7 @@ const interiorItems = computed(() => [
     border-radius: 999px;
     background: transparent;
     color: rgba(200, 225, 245, 0.88);
-    font-size: 11px;
+    font-size: dash-font(11);
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
@@ -175,7 +180,7 @@ const interiorItems = computed(() => [
       padding-inline: 13px;
 
       .dash-bottom__label {
-        font-size: 10px;
+        font-size: dash-font(10);
         letter-spacing: 0.02em;
       }
     }
@@ -243,7 +248,7 @@ const interiorItems = computed(() => [
   }
 
   &__label {
-    font-size: 10px;
+    font-size: dash-font(10);
     font-weight: 600;
     color: rgba(200, 225, 245, 0.88);
     white-space: nowrap;
@@ -281,7 +286,7 @@ const interiorItems = computed(() => [
     }
 
     .dash-bottom__label {
-      font-size: 9px;
+      font-size: dash-font(9);
       color: rgba(200, 225, 245, 0.76);
     }
   }
@@ -305,7 +310,7 @@ const interiorItems = computed(() => [
     }
 
     &__label {
-      font-size: 10px;
+      font-size: dash-font(10);
     }
   }
 }
@@ -337,7 +342,7 @@ const interiorItems = computed(() => [
     }
 
     &__label {
-      font-size: 9px;
+      font-size: dash-font(9);
     }
   }
 }
@@ -362,5 +367,38 @@ const interiorItems = computed(() => [
 @keyframes sim-pulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
+}
+.dash-bottom {
+  &__main { max-width: 100%; }
+  &__item, &__sim, &__sub-item { min-height: 40px; }
+  &__label, &.dash-bottom--compact .dash-bottom__label,
+  &__item--corridor .dash-bottom__label { font-size: dash-font(12); }
+}
+@media (max-width: 1023px) {
+  .dash-bottom {
+    &__main { width: 100%; padding: 4px; gap: 0; border-radius: 12px; }
+    &__item, &__item--corridor,
+    &.dash-bottom--compact .dash-bottom__item { min-width: 0; flex: 1 1 0; padding-inline: 4px; }
+    &__label { white-space: normal; overflow-wrap: anywhere; }
+  }
+}
+
+/* 统一导航项尺寸，用图标和底色表达选中状态。 */
+.dash-bottom.dash-bottom {
+  left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100% - 24px);
+  .dash-bottom__main { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; padding: 6px; border-radius: 14px; background: #102936f5; border: 1px solid #789eae55; box-shadow: 0 8px 24px #04141e30; }
+  .dash-bottom__item { flex-direction: row; justify-content: center; gap: 8px; min-width: 106px; min-height: 46px; padding: 10px 14px; border: 1px solid transparent; border-radius: 9px; color: #abc6d2; background: transparent; box-shadow: none; }
+  .dash-bottom__scene-icon { display: block; width: 20px; height: 20px; flex-shrink: 0; }
+  .dash-bottom__label { font-size: 13px; font-weight: 500; color: inherit; white-space: nowrap; }
+  .dash-bottom__item--active { color: #b6eee1; background: #24505a; border-color: #7fc6bd55; box-shadow: inset 0 1px #cfffee10; }
+  .dash-bottom__item:hover { background: #21434f; }
+  button:focus-visible { outline: 2px solid #8cdace; outline-offset: 2px; }
+}
+@media(max-width: 600px) {
+  .dash-bottom.dash-bottom {
+    .dash-bottom__main { padding: 4px; }
+    .dash-bottom__item { flex-direction: column; min-width: 64px; padding: 7px 6px; gap: 4px; }
+    .dash-bottom__label { font-size: 12px; }
+  }
 }
 </style>

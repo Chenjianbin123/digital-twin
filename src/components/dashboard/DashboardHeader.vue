@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 const props = defineProps<{
+  theme?: 'light' | 'dark';
   areaName?: string;
   deptName?: string;
   envTemp?: string;
@@ -17,6 +18,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  toggleTheme: [];
   refresh: [];
   openAreaSwitch: [];
   logout: [];
@@ -40,7 +42,7 @@ const dataStatusLabel = computed(() => ({
           :title="canSwitchArea ? `切换病区，当前为${areaName}` : areaName"
           @click="emit('openAreaSwitch')"
         >
-          <span class="dash-header__area-name">{{ areaName }}</span>
+          <svg class="dash-header__area-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 21V4h12v17M2 21h20M8 8h4M8 12h4M17 9h3v12"/></svg><span class="dash-header__area-name">{{ areaName }}</span>
           <span class="dash-header__chevron" aria-hidden="true">
             <i />
           </span>
@@ -69,6 +71,11 @@ const dataStatusLabel = computed(() => ({
 
     <div class="dash-header__side dash-header__side--right" :class="{ 'dash-header__side--compact': compact }">
       <div class="dash-header__actions">
+        <button type="button" class="dash-header__theme" :aria-label="theme === 'light' ? '切换深色主题' : '切换浅色主题'" :title="theme === 'light' ? '切换深色主题' : '切换浅色主题'" @click="emit('toggleTheme')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 5v14"/><path d="M12 5a7 7 0 0 1 0 14Z" fill="currentColor"/></svg>
+          <span>{{ theme === 'light' ? '深色' : '浅色' }}</span>
+        </button>
+        <slot name="actions" />
         <div v-if="operatorName" class="dash-header__operator" :title="`${operatorName}${operatorRole ? ` · ${operatorRole}` : ''}`">
           <span class="dash-header__operator-dot" aria-hidden="true" />
           <strong>{{ operatorName }}</strong>
@@ -81,7 +88,7 @@ const dataStatusLabel = computed(() => ({
           title="刷新数据"
           @click="emit('refresh')"
         >
-          <span class="dash-header__action-icon" aria-hidden="true">↻</span>
+          <svg class="dash-header__action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M20 12a8 8 0 1 0-2 6M20 7l-3-3"/></svg>
           <span class="dash-header__action-label">刷新</span>
         </button>
         <button
@@ -91,7 +98,7 @@ const dataStatusLabel = computed(() => ({
           title="退出登录"
           @click="emit('logout')"
         >
-          <span class="dash-header__action-icon" aria-hidden="true">⎋</span>
+          <svg class="dash-header__action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H4v16h6M9 12h12m-4-4 4 4-4 4"/></svg>
           <span class="dash-header__action-label">退出</span>
         </button>
       </div>
@@ -287,7 +294,7 @@ const dataStatusLabel = computed(() => ({
   &__title {
     margin: 0;
     min-width: 0;
-    font-size: 22px;
+    font-size: dash-font(22);
     font-weight: 800;
     letter-spacing: 0;
     color: #fff;
@@ -743,4 +750,48 @@ const dataStatusLabel = computed(() => ({
     }
   }
 }
+
+/* 保持桌面头部 56px，与场景的顶部预留空间一致。 */
+.dash-header.dash-header {
+  height: 56px; box-sizing: border-box; padding: 8px 20px; align-items: center;
+  background: #0a1f2ded; border-bottom: 1px solid #7299ad38;
+  box-shadow: 0 4px 16px #03111b22;
+  .dash-header__side--left, .dash-header__side--right, .dash-header__center { padding-top: 0; }
+  .dash-header__area-cluster { display: flex; flex-direction: row; align-items: center; gap: 12px; max-width: 100%; padding: 0; border: 0; background: none; box-shadow: none; backdrop-filter: none; }
+  .dash-header__area-trigger { min-height: 36px; max-width: 220px; padding: 6px 10px; border: 1px solid #7ba4b343; border-radius: 6px; background: #153441; box-shadow: none; }
+  .dash-header__area-icon { width: 18px; height: 18px; flex-shrink: 0; color: #a0d7d4; }
+  .dash-header__area-name { max-width: 170px; font-size: 13px; font-weight: 600; }
+  .dash-header__area-meta { gap: 6px; }
+  .dash-header__dept { max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #a7bfce; font-size: 12px; font-weight: 400; }
+  .dash-header__tag, .dash-header__data-status { font-size: 12px; font-weight: 500; padding: 2px 6px; border-radius: 4px; }
+  .dash-header__title { font-size: clamp(18px,1.2vw,28px); font-weight: 600; letter-spacing: .06em; color: #e4f2f8; text-shadow: none; line-height: 1.3; }
+  .dash-header__title-glow { display: none; }
+  .dash-header__wing { width: 32px; flex-basis: 32px; opacity: .3; height: 1px; }
+  .dash-header__wing::before { display: none; }
+  .dash-header__operator { border: 0; border-radius: 0; background: none; padding: 0 12px 0 0; margin: 0; border-right: 1px solid #709aaf33; max-width: 160px; }
+  .dash-header__operator strong { font-size: 12px; font-weight: 500; }
+  .dash-header__operator-dot { display: inline-block; width: 6px; height: 6px; flex-shrink: 0; background: #8ed9c4; border-radius: 50%; box-shadow: none; }
+  .dash-header__refresh, .dash-header__logout { display: inline-flex; margin: 0; width: auto; min-width: 36px; height: 36px; padding: 0 10px; gap: 7px; border-radius: 6px; border: 1px solid #729aab38; background: #15313f; color: #b8dcdf; font-size: 12px; font-weight: 500; box-shadow: none; }
+  .dash-header__logout { color: #ddc4a0; }
+  .dash-header__action-icon { display: block; width: 16px; height: 16px; flex-shrink: 0; }
+  .dash-header__action-label { display: inline; line-height: 1; }
+  button:hover:not(:disabled) { background: #204451; border-color: #8cd0ce77; box-shadow: none; }
+  button:focus-visible { outline: 2px solid #94dfd4; outline-offset: 2px; }
+}
+@media(max-width: 1400px) {
+  .dash-header.dash-header .dash-header__dept, .dash-header.dash-header .dash-header__dot { display: none; }
+  .dash-header.dash-header .dash-header__wing { display: none; }
+}
+@media(max-width: 1100px) {
+  .dash-header.dash-header .dash-header__area-meta, .dash-header.dash-header .dash-header__action-label { display: none; }
+}
+@media(max-width: 767px) {
+  .dash-header.dash-header { height: auto; min-height: 88px; padding: 8px 12px; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+  .dash-header.dash-header .dash-header__title { font-size: 16px; }
+  .dash-header.dash-header .dash-header__operator { display: none; }
+  .dash-header.dash-header .dash-header__area-name { max-width: 160px; }
+}
+.dash-header__theme { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0; height: 36px; padding: 0 10px; border: 1px solid #729aab38; border-radius: 6px; background: #15313f; color: #b8dcdf; font: inherit; font-size: 12px; cursor: pointer; }
+.dash-header__theme svg { width: 16px; height: 16px; }
+@media(max-width: 1200px) { .dash-header__theme span { display: none; } }
 </style>

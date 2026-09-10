@@ -5,17 +5,10 @@ import DoorStaffCards from "@/components/DoorStaffCards.vue";
 import DashSectionHeader from "@/components/dashboard/DashSectionHeader.vue";
 import NurseStationMetricChart from "@/components/dashboard/NurseStationMetricChart.vue";
 import type { AlertAckRecordMap } from "@/core/alert-ack";
+import type { NurseStationViewModel } from "@/core/nurse-station-view-model";
 import type { RoomPriority, RoomSummary } from "@/core/area-summary";
 import type { AlertTask } from "@/core/alert-workflow";
-import {
-  buildDataFreshnessItems,
-  buildDataHealthSummary,
-  type DataStatus,
-} from "@/core/data-status";
-import {
-  buildNurseStationLiveData,
-  buildShiftHandoffSummary,
-} from "@/core/nurse-station-live-data";
+import type { DataStatus } from "@/core/data-status";
 import type {
   NormalizedSwpEvent,
   SwpEventSyncState,
@@ -32,10 +25,10 @@ import type {
 } from "@/types/twin";
 
 const props = defineProps<{
+  viewModel: NurseStationViewModel;
   area: TwinAreaEntity;
   roomSummaries: RoomSummary[];
   statusHistory?: StatusHistoryEntry[];
-  deviceCount?: number;
   alertTasks?: AlertTask[];
   hiddenAlertTasks?: AlertTask[];
   alertAckRecords?: AlertAckRecordMap;
@@ -46,8 +39,6 @@ const props = defineProps<{
   swpResponseSync?: SwpEventSyncState;
   inspectionRoomSummaries?: InspectionRoomSummary[];
   inspectionSync?: InspectionSyncState;
-  wardDataStatus?: DataStatus;
-  wardDataSyncedAtMs?: number | null;
   wallboard?: boolean;
 }>();
 
@@ -67,45 +58,7 @@ const primaryWard = computed<TwinWardEntity | null>(
   () => props.area.rooms[0] ?? null,
 );
 
-const metrics = computed(() => {
-  const live = buildNurseStationLiveData(
-    props.area,
-    props.roomSummaries,
-    props.deviceCount,
-  );
-  const callKeys = new Set<string>();
-  for (const room of props.area.rooms) {
-    for (const bed of room.beds) {
-      if (bed.isCalling)
-        callKeys.add(`bed:${room.sickroomCode}:${bed.bedCode}`);
-    }
-  }
-  for (const event of props.swpEvents ?? []) {
-    if (event.taskType !== "call") continue;
-    callKeys.add(
-      event.location?.bedCode
-        ? `bed:${event.location.roomCode}:${event.location.bedCode}`
-        : `event:${event.id}`,
-    );
-  }
-  const vitalWarnings = (props.alertTasks ?? []).filter(task => task.type === "vital").length;
-  return {
-    ...live,
-    occupied: live.occupiedBeds,
-    empty: live.emptyBeds,
-    calling: callKeys.size,
-    offlineBeds: live.offlineBedCount,
-    envWarnings: live.envWarningCount,
-    vitalWarnings,
-    state: vitalWarnings
-      ? {
-          level: "urgent" as const,
-          label: "体征预警",
-          message: `${vitalWarnings} 项生命体征预警，请优先评估患者`,
-        }
-      : live.state,
-  };
-});
+const metrics = computed(() => props.viewModel.metrics);
 const occupancyRate = computed(() => {
   const { occupied, totalBeds } = metrics.value;
   if (!totalBeds) return null;
@@ -127,6 +80,8 @@ const stationKpis = computed(() => [
     value: metrics.value.occupied,
     unit: "人",
     tone: "cyan",
+    percent: occupancyRate.value,
+    detail: `${metrics.value.occupied}/${metrics.value.totalBeds} 床在院`,
   },
   {
     key: "empty",
@@ -162,6 +117,8 @@ const stationKpis = computed(() => [
     value: metrics.value.deviceOnline,
     unit: "台",
     tone: metrics.value.offlineBeds ? "warn" : "green",
+    percent: metrics.value.deviceHealthRate,
+    detail: `${metrics.value.deviceOnline}/${metrics.value.deviceTotal} 台在线`,
   },
 ]);
 
@@ -285,44 +242,12 @@ const eventSourceDetail = computed(() => {
   return `最近同步 ${new Date(props.swpEventSync.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
 });
 
-const shiftHandoff = computed(() =>
-  buildShiftHandoffSummary(props.alertTasks ?? [], props.swpEventSync),
-);
 
-const dataHealth = computed(() =>
-  buildDataHealthSummary({
-    wardStatus: props.wardDataStatus ?? "loading",
-    eventSync: props.swpEventSync ?? {
-      phase: "idle",
-      lastSyncedAt: null,
-      error: null,
-      warning: null,
-    },
-  }),
-);
+const dataHealth = computed(() => props.viewModel.dataHealth);
 
-const dataFreshnessItems = computed(() =>
-  buildDataFreshnessItems({
-    wardStatus: props.wardDataStatus ?? "loading",
-    wardSyncedAtMs: props.wardDataSyncedAtMs,
-    eventSync: props.swpEventSync,
-    responseSync: props.swpResponseSync,
-    inspectionSync: props.inspectionSync,
-  }),
-);
+const dataFreshnessItems = computed(() => props.viewModel.dataFreshnessItems);
 
-const displayedStationState = computed(() => {
-  if (
-    metrics.value.state.level !== "normal" ||
-    dataHealth.value.canDeclareNormal
-  )
-    return metrics.value.state;
-  return {
-    level: "attention" as const,
-    label: "数据需复核",
-    message: "数据未完全同步，暂不能判断病区运行正常",
-  };
-});
+const displayedStationState = computed(() => props.viewModel.state);
 
 const statusTone = computed(() =>
   displayedStationState.value.level === "urgent"
@@ -338,18 +263,7 @@ const statusModeLabel = computed(() => {
   return "系统运行正常";
 });
 
-const displayedShiftHandoff = computed(() => {
-  if (dataHealth.value.canDeclareNormal || (props.alertTasks?.length ?? 0) > 0)
-    return shiftHandoff.value;
-  return {
-    level: "attention" as const,
-    title: "交班数据需复核",
-    items: [
-      "数据未完全同步，暂不能确认本班无待交接事项",
-      "请结合管理机、话机和现场设备确认",
-    ],
-  };
-});
+const displayedShiftHandoff = computed(() => props.viewModel.shiftHandoff);
 
 function dataHealthStatusLabel(status: DataStatus) {
   if (status === "ready") return "正常";
@@ -565,65 +479,64 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   >
     <header class="station-hero">
       <span class="station-hero__scanline" aria-hidden="true" />
-      <span class="station-hero__grid" aria-hidden="true" />
+      <div class="station-hero__overview-head">
+        <div class="station-hero__identity">
+          <svg class="station-hero__identity-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h16v7H4zM6 14V3h12v11M9 6h6v5H9zM10 18h4m-2-2v4" /></svg>
+          <div>
+            <span class="station-hero__eyebrow">护士站指挥中心</span>
+            <span
+              class="station-hero__status-live"
+              :class="`station-hero__status-live--${viewModel.realtime.status}`"
+              :title="viewModel.realtime.detail"
+            ><i aria-hidden="true" />{{ viewModel.realtime.label }}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="station-hero__wallboard-toggle"
+          :aria-pressed="wallboard"
+          :aria-label="wallboard ? '退出护士站大屏模式' : '进入护士站大屏模式'"
+          @click="emit('setWallboard', !wallboard)"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg>
+          {{ wallboard ? '退出大屏' : '大屏模式' }}
+        </button>
+      </div>
+
       <div class="station-hero__body">
         <div class="station-state" :class="`station-state--${statusTone}`">
-          <span class="station-state__signal" aria-hidden="true" />
-          <strong>当前运行状态</strong>
-          <small>{{ statusModeLabel }}</small>
-        </div>
-        <div class="station-hero__status">
-          <span class="station-hero__eyebrow">护士站指挥中心</span>
-          <div class="station-hero__status-head">
-            <span
-              :class="`station-hero__badge station-hero__badge--${statusTone}`"
-            >
-              {{ displayedStationState.label }}
-            </span>
-            <span class="station-hero__status-live">
-              <i aria-hidden="true" />实时数据
-            </span>
-            <button
-              type="button"
-              class="station-hero__wallboard-toggle"
-              :aria-pressed="wallboard"
-              :aria-label="wallboard ? '退出护士站大屏模式' : '进入护士站大屏模式'"
-              @click="emit('setWallboard', !wallboard)"
-            >
-              {{ wallboard ? "退出大屏" : "大屏模式" }}
-            </button>
+          <div class="station-state__heading">
+            <span class="station-state__signal" aria-hidden="true" />
+            <strong>当前运行状态</strong>
+            <span :class="`station-hero__badge station-hero__badge--${statusTone}`">{{ displayedStationState.label }}</span>
           </div>
-          <p>{{ displayedStationState.message }}</p>
-          <div class="station-hero__chips">
-            <span class="station-hero__chip station-hero__chip--load">{{
-              loadLabel
-            }}</span>
-            <span class="station-hero__chip station-hero__chip--rooms"
-              >{{ metrics.rooms }} 间病房</span
-            >
-            <span class="station-hero__chip station-hero__chip--devices"
-              >{{ metrics.deviceOnline }}/{{ metrics.deviceTotal }} 台在线</span
-            >
-            <span class="station-hero__chip station-hero__chip--events"
-              >真实事件 {{ swpEvents?.length ?? 0 }}</span
-            >
-            <span
-              v-if="metrics.vitalWarnings"
-              class="station-hero__chip station-hero__chip--vital"
-            >
-              体征预警 {{ metrics.vitalWarnings }} 项
-            </span>
-            <button
-              type="button"
-              class="station-hero__alert-toggle"
-              :aria-pressed="callAlertsEnabled"
-              @click="emit('setCallAlertsEnabled', !callAlertsEnabled)"
-            >
-              <span class="station-hero__alert-icon" aria-hidden="true" />
-              呼叫提醒：{{ callAlertsEnabled ? "已开启" : "未开启" }}
-            </button>
+          <div class="station-state__message">
+            <small>{{ statusModeLabel }}</small>
+            <p>{{ displayedStationState.message }}</p>
           </div>
         </div>
+      </div>
+
+      <div class="station-hero__overview-metrics" aria-label="病区关键指标">
+        <div><span>病房数量</span><strong>{{ metrics.rooms }}<small>间</small></strong></div>
+        <div><span>在线设备</span><strong>{{ metrics.deviceOnline }}<small>/ {{ metrics.deviceTotal }} 台</small></strong></div>
+        <div><span>真实事件</span><strong>{{ swpEvents?.length ?? 0 }}<small>项</small></strong></div>
+      </div>
+      <div class="station-hero__overview-foot">
+        <div class="station-hero__overview-tags">
+          <span class="station-hero__chip station-hero__chip--load">{{ loadLabel }}</span>
+          <span v-if="metrics.vitalWarnings" class="station-hero__chip station-hero__chip--vital">体征预警 {{ metrics.vitalWarnings }} 项</span>
+        </div>
+        <button
+          type="button"
+          class="station-hero__alert-toggle"
+          :aria-pressed="callAlertsEnabled"
+          @click="emit('setCallAlertsEnabled', !callAlertsEnabled)"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 6 3 6 3 9H3c0-3 3-3 3-9m4 13h4" /></svg>
+          呼叫提醒：{{ callAlertsEnabled ? '已开启' : '未开启' }}
+          <span class="station-hero__switch-track" aria-hidden="true"><i /></span>
+        </button>
       </div>
     </header>
 
@@ -645,7 +558,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     <section class="inspection-overview">
       <div class="inspection-overview__head">
         <div>
-          <span>巡视总览</span>
+          <span class="station-section-title"><svg class="station-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8 12l3 3 5-6"/></svg>巡视总览</span>
           <strong>真实巡视记录</strong>
         </div>
         <small>{{ inspectionSyncLabel }}</small>
@@ -692,7 +605,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       :class="`handoff-card--${displayedShiftHandoff.level}`"
     >
       <div class="handoff-card__head">
-        <span>护理交班</span>
+        <span class="station-section-title"><svg class="station-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h15l-4-4M20 17H5l4 4M19 7l-4 4M5 17l4-4"/></svg>护理交班</span>
         <strong>{{ displayedShiftHandoff.title }}</strong>
       </div>
       <ul>
@@ -704,7 +617,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
     <section class="data-health" :class="`data-health--${dataHealth.level}`">
       <div class="data-health__head">
-        <span>数据健康</span>
+        <span class="station-section-title"><svg class="station-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z"/><path d="M7 12h3l2-4 2 8 2-4h2"/></svg>数据健康</span>
         <strong>{{ dataHealth.label }}</strong>
       </div>
       <ul>
@@ -748,7 +661,10 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       </article>
     </section> -->
 
-    <NurseStationMetricChart :kpis="stationKpis" />
+    <NurseStationMetricChart
+      :kpis="stationKpis"
+      :realtime-status="viewModel.realtime"
+    />
 
     <section
       v-if="focusRooms.length"
@@ -777,7 +693,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
               class="focus-room__bar"
               :style="{ backgroundColor: room.accentColor }"
             />
-            <span class="focus-room__main">
+            <svg class="station-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 21V4h12v17M2 21h20M8 8h4M8 12h4M17 9h3v12"/></svg><span class="focus-room__main">
               <strong>{{ room.sickroomName }}</strong>
               <span>{{ roomPatrolText(room) }}</span>
             </span>
@@ -996,8 +912,17 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   gap: 8px;
   padding: 10px 12px 12px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  > * { flex-shrink: 0; }
   scrollbar-width: thin;
   scrollbar-color: rgba(77, 208, 255, 0.28) transparent;
+
+  button:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid rgba(129, 216, 209, 0.92);
+    outline-offset: 2px;
+  }
 
   &::-webkit-scrollbar {
     width: 4px;
@@ -1020,7 +945,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       justify-content: space-between;
       padding: 0 12px;
       color: rgba(226, 244, 244, 0.9);
-      font-size: 12px;
+      font-size: dash-font(12);
       font-weight: 800;
       cursor: pointer;
       list-style: none;
@@ -1028,7 +953,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       &::after {
         content: "+";
         color: #81d8d1;
-        font-size: 18px;
+        font-size: dash-font(18);
         font-weight: 500;
       }
 
@@ -1076,22 +1001,27 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       border-radius: 10px;
 
       strong {
-        font-size: 12px;
+        font-size: dash-font(14);
       }
 
       small {
-        font-size: 9px;
+        font-size: dash-font(14);
       }
+    }
+
+    .station-hero__status-live,
+    .station-hero__wallboard-toggle {
+      font-size: dash-font(14);
     }
 
     .station-hero__status p {
       margin-top: 10px;
-      font-size: 16px;
+      font-size: dash-font(16);
       line-height: 1.5;
     }
 
     .station-hero__wallboard-toggle {
-      min-height: 30px;
+      min-height: 40px;
       padding-inline: 12px;
       border-color: rgba(121, 236, 255, 0.48);
       color: #e8fdff;
@@ -1109,9 +1039,9 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
       > span,
       > button {
-        min-height: 28px;
+        min-height: 40px;
         padding: 5px 10px;
-        font-size: 11px;
+        font-size: dash-font(14);
       }
     }
 
@@ -1143,12 +1073,25 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     }
 
     :deep(.alert-task__head strong) {
-      font-size: 14px;
+      font-size: dash-font(14);
     }
 
     :deep(.alert-task__main p) {
-      font-size: 12px;
+      font-size: dash-font(14);
       line-height: 1.5;
+    }
+
+    :deep(.alert-task-panel__filters button),
+    :deep(.alert-task-panel__summary),
+    :deep(.alert-task__severity),
+    :deep(.alert-task__type),
+    :deep(.alert-task__meta span),
+    :deep(.alert-task__ack span),
+    :deep(.alert-task__unlocated),
+    :deep(.alert-task__recovery-tip),
+    :deep(.alert-task button),
+    :deep(.alert-task-panel__more) {
+      font-size: dash-font(14);
     }
 
     :deep(.inspection-overview),
@@ -1166,7 +1109,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       padding: 10px;
 
       strong {
-        font-size: 24px;
+        font-size: dash-font(24);
       }
     }
 
@@ -1181,11 +1124,10 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     }
 
     :deep(.nurse-metric-chart__head strong) {
-      font-size: 17px;
+      font-size: dash-font(17);
     }
 
-    :deep(.nurse-metric-chart__canvas) {
-      height: 184px;
+    :deep(.nurse-metric-chart__grid) {
       margin-top: 10px;
     }
 
@@ -1227,13 +1169,13 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
     span {
       color: rgba(172, 211, 235, 0.76);
-      font-size: 11px;
+      font-size: dash-font(12);
       font-weight: 800;
     }
 
     strong {
       color: #dff8ff;
-      font-size: 12px;
+      font-size: dash-font(12);
     }
   }
 
@@ -1251,7 +1193,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     border-radius: 5px;
     background: rgba(96, 210, 255, 0.08);
     color: rgba(213, 235, 248, 0.88);
-    font-size: 10px;
+    font-size: dash-font(12);
     line-height: 1.35;
   }
 
@@ -1280,13 +1222,13 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
     span {
       color: rgba(172, 211, 235, 0.76);
-      font-size: 11px;
+      font-size: dash-font(12);
       font-weight: 800;
     }
 
     strong {
       color: #bdf7c8;
-      font-size: 12px;
+      font-size: dash-font(12);
     }
   }
 
@@ -1313,20 +1255,20 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
     > span {
       color: rgba(200, 225, 240, 0.82);
-      font-size: 10px;
+      font-size: dash-font(12);
       font-weight: 800;
     }
 
     > strong {
       margin-top: 4px;
       color: #bdf7c8;
-      font-size: 11px;
+      font-size: dash-font(12);
     }
 
     > small {
       margin-top: 3px;
       color: rgba(166, 194, 213, 0.68);
-      font-size: 9px;
+      font-size: dash-font(12);
       line-height: 1.3;
     }
   }
@@ -1358,27 +1300,27 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
     > span {
       color: rgba(200, 225, 240, 0.8);
-      font-size: 9px;
+      font-size: dash-font(12);
       font-weight: 800;
     }
 
     > strong {
       margin-top: 3px;
       color: #bdf7c8;
-      font-size: 10px;
+      font-size: dash-font(12);
     }
 
     > small {
       margin-top: 3px;
       color: rgba(166, 194, 213, 0.66);
-      font-size: 8px;
+      font-size: dash-font(12);
     }
   }
 
   p {
     margin: 7px 0 0;
     color: #ffe0a5;
-    font-size: 10px;
+    font-size: dash-font(12);
     line-height: 1.4;
   }
 
@@ -1536,7 +1478,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     color: rgba(188, 239, 255, 0.92);
     border: 1px solid rgba(112, 230, 255, 0.2);
     box-shadow: 0 0 18px rgba(77, 208, 255, 0.08);
-    font-size: 10px;
+    font-size: dash-font(12);
     font-weight: 900;
     letter-spacing: 0.6px;
     max-width: 100%;
@@ -1553,7 +1495,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
     h1 {
       color: #f2fbff;
-      font-size: 21px;
+      font-size: dash-font(21);
       font-weight: 900;
       line-height: 1.2;
       text-shadow: 0 0 22px rgba(107, 224, 255, 0.18);
@@ -1562,7 +1504,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     p {
       margin-top: 4px;
       color: rgba(182, 214, 235, 0.74);
-      font-size: 12px;
+      font-size: dash-font(12);
     }
   }
 
@@ -1573,7 +1515,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     time {
       display: block;
       color: #66e5ff;
-      font-size: 24px;
+      font-size: dash-font(24);
       font-weight: 900;
       line-height: 1;
       font-variant-numeric: tabular-nums;
@@ -1585,7 +1527,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       display: block;
       margin-top: 5px;
       color: rgba(170, 200, 225, 0.7);
-      font-size: 10px;
+      font-size: dash-font(12);
     }
   }
 
@@ -1615,7 +1557,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       gap: 5px;
       flex-shrink: 0;
       color: rgba(150, 226, 232, 0.68);
-      font-size: 9px;
+      font-size: dash-font(12);
       font-weight: 900;
       letter-spacing: 0.08em;
       white-space: nowrap;
@@ -1624,20 +1566,48 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
         width: 5px;
         height: 5px;
         border-radius: 50%;
-        background: #69e4ca;
-        box-shadow: 0 0 10px rgba(105, 228, 202, 0.78);
+        background: currentColor;
+        box-shadow: 0 0 10px currentColor;
         animation: nurse-station-status-pulse 2.2s ease-in-out infinite;
+      }
+
+      &--loading,
+      &--warning,
+      &--stale {
+        color: #ffd080;
+      }
+
+      &--error {
+        color: #ff86b3;
       }
     }
 
     p {
       margin: 8px 0 0;
       color: rgba(220, 238, 250, 0.9);
-      font-size: 13px;
+      font-size: dash-font(13);
       font-weight: 700;
       line-height: 1.45;
       text-shadow: 0 0 16px rgba(116, 207, 255, 0.12);
     }
+  }
+
+  &__wallboard-toggle {
+    appearance: none;
+    display: inline-flex;
+    min-width: 40px;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    border: 1px solid rgba(121, 236, 255, 0.34);
+    border-radius: 999px;
+    color: #dffaff;
+    background: rgba(24, 105, 139, 0.22);
+    font: inherit;
+    font-size: dash-font(12);
+    font-weight: 800;
+    cursor: pointer;
   }
 
   &__badge {
@@ -1647,7 +1617,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     display: inline-flex;
     padding: 3px 8px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: dash-font(12);
     font-weight: 800;
     color: #d9fff1;
     background: rgba(84, 185, 116, 0.18);
@@ -1701,7 +1671,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       );
       border: 1px solid rgba(142, 220, 240, 0.14);
       color: rgba(195, 220, 240, 0.82);
-      font-size: 11px;
+      font-size: dash-font(12);
       font-weight: 700;
       transition:
         transform 0.2s ease,
@@ -1744,7 +1714,8 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      min-height: 24px;
+      min-width: 40px;
+      min-height: 40px;
       padding: 4px 9px;
       border: 1px solid rgba(255, 185, 105, 0.28);
       border-radius: 999px;
@@ -1755,7 +1726,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       );
       color: #ffe4b0;
       font: inherit;
-      font-size: 10px;
+      font-size: dash-font(12);
       font-weight: 800;
       line-height: 1.2;
       cursor: pointer;
@@ -1874,7 +1845,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     position: relative;
     z-index: 1;
     color: #eaf7f1;
-    font-size: 11px;
+    font-size: dash-font(12);
     line-height: 1.35;
   }
 
@@ -1882,7 +1853,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     position: relative;
     z-index: 1;
     color: rgba(180, 241, 203, 0.64);
-    font-size: 8px;
+    font-size: dash-font(12);
     font-weight: 900;
     letter-spacing: 0.08em;
     line-height: 1.2;
@@ -1959,7 +1930,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   &__label {
     display: block;
     color: rgba(174, 205, 230, 0.74);
-    font-size: 11px;
+    font-size: dash-font(12);
     font-weight: 700;
   }
 
@@ -1967,7 +1938,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     display: block;
     margin-top: 7px;
     color: #f2fbff;
-    font-size: 22px;
+    font-size: dash-font(22);
     font-weight: 900;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -1975,7 +1946,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     small {
       margin-left: 3px;
       color: rgba(184, 215, 235, 0.72);
-      font-size: 11px;
+      font-size: dash-font(12);
       font-weight: 700;
     }
   }
@@ -2028,7 +1999,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     justify-content: space-between;
     gap: 12px;
     color: rgba(196, 224, 242, 0.86);
-    font-size: 12px;
+    font-size: dash-font(12);
     font-weight: 800;
 
     strong {
@@ -2056,7 +2027,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   p {
     margin: 4px 0 0;
     color: rgba(152, 184, 210, 0.72);
-    font-size: 10px;
+    font-size: dash-font(12);
   }
 
   &--green .ops-row__track i {
@@ -2136,14 +2107,14 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
     strong {
       color: #edf9ff;
-      font-size: 12px;
+      font-size: dash-font(12);
       font-weight: 800;
     }
 
     span {
       margin-top: 3px;
       color: rgba(168, 200, 225, 0.72);
-      font-size: 10px;
+      font-size: dash-font(12);
     }
   }
 
@@ -2158,14 +2129,14 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.09);
       color: rgba(225, 242, 255, 0.88);
-      font-size: 10px;
+      font-size: dash-font(12);
       font-style: normal;
       font-weight: 800;
     }
 
     span {
       color: rgba(164, 196, 220, 0.76);
-      font-size: 10px;
+      font-size: dash-font(12);
       font-weight: 800;
       font-variant-numeric: tabular-nums;
     }
@@ -2210,7 +2181,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   span {
     display: block;
     color: rgba(170, 202, 226, 0.72);
-    font-size: 10px;
+    font-size: dash-font(12);
     font-weight: 700;
   }
 
@@ -2218,14 +2189,14 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     display: block;
     margin-top: 6px;
     color: #eafaff;
-    font-size: 18px;
+    font-size: dash-font(18);
     font-weight: 900;
     font-variant-numeric: tabular-nums;
 
     small {
       margin-left: 2px;
       color: rgba(170, 202, 226, 0.68);
-      font-size: 10px;
+      font-size: dash-font(12);
     }
   }
 }
@@ -2238,7 +2209,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
-  font-size: 11px;
+  font-size: dash-font(12);
 
   span {
     color: rgba(170, 202, 226, 0.72);
@@ -2274,7 +2245,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     align-items: start;
     padding-bottom: 6px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    font-size: 10px;
+    font-size: dash-font(12);
   }
 
   &__time {
@@ -2314,12 +2285,12 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
   strong {
     color: #e8ffed;
-    font-size: 12px;
+    font-size: dash-font(12);
   }
 
   span {
     color: rgba(190, 225, 205, 0.72);
-    font-size: 10px;
+    font-size: dash-font(12);
     line-height: 1.4;
   }
 }
@@ -2368,14 +2339,14 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
     span {
       color: #dffaff;
-      font-size: 13px;
+      font-size: dash-font(13);
       font-weight: 800;
     }
 
     strong,
     small {
       color: rgba(171, 216, 232, 0.72);
-      font-size: 10px;
+      font-size: dash-font(12);
     }
   }
 
@@ -2393,6 +2364,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
     button {
       width: 100%;
+      min-height: 44px;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
@@ -2412,18 +2384,18 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     }
 
     strong {
-      font-size: 11px;
+      font-size: dash-font(12);
     }
 
     small {
       color: rgba(192, 218, 232, 0.72);
-      font-size: 9px;
+      font-size: dash-font(12);
     }
 
     em {
       padding: 3px 7px;
       border-radius: 999px;
-      font-size: 9px;
+      font-size: dash-font(12);
       font-style: normal;
       font-weight: 800;
 
@@ -2442,7 +2414,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   > p {
     margin: 8px 0 0;
     color: rgba(190, 220, 232, 0.74);
-    font-size: 10px;
+    font-size: dash-font(12);
   }
 }
 
@@ -2459,13 +2431,13 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   span,
   small {
     color: rgba(191, 219, 231, 0.72);
-    font-size: 9px;
+    font-size: dash-font(12);
   }
 
   strong {
     grid-row: span 2;
     color: #7ff6da;
-    font-size: 19px;
+    font-size: dash-font(19);
   }
 
   &--due strong {
@@ -2491,11 +2463,11 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     }
 
     &__title h1 {
-      font-size: 18px;
+      font-size: dash-font(18);
     }
 
     &__clock time {
-      font-size: 19px;
+      font-size: dash-font(19);
     }
 
     &__body {
@@ -2520,7 +2492,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     padding: 7px 8px;
 
     strong {
-      font-size: 19px;
+      font-size: dash-font(19);
     }
   }
 
@@ -2560,4 +2532,216 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     padding-block: 7px;
   }
 }
+@container scene-panel (max-width: 420px) {
+  .kpi-grid, .data-health ul { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .data-health__freshness { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .station-hero__status-head { flex-wrap: wrap; justify-content: flex-start; }
+  .station-hero__badge, .station-hero__wallboard-toggle { white-space: nowrap; }
+}
+@container scene-panel (max-width: 340px) {
+  .kpi-grid, .data-health ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nurse-panel .station-hero__body { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .nurse-panel .station-state { width: auto; min-height: 48px; }
+}
+
+/* Size content against the panel rather than the full 3D viewport. */
+.nurse-panel--wallboard {
+  .station-hero__body { grid-template-columns: minmax(0, 1fr); padding-top: 0; }
+  .station-state { width: 100%; min-height: 44px; padding: 10px 12px; }
+}
+.nurse-panel {
+  container-type: inline-size;
+  container-name: nurse-panel;
+  gap: 12px;
+  background: rgba(8, 23, 35, .86);
+}
+.station-hero {
+  padding: 16px;
+  background: #102c3a;
+  box-shadow: none;
+  &::before, &::after, &__scanline, &__grid { display: none; }
+  &__body { grid-template-columns: minmax(0, 1fr); padding-top: 0; gap: 16px; }
+  &__eyebrow { padding: 0; margin-bottom: 12px; border: 0; border-radius: 0; background: none; box-shadow: none; font-size: dash-font(15); color: #e0f4f7; }
+  &__status-head { flex-wrap: wrap; justify-content: flex-start; gap: 8px 12px; }
+  &__status p { line-height: 1.6; font-weight: 500; text-shadow: none; }
+  &__wallboard-toggle { margin-left: auto; border-radius: 6px; white-space: nowrap; }
+  &__badge, &__chip { white-space: nowrap; }
+  &__chips { gap: 8px; }
+}
+.station-state {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  box-shadow: none;
+  &::before, &::after { display: none; }
+  strong, small { white-space: nowrap; font-size: dash-font(12); letter-spacing: 0; line-height: 1.5; }
+  small { margin-left: auto; }
+  &__signal { flex: 0 0 8px; width: 8px; height: 8px; }
+}
+.inspection-overview, .handoff-card, .data-health { padding: 12px; background: #102733; }
+.inspection-overview__head, .handoff-card__head, .data-health__head { flex-wrap: wrap; gap: 8px; }
+.inspection-overview__head > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.data-health {
+  ul { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 8px; }
+  li { padding: 10px; }
+  li > small { line-height: 1.6; color: #a6bfcd; }
+  &__freshness { grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); gap: 8px; }
+  &__freshness-item { padding: 8px; }
+  p { line-height: 1.6; margin-top: 12px; }
+}
+@container nurse-panel (max-width: 360px) {
+  .station-hero { padding: 12px; }
+  .station-hero__wallboard-toggle { margin-left: 0; }
+  .station-state { gap: 8px; }
+  .station-state small { margin-left: 0; }
+}
+
+
+/* 概览按身份、运行状态、关键指标、操作分层，避免状态与按钮混排。 */
+.nurse-panel .station-hero {
+  padding: 16px;
+  border: 1px solid #648a9c47;
+  border-radius: 12px;
+  background: var(--station-surface, #102735);
+  box-shadow: inset 0 1px #c4f5ff0a;
+  .station-hero__overview-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .station-hero__identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .station-hero__identity > div { display: grid; gap: 7px; min-width: 0; }
+  .station-hero__identity-icon { width: 32px; height: 36px; flex-shrink: 0; padding: 6px; border: 1px solid #7bcfc347; border-radius: 6px; background: #2c62672b; color: #a8ede4; }
+  .station-hero__eyebrow { margin: 0; font-size: dash-font(16); font-weight: 600; letter-spacing: 0; white-space: normal; }
+  .station-hero__status-live { font-size: dash-font(12); font-weight: 400; letter-spacing: 0; }
+  .station-hero__status-live i { animation: none; box-shadow: none; }
+  .station-hero__wallboard-toggle { margin: 0; padding: 8px 12px; gap: 7px; flex-shrink: 0; font-size: dash-font(12); font-weight: 500; border: 1px solid #729cae55; border-radius: 6px; background: #193e4c; box-shadow: none; }
+  .station-hero__wallboard-toggle svg, .station-hero__alert-toggle svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .station-hero__body { display: block; padding: 0; margin-top: 18px; }
+  .station-state { display: block; width: 100%; min-height: 0; padding: 14px 16px; border-radius: 8px; border-color: #80d1b43b; background: #6cbf9e0c; box-shadow: none; }
+  .station-state--alert { border-color: #eb8c9e40; background: #b9677b0c; border-left: 3px solid #d78697; }
+  .station-state--warn { border-color: #e2bf7840; background: #e2bf7812; }
+  .station-state__heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .station-state__signal { width: 7px; height: 7px; flex-basis: 7px; box-shadow: none; }
+  .station-state__signal::before { display: none; }
+  .station-state__heading > strong { color: #b9cfdb; font-size: dash-font(12); font-weight: 400; }
+  .station-hero__badge { margin-left: auto; padding: 3px 8px; border-radius: 4px; font-size: dash-font(12); font-weight: 500; box-shadow: none; }
+  .station-hero__badge::after { display: none; }
+  .station-state__message { margin-top: 10px; }
+  .station-state small { display: block; margin: 0; font-size: dash-font(15); font-weight: 600; letter-spacing: 0; line-height: 1.5; white-space: normal; }
+  .station-state__message p { margin-top: 5px; color: #d0dee7; font-size: dash-font(13); line-height: 1.6; overflow-wrap: anywhere; }
+  .station-hero__overview-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 18px 0; }
+  .station-hero__overview-metrics > div { min-width: 0; padding: 0 12px; border-left: 1px solid #8caebe26; }
+  .station-hero__overview-metrics > div:first-child { padding-left: 0; border-left: 0; }
+  .station-hero__overview-metrics > div > span { color: #aac3d0; font-size: dash-font(12); }
+  .station-hero__overview-metrics strong { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: dash-font(25); font-weight: 600; color: #e0f4f8; line-height: 1.2; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .station-hero__overview-metrics small { font-size: dash-font(12); color: #9ebac8; font-weight: 400; }
+  .station-hero__overview-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-top: 14px; border-top: 1px solid #7dabb829; }
+  .station-hero__overview-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .station-hero__chip { min-height: 0; padding: 4px 8px; border-radius: 4px; font-weight: 500; font-size: dash-font(12); color: #bcd5df; background: #9fc6d013; border-color: #9fc6d02b; }
+  .station-hero__alert-toggle { margin: 0; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 10px; border-radius: 6px; font-size: dash-font(12); font-weight: 500; color: #e9ce9f; border: 1px solid #d1b17c3d; background: #ae854915; box-shadow: none; }
+  .station-hero__alert-toggle[aria-pressed='true'] { color: #a8ead4; border-color: #77c5a64d; background: #4ea28515; }
+  .station-hero__switch-track { width: 26px; height: 15px; border-radius: 12px; padding: 3px; background: #4d6170; flex-shrink: 0; }
+  .station-hero__switch-track i { display: block; width: 9px; height: 9px; border-radius: 50%; background: #d5e3e8; transition: transform .15s; }
+  .station-hero__alert-toggle[aria-pressed='true'] .station-hero__switch-track { background: #367d6f; }
+  .station-hero__alert-toggle[aria-pressed='true'] .station-hero__switch-track i { transform: translateX(11px); background: #bcf8e4; }
+}
+@container nurse-panel (max-width: 380px) {
+  .nurse-panel .station-hero {
+    padding: 14px;
+    .station-hero__overview-head { flex-wrap: wrap; gap: 12px; }
+    .station-hero__overview-metrics { gap: 4px; }
+    .station-hero__overview-metrics > div { padding-inline: 8px; }
+    .station-hero__overview-metrics > div:first-child { padding-left: 0; }
+    .station-hero__overview-metrics strong { font-size: 22px; }
+    .station-state { padding: 12px; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .station-hero__switch-track i { transition: none; }
+}
+
+/* 下半区采用统一标题与分组间距，状态颜色仍由业务状态决定。 */
+.nurse-panel {
+  .station-section-title { display: inline-flex; align-items: center; gap: 8px; color: #dceef5; font-size: dash-font(14); font-weight: 600; }
+  .station-section-icon { width: 20px; height: 20px; flex-shrink: 0; color: #8bcecd; }
+  .inspection-overview, .handoff-card, .data-health, .surface-panel--focus { padding: 16px; border-radius: 12px; background: var(--station-surface, #102735); border: 1px solid #759bad38; box-shadow: none; }
+  .inspection-overview__head, .handoff-card__head, .data-health__head { gap: 8px 16px; }
+  .inspection-overview__head > div { align-items: center; gap: 10px; }
+  .inspection-overview__head strong, .inspection-overview__head small { font-weight: 400; color: #9bb8c7; }
+  .inspection-overview__metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 16px; }
+  .inspection-metric { min-width: 0; grid-template-columns: 1fr; gap: 5px; padding: 12px; background: #081e2c; border: 1px solid #7eabb322; border-radius: 8px; }
+  .inspection-metric strong { grid-row: auto; font-size: dash-font(26); line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .inspection-metric span, .inspection-metric small { color: #adc5d1; }
+  .inspection-overview > p { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid #7dabb824; color: #adc5d1; line-height: 1.6; }
+  .handoff-card__head > strong { font-weight: 500; color: #d7e7ef; }
+  .handoff-card ul { display: grid; gap: 0; margin-top: 12px; }
+  .handoff-card li { display: flex; align-items: baseline; gap: 10px; padding: 10px 0; border-radius: 0; background: transparent; line-height: 1.5; }
+  .handoff-card li + li { border-top: 1px solid #779aa321; }
+  .handoff-card li::before { content: ''; width: 5px; height: 5px; flex-shrink: 0; border-radius: 50%; background: currentColor; }
+  .handoff-card--attention { border-color: #d9b16c40; }
+  .data-health__head > strong { font-weight: 500; }
+  .data-health ul { grid-template-columns: 1fr; gap: 0; margin-top: 14px; }
+  .data-health li { display: grid; grid-template-columns: minmax(100px,1fr) auto minmax(0,1.3fr); align-items: center; gap: 8px 16px; padding: 11px 0; border-radius: 0; background: transparent; }
+  .data-health li + li { border-top: 1px solid #83a9b51c; }
+  .data-health li > span { font-weight: 500; color: #c0d5df; }
+  .data-health li > strong { margin: 0; font-weight: 500; }
+  .data-health li > small { margin: 0; text-align: right; color: #9db8c7; line-height: 1.5; overflow-wrap: anywhere; }
+  .data-health__freshness { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; padding-top: 14px; margin-top: 8px; }
+  .data-health__freshness-item { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 10px 12px; background: #0a202d; border-color: #789caa29; }
+  .data-health__freshness-item > span { font-weight: 500; color: #bfd3df; }
+  .data-health__freshness-item > strong { margin: 0; font-weight: 500; }
+  .data-health__freshness-item > small { grid-column: 1/-1; color: #9db8c7; white-space: normal; font-size: dash-font(12); line-height: 1.5; }
+  .data-health > p { margin-top: 12px; padding: 10px 12px; background: #c9a7640d; border-left: 2px solid #c9a76480; color: #d2bf9c; }
+  .focus-list { margin-top: 14px; gap: 8px; }
+  .focus-room { grid-template-columns: 3px 20px minmax(0,1fr) auto; gap: 12px; padding: 14px; border: 1px solid #7fabb52e; background: #0b2230; border-radius: 8px; box-shadow: none; }
+  .focus-room__main { flex: 1; min-width: 0; }
+  .focus-room__main strong { font-size: dash-font(14); font-weight: 600; overflow-wrap: anywhere; }
+  .focus-room__main > span { font-size: dash-font(12); color: #a5c0cf; }
+  .focus-room__side { gap: 6px; }
+  .focus-room__side em { font-size: dash-font(12); font-weight: 500; border-radius: 4px; padding: 3px 8px; }
+  .focus-room__bar { width: 3px; }
+  .focus-room:hover, .inspection-overview__rooms button:hover { background: #183b4b; border-color: #76d1cf80; }
+  .focus-room:focus-visible, .inspection-overview__rooms button:focus-visible, .nurse-panel__details summary:focus-visible { outline: 2px solid #82e2d5; outline-offset: 3px; }
+  .nurse-panel__details { border-radius: 10px; border-color: #789caa38; background: #102936; }
+  .nurse-panel__details > summary { padding: 14px 16px; font-size: dash-font(14); color: #cadfe9; }
+}
+@container nurse-panel (max-width: 380px) {
+  .nurse-panel {
+    .inspection-overview, .handoff-card, .data-health, .surface-panel--focus { padding: 12px; }
+    .inspection-metric { padding: 10px 8px; }
+    .data-health li { grid-template-columns: 1fr auto; gap: 5px 12px; }
+    .data-health li > small { grid-column: 1/-1; text-align: left; }
+    .data-health__freshness-item { grid-template-columns: 1fr; gap: 5px; }
+  }
+}
+
+
+/* 整体面板共享色阶，子组件沿用同一字号缩放单位。 */
+.nurse-panel {
+  --station-surface: #102735;
+  --station-inset: #0c202d;
+  --station-border: #789bad30;
+  --station-muted: #a7bfcd;
+  gap: 12px;
+  .station-hero { border-color: var(--station-border); box-shadow: none; }
+  .station-hero::before, .station-hero::after { display: none; }
+  .station-hero .station-state { padding: 12px 14px; }
+  .station-hero .station-state__message p { color: #baceda; }
+  .station-hero .station-state--alert small { color: #efb0bb; }
+  .station-hero .station-hero__overview-metrics { margin-block: 16px; }
+  .station-hero .station-hero__overview-metrics strong { font-size: dash-font(24); }
+  .station-hero .station-hero__alert-toggle { min-height: 36px; border-color: var(--station-border); background: #132e3b; }
+  .station-hero .station-hero__wallboard-toggle { min-height: 36px; background: #132e3b; border-color: var(--station-border); }
+  .station-hero .station-state--alert .station-hero__badge { color: #efb0bb; border-color: #dc93a23b; background: #cc819516; }
+  .inspection-overview, .handoff-card, .data-health, .surface-panel--focus { border-color: var(--station-border); }
+  .inspection-overview__head > div { gap: 8px; }
+  .station-section-title { font-size: dash-font(14); }
+  .inspection-overview__head strong { font-size: dash-font(12); }
+  :deep(.dash-head__title) { font-size: dash-font(14); font-weight: 600; color: #dceaf2; }
+  :deep(.dash-head__line) { opacity: .3; }
+  :deep(.dash-head__count) { color: #afdcd9; background: #1b3b48; border-color: #79a8b23b; font-size: dash-font(12); }
+}
+
 </style>

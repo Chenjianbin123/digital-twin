@@ -8,6 +8,7 @@ export interface AreaPhaseTransition {
 }
 
 export interface SceneSwitchFeedback {
+  status?: 'loading' | 'fallback';
   title: string;
   subtitle: string;
   tone: 'station' | 'ward' | 'interior';

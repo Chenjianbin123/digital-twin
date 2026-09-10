@@ -1,5 +1,6 @@
 import type { RoomSummary } from './area-summary.ts';
 import type { NurseStationLiveData } from './nurse-station-live-data.ts';
+import type { NurseStationRoomSummary } from './nurse-station-view-model.ts';
 
 export interface NurseStationScreenRow {
   roomName: string;
@@ -46,8 +47,15 @@ function sortRooms(summaries: readonly RoomSummary[]) {
   );
 }
 
-function buildPatientDetail(summary: RoomSummary) {
+function vitalWarningCount(summary: RoomSummary | NurseStationRoomSummary) {
+  return 'vitalWarningCount' in summary ? summary.vitalWarningCount : 0;
+}
+
+function buildPatientDetail(summary: RoomSummary | NurseStationRoomSummary) {
   const details = [`${summary.occupiedBeds}/${summary.totalBeds} 在床`];
+  const vitalCount = vitalWarningCount(summary);
+  if (vitalCount > 0)
+    details.push(`体征预警 ${vitalCount}`);
   if (summary.callingCount > 0)
     details.push(`呼叫 ${summary.callingCount}`);
   if (summary.infusingCount > 0)
@@ -63,7 +71,10 @@ function buildPatientDetail(summary: RoomSummary) {
   return details.join(' · ');
 }
 
-function buildHandoffDetail(summary: RoomSummary) {
+function buildHandoffDetail(summary: RoomSummary | NurseStationRoomSummary) {
+  const vitalCount = vitalWarningCount(summary);
+  if (vitalCount > 0)
+    return `生命体征预警 ${vitalCount} 项，需优先评估`;
   if (summary.callingCount > 0)
     return `呼叫 ${summary.callingCount} 项，需优先响应`;
   if (summary.priority === 'danger' || summary.envAlertLevel === 'danger')
@@ -80,9 +91,9 @@ function buildHandoffDetail(summary: RoomSummary) {
 }
 
 function buildRows(
-  summaries: readonly RoomSummary[],
+  summaries: readonly (RoomSummary | NurseStationRoomSummary)[],
   live: NurseStationLiveData,
-  detail: (summary: RoomSummary) => string,
+  detail: (summary: RoomSummary | NurseStationRoomSummary) => string,
   emptyDetail: string,
 ): NurseStationScreenRow[] {
   if (!summaries.length || live.rooms <= 0) {
@@ -98,7 +109,9 @@ function buildRows(
   return sortRooms(summaries).slice(0, 3).map((summary) => ({
     roomName: summary.sickroomName || summary.sickroomCode || '未命名病房',
     detail: detail(summary),
-    status: summary.statusText || PRIORITY_LABEL[summary.priority],
+    status: vitalWarningCount(summary) > 0
+      ? '体征预警'
+      : summary.statusText || PRIORITY_LABEL[summary.priority],
     state: resolveState(summary.priority),
     accentColor: summary.accentColor || '#4FC3F7',
   }));
@@ -106,7 +119,7 @@ function buildRows(
 
 /** Builds up to three de-identified care items for the “护理交班” screen. */
 export function buildNurseStationHandoffRows(
-  summaries: readonly RoomSummary[],
+  summaries: readonly (RoomSummary | NurseStationRoomSummary)[],
   live: NurseStationLiveData,
 ): NurseStationScreenRow[] {
   return buildRows(summaries, live, buildHandoffDetail, '暂无重点事项');
@@ -114,7 +127,7 @@ export function buildNurseStationHandoffRows(
 
 /** Builds up to three room-level occupancy/status rows for the “患者状态” screen. */
 export function buildNurseStationPatientRows(
-  summaries: readonly RoomSummary[],
+  summaries: readonly (RoomSummary | NurseStationRoomSummary)[],
   live: NurseStationLiveData,
 ): NurseStationScreenRow[] {
   return buildRows(summaries, live, buildPatientDetail, '暂无患者数据');

@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue';
-import type { RoomSummary } from '@/core/area-summary';
 import type { AreaModelState } from '@/core/area-scene';
-import type { TwinAreaEntity } from '@/types/twin';
+import type { NurseStationViewModel } from '@/core/nurse-station-view-model';
 
 const AreaScene3D = defineAsyncComponent(() => import('@/components/AreaScene3D.vue'));
 
 defineProps<{
-  area: TwinAreaEntity;
-  roomSummaries: RoomSummary[];
-  deviceCount?: number;
+  theme?: 'light' | 'dark';
+  viewModel: NurseStationViewModel;
   overlaysVisible: boolean;
   modelState: AreaModelState;
   active?: boolean;
@@ -25,10 +23,12 @@ const emit = defineEmits<{
   <section class="nurse-station-visual" aria-label="护士站空间态势">
     <div class="nurse-station-visual__scene">
       <AreaScene3D
-        :area="area"
+        :theme="theme"
+        :area="viewModel.area"
         :area-id="null"
-        :room-summaries="roomSummaries"
-        :configured-device-count="deviceCount"
+        :room-summaries="viewModel.roomSummaries"
+        :configured-device-count="viewModel.metrics.deviceTotal"
+        :nurse-station-view-model="viewModel"
         scene-type="nurse-station"
         model-kind="station"
         :active="active !== false"

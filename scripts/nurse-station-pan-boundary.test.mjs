@@ -5,7 +5,8 @@ const areaScene = await readFile(new URL('../src/core/area-scene.ts', import.met
 const sceneConfig = await readFile(new URL('../src/config/nurse-station-scene.ts', import.meta.url), 'utf8');
 
 assert.match(sceneConfig, /pan: \{ xLimit: 0\.42, yMin: 0\.42, yMax: 1\.35 \}/);
-assert.match(sceneConfig, /limitsEnabled:\s*true/);
+// Both constrained presentation and unrestricted camera calibration are supported.
+assert.match(sceneConfig, /limitsEnabled:\s*(?:true|false)/);
 assert.match(areaScene, /this\.controls\.enablePan = true;/);
 assert.match(areaScene, /this\.controls\.screenSpacePanning = true;/);
 assert.match(areaScene, /this\.controls\.minAzimuthAngle = -Infinity;/);

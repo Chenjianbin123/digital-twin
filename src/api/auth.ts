@@ -1,4 +1,4 @@
-import md5 from 'js-md5';
+import { md5Hex } from '@/core/md5';
 import { getDataSource } from '@/api/door-device';
 import { apiUrl, postJson } from '@/api/http-client';
 import type { AuthUser } from '@/types/auth';
@@ -20,7 +20,7 @@ export interface LoginCredentials {
 export function createLoginPayload(userName: string, password: string) {
   return {
     userName: userName.trim(),
-    userPassword: md5(password),
+    userPassword: md5Hex(password),
   };
 }
 

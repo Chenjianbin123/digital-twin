@@ -8,7 +8,7 @@ const dialog = existsSync(dialogUrl) ? readFileSync(dialogUrl, 'utf8') : '';
 
 test('2.5D 点击床位后展示科技感床位详情浮层', () => {
   assert.ok(dialog, '应创建 WardPlanBedDialog.vue');
-  assert.match(app, /import WardPlanBedDialog from '@\/components\/WardPlanBedDialog\.vue';/);
+  assert.match(app, /const WardPlanBedDialog = defineAsyncComponent\(\(\) => import\('@\/components\/WardPlanBedDialog\.vue'\)\);/);
   assert.match(app, /<WardPlanBedDialog[\s\S]*?v-if="isWardInterior && wardInteriorView === 'plan' && selectedBed"/);
   assert.match(app, /@close="store\.clearSelection"/);
   assert.match(dialog, /ward-plan-bed-dialog/);

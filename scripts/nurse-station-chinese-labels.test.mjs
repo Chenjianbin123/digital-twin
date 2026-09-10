@@ -6,16 +6,20 @@ const panel = readFileSync(
   new URL('../src/components/NurseStationPanel.vue', import.meta.url),
   'utf8',
 );
+const viewModel = readFileSync(
+  new URL('../src/core/nurse-station-view-model.ts', import.meta.url),
+  'utf8',
+);
 
 test('nurse station hero uses Chinese labels for visible status prompts', () => {
   assert.match(panel, /class="station-hero__eyebrow">护士站指挥中心<\/span>/);
-  assert.match(panel, /class="station-hero__status-live"[\s\S]*?实时数据/);
+  assert.match(panel, /class="station-hero__status-live"[\s\S]*?viewModel\.realtime\.status[\s\S]*?viewModel\.realtime\.label/);
+  assert.match(viewModel, /ready: '实时数据'/);
   assert.match(panel, /return "需要立即处理"/);
   assert.match(panel, /return "需要复核"/);
   assert.match(panel, /return "系统运行正常"/);
   assert.doesNotMatch(panel, /NURSE COMMAND|LIVE DATA|ACTION REQUIRED|REVIEW REQUIRED|SYSTEM ONLINE/);
 });
-
 test('nurse station hero labels stay on one line', () => {
   const eyebrowStart = panel.indexOf('  &__eyebrow {');
   assert.notEqual(eyebrowStart, -1, '应能找到护士站标题样式');

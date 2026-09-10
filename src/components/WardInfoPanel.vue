@@ -773,6 +773,8 @@ function alertTime(value?: string) {
   box-shadow: none;
 
   overflow-y: auto;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
   scrollbar-width: thin;
   scrollbar-color: rgba(77, 208, 255, 0.35) transparent;
   color: #e8f8ff;
@@ -840,7 +842,7 @@ function alertTime(value?: string) {
 
     margin: 0 0 10px;
 
-    font-size: 13px;
+    font-size: dash-font(13);
     font-weight: 700;
     letter-spacing: 0.08em;
 
@@ -916,7 +918,7 @@ function alertTime(value?: string) {
       right: 12px;
       color: rgba(156, 239, 255, 0.62);
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 9px;
+      font-size: dash-font(9);
       font-weight: 700;
       letter-spacing: 0.12em;
     }
@@ -924,7 +926,7 @@ function alertTime(value?: string) {
     h2 {
       margin: 0;
       padding-right: 92px;
-      font-size: 22px;
+      font-size: dash-font(22);
       color: #fff;
       line-height: 1.2;
       letter-spacing: 0.04em;
@@ -939,7 +941,7 @@ function alertTime(value?: string) {
 
     margin: 4px 0 0;
 
-    font-size: 13px;
+    font-size: dash-font(13);
 
     color: rgba(180, 211, 236, 0.82);
 
@@ -1011,7 +1013,7 @@ function alertTime(value?: string) {
     p {
       margin: 8px 0 9px;
       color: rgba(230, 243, 255, 0.9);
-      font-size: 12px;
+      font-size: dash-font(12);
       line-height: 1.55;
     }
   }
@@ -1032,7 +1034,7 @@ function alertTime(value?: string) {
       flex-shrink: 0;
       padding: 2px 7px;
       border-radius: 999px;
-      font-size: 10px;
+      font-size: dash-font(10);
       font-style: normal;
       font-weight: 900;
     }
@@ -1045,7 +1047,7 @@ function alertTime(value?: string) {
     strong {
       min-width: 0;
       color: #fff;
-      font-size: 14px;
+      font-size: dash-font(14);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -1067,7 +1069,7 @@ function alertTime(value?: string) {
       border-radius: 999px;
       color: rgba(205, 226, 240, 0.8);
       background: rgba(255, 255, 255, 0.06);
-      font-size: 11px;
+      font-size: dash-font(11);
       font-weight: 750;
     }
   }
@@ -1085,13 +1087,13 @@ function alertTime(value?: string) {
 
     span {
       color: rgba(255, 211, 215, 0.76);
-      font-size: 10px;
+      font-size: dash-font(10);
       font-weight: 800;
     }
 
     strong {
       color: #ffacb6;
-      font-size: 16px;
+      font-size: dash-font(16);
       font-weight: 900;
       font-variant-numeric: tabular-nums;
       text-shadow: 0 0 12px rgba(255, 99, 120, 0.26);
@@ -1101,7 +1103,7 @@ function alertTime(value?: string) {
       min-width: 0;
       overflow: hidden;
       color: rgba(255, 220, 223, 0.66);
-      font-size: 10px;
+      font-size: dash-font(10);
       text-overflow: ellipsis;
       white-space: nowrap;
     }
@@ -1113,7 +1115,7 @@ function alertTime(value?: string) {
 
     > span {
       color: rgba(184, 224, 238, 0.82);
-      font-size: 11px;
+      font-size: dash-font(11);
       font-weight: 750;
     }
 
@@ -1125,7 +1127,7 @@ function alertTime(value?: string) {
       background: rgba(14, 48, 78, 0.58);
       color: #e8f9ff;
       font-family: inherit;
-      font-size: 12px;
+      font-size: dash-font(12);
       font-weight: 800;
       cursor: pointer;
 
@@ -1198,7 +1200,7 @@ function alertTime(value?: string) {
 
       display: block;
 
-      font-size: 22px;
+      font-size: dash-font(22);
 
       font-weight: 700;
 
@@ -1213,7 +1215,7 @@ function alertTime(value?: string) {
     &__label {
 
       margin-top: 6px;
-      font-size: 10px;
+      font-size: dash-font(10);
 
       color: rgba(174, 204, 229, 0.82);
       letter-spacing: 0.08em;
@@ -1274,7 +1276,7 @@ function alertTime(value?: string) {
     > p {
       margin: 9px 0;
       color: rgba(187, 216, 230, 0.76);
-      font-size: 11px;
+      font-size: dash-font(11);
     }
   }
 
@@ -1293,12 +1295,12 @@ function alertTime(value?: string) {
     span,
     small {
       color: rgba(177, 213, 228, 0.74);
-      font-size: 10px;
+      font-size: dash-font(10);
     }
 
     strong {
       color: #8af4dc;
-      font-size: 14px;
+      font-size: dash-font(14);
     }
   }
 
@@ -1355,14 +1357,14 @@ function alertTime(value?: string) {
     strong {
       overflow: hidden;
       color: #eafaff;
-      font-size: 11px;
+      font-size: dash-font(11);
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     small {
       color: rgba(171, 205, 220, 0.7);
-      font-size: 9px;
+      font-size: dash-font(9);
     }
   }
 
@@ -1375,7 +1377,7 @@ function alertTime(value?: string) {
     padding-top: 7px;
     border-top: 1px solid rgba(97, 219, 239, 0.1);
     color: rgba(158, 196, 212, 0.62);
-    font-size: 9px;
+    font-size: dash-font(9);
     line-height: 1.45;
   }
 
@@ -1391,7 +1393,7 @@ function alertTime(value?: string) {
 
     gap: 7px 12px;
 
-    font-size: 12px;
+    font-size: dash-font(12);
 
 
 
@@ -1459,7 +1461,7 @@ function alertTime(value?: string) {
 
     padding: 0 0 0 16px;
 
-    font-size: 12px;
+    font-size: dash-font(12);
 
     color: #ffb74d;
 
@@ -1501,13 +1503,13 @@ function alertTime(value?: string) {
   }
 
   .env-label {
-    font-size: 10px;
+    font-size: dash-font(10);
     color: rgba(144, 192, 214, 0.86);
     letter-spacing: 0.08em;
   }
 
   .env-value {
-    font-size: 18px;
+    font-size: dash-font(18);
     font-weight: 700;
     color: #e9f8ff;
     text-shadow: 0 0 11px rgba(77, 224, 255, 0.3);
@@ -1545,7 +1547,7 @@ function alertTime(value?: string) {
 
     align-items: center;
 
-    h3 { margin: 0; font-size: 18px; color: #fff; }
+    h3 { margin: 0; font-size: dash-font(18); color: #fff; }
 
   }
 
@@ -1556,7 +1558,7 @@ function alertTime(value?: string) {
     background: rgba(84, 205, 255, 0.08);
     border: 1px solid rgba(110, 228, 255, 0.28);
     color: #b6ebff;
-    font-size: 24px;
+    font-size: dash-font(24);
     line-height: 1;
     width: 30px;
     height: 30px;
@@ -1590,7 +1592,7 @@ function alertTime(value?: string) {
     h3 {
       margin: 0;
       color: #f0fbff;
-      font-size: 27px;
+      font-size: dash-font(27);
       letter-spacing: 0.08em;
       text-shadow: 0 0 18px rgba(64, 229, 255, 0.24);
     }
@@ -1628,7 +1630,7 @@ function alertTime(value?: string) {
     border-radius: 999px;
 
     color: #f6fcff;
-    font-size: 12px;
+    font-size: dash-font(12);
     font-weight: 700;
 
     i {
@@ -1665,7 +1667,7 @@ function alertTime(value?: string) {
     color: var(--tag-text-color);
     background: linear-gradient(135deg, color-mix(in srgb, var(--tag-color) 84%, #17324a), color-mix(in srgb, var(--tag-color) 42%, #06111e));
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.13), 0 0 10px color-mix(in srgb, var(--tag-color) 26%, transparent);
-    font-size: 11px;
+    font-size: dash-font(11);
     font-weight: 650;
     line-height: 1.25;
 
@@ -1683,7 +1685,7 @@ function alertTime(value?: string) {
 
     dt {
       margin: 0;
-      font-size: 11px;
+      font-size: dash-font(11);
       color: rgba(151, 206, 229, 0.72);
       letter-spacing: 0.04em;
       &:first-child { margin-top: 0; }
@@ -1691,7 +1693,7 @@ function alertTime(value?: string) {
 
     dd {
       margin: 0;
-      font-size: 13px;
+      font-size: dash-font(13);
       line-height: 1.45;
       color: rgba(236, 248, 255, 0.96);
       min-width: 0;
@@ -1702,7 +1704,7 @@ function alertTime(value?: string) {
 
 
 
-  .empty-bed-tip { color: rgba(174, 204, 229, 0.82); font-size: 14px; }
+  .empty-bed-tip { color: rgba(174, 204, 229, 0.82); font-size: dash-font(14); }
 
   .vitals-card {
     margin-top: 12px;
@@ -1714,14 +1716,14 @@ function alertTime(value?: string) {
     h4 {
       margin: 0 0 10px;
       color: #9be8ff;
-      font-size: 12px;
+      font-size: dash-font(12);
       font-weight: 700;
     }
 
     &__note {
       margin: 9px 0 0;
       color: rgba(177, 212, 227, 0.7);
-      font-size: 10px;
+      font-size: dash-font(10);
       line-height: 1.45;
     }
   }
@@ -1748,12 +1750,12 @@ function alertTime(value?: string) {
     small {
       margin-bottom: 4px;
       color: rgba(144, 174, 199, 0.82);
-      font-size: 10px;
+      font-size: dash-font(10);
     }
 
     strong {
       color: rgba(232, 244, 255, 0.94);
-      font-size: 12px;
+      font-size: dash-font(12);
       font-weight: 750;
       overflow-wrap: anywhere;
     }
@@ -1773,7 +1775,7 @@ function alertTime(value?: string) {
 
     border-radius: 8px;
 
-    font-size: 13px;
+    font-size: dash-font(13);
 
     color: #ffb74d;
 
@@ -1803,7 +1805,7 @@ function alertTime(value?: string) {
 
     border-radius: 8px;
 
-    font-size: 13px;
+    font-size: dash-font(13);
 
     color: #f48fb1;
 
@@ -1842,14 +1844,14 @@ function alertTime(value?: string) {
       align-items: center;
       gap: 8px;
       color: rgba(195, 232, 248, 0.9);
-      font-size: 13px;
+      font-size: dash-font(13);
       margin: 0 0 12px;
       letter-spacing: 0.04em;
 
       &::before {
         content: '⌁';
         color: #7cecff;
-        font-size: 17px;
+        font-size: dash-font(17);
         text-shadow: 0 0 10px rgba(77, 224, 255, 0.72);
       }
     }
@@ -1886,7 +1888,7 @@ function alertTime(value?: string) {
       color: inherit;
       text-align: left;
       transition: background 180ms ease, border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
-      font-size: 14px;
+      font-size: dash-font(14);
       cursor: pointer;
 
       &:hover {
@@ -1972,7 +1974,7 @@ function alertTime(value?: string) {
 
     .bed-status {
 
-      font-size: 11px;
+      font-size: dash-font(11);
 
       color: rgba(144, 174, 199, 0.82);
       letter-spacing: 0.04em;
@@ -2130,7 +2132,7 @@ function alertTime(value?: string) {
     padding: 12px;
 
     &__header h2 {
-      font-size: 18px;
+      font-size: dash-font(18);
     }
 
     &__stats {
@@ -2142,7 +2144,7 @@ function alertTime(value?: string) {
       padding: 8px 6px;
 
       &__val {
-        font-size: 17px;
+        font-size: dash-font(17);
       }
     }
 

@@ -15,7 +15,8 @@ test('场景切换不再挂载旧的模型加载遮罩', () => {
   assert.doesNotMatch(corridor, /SceneModelLoading/);
   assert.doesNotMatch(corridor, /corridorModelState/);
   assert.doesNotMatch(interior, /SceneModelLoading/);
-  assert.doesNotMatch(interior, /modelState/);
+  assert.match(interior, /onModelState: state => emit\('modelState', state\)/);
+  assert.match(corridor, /onCorridorState: state => emit\('modelState', state\)/);
   assert.match(app, /SceneSwitchLoader/);
   assert.doesNotMatch(app, /SceneModelLoading/);
   assert.match(app, /digital-twin__scene-layer--inactive/);

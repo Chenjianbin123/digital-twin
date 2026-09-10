@@ -1,7 +1,9 @@
+import { createStationTheme } from '@/core/station-theme';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { acquireSceneLoad } from './scene-load-queue';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
@@ -9,6 +11,7 @@ import { summarizeArea, summarizeRoom, type RoomSummary } from '@/core/area-summ
 import { buildRoomStructureSignature } from '@/core/area-scene-identity';
 import { resolveBedStatus } from '@/core/bed-status';
 import { buildNurseStationLiveData } from '@/core/nurse-station-live-data';
+import type { NurseStationViewModel } from '@/core/nurse-station-view-model';
 import {
   buildNurseStationHandoffRows,
   buildNurseStationPatientRows,
@@ -71,6 +74,7 @@ import {
 } from '@/core/ward-corridor-camera';
 import { resolveAreaCorridorControlLimits } from '@/core/area-corridor-controls';
 import { nurseStationSceneConfig } from '@/config/nurse-station-scene';
+import { bindReferenceStationDisplays, createReferenceClockTexture, createReferenceStationLights, prepareReferenceStation, referenceStationFov } from '@/core/reference-nurse-station';
 import { wardCorridorSceneConfig } from '@/config/ward-corridor-scene';
 import type { AreaViewPhase, TwinAreaEntity, TwinWardEntity } from '@/types/twin';
 import { getWardRoomSize } from '@/types/twin';
@@ -179,6 +183,7 @@ interface CorridorModelDisplay {
 }
 
 const NURSE_STATION = nurseStationSceneConfig.position;
+const IS_REFERENCE_STATION = nurseStationSceneConfig.model.layout === 'reference-v2';
 const CORRIDOR_GEOMETRY = wardCorridorSceneConfig.fallbackGeometry;
 const CORRIDOR_CEILING_H = CORRIDOR_GEOMETRY.ceilingHeight;
 const NURSE_STATION_MODEL_URL = nurseStationSceneConfig.model.url;
@@ -326,6 +331,7 @@ export class AreaScene {
   private roomMeshes = new Map<number, RoomMeshGroup>();
   private area: TwinAreaEntity | null = null;
   private summaries: RoomSummary[] = [];
+  private nurseStationViewModel: NurseStationViewModel | null = null;
   private onRoomClick?: (roomIndex: number) => void;
   private onNodePick?: (info: AreaNodePickInfo) => void;
   private onModelState?: (state: AreaModelState) => void;
@@ -336,6 +342,8 @@ export class AreaScene {
   private envGroup: THREE.Group | null = null;
   private gridHelper: THREE.GridHelper | null = null;
   private nurseGroup: THREE.Group | null = null;
+  private stationTheme = createStationTheme();
+  private darkTheme = false;
   private nurseStationModel: THREE.Object3D | null = null;
   private nurseStationModelLoadToken = 0;
   private hasLoadedNurseStationModel = false;
@@ -616,6 +624,12 @@ export class AreaScene {
 
   private setupLights() {
     RectAreaLightUniformsLib.init();
+    if (this.modelKind === 'station' && IS_REFERENCE_STATION) {
+      const lights = createReferenceStationLights();
+      lights.position.set(NURSE_STATION.x, 0, NURSE_STATION.z);
+      this.scene.add(lights);
+      return;
+    }
 
     // 低环境光 + 强主光：提亮靠 key/exposure，对比靠压低 fill
     this.scene.add(new THREE.AmbientLight(0xf4faf6, 0.48));
@@ -1129,7 +1143,7 @@ export class AreaScene {
 
   private getCorridorDisplayData(): CorridorDisplayData {
     const info = this.getNurseStationDisplayInfo();
-    const callingCount = this.summaries.reduce((sum, item) => sum + item.callingCount, 0);
+    const callingCount = this.getNurseStationSummaries().reduce((sum, item) => sum + item.callingCount, 0);
     return {
       areaName: info.areaName ?? '病区',
       deptName: info.deptName,
@@ -1170,9 +1184,15 @@ export class AreaScene {
   }
 
   private getNurseStationLiveData() {
+    if (this.nurseStationViewModel)
+      return this.nurseStationViewModel.metrics;
     return buildNurseStationLiveData(this.area ?? {
       areaName: '', areaCode: '', deptName: '', rooms: [],
     }, this.summaries);
+  }
+
+  private getNurseStationSummaries() {
+    return this.nurseStationViewModel?.roomSummaries ?? this.summaries;
   }
 
   private getAreaBoardStats() {
@@ -1457,7 +1477,7 @@ export class AreaScene {
   private createWorkstationScreenTexture(side: 'left' | 'right') {
     const { canvas, ctx } = this.createBoardCanvas(640, 280);
     const stats = this.getAreaBoardStats();
-    const rooms = [...this.summaries]
+    const rooms = [...this.getNurseStationSummaries()]
       .sort((a, b) => {
         const rank = { calling: 0, danger: 1, offline: 2, infusing: 3, warning: 4, normal: 5, empty: 6 };
         return rank[a.priority] - rank[b.priority];
@@ -1564,7 +1584,7 @@ export class AreaScene {
   ) {
     const { canvas, ctx } = this.createBoardCanvas(960, 520);
     const stats = this.getAreaBoardStats();
-    const sortedRooms = [...this.summaries]
+    const sortedRooms = [...this.getNurseStationSummaries()]
       .sort((a, b) => {
         const rank = { calling: 0, danger: 1, offline: 2, infusing: 3, warning: 4, normal: 5, empty: 6 };
         return rank[a.priority] - rank[b.priority];
@@ -1707,7 +1727,7 @@ export class AreaScene {
   private createNurseRearShiftTexture() {
     const { canvas, ctx } = this.createBoardCanvas(900, 640);
     const info = this.getNurseStationDisplayInfo();
-    const rows = buildNurseStationHandoffRows(this.summaries, this.getNurseStationLiveData());
+    const rows = buildNurseStationHandoffRows(this.getNurseStationSummaries(), this.getNurseStationLiveData());
     const bg = ctx.createLinearGradient(0, 0, 900, 640);
     bg.addColorStop(0, '#071521');
     bg.addColorStop(1, '#123039');
@@ -1887,7 +1907,7 @@ export class AreaScene {
     });
 
     // 中栏：患者动态
-    const priorityRooms = [...this.summaries]
+    const priorityRooms = [...this.getNurseStationSummaries()]
       .sort((left, right) => right.callingCount - left.callingCount || right.occupiedBeds - left.occupiedBeds)
       .slice(0, 4);
     drawColumn(centerX, '患者动态', '#4dd0e1', (x, y, w, h) => {
@@ -1963,7 +1983,8 @@ export class AreaScene {
 
   private createNurseRearPriorityTexture() {
     const { canvas, ctx } = this.createBoardCanvas(900, 640);
-    const rows = buildNurseStationPatientRows(this.summaries, this.getNurseStationLiveData());
+    const nurseStationSummaries = this.getNurseStationSummaries();
+    const rows = buildNurseStationPatientRows(nurseStationSummaries, this.getNurseStationLiveData());
     const bg = ctx.createLinearGradient(0, 0, 900, 640);
     bg.addColorStop(0, '#071521');
     bg.addColorStop(1, '#123039');
@@ -1978,7 +1999,7 @@ export class AreaScene {
     ctx.fillStyle = '#e7fbff';
     ctx.font = 'bold 58px "Microsoft YaHei", sans-serif';
     ctx.fillText('患者状态', 42, 54);
-    const attentionCount = this.summaries.filter(room => room.priority !== 'normal' && room.priority !== 'empty').length;
+    const attentionCount = nurseStationSummaries.filter(room => room.priority !== 'normal' && room.priority !== 'empty').length;
     this.drawBoardPill(ctx, attentionCount ? `${attentionCount} 项异常` : '运行正常', 660, 27, 194, 50, {
       bg: attentionCount ? 'rgba(255,92,138,0.18)' : 'rgba(123,223,242,0.14)',
       fg: attentionCount ? '#ffb4c5' : '#bdeff7',
@@ -2031,8 +2052,15 @@ export class AreaScene {
       texture.needsUpdate = true;
       return texture;
     }
-    if (kind === 'dashboard')
-      return this.createNurseRearDashboardTexture();
+    if (kind === 'dashboard') {
+      const texture = this.createNurseRearDashboardTexture();
+      if (IS_REFERENCE_STATION) {
+        // Preserve the existing 1200:640 UI aspect on the new 2.25:1 screen.
+        texture.repeat.x = 2.25 / (1200 / 640);
+        texture.offset.x = (1 - texture.repeat.x) / 2;
+      }
+      return texture;
+    }
     if (kind === 'whiteboard')
       return this.createNurseRearShiftTexture();
     if (kind === 'roomStatus')
@@ -2051,6 +2079,8 @@ export class AreaScene {
   }
 
   private createNurseStationClockTexture() {
+    if (IS_REFERENCE_STATION)
+      return createReferenceClockTexture();
     const canvas = document.createElement('canvas');
     canvas.width = 640;
     canvas.height = 192;
@@ -2760,6 +2790,10 @@ export class AreaScene {
 
   private attachNurseStationBoardDisplays(model: THREE.Object3D) {
     this.disposeNurseStationBoardDisplays();
+    if (IS_REFERENCE_STATION) {
+      this.nurseStationBoardDisplays = bindReferenceStationDisplays(model, kind => this.createNurseStationBoardTexture(kind));
+      return;
+    }
     this.hideNurseStationStaticBoardContent(model);
     const allMeshes: THREE.Mesh[] = [];
     model.traverse((object) => {
@@ -2995,8 +3029,10 @@ export class AreaScene {
     for (const display of this.nurseStationBoardDisplays) {
       if (display.video)
         continue;
+      const flipY = display.texture.flipY;
       display.texture.dispose();
       display.texture = this.createNurseStationBoardTexture(display.kind);
+      display.texture.flipY = flipY;
       const material = display.screen.material as THREE.MeshBasicMaterial;
       material.map = display.texture;
       material.needsUpdate = true;
@@ -3145,10 +3181,14 @@ export class AreaScene {
     const loader = new GLTFLoader();
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath('/draco/');
+    dracoLoader.setWorkerLimit(1);
     loader.setDRACOLoader(dracoLoader);
     this.onModelState?.('loading');
 
+    const release = await acquireSceneLoad();
     try {
+      if (token !== this.nurseStationModelLoadToken || !this.nurseGroup)
+        return;
       const gltf = await loader.loadAsync(NURSE_STATION_MODEL_URL);
       const model = gltf.scene;
       if (token !== this.nurseStationModelLoadToken || !this.nurseGroup) {
@@ -3162,11 +3202,18 @@ export class AreaScene {
       // 先挂到护士站根节点，再计算覆盖层相对相机的正面方向，
       // 让 root.worldToLocal() 使用包含护士站整体位移的完整世界矩阵。
       parent.add(model);
-      this.attachNurseStationBoardDisplays(model);
       this.nurseStationModel = model;
+      this.attachNurseStationBoardDisplays(model);
+      this.setTheme(this.darkTheme ? 'dark' : 'light');
+      if (IS_REFERENCE_STATION) {
+        // Geometry and lights are static; camera and board texture changes do not invalidate shadows.
+        this.scene.getObjectByName('reference-nurse-station-lights')?.traverse(object => {
+          if (object instanceof THREE.SpotLight)
+            object.shadow.needsUpdate = true;
+        });
+      }
       this.captureNurseStationViewBounds(model);
       this.hasLoadedNurseStationModel = true;
-      this.onModelState?.('ready');
       if (this.stationShell)
         this.stationShell.visible = false;
       // 模型边界就绪后强制回到盒内初始机位，避免沿用盒外占位相机
@@ -3174,14 +3221,28 @@ export class AreaScene {
         this.applyStationDeskCamera();
         // this.logStationCameraView('模型就绪');
       }
-      void this.warmGpu();
+      await this.warmGpu();
+      if (token !== this.nurseStationModelLoadToken)
+        return;
+      this.renderer.render(this.scene, this.camera);
+      this.onModelState?.('ready');
     }
     catch (error) {
+      if (token !== this.nurseStationModelLoadToken)
+        return;
       console.warn('[AreaScene] failed to load nurse station GLB', error);
+      this.disposeNurseStationBoardDisplays();
+      if (this.nurseStationModel) {
+        this.nurseStationModel.removeFromParent();
+        this.disposeObjectTree(this.nurseStationModel);
+        this.nurseStationModel = null;
+      }
+      this.hasLoadedNurseStationModel = false;
       this.onModelState?.('fallback');
     }
     finally {
       dracoLoader.dispose();
+      release();
     }
   }
 
@@ -3190,10 +3251,14 @@ export class AreaScene {
     const loader = new GLTFLoader();
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath('/draco/');
+    dracoLoader.setWorkerLimit(1);
     loader.setDRACOLoader(dracoLoader);
     this.onCorridorState?.('loading');
 
+    const release = await acquireSceneLoad();
     try {
+      if (token !== this.wardCorridorModelLoadToken)
+        return;
       const gltf = await loader.loadAsync(WARD_CORRIDOR_MODEL_URL);
       const model = gltf.scene;
       if (token !== this.wardCorridorModelLoadToken) {
@@ -3214,7 +3279,6 @@ export class AreaScene {
 
       this.wardCorridorModel = model;
       this.wardCorridorModelLoaded = true;
-      this.onCorridorState?.('ready');
       this.scene.add(model);
       this.bindWardCorridorSlots();
       this.updateCorridorImplementationVisibility();
@@ -3222,9 +3286,15 @@ export class AreaScene {
         this.applyCorridorOverviewCamera(Math.max(this.area?.rooms.length ?? 1, 1));
         // this.logCorridorCameraView('模型就绪');
       }
-      void this.warmGpu();
+      await this.warmGpu();
+      if (token !== this.wardCorridorModelLoadToken)
+        return;
+      this.renderer.render(this.scene, this.camera);
+      this.onCorridorState?.('ready');
     }
     catch (error) {
+      if (token !== this.wardCorridorModelLoadToken)
+        return;
       this.wardCorridorModelFailed = true;
       this.wardCorridorBoundMeshes = null;
       this.onCorridorState?.('fallback');
@@ -3233,6 +3303,7 @@ export class AreaScene {
     }
     finally {
       dracoLoader.dispose();
+      release();
     }
   }
 
@@ -3757,6 +3828,10 @@ export class AreaScene {
   }
 
   private fitNurseStationModel(model: THREE.Object3D) {
+    if (IS_REFERENCE_STATION) {
+      prepareReferenceStation(model);
+      return;
+    }
     model.updateMatrixWorld(true);
     const architecturalFillNames = new Set(['Detail_Full_Ceiling']);
     const initialBox = new THREE.Box3();
@@ -4139,7 +4214,7 @@ export class AreaScene {
     };
     this.controls.zoomSpeed = 0.9;
     this.controls.rotateSpeed = 0.55;
-    this.camera.fov = STATION_DESK_FOV;
+    this.camera.fov = IS_REFERENCE_STATION ? referenceStationFov(this.camera.aspect, STATION_DESK_FOV) : STATION_DESK_FOV;
     this.camera.position.copy(position);
     this.controls.target.copy(target);
     this.controls.minPolarAngle = STATION_MIN_POLAR_ANGLE;
@@ -4978,6 +5053,12 @@ export class AreaScene {
     }
   }
 
+  setNurseStationViewModel(viewModel: NurseStationViewModel | null) {
+    this.nurseStationViewModel = viewModel;
+    if (this.modelKind === 'station')
+      this.refreshNurseStationDisplay();
+  }
+
   /** 数据加载后强制 framing（供布局刷新调用） */
   ensureOverviewCamera() {
     const count = Math.max(this.area?.rooms.length ?? 0, 1);
@@ -5128,6 +5209,8 @@ export class AreaScene {
     if (width < 2 || height < 2)
       return;
     this.camera.aspect = width / height;
+    if (IS_REFERENCE_STATION && this.viewPhase === 'station')
+      this.camera.fov = referenceStationFov(this.camera.aspect, STATION_DESK_FOV);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
     this.labelRenderer.setSize(width, height);
@@ -5139,6 +5222,14 @@ export class AreaScene {
     this.handleResize();
     if (this.area?.rooms.length)
       this.ensureOverviewCamera();
+  }
+
+  setTheme(theme: 'light' | 'dark') {
+    this.darkTheme = theme === 'dark';
+    if (this.modelKind !== 'station' || !IS_REFERENCE_STATION) return;
+    this.stationTheme(this.nurseStationModel, this.scene.getObjectByName('reference-nurse-station-lights'), this.darkTheme);
+    this.scene.background = new THREE.Color(this.darkTheme ? '#0b1824' : NURSE_STATION_BG);
+    if (this.nurseStationModel) this.renderer.render(this.scene, this.camera);
   }
 
   setActive(active: boolean) {
@@ -5286,6 +5377,7 @@ export class AreaScene {
 
   dispose() {
     this.nurseStationModelLoadToken++;
+    this.nurseStationViewModel = null;
     this.wardCorridorModelLoadToken++;
     this.hasLoadedNurseStationModel = false;
     this.nurseStationBoundMeshes = null;
@@ -5301,6 +5393,10 @@ export class AreaScene {
     this.container.removeEventListener('wheel', this.cancelCameraTransition);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     this.controls.dispose();
+    this.scene.traverse(object => {
+      if (object instanceof THREE.SpotLight || object instanceof THREE.DirectionalLight)
+        object.shadow.dispose();
+    });
     this.renderer.dispose();
     this.renderer.domElement.remove();
     this.labelRenderer.domElement.remove();
@@ -5322,5 +5418,7 @@ export class AreaScene {
       this.disposeObjectTree(this.wardCorridorModel);
     if (this.nurseGroup)
       this.scene.remove(this.nurseGroup);
+    // A disposed scene is never reused; release the browser's context quota now.
+    this.renderer.forceContextLoss();
   }
 }

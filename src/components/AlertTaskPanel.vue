@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useId } from 'vue';
 import DashSectionHeader from '@/components/dashboard/DashSectionHeader.vue';
 import {
   formatAlertWaitingTime,
@@ -37,6 +37,7 @@ const emit = defineEmits<{
 }>();
 
 const showAllTasks = ref(false);
+const filterTabsId = useId();
 const filterOptions: Array<{ key: AlertTaskFilter; label: string }> = [
   { key: 'active', label: '未处理' },
   { key: 'handling', label: '处理中' },
@@ -157,6 +158,32 @@ function canMarkHandling(task: AlertTask) {
   return !isSourceManagedTask(task) && task.status !== 'handling';
 }
 
+function filterTabId(filter: AlertTaskFilter) {
+  return `${filterTabsId}-${filter}-tab`;
+}
+
+function handleFilterKeydown(event: KeyboardEvent, currentIndex: number) {
+  let nextIndex = currentIndex;
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+    nextIndex = (currentIndex + 1) % filterOptions.length;
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
+    nextIndex = (currentIndex - 1 + filterOptions.length) % filterOptions.length;
+  else if (event.key === 'Home')
+    nextIndex = 0;
+  else if (event.key === 'End')
+    nextIndex = filterOptions.length - 1;
+  else
+    return;
+
+  event.preventDefault();
+  const option = filterOptions[nextIndex];
+  emit('update:filter', option.key);
+  const tabs = (event.currentTarget as HTMLElement)
+    .closest('[role="tablist"]')
+    ?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+  tabs?.[nextIndex]?.focus();
+}
+
 function taskStatusText(task: AlertTask) {
   if (isDisplayOnlySwpCall(task))
     return '呼叫中';
@@ -175,18 +202,25 @@ function taskStatusText(task: AlertTask) {
     class="alert-task-panel"
     :class="{ 'alert-task-panel--compact': compact }"
   >
-    <DashSectionHeader :title="title" :count="filteredTasks.length" />
+    <div class="alert-task-panel__heading">
+      <svg v-if="compact" class="alert-task-panel__heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M12 5v5m0 3v.1" /></svg>
+      <DashSectionHeader :title="title" :count="filteredTasks.length" />
+    </div>
 
     <div class="alert-task-panel__toolbar">
       <div class="alert-task-panel__filters" role="tablist" aria-label="告警任务筛选">
         <button
-          v-for="option in filterOptions"
+          v-for="(option, optionIndex) in filterOptions"
           :key="option.key"
           type="button"
           role="tab"
+          :id="filterTabId(option.key)"
+          :aria-controls="`${filterTabsId}-panel`"
           :aria-selected="filter === option.key"
+          :tabindex="filter === option.key ? 0 : -1"
           :class="{ 'is-active': filter === option.key }"
           @click="emit('update:filter', option.key)"
+          @keydown="handleFilterKeydown($event, optionIndex)"
         >
           {{ option.label }}
           <strong>{{ taskCounts[option.key] }}</strong>
@@ -197,12 +231,18 @@ function taskStatusText(task: AlertTask) {
       </span>
     </div>
 
-    <div v-if="!visibleTasks.length" class="alert-task-panel__empty">
-      <strong>暂无待处理告警</strong>
-      <span>系统会自动汇总呼叫、生命体征、环境、设备和输液异常</span>
-    </div>
+    <div
+      :id="`${filterTabsId}-panel`"
+      role="tabpanel"
+      :aria-labelledby="filterTabId(filter)"
+      tabindex="0"
+    >
+      <div v-if="!visibleTasks.length" class="alert-task-panel__empty">
+        <strong>暂无待处理告警</strong>
+        <span>系统会自动汇总呼叫、生命体征、环境、设备和输液异常</span>
+      </div>
 
-    <ul v-else class="alert-task-panel__list">
+      <ul v-else class="alert-task-panel__list">
       <li
         v-for="task in visibleTasks"
         :key="task.id"
@@ -228,7 +268,7 @@ function taskStatusText(task: AlertTask) {
               class="alert-task__signal"
               :aria-label="isVitalWarning(task) ? '生命体征预警信号' : '活动呼叫信号'"
             >
-              <i aria-hidden="true" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="isVitalWarning(task)" d="M3 12h4l3-7 4 14 3-7h4" /><path v-else d="m5 3 4 1 1 5-3 2a15 15 0 0 0 6 6l2-3 5 1 1 4c-1 5-8 2-12-2S2 6 5 3Z" /></svg>
             </span>
             <span class="alert-task__severity">{{ severityLabel(task.severity) }}</span>
             <strong>{{ task.title }}</strong>
@@ -240,7 +280,8 @@ function taskStatusText(task: AlertTask) {
           <div class="alert-task__meta">
             <span v-if="task.roomName && task.canLocate !== false">{{ task.roomName }}</span>
             <span v-if="task.bedName && task.canLocate !== false">{{ formatBedLabel(task.bedName) }}</span>
-            <span v-if="task.startedAt">
+            <span v-if="task.startedAt" class="alert-task__time">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></svg>
               {{ isDisplayOnlySwpCall(task) ? '呼叫' : isVitalWarning(task) ? '预警' : task.source === 'swp-inspection' ? '巡视' : '发生' }}
               {{ formatTaskOccurredAt(task) }}
             </span>
@@ -287,7 +328,7 @@ function taskStatusText(task: AlertTask) {
             v-if="(isDisplayOnlySwpCall(task) || isVitalWarning(task)) && task.canLocate === false"
             class="alert-task__unlocated"
           >
-            <i aria-hidden="true" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 4a7 7 0 0 1 11 6c0 2-1 4-2 6M5 7a7 7 0 0 0 0 5c1 4 7 9 7 9l3-3M3 3l18 18" /></svg>
             暂无法定位
           </span>
           <span v-if="isVitalWarning(task)" class="alert-task__recovery-tip">
@@ -298,12 +339,17 @@ function taskStatusText(task: AlertTask) {
           </span>
         </div>
       </li>
-    </ul>
+      </ul>
+    </div>
 
     <div v-if="hasExpandableTasks" class="alert-task-panel__more">
-      <span v-if="overflowCount">还有 {{ overflowCount }} 项告警</span>
-      <button type="button" @click="showAllTasks = !showAllTasks">
+      <span v-if="overflowCount" class="alert-task-panel__remaining">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <span>还有 <strong>{{ overflowCount }}</strong> 项告警</span>
+      </span>
+      <button type="button" :aria-expanded="showAllTasks" @click="showAllTasks = !showAllTasks">
         {{ showAllTasks ? '收起任务' : '查看全部任务' }}
+        <span class="alert-task-panel__more-arrow" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" :class="{ 'is-expanded': showAllTasks }"><path d="M4 10h12m-5-5 5 5-5 5" /></svg></span>
       </button>
     </div>
 
@@ -329,6 +375,12 @@ function taskStatusText(task: AlertTask) {
   backdrop-filter: blur(12px) saturate(1.12);
   padding-bottom: 8px;
 
+  button:focus-visible,
+  [role="tabpanel"]:focus-visible {
+    outline: 2px solid rgba(91, 220, 255, 0.92);
+    outline-offset: 2px;
+  }
+
   &::before {
     position: absolute;
     top: 0;
@@ -347,6 +399,7 @@ function taskStatusText(task: AlertTask) {
 
   &__toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
@@ -355,6 +408,7 @@ function taskStatusText(task: AlertTask) {
 
   &__filters {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 4px;
     min-width: 0;
@@ -367,14 +421,16 @@ function taskStatusText(task: AlertTask) {
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      min-height: 25px;
+      min-width: 40px;
+      min-height: 40px;
+      white-space: nowrap;
       padding: 0 7px;
       border: 1px solid transparent;
       border-radius: 6px;
       color: rgba(181, 214, 230, 0.74);
       background: transparent;
       font-family: inherit;
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 800;
       cursor: pointer;
       transition: color 180ms ease, background 180ms ease, border-color 180ms ease;
@@ -385,7 +441,7 @@ function taskStatusText(task: AlertTask) {
         border-radius: 999px;
         color: rgba(215, 241, 250, 0.82);
         background: rgba(113, 199, 224, 0.1);
-        font-size: 9px;
+        font-size: 12px;
       }
 
       &:hover {
@@ -410,7 +466,7 @@ function taskStatusText(task: AlertTask) {
   &__summary {
     flex-shrink: 0;
     color: rgba(178, 211, 228, 0.68);
-    font-size: 10px;
+    font-size: 12px;
     white-space: nowrap;
   }
 
@@ -435,18 +491,19 @@ function taskStatusText(task: AlertTask) {
     justify-content: space-between;
     gap: 8px;
     margin: 6px 0 0;
-    font-size: 11px;
+    font-size: 12px;
     color: rgba(205, 226, 240, 0.72);
 
     button {
-      min-height: 26px;
+      min-width: 40px;
+      min-height: 40px;
       padding: 0 9px;
       border: 1px solid rgba(77, 208, 255, 0.3);
       border-radius: 6px;
       color: rgba(190, 235, 255, 0.94);
       background: rgba(38, 129, 167, 0.18);
       font-family: inherit;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 800;
       cursor: pointer;
     }
@@ -455,7 +512,7 @@ function taskStatusText(task: AlertTask) {
   &__hidden {
     margin-top: 8px;
     color: rgba(255, 220, 165, 0.86);
-    font-size: 11px;
+    font-size: 12px;
 
     summary {
       cursor: pointer;
@@ -478,7 +535,8 @@ function taskStatusText(task: AlertTask) {
     }
 
     button {
-      min-height: 24px;
+      min-width: 40px;
+      min-height: 40px;
       border: 1px solid rgba(255, 220, 165, 0.28);
       border-radius: 6px;
       color: rgba(255, 235, 200, 0.94);
@@ -503,7 +561,7 @@ function taskStatusText(task: AlertTask) {
 
     span {
       color: rgba(188, 215, 232, 0.72);
-      font-size: 11px;
+      font-size: 12px;
       line-height: 1.45;
     }
   }
@@ -772,7 +830,7 @@ function taskStatusText(task: AlertTask) {
   &__meta span {
     flex-shrink: 0;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 800;
   }
 
@@ -842,7 +900,7 @@ function taskStatusText(task: AlertTask) {
       border-radius: 999px;
       color: rgba(189, 255, 224, 0.82);
       background: rgba(30, 120, 82, 0.14);
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 800;
     }
   }
@@ -878,7 +936,7 @@ function taskStatusText(task: AlertTask) {
     border-radius: 6px;
     color: rgba(255, 218, 180, 0.88);
     background: rgba(151, 74, 38, 0.14);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 800;
     line-height: 1.2;
     text-align: center;
@@ -896,7 +954,7 @@ function taskStatusText(task: AlertTask) {
   &__recovery-tip {
     max-width: 108px;
     color: rgba(183, 226, 238, 0.82);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1.35;
     text-align: center;
@@ -904,11 +962,11 @@ function taskStatusText(task: AlertTask) {
 
   button {
     min-width: 58px;
-    min-height: 26px;
+    min-height: 40px;
     padding: 0 9px;
     border-radius: 6px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     cursor: pointer;
   }
@@ -1077,5 +1135,90 @@ function taskStatusText(task: AlertTask) {
   .alert-task {
     transition: none;
   }
+}
+
+/* 优先处理卡片以任务内容为中心，窄屏将操作区移到内容下方。 */
+.alert-task-panel__heading { display: flex; align-items: center; gap: 10px; }
+.alert-task-panel__heading > :last-child { flex: 1; min-width: 0; }
+.alert-task-panel__heading-icon { width: 30px; height: 30px; padding: 5px; flex-shrink: 0; color: #a1ebe2; border: 1px solid #7bccc43d; border-radius: 6px; background: #1e515c55; }
+.alert-task__signal svg { width: 14px; height: 14px; }
+.alert-task__time { display: inline-flex; align-items: center; gap: 5px; }
+.alert-task__time svg, .alert-task__unlocated svg { width: 14px; height: 14px; flex-shrink: 0; }
+.alert-task-panel__more-arrow { margin-left: 10px; font-size: dash-font(16); }
+.alert-task-panel--compact {
+  container-type: inline-size;
+  container-name: compact-alerts;
+  margin-bottom: 0;
+  padding: 16px;
+  border: 1px solid var(--station-border, #789bad30);
+  border-radius: 12px;
+  background: var(--station-surface, #102735);
+  box-shadow: none;
+  &::before { display: none; }
+  .alert-task-panel__heading :deep(.dash-head) { margin-bottom: 0; }
+  .alert-task-panel__heading :deep(.dash-head__mark) { display: none; }
+  .alert-task-panel__toolbar { gap: 12px; margin: 16px 0; }
+  .alert-task-panel__filters { gap: 4px; padding: 4px; border: 1px solid #6e9caf30; background: #071b29; border-radius: 8px; }
+  .alert-task-panel__filters button { padding: 0 12px; color: #acc5d2; font-weight: 500; }
+  .alert-task-panel__filters button.is-active { color: #c5fff4; border-color: #79d6cb55; background: #20424f; box-shadow: none; }
+  .alert-task-panel__filters button strong { margin-left: 3px; font-weight: 600; color: #c0dce6; background: #87b2bf17; }
+  .alert-task-panel__filters button.is-active strong { color: #0d303a; background: #9bcec9; }
+  .alert-task-panel__summary { color: #9bb9c8; font-size: dash-font(12); }
+  .alert-task-panel__list { gap: 10px; padding-bottom: 0; }
+  .alert-task {
+    --task-accent: #85c5df;
+    --task-tint: #85c5df0a;
+    min-height: 100px;
+    gap: 16px;
+    padding: 12px 14px;
+    border: 1px solid #65849630;
+    border-left: 3px solid var(--task-accent);
+    border-radius: 8px;
+    background: var(--station-inset, #0c202d);
+    box-shadow: none;
+    animation: none;
+  }
+  .alert-task--critical, .alert-task--waiting-urgent { --task-accent: #f18b9d; --task-tint: #ec7e9610; }
+  .alert-task--high, .alert-task--waiting-attention { --task-accent: #eac28a; --task-tint: #eac28a0d; }
+  .alert-task--handling { background-color: #132e3a; }
+  .alert-task::before, .alert-task::after, .alert-task__scan { display: none; }
+  .alert-task__head { flex-wrap: wrap; gap: 7px; }
+  .alert-task__head strong { font-size: dash-font(14); line-height: 1.5; white-space: normal; overflow-wrap: anywhere; font-weight: 600; }
+  .alert-task__signal { width: 26px; height: 26px; flex-basis: 26px; color: var(--task-accent); border: 1px solid #ed93a33d; border-radius: 7px; background: #ed93a310; box-shadow: none; }
+  .alert-task__signal::before, .alert-task__signal::after { display: none; }
+  .alert-task__signal svg { width: 16px; height: 16px; }
+  .alert-task__severity { padding: 2px 6px; border-radius: 4px; color: var(--task-accent); background: #8caec112; font-size: dash-font(12); font-weight: 600; }
+  .alert-task__type { font-weight: 500; font-size: dash-font(12); }
+  .alert-task p { margin: 8px 0; font-size: dash-font(12); color: #b7cbd7; line-height: 1.6; overflow-wrap: anywhere; }
+  .alert-task__meta { gap: 6px; }
+  .alert-task__meta span { font-size: dash-font(12); font-weight: 400; color: #adc7d4; }
+  .alert-task__meta .alert-task__time { padding-left: 0; background: transparent; }
+  .alert-task__meta .alert-task__meta-live { color: #a1e4d4; border-color: #75c5ad33; background: #2a655c30; }
+  .alert-task__meta-live::before { animation: none; box-shadow: none; }
+  .alert-task__actions { width: max-content; min-width: 104px; max-width: 160px; padding-left: 14px; border-left: 1px solid #789baa26; gap: 8px; }
+  .alert-task__unlocated { gap: 6px; padding: 8px 0; border: 0; background: none; color: #b9c7d0; font-size: dash-font(12); font-weight: 400; white-space: nowrap; }
+  .alert-task__unlocated svg { color: #cbb793; }
+  .alert-task__locate { border-color: #73c4c655; color: #b6f7eb; background: #20525c; box-shadow: none; font-weight: 500; }
+  .alert-task__locate::after { display: none; }
+  .alert-task__recovery-tip { max-width: 140px; font-weight: 400; line-height: 1.6; color: #a6bfcd; }
+  .alert-task-panel__more { margin-top: 12px; padding: 10px 12px; gap: 10px; flex-wrap: wrap; border: 1px solid #789bad26; border-radius: 8px; background: #0c202d; color: #a9c1ce; }
+  .alert-task-panel__remaining { display: inline-flex; align-items: center; gap: 8px; font-size: clamp(12px, calc(11 * var(--dashboard-font-unit, 1px)), 13px); }
+  .alert-task-panel__remaining > svg { width: 18px; height: 18px; color: #8fb9c5; flex-shrink: 0; }
+  .alert-task-panel__remaining strong { margin-inline: 3px; color: #deedf2; font-size: clamp(14px, calc(14 * var(--dashboard-font-unit, 1px)), 17px); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .alert-task-panel__more button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 36px; margin-left: auto; padding: 7px 12px; border: 1px solid #77b9bd55; border-radius: 6px; color: #c5eee8; background: #1b3d49; font-size: clamp(12px, calc(11 * var(--dashboard-font-unit, 1px)), 13px); font-weight: 500; line-height: 20px; white-space: nowrap; }
+  .alert-task-panel__more button:hover { background: #295763; border-color: #8cd6cf; }
+  .alert-task-panel__more button:focus-visible { outline: 2px solid #94e5d7; outline-offset: 3px; }
+  .alert-task-panel__more-arrow svg { display: block; width: 14px; height: 14px; }
+  .alert-task-panel__more-arrow svg.is-expanded { transform: rotate(-90deg); }
+  .alert-task-panel__more-arrow { display: grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; margin: 0; line-height: 1; border-radius: 50%; background: #93d9d416; color: #ade9df; }
+}
+@container compact-alerts (max-width: 420px) {
+  .alert-task-panel--compact .alert-task-panel__summary { display: none; }
+  .alert-task-panel--compact .alert-task { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .alert-task-panel--compact .alert-task__actions { width: 100%; min-width: 0; max-width: none; padding: 10px 0 0; border-left: 0; border-top: 1px solid #789baa26; align-items: flex-start; }
+  .alert-task-panel--compact .alert-task__unlocated { padding: 0; min-height: 24px; }
+}
+@container compact-alerts (max-width: 300px) {
+  .alert-task-panel--compact .alert-task-panel__filters button { padding-inline: 7px; gap: 2px; }
 }
 </style>

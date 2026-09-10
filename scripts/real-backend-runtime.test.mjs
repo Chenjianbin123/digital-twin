@@ -2,19 +2,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const developmentEnv = readFileSync(new URL('../.env.development', import.meta.url), 'utf8');
-const productionEnv = readFileSync(new URL('../.env.production', import.meta.url), 'utf8');
+const dataSource = readFileSync(new URL('../src/core/data-source.ts', import.meta.url), 'utf8');
+const viteConfig = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
 const store = readFileSync(new URL('../src/stores/twin-store.ts', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8');
 const bottomNav = readFileSync(new URL('../src/components/dashboard/DashboardBottomNav.vue', import.meta.url), 'utf8');
 const toolbar = readFileSync(new URL('../src/components/WardToolbar.vue', import.meta.url), 'utf8');
 const areaInfoPanel = readFileSync(new URL('../src/components/AreaInfoPanel.vue', import.meta.url), 'utf8');
 
-test('development and production use the real SWP backend at 192.168.96.104', () => {
-  for (const env of [developmentEnv, productionEnv]) {
-    assert.match(env, /^VITE_DATA_SOURCE=remote$/m);
-    assert.match(env, /^VITE_DEVICE_HOST=192\.168\.96\.104$/m);
-  }
+test('runtime defaults to the real SWP backend at 192.168.96.104', () => {
+  assert.match(dataSource, /return value === 'mock' \|\| value === 'database' \? value : 'remote';/);
+  assert.match(viteConfig, /deviceHost\?\.trim\(\) \|\| 'http:\/\/192\.168\.96\.104'/);
 });
 
 test('real runtime services use polling or configured realtime without starting simulators', () => {

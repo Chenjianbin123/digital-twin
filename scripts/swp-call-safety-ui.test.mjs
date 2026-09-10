@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [app, panel, station, store] = await Promise.all([
+const [app, panel, station, store, viewModel] = await Promise.all([
   readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/AlertTaskPanel.vue', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/NurseStationPanel.vue', import.meta.url), 'utf8'),
   readFile(new URL('../src/stores/twin-store.ts', import.meta.url), 'utf8'),
+  readFile(new URL('../src/core/nurse-station-view-model.ts', import.meta.url), 'utf8'),
 ]);
 
 assert.doesNotMatch(app, /仅在当前浏览器隐藏这条呼叫/);
@@ -23,7 +24,7 @@ assert.match(panel, /@keyframes alert-call-ring/);
 assert.match(panel, /prefers-reduced-motion: reduce/);
 assert.match(station, /呼叫提醒/);
 assert.match(station, /:max-items="4"/);
-assert.match(station, /calling: callKeys\.size/);
+assert.match(viewModel, /calling: live\.callingCount/);
 assert.ok(
   (store.match(/if \(!task \|\| isSourceManagedTask\(task\)\)\s*return;/g) ?? []).length >= 1,
 );

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { acquireSceneLoad } from './scene-load-queue';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { easeOutCubic } from '@/core/camera-easing';
@@ -73,6 +74,9 @@ interface BedMeshGroup {
   group: THREE.Group;
   indicator: THREE.Mesh;
   mattress: THREE.Mesh;
+  selectionRing: THREE.Mesh;
+  selectionPulse: THREE.Mesh;
+  selectionBeam: THREE.Mesh;
   vitalWarningRing?: THREE.Mesh;
   bedTerminalScreen?: THREE.Mesh;
   bedTerminalTexture?: THREE.CanvasTexture;
@@ -246,11 +250,11 @@ export class WardScene {
     if (this.enforcingControlBounds)
       return;
     this.suppressBedClick = true;
-    this.applyWardInteriorViewBoundsConstraint();
+    this.enforceWardInteriorControlBounds();
     // window.clearTimeout(this.cameraViewLogTimer);
     // this.cameraViewLogTimer = window.setTimeout(() => this.logCameraView('拖动中'), 160);
     window.requestAnimationFrame(() => {
-      this.applyWardInteriorViewBoundsConstraint();
+      this.enforceWardInteriorControlBounds();
     });
   };
 
@@ -1267,6 +1271,12 @@ export class WardScene {
     selection.beam.position.z = localCenter.z;
   }
 
+  private setBedSelectionVisible(meshGroup: BedMeshGroup, visible: boolean) {
+    meshGroup.selectionRing.visible = visible;
+    meshGroup.selectionPulse.visible = visible;
+    meshGroup.selectionBeam.visible = visible;
+  }
+
   private addSmartWardFloorGuides(rw: number, rd: number) {
     const centerGuide = new THREE.Mesh(
       new THREE.PlaneGeometry(Math.max(2.2, rw * 0.22), rd - 2.4),
@@ -1646,11 +1656,15 @@ export class WardScene {
     const loader = new GLTFLoader();
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath('/draco/');
+    dracoLoader.setWorkerLimit(1);
     loader.setDRACOLoader(dracoLoader);
     this.onModelState?.('loading');
     let model: THREE.Group | null = null;
 
+    const release = await acquireSceneLoad();
     try {
+      if (token !== this.wardInteriorModelLoadToken)
+        return;
       const gltf = await loader.loadAsync(WARD_INTERIOR_MODEL_URL);
       model = gltf.scene;
       if (token !== this.wardInteriorModelLoadToken) {
@@ -1683,13 +1697,16 @@ export class WardScene {
       this.scene.add(model);
       this.roomGroup.visible = false;
       this.clearBedMeshes();
-      this.onModelState?.('ready');
 
       if (this.ward) {
         this.updateWard(this.ward);
         void this.syncWardBedTemplates(this.ward);
       }
-      void this.warmGpu();
+      await this.warmGpu();
+      if (token !== this.wardInteriorModelLoadToken)
+        return;
+      this.renderer.render(this.scene, this.camera);
+      this.onModelState?.('ready');
       // this.logCameraView('模型就绪');
     }
     catch (error) {
@@ -1715,6 +1732,7 @@ export class WardScene {
     }
     finally {
       dracoLoader.dispose();
+      release();
     }
   }
 
@@ -1763,6 +1781,10 @@ export class WardScene {
     meshGroup.bedTerminalTexture?.dispose();
 
     if (meshGroup.group.userData.wardInteriorBakedBed) {
+      meshGroup.group.remove(meshGroup.selectionRing, meshGroup.selectionPulse, meshGroup.selectionBeam);
+      this.disposeMesh(meshGroup.selectionRing);
+      this.disposeMesh(meshGroup.selectionPulse);
+      this.disposeMesh(meshGroup.selectionBeam);
       this.disposeMesh(meshGroup.mattress, false);
       this.disposeMesh(meshGroup.indicator, false);
       this.disposeMesh(meshGroup.vitalWarningRing, false);
@@ -1772,6 +1794,9 @@ export class WardScene {
     }
 
     if (meshGroup.group.userData.wardInteriorModelBed) {
+      this.disposeMesh(meshGroup.selectionRing);
+      this.disposeMesh(meshGroup.selectionPulse);
+      this.disposeMesh(meshGroup.selectionBeam);
       this.disposeMesh(meshGroup.mattress, false);
       this.disposeMesh(meshGroup.indicator, false);
       this.disposeMesh(meshGroup.vitalWarningRing, false);
@@ -2030,8 +2055,8 @@ export class WardScene {
           fogDensity - Math.max(this.roomW, this.roomD) * wardInteriorSceneConfig.appearance.fogSpanFactor,
         )
       : null;
-    this.applyWardInteriorViewBoundsConstraint();
     this.controls.update();
+    this.enforceWardInteriorControlBounds();
   }
 
   private applyOpenWardControls() {
@@ -2115,6 +2140,7 @@ export class WardScene {
     this.enforcingControlBounds = true;
     try {
       this.applyOpenWardControls();
+      this.applyWardInteriorViewBoundsConstraint();
       const panChanged = this.clampWardInteriorPanTarget();
       const orbitChanged = this.clampWardInteriorCameraOrbit();
       if (panChanged || orbitChanged) {
@@ -2124,6 +2150,7 @@ export class WardScene {
         this.controls.enableDamping = dampingEnabled;
         this.clampWardInteriorPanTarget();
         this.clampWardInteriorCameraOrbit();
+        this.applyWardInteriorViewBoundsConstraint();
       }
       this.camera.lookAt(this.controls.target);
     }
@@ -2208,11 +2235,18 @@ export class WardScene {
       toneMapped: false,
     }));
 
+    const selection = this.createSelectionMeshes(status);
+    this.anchorSelectionMeshesToBed(group, bound.mattress, selection);
+    group.add(selection.ring, selection.pulse, selection.beam);
+
     return {
       bedCode: bed.bedCode,
       group,
       indicator: bound.indicator,
       mattress: bound.mattress,
+      selectionRing: selection.ring,
+      selectionPulse: selection.pulse,
+      selectionBeam: selection.beam,
       vitalWarningRing: this.createVitalWarningRing(group),
       bedTerminalScreen: bound.bedTerminalScreen,
       bedTerminalTexture,
@@ -2246,6 +2280,9 @@ export class WardScene {
       toneMapped: false,
     }));
 
+    const selection = this.createSelectionMeshes(status);
+    this.anchorSelectionMeshesToBed(group, cloned.mattress, selection);
+    group.add(selection.ring, selection.pulse, selection.beam);
     this.scene.add(group);
 
     return {
@@ -2253,6 +2290,9 @@ export class WardScene {
       group,
       indicator: cloned.indicator,
       mattress: cloned.mattress,
+      selectionRing: selection.ring,
+      selectionPulse: selection.pulse,
+      selectionBeam: selection.beam,
       vitalWarningRing: this.createVitalWarningRing(group),
       bedTerminalScreen: cloned.bedTerminalScreen,
       bedTerminalTexture,
@@ -2487,6 +2527,9 @@ export class WardScene {
       group,
       indicator,
       mattress,
+      selectionRing: selection.ring,
+      selectionPulse: selection.pulse,
+      selectionBeam: selection.beam,
       vitalWarningRing,
       bedTerminalScreen,
       bedTerminalTexture,
@@ -2556,6 +2599,7 @@ export class WardScene {
 
     const status = resolveBedStatus(bed);
     const isEmpty = status.state === 'empty';
+    this.setBedSelectionVisible(meshGroup, this.selectedBedCode === bed.bedCode);
     const mat = meshGroup.mattress.material as THREE.MeshStandardMaterial;
     const mattressGlow = this.getMattressEmissive(status, isEmpty);
     mat.color.set(isEmpty ? 0xb0bec5 : 0xf5f7fa);
@@ -2632,6 +2676,8 @@ export class WardScene {
     if (this.selectedBedCode === bedCode)
       return;
     this.selectedBedCode = bedCode;
+    for (const meshGroup of this.bedMeshes.values())
+      this.setBedSelectionVisible(meshGroup, meshGroup.bedCode === bedCode);
     if (bedCode)
       this.focusSelectedBed(bedCode);
   }
@@ -2727,8 +2773,8 @@ export class WardScene {
         .sub(this.controls.target)
         .multiplyScalar(nextViewportScale / previousViewportScale)
         .add(this.controls.target);
-      this.applyWardInteriorViewBoundsConstraint();
       this.controls.update();
+      this.enforceWardInteriorControlBounds();
     }
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
@@ -2778,7 +2824,7 @@ export class WardScene {
       const t = easeOutCubic(this.cameraTransition.elapsed / this.cameraTransition.duration);
       this.camera.position.lerpVectors(this.cameraTransition.fromPos, this.cameraTransition.toPos, t);
       this.controls.target.lerpVectors(this.cameraTransition.fromTarget, this.cameraTransition.toTarget, t);
-      this.applyWardInteriorViewBoundsConstraint();
+      this.enforceWardInteriorControlBounds();
       if (t >= 1)
         this.cameraTransition = null;
     }
@@ -2799,6 +2845,26 @@ export class WardScene {
         if (!meshGroup)
           continue;
         const status = resolveBedStatus(bed);
+        if (meshGroup.selectionRing.visible) {
+          const selectPulse = this.prefersReducedMotion ? 1 : 1 + Math.sin(elapsed * 2.6) * 0.04;
+          meshGroup.selectionRing.scale.set(0.58 * selectPulse, 1.04 * selectPulse, 1);
+          {
+            const mat = meshGroup.selectionRing.material as THREE.MeshBasicMaterial;
+            mat.opacity = 0.22 + Math.sin(elapsed * 3.2) * 0.06;
+            if (this.prefersReducedMotion)
+              mat.opacity = 0.22;
+          }
+          {
+            const mat = meshGroup.selectionPulse.material as THREE.MeshBasicMaterial;
+            mat.opacity = this.prefersReducedMotion ? 0.1 : 0.1 + Math.sin(elapsed * 2.6) * 0.03;
+          }
+          {
+            const mat = meshGroup.selectionBeam.material as THREE.MeshBasicMaterial;
+            mat.opacity = 0.045 + Math.sin(elapsed * 2.2) * 0.015;
+            if (this.prefersReducedMotion)
+              mat.opacity = 0.045;
+          }
+        }
         if (status.state === 'infusing') {
           const pulse = 0.55 + Math.sin(elapsed * 2.5) * 0.15;
           const indicatorMat = meshGroup.indicator.material as THREE.MeshStandardMaterial;
@@ -2827,8 +2893,8 @@ export class WardScene {
       }
     }
 
-    this.applyWardInteriorViewBoundsConstraint();
     this.controls.update();
+    this.enforceWardInteriorControlBounds();
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
   };
@@ -2864,5 +2930,6 @@ export class WardScene {
     this.renderer.dispose();
     this.renderer.domElement.remove();
     this.labelRenderer.domElement.remove();
+    this.renderer.forceContextLoss();
   }
 }
