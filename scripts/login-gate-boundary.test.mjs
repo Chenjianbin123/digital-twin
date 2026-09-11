@@ -54,11 +54,12 @@ test('login gate keeps sign-in instructions in Chinese', () => {
   }
 });
 
-test('login gate uses an adaptive desktop card layout', () => {
+test('login gate uses an adaptive desktop card layout without an inner scrollbar', () => {
   assert.match(loginGate, /swp-login__card/);
   assert.match(compiledStyles, /\.swp-login__rail\s*\{[^}]*width: clamp\(/);
   assert.match(compiledStyles, /\.swp-login__card\s*\{[^}]*max-height: 100%/);
-  assert.match(compiledStyles, /\.swp-login__card\s*\{[^}]*overflow-y: auto/);
+  assert.match(compiledStyles, /\.swp-login__card\s*\{[^}]*overflow:\s*visible/);
+  assert.doesNotMatch(compiledStyles, /\.swp-login__card\s*\{[^}]*overflow-y:\s*auto/);
 });
 
 test('login gate handles short and reduced-motion viewports', () => {
