@@ -18,7 +18,7 @@ test('design preview is separate from the production scene and data', () => {
   assert.match(preview, /nurse-station-design-v2\.glb\?url/);
   assert.doesNotMatch(preview, /@\/api|@\/stores|nurse-station-scene/);
   assert.match(read('../src/config/nurse-station-scene.ts'), /nurse-station-design-v2\.glb/);
-  assert.ok(existsSync(new URL('../public/models/smart-ward-nurse-station/1-1.glb', import.meta.url)), 'legacy asset retained for rollback');
+  assert.ok(existsSync(new URL('../public/models/smart-ward-nurse-station/nurse-station-design-v2.glb', import.meta.url)), 'active nurse-station model must exist');
   assert.match(read('../nurse-station-preview.html'), /src\/preview\/main\.ts/);
   assert.match(read('../vite.config.ts'), /stationPreview:.*nurse-station-preview\.html/);
 });

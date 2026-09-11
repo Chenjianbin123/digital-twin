@@ -1,7 +1,7 @@
 export interface NurseStationSceneConfig {
   model: {
     url: string;
-    layout: 'legacy' | 'reference-v2';
+    layout: "legacy" | "reference-v2";
     /** 仅 legacy 布局按包围盒缩放；reference-v2 保留建模单位。 */
     maxSize: { x: number; y: number; z: number };
   };
@@ -63,8 +63,8 @@ export interface NurseStationSceneConfig {
 /** 护士站模型、构图和交互限制。调整护士站外观时优先修改这里。 */
 export const nurseStationSceneConfig: NurseStationSceneConfig = {
   model: {
-    url: "/models/smart-ward-nurse-station/nurse-station-design-v2.glb?v=20260909",
-    layout: 'reference-v2',
+    url: "/models/smart-ward-nurse-station/nurse-station-design-v3.glb?v=20260909",
+    layout: "reference-v2",
     maxSize: { x: 11.04, y: 2.3895, z: 5.102 },
   },
   position: { x: 0, z: 14 },
@@ -72,10 +72,15 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
     background: 0xdbe2e2,
     /** 首屏视野角：数值越小，模型越大；数值越大，看到的环境越多。 */
     deskFov: 38,
-
+    /** 贴近原型：避免 ACES 再额外提亮。 */
     exposure: 1,
-    envMapIntensity: 1,
-    environmentIntensity: 0.5,
+    /**
+     * 仅 legacy 布局会覆盖材质 envMapIntensity。
+     * reference-v2/v3 保留 glTF 作者值，避免整体发灰发亮。
+     */
+    envMapIntensity: 0.42,
+    /** RoomEnvironment 强度；过高会洗白墙面与台面。 */
+    environmentIntensity: 0.32,
   },
   camera: {
     /**

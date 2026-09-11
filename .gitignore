@@ -10,4 +10,3 @@ artifacts
 recordings
 *.log
 tsconfig.tsbuildinfo
-public/models/hospital-corridor/source/hospital-in-copy.glb

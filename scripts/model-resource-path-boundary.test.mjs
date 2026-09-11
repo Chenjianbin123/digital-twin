@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const modelPaths = [
   'public/models/smart-ward-interior/room-v1.glb',
-  'public/models/smart-ward-nurse-station/1-1.glb',
+  'public/models/smart-ward-nurse-station/nurse-station-design-v2.glb',
 ];
 
 function readGlbHeader(buffer, filePath) {

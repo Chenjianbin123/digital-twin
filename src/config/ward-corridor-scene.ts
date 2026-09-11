@@ -80,11 +80,33 @@ export interface WardCorridorSceneConfig {
 /** 病房走廊模型、镜头和备用几何参数。六门节点顺序同时决定病房绑定顺序。 */
 export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
   model: {
-    url: '/models/hospital-corridor/3-v-1.glb?v=20260827-3v1-model-v1',
+    url: "/models/hospital-corridor/3-v4.glb?v=20260827-3v1-model-v1",
     rotationX: 0,
     slotCount: 10,
-    doorNodeNames: ['门1', '门2', '门3', '门4', '门5', '门6', '门7', '门8', '门9', '门10'],
-    entranceDeviceNodeNames: ['门口机1', '门口机2', '门口机3', '门口机4', '门口机5', '门口机6', '门口机7', '门口机8', '门口机9', '门口机10'],
+    doorNodeNames: [
+      "门1",
+      "门2",
+      "门3",
+      "门4",
+      "门5",
+      "门6",
+      "门7",
+      "门8",
+      "门9",
+      "门10",
+    ],
+    entranceDeviceNodeNames: [
+      "门口机1",
+      "门口机2",
+      "门口机3",
+      "门口机4",
+      "门口机5",
+      "门口机6",
+      "门口机7",
+      "门口机8",
+      "门口机9",
+      "门口机10",
+    ],
     canvasTextureFlipY: false,
   },
   camera: {
@@ -107,9 +129,9 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
       targetZLengthFactor: 0.15,
     },
     viewBounds: {
-      floorMesh: '地板',
-      ceilingMesh: '天花板',
-      wallMeshes: ['墙壁', '墙壁2'],
+      floorMesh: "地板",
+      ceilingMesh: "天花板",
+      wallMeshes: ["墙壁", "墙壁2"],
       margins: {
         floor: 0.22,
         ceiling: 0.28,
@@ -135,7 +157,7 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
     exposure: 1.02,
     envMapIntensity: 0.22,
     environmentIntensity: 0.26,
-    floorMeshName: '地板',
+    floorMeshName: "地板",
     floorStripeColorScale: 0.5,
   },
   fallbackGeometry: {

@@ -685,13 +685,14 @@ export class AreaScene {
   }
 
   private setupNurseStationAtmosphereLights() {
-    const counterGlow = new THREE.RectAreaLight(0xb8f3ff, 0.78, 5.8, 1.2);
+    // legacy 布局补光改为中性暖白，避免青冷偏色；reference-v2 走 createReferenceStationLights。
+    const counterGlow = new THREE.RectAreaLight(0xfff2de, 0.42, 5.8, 1.2);
     counterGlow.name = 'nurse-station-counter-softbox';
     counterGlow.position.set(0, 2.25, NURSE_STATION.z + 0.45);
     counterGlow.rotation.x = -Math.PI / 2.55;
     this.scene.add(counterGlow);
 
-    const screenFill = new THREE.PointLight(0x7ee0ff, 0.48, 8.2, 1.85);
+    const screenFill = new THREE.PointLight(0xfff7eb, 0.28, 8.2, 1.85);
     screenFill.name = 'nurse-station-screen-fill';
     screenFill.position.set(0, 1.75, NURSE_STATION.z - 0.85);
     this.scene.add(screenFill);
@@ -3197,7 +3198,10 @@ export class AreaScene {
       }
 
       model.name = 'blender-nurse-station';
-      this.prepareLoadedModel(model, { envMapIntensity: STATION_ENV_MAP_INTENSITY });
+      this.prepareLoadedModel(model, {
+        envMapIntensity: STATION_ENV_MAP_INTENSITY,
+        preserveEnvMapIntensity: IS_REFERENCE_STATION,
+      });
       this.fitNurseStationModel(model);
       // 先挂到护士站根节点，再计算覆盖层相对相机的正面方向，
       // 让 root.worldToLocal() 使用包含护士站整体位移的完整世界矩阵。
@@ -3768,8 +3772,12 @@ export class AreaScene {
       mesh.group.visible = false;
   }
 
-  private prepareLoadedModel(model: THREE.Object3D, options?: { envMapIntensity?: number }) {
+  private prepareLoadedModel(model: THREE.Object3D, options?: {
+    envMapIntensity?: number;
+    preserveEnvMapIntensity?: boolean;
+  }) {
     const envMapIntensity = options?.envMapIntensity ?? 0.56;
+    const preserveEnvMapIntensity = options?.preserveEnvMapIntensity === true;
     model.traverse((obj) => {
       if (!(obj instanceof THREE.Mesh))
         return;
@@ -3777,7 +3785,7 @@ export class AreaScene {
       obj.receiveShadow = true;
       const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
       for (const material of materials) {
-        if ('envMapIntensity' in material)
+        if (!preserveEnvMapIntensity && 'envMapIntensity' in material)
           material.envMapIntensity = envMapIntensity;
       }
     });
