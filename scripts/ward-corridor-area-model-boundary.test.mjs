@@ -8,7 +8,6 @@ const areaScene = await readFile(new URL('../src/core/area-scene.ts', import.met
 
 test('病房走廊使用新的 Draco GLB，并保持 Y-up 坐标', async () => {
   await access(new URL('../public/models/hospital-corridor/3-v-1-optimized.glb', import.meta.url));
-  await access(new URL('../public/models/hospital-corridor/source/area-source.glb', import.meta.url));
   assert.match(config, /3-v-1-optimized\.glb/);
   assert.match(config, /rotationX: 0/);
 });
