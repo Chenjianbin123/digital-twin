@@ -207,6 +207,7 @@ export function addCorridorWallFinish(
 }
 
 export interface CorridorDisplayData {
+  theme?: 'light' | 'dark';
   mode?: 'area' | 'clock';
   areaName: string;
   deptName?: string;
@@ -265,6 +266,38 @@ export function createCorridorScreenTexture(data: CorridorDisplayData): THREE.Ca
     day: '2-digit',
     weekday: 'long',
   });
+
+  if (data.theme === 'light' && (data.mode === 'area' || data.mode === 'clock')) {
+    ctx.fillStyle = '#f3f8fa';
+    ctx.fillRect(0, 0, 800, 360);
+    ctx.fillStyle = '#278297';
+    ctx.fillRect(0, 0, 800, 7);
+    ctx.strokeStyle = '#9abdc9';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(8, 14, 784, 332);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#17384c';
+    if (data.mode === 'clock') {
+      ctx.font = 'bold 150px "Consolas", monospace';
+      ctx.fillText(timeStr, 400, 200);
+    }
+    else {
+      fitCanvasFontSize(ctx, data.areaName, 744, 140, 40);
+      ctx.fillText(data.areaName, 400, 140, 744);
+      ctx.fillStyle = '#426574';
+      fitCanvasFontSize(ctx, data.deptName ?? '智慧病房', 744, 60, 24, 'normal');
+      ctx.fillText(data.deptName ?? '智慧病房', 400, 280, 744);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = true;
+    tex.anisotropy = 8;
+    tex.needsUpdate = true;
+    return tex;
+  }
 
   if (data.mode === 'clock') {
     const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);

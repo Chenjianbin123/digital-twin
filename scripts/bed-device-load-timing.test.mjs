@@ -31,7 +31,9 @@ assert.match(source, /loadBedDeviceDetails\(\s*room\.beds,/);
 assert.match(source, /\(\) => requestGeneration === bedDetailsRequestGeneration/);
 assert.match(app, /bedDetailsLoading/);
 assert.match(app, /bedDetailsError/);
-assert.match(app, /正在加载床头屏信息/);
+assert.match(app, /<WardInteriorStatus/);
+assert.match(app, /:busy="wardSyncBusy"/);
+assert.match(app, /@retry="retryWardSync"/);
 
 const sceneTypeIndex = source.indexOf('function setSceneType');
 const sceneTypeBody = source.slice(sceneTypeIndex, source.indexOf('\n  }', sceneTypeIndex) + 4);

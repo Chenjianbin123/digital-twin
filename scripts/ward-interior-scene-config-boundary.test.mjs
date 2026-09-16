@@ -8,10 +8,10 @@ test('病房内部场景参数集中在独立配置文件中', async () => {
   const config = await projectFile('src/config/ward-interior-scene.ts');
 
   assert.match(config, /export const wardInteriorSceneConfig/);
-  assert.match(config, /room-v1\.glb\?v=20260901-room-v1-native/);
+  assert.match(config, /room-refined-v1\.glb\?v=20260915/);
   assert.match(config, /baseSize: \{ width: 12, height: 3\.92, depth: 9 \}/);
   assert.match(config, /height: 4\.2/);
-  assert.match(config, /position: \[0\.819, 1\.313, 5\.265\], target: \[0, 1, -0\.8\]/);
+  assert.match(config, /position: \[0\.5, 2\.4, 3\.95\], target: \[-1\.3, 1\.4, 0\.25\]/);
   assert.match(config, /referenceAspect: 0\.92/);
   assert.match(config, /background: 0xd8d2c8/);
   assert.match(config, /exposure: 1\.12/);

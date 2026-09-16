@@ -5,7 +5,7 @@ const panel = await readFile(new URL('../src/components/NurseStationPanel.vue', 
 
 assert.match(panel, /class="station-hero__scanline"/);
 assert.match(panel, /class="station-state__signal"/);
-assert.match(panel, /class="[^"]*\bstation-hero__chip\b/);
+assert.match(panel, /class="workspace-status"/);
 assert.match(panel, /class="station-hero__alert-toggle"/);
 assert.match(panel, /appearance:\s*none/);
 assert.match(panel, /@keyframes nurse-station-hero-scan/);

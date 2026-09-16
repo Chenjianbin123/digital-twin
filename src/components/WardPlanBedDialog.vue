@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { wardField, wardDataNotice } from '@/core/ward-presentation';
+import type { DataStatus } from '@/core/data-status';
 import { resolveBedStatus } from '@/core/bed-status';
 import { displayPatientName } from '@/utils/mask-patient';
 import type { TwinBedEntity } from '@/types/twin';
 
 const props = defineProps<{
   bed: TwinBedEntity;
+  dataStatus?: DataStatus;
+  theme?: 'light' | 'dark';
 }>();
 
 const emit = defineEmits<{
@@ -14,7 +18,7 @@ const emit = defineEmits<{
 
 const status = computed(() => resolveBedStatus(props.bed));
 const sick = computed(() => props.bed.sickInfo);
-const patientName = computed(() => displayPatientName(sick.value?.sickName, props.bed.isOccupied));
+const patientName = computed(() => props.bed.isOccupied && !sick.value?.sickName?.trim() ? '患者资料待同步' : displayPatientName(sick.value?.sickName, props.bed.isOccupied));
 const isInfusing = computed(() => ['300', '301'].includes(props.bed.statusBarInfo?.status ?? ''));
 const isInfusionDone = computed(() => ['302', '305'].includes(props.bed.statusBarInfo?.status ?? ''));
 const basicRows = computed(() => {
@@ -22,21 +26,21 @@ const basicRows = computed(() => {
     return [];
   return [
     ['性别年龄', [sick.value.sickSex, sick.value.sickAge ? `${sick.value.sickAge}岁` : ''].filter(Boolean).join(' / ') || '--'],
-    ['住院号', sick.value.sickNo || '--'],
-    ['入院时间', sick.value.sickInTime || '--'],
+    ['住院号', wardField(sick.value.sickNo)],
+    ['入院时间', wardField(sick.value.sickInTime)],
     ['护理等级', sick.value.nursingLevel || props.bed.nursingLevel || '--'],
-    ['责任医生', sick.value.visitDoctorName || '--'],
-    ['责任护士', sick.value.dutyNurseName || '--'],
-    ['饮食', sick.value.sickDiet || '无'],
-    ['过敏', sick.value.sickAllergy || '无'],
-    ['隔离', sick.value.sickIsolation || '无'],
+    ['责任医生', wardField(sick.value.visitDoctorName)],
+    ['责任护士', wardField(sick.value.dutyNurseName)],
+    ['饮食', wardField(sick.value.sickDiet)],
+    ['过敏', wardField(sick.value.sickAllergy)],
+    ['隔离', wardField(sick.value.sickIsolation)],
   ];
 });
 </script>
 
 <template>
   <Teleport to="body">
-    <div class="ward-plan-bed-dialog" role="dialog" aria-modal="true" @click.self="emit('close')">
+    <div class="ward-plan-bed-dialog" :data-theme="theme ?? 'dark'" role="dialog" aria-label="床位详情" aria-modal="true" @click.self="emit('close')">
       <section class="ward-plan-bed-dialog__card">
         <button class="ward-plan-bed-dialog__close" type="button" aria-label="关闭床位详情" @click="emit('close')">
           ×
@@ -52,6 +56,7 @@ const basicRows = computed(() => {
           </span>
         </header>
 
+        <p v-if="wardDataNotice(dataStatus)" role="status">{{ wardDataNotice(dataStatus) }}</p>
         <div v-if="sick" class="ward-plan-bed-dialog__patient">
           <strong>{{ patientName }}</strong>
           <span v-if="bed.nursingLevel" :style="{ color: bed.nursingColor || status.color }">
@@ -60,7 +65,7 @@ const basicRows = computed(() => {
         </div>
         <div v-else class="ward-plan-bed-dialog__empty">
           <strong>暂无患者信息</strong>
-          <span>当前为空床，可点击其它床位查看详情</span>
+          <span>{{ bed.isOccupied ? '已入住，患者资料待同步' : '当前为空床，可点击其它床位查看详情' }}</span>
         </div>
 
         <div v-if="bed.isCalling || isInfusing || isInfusionDone" class="ward-plan-bed-dialog__alert">
@@ -102,7 +107,9 @@ const basicRows = computed(() => {
     position: relative;
     width: min(560px, calc(100vw - 48px));
     padding: 24px;
-    overflow: hidden;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    box-sizing: border-box;
     color: #effaff;
     border: 1px solid rgba(91, 219, 255, 0.36);
     border-radius: 22px;
@@ -231,5 +238,28 @@ const basicRows = computed(() => {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+.ward-plan-bed-dialog[data-theme='light'] {
+  color-scheme: light;
+  background: #294b5940;
+  .ward-plan-bed-dialog__card { color: #294b59; border-color: #bfd8e4; background: linear-gradient(145deg, #ffffff, #edf5f9); box-shadow: 0 20px 64px #294b5926; }
+  .ward-plan-bed-dialog__close { color: #286c80; background: #e8f3f8; border-color: #bfd8e4; }
+  .ward-plan-bed-dialog__kicker, dt { color: #526f7d; }
+  dd { color: #294b59; }
+  .ward-plan-bed-dialog__patient, .ward-plan-bed-dialog__empty { background: #e8f3f8; border-color: #cbdfe8; }
+  .ward-plan-bed-dialog__empty span { color: #526f7d; }
+  .ward-plan-bed-dialog__alert { color: #a53d54; background: #faedf0; border-color: #e6bec9; }
+  .ward-plan-bed-dialog__note { color: #865e21; background: #faf2e3; }
+  .ward-plan-bed-dialog__status { box-shadow: none; }
+}
+.ward-plan-bed-dialog :focus-visible { outline: 2px solid #2987a1; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .ward-plan-bed-dialog { padding: 16px; }
+  .ward-plan-bed-dialog__card { width: 100%; padding: 18px; border-radius: 14px; }
+  .ward-plan-bed-dialog__grid { grid-template-columns: 76px minmax(0, 1fr); gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ward-plan-bed-dialog__card { animation: none; }
 }
 </style>

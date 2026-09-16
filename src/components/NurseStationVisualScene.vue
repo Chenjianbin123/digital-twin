@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue';
+import NurseStationSceneInfo from './NurseStationSceneInfo.vue';
 import type { AreaModelState } from '@/core/area-scene';
 import type { NurseStationViewModel } from '@/core/nurse-station-view-model';
 
@@ -36,6 +37,13 @@ const emit = defineEmits<{
         @model-state="emit('modelState', $event)"
       />
     </div>
+
+    <NurseStationSceneInfo
+      v-if="overlaysVisible && modelState === 'ready' && active !== false"
+      class="nurse-station-visual__info"
+      :theme="theme"
+      :view-model="viewModel"
+    />
 
     <div class="nurse-station-visual__wash" aria-hidden="true" />
     <div class="nurse-station-visual__ambient" aria-hidden="true" />
@@ -76,7 +84,10 @@ const emit = defineEmits<{
   inset: 0;
   overflow: hidden;
   isolation: isolate;
-  background: #08141d;
+  background: var(--scene-loading-background, #08141d);
+
+  &__info { position: absolute; z-index: 7; top: 80px; left: 24px; }
+  @media (max-width: 1023px) { &__info { top: 100px; left: 12px; max-width: calc(100% - 24px); } }
 
   &__scene {
     position: absolute;

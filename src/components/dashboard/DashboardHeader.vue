@@ -764,7 +764,7 @@ const dataStatusLabel = computed(() => ({
   .dash-header__area-meta { gap: 6px; }
   .dash-header__dept { max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #a7bfce; font-size: 12px; font-weight: 400; }
   .dash-header__tag, .dash-header__data-status { font-size: 12px; font-weight: 500; padding: 2px 6px; border-radius: 4px; }
-  .dash-header__title { font-size: clamp(18px,1.2vw,28px); font-weight: 600; letter-spacing: .06em; color: #e4f2f8; text-shadow: none; line-height: 1.3; }
+  .dash-header__title { font-size: clamp(17px,1vw,23px); font-weight: 600; letter-spacing: .06em; color: #e4f2f8; text-shadow: none; line-height: 1.3; }
   .dash-header__title-glow { display: none; }
   .dash-header__wing { width: 32px; flex-basis: 32px; opacity: .3; height: 1px; }
   .dash-header__wing::before { display: none; }

@@ -30,6 +30,17 @@ import {
   dimHospitalCorridorFloorStripes,
 } from './ward-corridor-model.ts';
 
+test('keeps named door group identity when glTF expands multiple material primitives', () => {
+  const group = new THREE.Group();
+  group.name = '门1';
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  mesh.name = 'DoorPrimitive';
+  group.add(mesh);
+  const doors = getHospitalCorridorDoorOrder([group, mesh]);
+  assert.equal(doors.length, 1);
+  assert.equal(doors[0]?.userData.corridorDoorNodeName, '门1');
+});
+
 test('creates a horizontal corridor display geometry with normalized screen UVs', () => {
   const geometry = new THREE.BoxGeometry(0.1, 2, 4);
   geometry.clearGroups();
@@ -57,7 +68,7 @@ test('creates a horizontal corridor display geometry with normalized screen UVs'
   assert.ok(values[minYIndex][1] < 0.01);
 });
 
-test('maps room data to six corridor slots and fills remaining slots with empty beds', () => {
+test('maps legacy room data to ten slots and identifies unconfigured slots', () => {
   const rooms = [
     { sickroomName: '301房' },
     { sickroomName: '302房' },
@@ -80,12 +91,12 @@ test('maps room data to six corridor slots and fills remaining slots with empty 
   assert.deepEqual(slots[2], {
     slotIndex: 2,
     roomIndex: null,
-    label: '空床',
+    label: '未配置',
     interactive: false,
   });
 });
 
-test('keeps the GLB active when extra rooms exceed the six physical doors', () => {
+test('keeps the GLB active while the layout handles room groups', () => {
   assert.equal(shouldUseWardCorridorModel(0), true);
   assert.equal(shouldUseWardCorridorModel(6), true);
   assert.equal(shouldUseWardCorridorModel(7), true);
@@ -100,7 +111,7 @@ test('keeps the fallback corridor visible until the GLB is loaded', () => {
   assert.equal(shouldReserveWardCorridorModel(-1, false, true), false);
 });
 
-test('recognizes and orders only the six doors from the hospital corridor model', () => {
+test('recognizes and orders only the configured ten doors from the hospital corridor model', () => {
   const doorNames = [...HOSPITAL_CORRIDOR_DOOR_NAMES];
   const nodes = [
     new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial()),

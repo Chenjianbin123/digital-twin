@@ -1,4 +1,8 @@
 import { createStationTheme } from '@/core/station-theme';
+import { WardCorridorLayout, type CorridorLayoutState, type CorridorSlot } from './ward-corridor-layout';
+import { WardCorridorScreenCache } from './ward-corridor-screen-cache';
+import { CorridorMarker } from './ward-corridor-markers';
+import { corridorScreenSignature, renderCorridorScreen } from './ward-corridor-screens';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -47,7 +51,6 @@ import {
 } from '@/core/hospital-scene-details';
 import { loadParsedTemplate } from '@/core/template/template-cache';
 import {
-  buildWardCorridorSlots,
   buildWardCorridorBindingSignature,
   configureWardCorridorCanvasTexture,
   getHospitalCorridorDoorOrder,
@@ -64,7 +67,6 @@ import {
   dimHospitalCorridorFloorStripes,
   shouldUseWardCorridorModel,
   WARD_CORRIDOR_MODEL_URL,
-  type WardCorridorSlot,
 } from '@/core/ward-corridor-model';
 import {
   captureWardCorridorBoundMeshes,
@@ -92,6 +94,8 @@ interface CameraTransition {
 export type AreaSceneModelKind = 'station' | 'corridor';
 
 export interface AreaSceneOptions {
+  areaId?: number | null;
+  onCorridorLayout?: (state: CorridorLayoutState) => void;
   container: HTMLElement;
   modelKind?: AreaSceneModelKind;
   onRoomClick?: (roomIndex: number) => void;
@@ -144,7 +148,9 @@ interface RoomMeshGroup {
 }
 
 interface WardCorridorModelBinding {
-  slot: WardCorridorSlot;
+  screenReady?: boolean;
+  marker?: CorridorMarker;
+  slot: CorridorSlot;
   door?: THREE.Mesh;
   screenShell?: THREE.Mesh;
   screen?: THREE.Mesh;
@@ -373,7 +379,12 @@ export class AreaScene {
   private wardCorridorBindings: WardCorridorModelBinding[] = [];
   private wardCorridorOverlayGroup: THREE.Group | null = null;
   private wardCorridorBindingSignature = '';
-  private wardCorridorRefreshToken = 0;
+  private corridorLayout: WardCorridorLayout;
+  private onCorridorLayout?: (state: CorridorLayoutState) => void;
+  private corridorScreens = new WardCorridorScreenCache();
+  private corridorScreenRetryTimer: number | undefined;
+  private corridorScreenRetryCount = 0;
+  private corridorLoadMetrics = { downloadParseMs: 0, gpuWarmupMs: 0 };
   private corridorDisplays: Array<{
     screen: THREE.Mesh;
     texture: THREE.CanvasTexture;
@@ -392,6 +403,11 @@ export class AreaScene {
   private pageHidden = document.hidden;
 
   constructor(options: AreaSceneOptions) {
+    this.corridorLayout = new WardCorridorLayout(
+      wardCorridorSceneConfig.model.doorNodeNames, wardCorridorSceneConfig.model.entranceDeviceNodeNames,
+      options.areaId == null ? undefined : wardCorridorSceneConfig.areaLayouts[String(options.areaId)],
+    );
+    this.onCorridorLayout = options.onCorridorLayout;
     const { container, onRoomClick, onNodePick, onModelState, onCorridorState, onCameraState } = options;
     this.container = container;
     this.modelKind = options.modelKind ?? 'station';
@@ -1146,6 +1162,7 @@ export class AreaScene {
     const info = this.getNurseStationDisplayInfo();
     const callingCount = this.getNurseStationSummaries().reduce((sum, item) => sum + item.callingCount, 0);
     return {
+      theme: this.darkTheme ? 'dark' : 'light',
       areaName: info.areaName ?? '病区',
       deptName: info.deptName,
       dutyNurseName: info.dutyNurseName,
@@ -1805,7 +1822,81 @@ export class AreaScene {
     return texture;
   }
 
+  private createReferenceOverviewTexture() {
+    const { canvas, ctx } = this.createBoardCanvas(1600, 500);
+    const vm = this.nurseStationViewModel;
+    const available = (key: 'ward' | 'events') => {
+      const source = vm?.dataFreshnessItems.find(item => item.key === key);
+      return Boolean(source && (source.status === 'ready' || source.syncedAt));
+    };
+    const wardReady = available('ward');
+    const eventsReady = available('events');
+    const m = vm?.metrics;
+    const ink = this.darkTheme ? '#dceaf2' : '#e0eee7';
+    const muted = this.darkTheme ? '#9fb9c9' : '#9ab3a8';
+    const accent = this.darkTheme ? '#91d5df' : '#add8c2';
+    const alert = '#e8a7b3';
+    const text = (value: string, x: number, y: number, size: number, color = ink, max = 1100, weight = 400) => {
+      ctx.fillStyle = color;
+      ctx.font = weight + ' ' + size + 'px "Microsoft YaHei", sans-serif';
+      this.drawTruncatedText(ctx, value, x, y, max);
+    };
+    const bg = ctx.createLinearGradient(0, 0, 1600, 500);
+    bg.addColorStop(0, this.darkTheme ? '#102f40' : '#102e29'); bg.addColorStop(1, this.darkTheme ? '#091d2a' : '#081c1c');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, 1600, 500);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    const panel = (x: number, y: number, width: number, height: number, fill: string, stroke = '#638d792b') => {
+      this.drawBoardRoundRect(ctx, x, y, width, height, 14);
+      ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke();
+    };
+    panel(40, 30, 64, 64, '#a8d4bd12');
+    ctx.strokeStyle = accent; ctx.lineWidth = 3;
+    ctx.strokeRect(58, 44, 28, 34);
+    ctx.beginPath(); ctx.moveTo(64, 55); ctx.lineTo(80, 55); ctx.moveTo(72, 47); ctx.lineTo(72, 63); ctx.moveTo(68, 78); ctx.lineTo(68, 69); ctx.lineTo(76, 69); ctx.lineTo(76, 78); ctx.stroke();
+    text(vm?.area.areaName ?? this.area?.areaName ?? '护士站', 124, 64, 42, ink, 970, 600);
+    text('护士站  ·  病区运行概览', 124, 99, 24, muted);
+    const syncNormal = vm?.realtime.status === 'ready';
+    const syncColor = syncNormal ? accent : '#e2bf84';
+    panel(1242, 30, 312, 46, syncNormal ? '#a8d4bd12' : '#e2bf8412');
+    ctx.fillStyle = syncColor; ctx.beginPath(); ctx.arc(1264, 53, 5, 0, Math.PI * 2); ctx.fill();
+    text(vm?.realtime.label ?? '等待数据', 1284, 63, 27, syncColor, 244, 500);
+    text(syncNormal ? '病区与护理信息同步' : '已有数据请核对', 1252, 108, 23, muted, 300);
+    const line = ctx.createLinearGradient(40, 0, 1560, 0);
+    line.addColorStop(0, '#a4ceb960'); line.addColorStop(1, '#a4ceb90d');
+    ctx.fillStyle = line; ctx.fillRect(40, 128, 1520, 1);
+
+    // Two independent information groups leave the lower middle clear of the desk monitor.
+    panel(32, 151, 704, 313, '#b4d7c508');
+    panel(864, 151, 704, 313, '#b4d7c508');
+    text('病区概况', 64, 193, 29, accent, 560, 600);
+    text('护理动态', 888, 193, 29, accent, 560, 600);
+    ctx.fillStyle = '#acd2bc'; ctx.fillRect(32, 175, 3, 22); ctx.fillRect(864, 175, 3, 22);
+    panel(58, 210, 216, 181, '#a8d4bd0c', '#a8d4bd12');
+    const calling = eventsReady && Boolean(m?.calling);
+    panel(882, 210, 216, 181, calling ? '#e8a7b310' : '#a8d4bd0c', calling ? '#e8a7b32b' : '#a8d4bd12');
+    const metric = (label: string, value: string, unit: string, x: number, color = ink, primary = false) => {
+      text(label, x, 247, 28, muted, 185);
+      text(value, x, 335, primary ? 91 : 79, color, 185, 500);
+      text(unit, x, 371, 23, muted, 185);
+    };
+    metric('在床患者', wardReady && m ? String(m.occupied) : '—', '人', 76, accent, true);
+    metric('总床位', wardReady && m ? String(m.totalBeds) : '—', '床', 322);
+    metric('病房数量', wardReady && m ? String(m.rooms) : '—', '间', 554);
+    metric('患者呼叫', eventsReady && m ? String(m.calling) : '—', '项', 900, calling ? alert : accent, true);
+    metric('在线设备', wardReady && m ? String(m.deviceOnline) : '—', '台', 1134);
+    metric('体征预警', eventsReady && m ? String(m.vitalWarnings) : '—', '项', 1366, eventsReady && m?.vitalWarnings ? alert : ink);
+    ctx.fillStyle = '#638d7938'; ctx.fillRect(56, 407, 656, 1); ctx.fillRect(888, 407, 656, 1);
+    text(wardReady && m ? '空余床位   ' + m.empty + ' 床' : '病区数据待同步', 76, 441, 24, muted, 574);
+    text(wardReady && m ? '接入设备   ' + m.deviceTotal + ' 台' : '设备数据待同步', 900, 441, 24, muted, 588);
+    const texture = this.makeBoardTexture(canvas);
+    // The wall display occupies a small portion of the full scene; mipmaps keep text stable at a distance.
+    texture.generateMipmaps = true;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    return texture;
+  }
+
   private createNurseRearDashboardTexture() {
+    if (IS_REFERENCE_STATION) return this.createReferenceOverviewTexture();
     const { canvas, ctx } = this.createBoardCanvas(1200, 640);
     const stats = this.getAreaBoardStats();
     const info = this.getNurseStationDisplayInfo();
@@ -2053,15 +2144,9 @@ export class AreaScene {
       texture.needsUpdate = true;
       return texture;
     }
-    if (kind === 'dashboard') {
-      const texture = this.createNurseRearDashboardTexture();
-      if (IS_REFERENCE_STATION) {
-        // Preserve the existing 1200:640 UI aspect on the new 2.25:1 screen.
-        texture.repeat.x = 2.25 / (1200 / 640);
-        texture.offset.x = (1 - texture.repeat.x) / 2;
-      }
-      return texture;
-    }
+    // The reference dashboard is authored at its physical wide-screen aspect.
+    if (kind === 'dashboard')
+      return this.createNurseRearDashboardTexture();
     if (kind === 'whiteboard')
       return this.createNurseRearShiftTexture();
     if (kind === 'roomStatus')
@@ -3263,7 +3348,9 @@ export class AreaScene {
     try {
       if (token !== this.wardCorridorModelLoadToken)
         return;
+      const downloadStart = performance.now();
       const gltf = await loader.loadAsync(WARD_CORRIDOR_MODEL_URL);
+      this.corridorLoadMetrics.downloadParseMs = performance.now() - downloadStart;
       const model = gltf.scene;
       if (token !== this.wardCorridorModelLoadToken) {
         this.disposeObjectTree(model);
@@ -3318,7 +3405,13 @@ export class AreaScene {
     this.disposeWardCorridorOverlays();
     this.disposeWardCorridorTextures();
     const rooms = this.area?.rooms ?? [];
-    const slots = buildWardCorridorSlots(rooms);
+    const layout = this.corridorLayout.resolve(rooms);
+    const slots = layout.slots;
+    // Hide the whole device (frame included), never the architectural door.
+    for (const name of wardCorridorSceneConfig.model.entranceDeviceNodeNames) {
+      const device = this.wardCorridorModel.getObjectByName(name);
+      if (device) device.visible = false;
+    }
     const bindings = slots.map(slot => ({ slot } as WardCorridorModelBinding));
     const meshes: THREE.Mesh[] = [];
     const modelNodes: THREE.Object3D[] = [];
@@ -3329,6 +3422,10 @@ export class AreaScene {
         meshes.push(obj);
     });
     this.bindCorridorModelDisplays(modelNodes);
+    if (!this.wardCorridorOverlayGroup) {
+      this.wardCorridorOverlayGroup = new THREE.Group();
+      this.scene.add(this.wardCorridorOverlayGroup);
+    }
 
     const doors = getHospitalCorridorDoorOrder(modelNodes);
     // 门口机节点可能是 Blender 导出的 Group，屏幕网格通常挂在其子节点下；
@@ -3341,22 +3438,45 @@ export class AreaScene {
     if (doors.length < bindings.length) {
       console.warn(`[AreaScene] hospital corridor model exposes ${doors.length} of ${bindings.length} expected doors`);
     }
-    doors.slice(0, bindings.length).forEach((door, index) => {
-      const binding = bindings[index];
+    bindings.forEach((binding) => {
+      const door = doors.find(candidate => (candidate.userData.corridorDoorNodeName ?? candidate.name) === binding.slot.doorNode);
+      if (!door) {
+        layout.issues.push(`模型缺少 ${binding.slot.doorNode}，请通过病房列表进入`);
+        return;
+      }
       binding.door = door as THREE.Mesh;
+      const doorRoot = this.wardCorridorModel!.getObjectByName(binding.slot.doorNode) ?? door;
+      const volume = this.wardCorridorBoundMeshes ? getWardCorridorPaddedBounds(this.wardCorridorBoundMeshes) : null;
+      if (binding.slot.interactive) binding.marker = new CorridorMarker(doorRoot, volume ? new THREE.Box3(
+        new THREE.Vector3(volume.minX, volume.minY, volume.minZ),
+        new THREE.Vector3(volume.maxX, volume.maxY, volume.maxZ),
+      ) : undefined, this.wardCorridorBoundMeshes?.widthAxis);
+      if (binding.marker) this.wardCorridorOverlayGroup!.add(binding.marker.sprite);
       binding.door.userData.roomIndex = binding.slot.roomIndex;
       binding.door.userData.role = binding.slot.interactive
         ? 'wardCorridorDoor'
         : 'emptyWardCorridorDoor';
+      doorRoot.userData.role = binding.door.userData.role;
+      doorRoot.userData.roomIndex = binding.slot.roomIndex;
+      if (!binding.slot.interactive) return;
+      const deviceRoot = this.wardCorridorModel!.getObjectByName(binding.slot.deviceNode);
+      if (deviceRoot) deviceRoot.visible = true;
       const doorCenter = new THREE.Box3().setFromObject(binding.door).getCenter(new THREE.Vector3());
       // 优先按同编号绑定（门1 ↔ 门口机1），避免模型空间排序变化导致错配；
       // 只有节点未按编号命名时才回退到空间最近匹配。
-      const expectedDeviceName = binding.door.name.replace(/^门(?=\d+$)/, '门口机');
+      const expectedDeviceName = binding.slot.deviceNode;
       let nearestDeviceIndex = unpairedEntranceDevices.findIndex(
-        device => device.name === expectedDeviceName,
+        device => {
+          let node: THREE.Object3D | null = device;
+          while (node && node !== this.wardCorridorModel) {
+            if (node.name === expectedDeviceName) return true;
+            node = node.parent;
+          }
+          return false;
+        },
       );
       let nearestDistance = Number.POSITIVE_INFINITY;
-      if (nearestDeviceIndex < 0) {
+      if (nearestDeviceIndex < 0 && layout.mode === 'schematic') {
         unpairedEntranceDevices.forEach((device, deviceIndex) => {
           const deviceCenter = new THREE.Box3().setFromObject(device).getCenter(new THREE.Vector3());
           const distance = doorCenter.distanceToSquared(deviceCenter);
@@ -3370,13 +3490,19 @@ export class AreaScene {
         ? unpairedEntranceDevices.splice(nearestDeviceIndex, 1)[0]
         : undefined;
       const overlays = this.createHospitalCorridorDoorOverlays(binding.door, entranceDevice);
+      if (!entranceDevice) layout.issues.push(`模型缺少 ${expectedDeviceName}，已显示备用门口屏`);
       binding.screen = overlays.screen;
       binding.screenMaterialIndex = overlays.screenMaterialIndex;
       binding.screenAspect = overlays.screenAspect;
       binding.label = overlays.label;
+      if (binding.screen) {
+        binding.screen.userData.roomIndex = binding.slot.roomIndex;
+        binding.screen.userData.role = binding.door.userData.role;
+      }
     });
 
     for (const binding of bindings) {
+      if (!binding.slot.interactive) continue;
       binding.labelTexture = this.createWardCorridorLabelTexture(binding.slot.label, binding.slot.interactive);
       if (binding.label)
         this.applyWardCorridorTexture(binding.label, binding.labelTexture);
@@ -3385,12 +3511,17 @@ export class AreaScene {
         binding,
         room ? isDoorHorizontal(resolveDoorDirector(room)) : false,
       );
-      binding.screenTexture = this.createEmptyWardCorridorScreenTexture(binding.slot.label);
+      binding.screenTexture = room ? createDoorTemplateStatusTexture(room, 'loading')
+        : this.createEmptyWardCorridorScreenTexture(binding.slot.label);
       if (binding.screen)
         this.applyWardCorridorTexture(binding.screen, binding.screenTexture, binding.screenMaterialIndex);
     }
 
     this.wardCorridorBindings = bindings;
+    if (!bindings.some(binding => binding.slot.roomIndex === this.focusedRoomIndex))
+      this.focusedRoomIndex = -1;
+    this.updateCorridorMarkers();
+    this.onCorridorLayout?.(layout);
     this.wardCorridorBindingSignature = buildWardCorridorBindingSignature(rooms);
     void this.refreshWardCorridorScreens();
   }
@@ -3585,7 +3716,10 @@ export class AreaScene {
   ) {
     texture.colorSpace = THREE.SRGBColorSpace;
     configureWardCorridorCanvasTexture(texture);
+    const previousMaterial = Array.isArray(mesh.material)
+      ? mesh.material[materialIndex ?? 0] : mesh.material;
     const nextMaterial = new THREE.MeshBasicMaterial({
+      name: previousMaterial?.name ?? '',
       map: texture,
       side: THREE.DoubleSide,
       toneMapped: false,
@@ -3593,7 +3727,7 @@ export class AreaScene {
       // 避免模板穿过门框显示；独立兜底平面仍保持顶层显示。
       depthTest: shouldDepthTestHospitalCorridorScreen(mesh),
       depthWrite: false,
-      polygonOffset: mesh.userData.hospitalCorridorTemplateDevice,
+      polygonOffset: !!mesh.userData.hospitalCorridorTemplateDevice,
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -1,
     });
@@ -3668,68 +3802,74 @@ export class AreaScene {
   }
 
   private async refreshWardCorridorScreens() {
+    this.updateCorridorMarkers();
     const area = this.area;
-    if (!area || !this.wardCorridorBindings.length)
+    if (!area || !this.isActive || !this.wardCorridorBindings.length)
       return;
-    const token = ++this.wardCorridorRefreshToken;
-
+    const bindings = this.wardCorridorBindings;
+    let failed = false;
     await Promise.all(this.wardCorridorBindings.map(async (binding) => {
       const roomIndex = binding.slot.roomIndex;
       const room = roomIndex == null ? undefined : area.rooms[roomIndex];
       const summary = roomIndex == null ? undefined : this.summaries[roomIndex];
-      if (!room || !summary || !binding.screen)
-        return;
-
-      let texture: THREE.CanvasTexture;
-      let isHorizontal = isDoorHorizontal(resolveDoorDirector(room));
+      if (!room || !summary || !binding.screen) return;
+      // Vue passes a raw area but nested objects can still be proxies.
+      const snapshot: TwinWardEntity = JSON.parse(JSON.stringify(room));
+      let horizontal = false;
       try {
-        if (room.templateId) {
-          const loadingTexture = createDoorTemplateStatusTexture(room, 'loading');
-      binding.screenTexture?.dispose();
-      binding.screenTexture = loadingTexture;
-      this.applyWardCorridorScreenPresentation(binding, isHorizontal);
-          this.applyWardCorridorTexture(binding.screen, loadingTexture, binding.screenMaterialIndex);
-          const parsed = await loadParsedTemplate(room.templateId);
-          isHorizontal = getDoorTerminalScreenLayout(room, parsed).isHorizontal;
-          texture = await renderDoorTerminalTexture(room, summary, parsed, {
-            areaName: area.areaName,
-            deptName: area.deptName,
-            targetAspect: binding.screenAspect
-              ? (isHorizontal ? binding.screenAspect : 1 / binding.screenAspect)
-              : undefined,
-            fit: binding.screenAspect ? 'fill' : 'contain',
+        await this.corridorScreens.update(binding.slot.doorNode,
+          corridorScreenSignature(snapshot, area, binding.screenAspect), async () => {
+            const result = await renderCorridorScreen(snapshot, summary, area, binding.screenAspect);
+            horizontal = result.horizontal;
+            return result.texture;
+          }, texture => {
+            binding.screenTexture?.dispose();
+            binding.screenTexture = texture;
+            binding.screenReady = true;
+            this.applyWardCorridorScreenPresentation(binding, horizontal);
+            this.applyWardCorridorTexture(binding.screen!, texture, binding.screenMaterialIndex);
           });
+      }
+      catch {
+        // Keep the last valid screen and retry on the next refresh.
+        if (!this.wardCorridorBindings.includes(binding)) return;
+        failed = true;
+        if (!binding.screenReady) {
+          binding.screenTexture?.dispose();
+          binding.screenTexture = createDoorTemplateStatusTexture(snapshot, 'error');
+          this.applyWardCorridorTexture(binding.screen, binding.screenTexture, binding.screenMaterialIndex);
         }
-        else {
-          texture = createDoorTemplateStatusTexture(room, 'missing');
-        }
+        const layout = this.corridorLayout.resolve(area.rooms);
+        this.onCorridorLayout?.({ ...layout, issues: [...layout.issues,
+          '部分门口屏模板加载失败，自动重试最多3次；若仍未恢复，请检查图片服务并刷新数据'] });
       }
-      catch (error) {
-        console.error('[DoorTemplate] 走廊屏渲染失败', {
-          room: room.sickroomName,
-          templateId: room.templateId,
-          error,
-        });
-        texture = createDoorTemplateStatusTexture(
-          room,
-          'error',
-          error instanceof Error ? error.message : undefined,
-        );
-      }
-
-      if (token !== this.wardCorridorRefreshToken) {
-        texture.dispose();
-        return;
-      }
-      binding.screenTexture?.dispose();
-      binding.screenTexture = texture;
-      this.applyWardCorridorScreenPresentation(binding, isHorizontal);
-      this.applyWardCorridorTexture(binding.screen, texture, binding.screenMaterialIndex);
     }));
+    if (failed && this.isActive && bindings === this.wardCorridorBindings
+      && this.corridorScreenRetryTimer === undefined && this.corridorScreenRetryCount < 3) {
+      this.corridorScreenRetryCount++;
+      this.corridorScreenRetryTimer = window.setTimeout(() => {
+        this.corridorScreenRetryTimer = undefined;
+        void this.refreshWardCorridorScreens();
+      }, 5000);
+    }
+    if (!failed && bindings === this.wardCorridorBindings)
+      this.onCorridorLayout?.(this.corridorLayout.resolve(area.rooms));
+  }
+
+  retryCorridorScreens() {
+    window.clearTimeout(this.corridorScreenRetryTimer);
+    this.corridorScreenRetryTimer = undefined;
+    this.corridorScreenRetryCount = 0;
+    void this.refreshWardCorridorScreens();
   }
 
   private disposeWardCorridorTextures() {
+    window.clearTimeout(this.corridorScreenRetryTimer);
+    this.corridorScreenRetryTimer = undefined;
+    this.corridorScreenRetryCount = 0;
+    this.corridorScreens.clear();
     for (const binding of this.wardCorridorBindings) {
+      binding.marker?.dispose();
       binding.screenTexture?.dispose();
       binding.labelTexture?.dispose();
     }
@@ -3764,12 +3904,12 @@ export class AreaScene {
       this.wardCorridorModel.visible = showModel;
     if (this.wardCorridorOverlayGroup)
       this.wardCorridorOverlayGroup.visible = showModel;
-    // 走廊只允许显示 Blender 导出的正式模型。
-    // 正式模型加载前保持空场景，避免切换瞬间闪现旧的备用几何体。
+    // Loading stays blank; only an actual failure activates generated fallback geometry.
+    const showFallback = this.viewPhase === 'corridor' && this.wardCorridorModelFailed;
     if (this.corridorGroup)
-      this.corridorGroup.visible = false;
+      this.corridorGroup.visible = showFallback;
     for (const mesh of this.roomMeshes.values())
-      mesh.group.visible = false;
+      mesh.group.visible = showFallback;
   }
 
   private prepareLoadedModel(model: THREE.Object3D, options?: {
@@ -4250,7 +4390,7 @@ export class AreaScene {
     this.viewPhase = phase;
     const count = Math.max(this.area?.rooms.length ?? 1, 1);
     const showCorridor = phase === 'corridor';
-    this.scene.background = new THREE.Color(showCorridor ? SCENE_BG : NURSE_STATION_BG);
+    this.updateThemeBackground();
     this.applyViewAppearance(phase);
     this.setCorridorContentVisible(showCorridor);
 
@@ -4459,6 +4599,7 @@ export class AreaScene {
   }
 
   private async refreshDoorScreen(roomIndex: number) {
+    if (!this.isActive || this.shouldShowWardCorridorModel()) return;
     const meshGroup = this.roomMeshes.get(roomIndex);
     const room = this.area?.rooms[roomIndex];
     const summary = this.summaries[roomIndex];
@@ -4881,11 +5022,29 @@ export class AreaScene {
     this.rebuildFloor(count);
   }
 
+  setCorridorPage(page: number) {
+    if (!this.area) return;
+    this.corridorLayout.resolve(this.area.rooms, page);
+    this.bindWardCorridorSlots();
+    this.resetToNurseStationView();
+  }
+
   private getRoomDoorFocus(roomIndex: number): { position: THREE.Vector3; target: THREE.Vector3 } {
-    const modelDoor = this.wardCorridorBindings.find(binding => binding.slot.roomIndex === roomIndex)?.door;
+    const binding = this.wardCorridorBindings.find(binding => binding.slot.roomIndex === roomIndex);
+    const modelDoor = binding ? this.wardCorridorModel?.getObjectByName(binding.slot.doorNode) ?? binding.door : undefined;
     if (this.shouldShowWardCorridorModel() && modelDoor) {
-      const target = new THREE.Box3().setFromObject(modelDoor).getCenter(new THREE.Vector3());
-      const position = new THREE.Vector3(0, Math.max(1.75, target.y + 0.25), target.z + 2.6);
+      // Door panels and their entrance screens are offset in the GLB. Aim at the
+      // bound screen so selecting a room does not crop its template off-screen.
+      const target = new THREE.Box3().setFromObject(binding?.screen ?? modelDoor).getCenter(new THREE.Vector3());
+      const position = target.clone();
+      const bounds = this.wardCorridorBoundMeshes ? getWardCorridorPaddedBounds(this.wardCorridorBoundMeshes) : null;
+      if (bounds) {
+        const axis = this.wardCorridorBoundMeshes!.widthAxis;
+        position[axis] = axis === 'x' ? (bounds.minX + bounds.maxX) / 2 : (bounds.minZ + bounds.maxZ) / 2;
+        position.y = Math.min(bounds.maxY, Math.max(bounds.minY, target.y + .25));
+        clampPointToWardCorridorBounds(position, bounds);
+      }
+      else position.add(new THREE.Vector3(0, .25, 2.6));
       return { position, target };
     }
     const mesh = this.roomMeshes.get(roomIndex);
@@ -4928,6 +5087,7 @@ export class AreaScene {
   }
 
   private updateFocusHighlight() {
+    this.updateCorridorMarkers();
     for (const meshGroup of this.roomMeshes.values()) {
       const focused = meshGroup.roomIndex === this.focusedRoomIndex;
       if (meshGroup.doorDisplayBlade) {
@@ -4937,8 +5097,22 @@ export class AreaScene {
     }
   }
 
+  private updateCorridorMarkers() {
+    for (const binding of this.wardCorridorBindings) {
+      const index = binding.slot.roomIndex;
+      const room = index == null ? undefined : this.area?.rooms[index];
+      binding.marker?.update(room?.sickroomName ?? binding.slot.label,
+        index == null ? undefined : this.summaries[index],
+        room?.isOnline === false, index !== null && index === this.focusedRoomIndex, this.darkTheme);
+    }
+  }
+
   /** 相机飞向病房门口机，可选完成后回调 */
   focusRoom(roomIndex: number, onComplete?: () => void) {
+    if (!this.area?.rooms[roomIndex]) return;
+    const layout = this.corridorLayout.resolve(this.area.rooms, undefined, roomIndex);
+    if (this.wardCorridorModelLoaded && JSON.stringify(layout.slots) !== JSON.stringify(this.wardCorridorBindings.map(binding => binding.slot)))
+      this.bindWardCorridorSlots();
     const hasModelDoor = this.wardCorridorBindings.some(binding => binding.slot.roomIndex === roomIndex && binding.door);
     if (this.shouldShowWardCorridorModel() && !hasModelDoor)
       return;
@@ -4952,6 +5126,7 @@ export class AreaScene {
 
   updateArea(area: TwinAreaEntity) {
     this.area = area;
+    this.onCorridorLayout?.(this.corridorLayout.resolve(area.rooms));
     const rooms = Array.isArray(area?.rooms) ? area.rooms : [];
     const layoutCount = Math.max(rooms.length, 1);
     const countChanged = rooms.length !== this.lastRoomCount;
@@ -5074,6 +5249,7 @@ export class AreaScene {
   }
 
   private updateRoomVisual(room: TwinWardEntity, index: number, summary: RoomSummary) {
+    if (!this.isActive || this.shouldShowWardCorridorModel()) return;
     const meshGroup = this.roomMeshes.get(index);
     if (!meshGroup)
       return;
@@ -5136,6 +5312,7 @@ export class AreaScene {
   }
 
   private handleClick = (event: MouseEvent) => {
+    if (!this.isActive || this.cameraTransition) return;
     if (this.viewPhase === 'station')
       return;
 
@@ -5153,7 +5330,7 @@ export class AreaScene {
 
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const groups = this.shouldShowWardCorridorModel() && this.wardCorridorModel
-      ? [this.wardCorridorModel]
+      ? [this.wardCorridorModel, ...(this.wardCorridorOverlayGroup ? [this.wardCorridorOverlayGroup] : [])]
       : [...this.roomMeshes.values()].map(m => m.group);
     const intersects = this.raycaster.intersectObjects(groups, true);
 
@@ -5228,41 +5405,71 @@ export class AreaScene {
 
   refreshLayout() {
     this.handleResize();
-    if (this.area?.rooms.length)
-      this.ensureOverviewCamera();
+  }
+
+  private updateThemeBackground() {
+    const lightBackground = this.viewPhase === 'corridor' ? SCENE_BG : NURSE_STATION_BG;
+    this.scene.background = new THREE.Color(this.darkTheme ? '#0b1824' : lightBackground);
   }
 
   setTheme(theme: 'light' | 'dark') {
     this.darkTheme = theme === 'dark';
+    this.updateThemeBackground();
+    this.updateCorridorMarkers();
+    this.refreshCorridorDisplays();
     if (this.modelKind !== 'station' || !IS_REFERENCE_STATION) return;
     this.stationTheme(this.nurseStationModel, this.scene.getObjectByName('reference-nurse-station-lights'), this.darkTheme);
-    this.scene.background = new THREE.Color(this.darkTheme ? '#0b1824' : NURSE_STATION_BG);
-    if (this.nurseStationModel) this.renderer.render(this.scene, this.camera);
+
+    if (this.nurseStationModel) {
+      this.refreshNurseStationBoardDisplays();
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 
   setActive(active: boolean) {
     if (this.isActive === active)
       return;
     this.isActive = active;
+    if (!active) {
+      window.clearTimeout(this.corridorScreenRetryTimer);
+      this.corridorScreenRetryTimer = undefined;
+    }
+    else this.corridorScreenRetryCount = 0;
     this.controls.enabled = active;
     if (active) {
+      void this.refreshWardCorridorScreens();
       this.timer.getDelta();
       this.handleResize();
       if (!this.animationId)
         this.animate();
       return;
     }
+    this.cameraTransition = null;
     cancelAnimationFrame(this.animationId);
     this.animationId = 0;
   }
 
   private async warmGpu() {
+    const started = performance.now();
     try {
       await this.renderer.compileAsync(this.scene, this.camera);
     }
     catch {
       this.renderer.compile(this.scene, this.camera);
     }
+    if (this.modelKind === 'corridor') this.corridorLoadMetrics.gpuWarmupMs = performance.now() - started;
+  }
+
+  getCorridorDiagnostics() {
+    return { ...this.corridorLoadMetrics, ...this.corridorScreens.stats,
+      receivedRooms: this.area?.rooms.length ?? 0,
+      missingRoomCodes: this.area?.rooms.filter(room => !room.sickroomCode?.trim()).length ?? 0,
+      configuredTemplates: this.area?.rooms.filter(room => !!room.templateId).length ?? 0,
+      boundScreens: this.wardCorridorBindings.filter(binding => binding.slot.roomIndex !== null && binding.screen).length,
+      readyScreens: this.wardCorridorBindings.filter(binding => binding.screenReady).length,
+      unassignedSlots: this.wardCorridorBindings.filter(binding => binding.slot.roomIndex === null).length,
+      textures: this.renderer.info.memory.textures, geometries: this.renderer.info.memory.geometries,
+      drawCalls: this.renderer.info.render.calls, triangles: this.renderer.info.render.triangles };
   }
 
   private animate = (timestamp?: number) => {
@@ -5368,6 +5575,7 @@ export class AreaScene {
       this.applyCorridorViewBoundsConstraint();
     this.updateCss2dLabelVisibility();
     this.renderer.render(this.scene, this.camera);
+    for (const binding of this.wardCorridorBindings) binding.marker?.updateVisibility(this.camera);
     this.labelRenderer.render(this.scene, this.camera);
   };
 

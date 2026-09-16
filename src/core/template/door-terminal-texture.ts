@@ -361,6 +361,7 @@ export async function renderDoorTerminalTexture(
     deptName?: string;
     targetAspect?: number;
     fit?: 'contain' | 'fill';
+    requireTemplateImages?: boolean;
   },
 ): Promise<THREE.CanvasTexture> {
   const data = buildDoorTemplateData(room, summary, areaMeta);
@@ -370,6 +371,7 @@ export async function renderDoorTerminalTexture(
       isHorizontal: layout.isHorizontal,
       outputWidth: layout.canvasWidth,
       outputHeight: layout.canvasHeight,
+      requireTemplateImages: areaMeta?.requireTemplateImages,
     });
     const templateIsHorizontal = template.width >= template.height;
     if (templateIsHorizontal !== layout.isHorizontal) {

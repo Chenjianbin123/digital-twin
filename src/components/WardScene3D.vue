@@ -1,6 +1,10 @@
 <script setup lang="ts">
 
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import WardLegend from '@/components/WardLegend.vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { wardInteriorRoomKey, selectOccupiedWardBeds } from '@/core/ward-interior-beds';
+import { wardInteriorSceneConfig } from '@/config/ward-interior-scene';
+import type { DataStatus } from '@/core/data-status';
 
 import { WardScene, type WardInteriorModelState } from '@/core/ward-scene';
 
@@ -14,6 +18,7 @@ import type { CameraPresetId, TwinBedEntity, TwinWardEntity } from '@/types/twin
 const props = defineProps<{
 
   ward: TwinWardEntity;
+  theme?: 'light' | 'dark';
 
   cameraPreset: CameraPresetId;
 
@@ -24,6 +29,8 @@ const props = defineProps<{
   vitalWarningBedCodes?: string[];
 
   active?: boolean;
+  dataStatus?: DataStatus;
+  sharedStatus?: boolean;
 
 }>();
 
@@ -32,6 +39,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 
   bedClick: [bed: TwinBedEntity];
+  requestPlan: [];
   modelState: [state: WardInteriorModelState];
 
 }>();
@@ -41,6 +49,65 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLElement | null>(null);
 
 let scene: WardScene | null = null;
+function resetCamera() { scene?.setCameraPreset('door'); }
+const occupied = computed(() => selectOccupiedWardBeds(props.ward));
+const capacity = wardInteriorSceneConfig.modular.slots.length;
+const expanded = computed(() => occupied.value.beds.length > capacity);
+const terminalDialog = ref<HTMLDialogElement | null>(null);
+const terminalCanvas = ref<HTMLCanvasElement | null>(null);
+const terminalBedCode = ref('');
+const terminalWaiting = ref(false);
+let terminalTimer: ReturnType<typeof setInterval> | null = null;
+let lastTerminalSource: HTMLCanvasElement | null = null;
+function drawTerminal() {
+  const canvas = terminalCanvas.value;
+  if (!canvas) return;
+  const source = scene?.getBedTerminalCanvas(terminalBedCode.value);
+  terminalWaiting.value = !source;
+  if (source === lastTerminalSource) return;
+  lastTerminalSource = source ?? null;
+  if (!source) { canvas.width = 512; canvas.height = 300; return; }
+  canvas.width = source.width;
+  canvas.height = source.height;
+  canvas.getContext('2d')?.drawImage(source, 0, 0);
+}
+function stopTerminalPreview() {
+  if (terminalTimer) clearInterval(terminalTimer);
+  terminalTimer = null;
+  lastTerminalSource = null;
+}
+function closeTerminal() { terminalDialog.value?.close(); stopTerminalPreview(); }
+async function openTerminal() {
+  if (props.selectedBedCode && !occupied.value.beds.some(b => b.bedCode === props.selectedBedCode)) return;
+  terminalBedCode.value = occupied.value.beds.some(b => b.bedCode === props.selectedBedCode)
+    ? props.selectedBedCode! : occupied.value.beds[0]?.bedCode ?? '';
+  if (!terminalBedCode.value) return;
+  const selected = occupied.value.beds.find(b => b.bedCode === terminalBedCode.value);
+  if (selected) emit('bedClick', selected);
+  await nextTick();
+  terminalDialog.value?.showModal();
+  stopTerminalPreview();
+  drawTerminal();
+  terminalTimer = setInterval(drawTerminal, 400);
+}
+function inspectTerminalBed() {
+  lastTerminalSource = null;
+  drawTerminal();
+  const bed = occupied.value.beds.find(b => b.bedCode === terminalBedCode.value);
+  if (bed) emit('bedClick', bed);
+}
+watch(() => wardInteriorRoomKey(props.ward), closeTerminal);
+watch(() => occupied.value.beds.map(b => b.bedCode), codes => {
+  if (terminalDialog.value?.open && !codes.includes(terminalBedCode.value)) closeTerminal();
+});
+const selectionNotShown = computed(() => props.selectedBedCode
+  && !occupied.value.beds.some(bed => bed.bedCode === props.selectedBedCode));
+const dataNotice = computed(() => {
+  if (props.dataStatus === 'loading') return '患者数据同步中，当前画面可能为上次结果';
+  if (props.dataStatus && props.dataStatus !== 'ready') return '患者数据未完整同步，当前画面仅供参考';
+  if (occupied.value.invalidCount && !occupied.value.beds.length) return '入住数据缺少有效床号，暂无法生成床位';
+  return occupied.value.beds.length ? '' : '当前病房暂无已入住床位';
+});
 
 
 
@@ -55,6 +122,7 @@ onMounted(() => {
     scene = new WardScene({
 
       container: containerRef.value,
+      theme: props.theme,
 
       onBedClick: bed => emit('bedClick', bed),
       onModelState: state => emit('modelState', state),
@@ -69,7 +137,7 @@ onMounted(() => {
 
   scene.updateWard(props.ward);
 
-  void scene.syncWardBedTemplates(props.ward);
+
 
   scene.setCameraPreset(props.cameraPreset);
 
@@ -85,11 +153,14 @@ onMounted(() => {
 
 
 
+watch(() => props.theme, theme => scene?.setTheme(theme ?? 'dark'));
+
 watch(() => props.ward, (newWard) => {
 
   scene?.updateWard(newWard);
+  if (terminalDialog.value?.open) drawTerminal();
 
-  void scene?.syncWardBedTemplates(newWard);
+  scene?.setSelectedBedCode(props.selectedBedCode ?? null);
 
 }, { deep: true });
 
@@ -112,6 +183,10 @@ watch(() => props.envAlertLevel, (level) => {
 });
 
 watch(() => props.selectedBedCode, (bedCode) => {
+  if (terminalDialog.value?.open) {
+    if (!bedCode || !occupied.value.beds.some(b => b.bedCode === bedCode)) closeTerminal();
+    else { terminalBedCode.value = bedCode; lastTerminalSource = null; drawTerminal(); }
+  }
 
   scene?.setSelectedBedCode(bedCode ?? null);
 
@@ -126,12 +201,14 @@ watch(() => props.vitalWarningBedCodes, (codes) => {
 watch(() => props.active, (active) => {
 
   scene?.setActive(active !== false);
+  if (active === false) closeTerminal();
 
 });
 
 
 
 onUnmounted(() => {
+  stopTerminalPreview();
 
   scene?.dispose();
 
@@ -151,8 +228,40 @@ onUnmounted(() => {
   >
 
     <div ref="containerRef" class="ward-scene-3d__canvas-host" />
+    <Teleport to="#ward-tools-host" :disabled="!sharedStatus">
+    <div v-show="active !== false" class="ward-scene-3d__occupancy" aria-label="病房展示状态">
+      <div v-if="!sharedStatus" aria-live="polite">
+        <strong>入住记录 {{ occupied.occupiedCount }} 条 · 已展示 {{ occupied.beds.length }} 床</strong>
+        <p v-if="dataNotice">{{ dataNotice }}</p>
+        <p v-if="expanded">房间按入住数量扩展，尺寸为展示示意。</p>
+        <p v-if="occupied.invalidCount">{{ occupied.invalidCount }} 条入住床位数据缺少唯一床号，暂未展示。</p>
+        <p v-if="selectionNotShown">当前选择的床位未在 3D 展示，可通过详情面板或平面图查看。</p>
+      </div>
+      <p v-if="sharedStatus && selectionNotShown">当前选择的床位未在 3D 展示，可通过详情面板查看。</p>
+      <p v-if="occupied.beds.length > 2" class="ward-scene-3d__narrow-notice">窄屏可逐床查看，入住平面图可查看全貌。</p>
+      <div class="ward-scene-3d__actions">
+        <button type="button" @click="resetCamera">复位视角</button>
+        <button type="button" :disabled="!occupied.beds.length || !!selectionNotShown" @click="openTerminal">查看床头屏</button>
+        <WardLegend embedded />
+      </div>
+    </div>
 
 
+
+    </Teleport>
+    <dialog ref="terminalDialog" class="ward-terminal-dialog" aria-label="床头屏放大查看" @close="stopTerminalPreview">
+      <header>
+        <label>床头屏
+          <select v-model="terminalBedCode" aria-label="查看哪个床位的床头屏" @change="inspectTerminalBed">
+            <option v-for="bed in occupied.beds" :key="bed.bedCode" :value="bed.bedCode">{{ bed.bedName || bed.bedCode }}</option>
+          </select>
+        </label>
+        <button type="button" autofocus @click="closeTerminal">关闭</button>
+      </header>
+      <p v-if="dataNotice">{{ dataNotice }}</p>
+      <p v-if="terminalWaiting" role="status">床头屏信息加载中</p>
+      <canvas ref="terminalCanvas" aria-label="当前床位的床头屏模板" />
+    </dialog>
 
     <div class="ward-scene-3d__overlay">
 
@@ -183,6 +292,63 @@ onUnmounted(() => {
 
 
 <style scoped lang="scss">
+.ward-terminal-dialog {
+  box-sizing: border-box;
+  width: min(880px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 18px;
+  border: 1px solid #bacbd0;
+  border-radius: 12px;
+  background: #f3f7f7;
+  color: #173d45;
+  box-shadow: 0 16px 60px #10293255;
+  &::backdrop { background: #10232d99; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  label { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+  select, button { min-height: 40px; max-width: 45vw; padding: 6px 12px; border: 1px solid #9ab7bc; border-radius: 6px; background: white; color: inherit; font: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid #287e92; outline-offset: 3px; }
+  canvas { display: block; width: 100%; height: auto; background: white; }
+}
+.ward-scene-3d__occupancy {
+  box-sizing: border-box;
+  position: absolute;
+  z-index: 3;
+  bottom: 112px;
+  left: 16px;
+  max-width: min(460px, calc(100% - 32px));
+  padding: 12px 16px;
+  border: 1px solid rgba(100, 164, 191, .45);
+  border-radius: 8px;
+  background: rgba(8, 28, 42, .92);
+  color: #e7f5fc;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  strong { font-weight: 600; }
+  p { margin: 6px 0 0; color: #c9dce7; }
+}
+.ward-scene-3d__narrow-notice { display: none; }
+@media (max-width: 600px) { .ward-scene-3d__narrow-notice { display: block; margin: 0 0 6px; } }
+.ward-scene-3d__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 0;
+  button {
+    min-height: 36px;
+    padding: 6px 12px;
+    border: 1px solid #527e96;
+    border-radius: 4px;
+    color: #e6f7ff;
+    background: #173e54;
+    cursor: pointer;
+    &:focus-visible { outline: 2px solid #8ad8ff; outline-offset: 2px; }
+    &:hover { background: #24566e; }
+  }
+}
+
 
 .ward-scene-3d {
 

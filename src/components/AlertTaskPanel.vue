@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, useId } from 'vue';
+import { taskDisplayTitle, taskPriorityLabel } from '@/core/task-presentation';
 import DashSectionHeader from '@/components/dashboard/DashSectionHeader.vue';
 import {
   formatAlertWaitingTime,
@@ -16,6 +17,7 @@ const props = withDefaults(defineProps<{
   title?: string;
   maxItems?: number;
   compact?: boolean;
+  workspace?: boolean;
   filter?: AlertTaskFilter;
   ackRecords?: AlertAckRecordMap;
   hiddenTasks?: AlertTask[];
@@ -120,7 +122,7 @@ function formatTaskOccurredAt(task: AlertTask) {
 }
 
 function waitingClass(task: AlertTask) {
-  if (task.source === 'swp-inspection')
+  if (isSourceManagedTask(task))
     return '';
   const level = getAlertWaitingLevel(task.startedAt, waitingNow.value);
   if (level === 'attention')
@@ -238,7 +240,7 @@ function taskStatusText(task: AlertTask) {
       tabindex="0"
     >
       <div v-if="!visibleTasks.length" class="alert-task-panel__empty">
-        <strong>暂无待处理告警</strong>
+        <strong>{{ filter === 'handling' ? '暂无处理中的事项' : filter === 'all' ? '暂无告警事项' : '暂无待处理告警' }}</strong>
         <span>系统会自动汇总呼叫、生命体征、环境、设备和输液异常</span>
       </div>
 
@@ -250,6 +252,7 @@ function taskStatusText(task: AlertTask) {
         :class="[
           `alert-task--${task.severity}`,
           `alert-task--${task.status}`,
+          { 'alert-task--workspace': workspace, 'alert-task--no-location': workspace && task.canLocate === false },
           { 'alert-task--swp-call': isDisplayOnlySwpCall(task) },
           { 'alert-task--vital': isVitalWarning(task) },
           { 'alert-task--inspection': task.source === 'swp-inspection' },
@@ -270,16 +273,18 @@ function taskStatusText(task: AlertTask) {
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="isVitalWarning(task)" d="M3 12h4l3-7 4 14 3-7h4" /><path v-else d="m5 3 4 1 1 5-3 2a15 15 0 0 0 6 6l2-3 5 1 1 4c-1 5-8 2-12-2S2 6 5 3Z" /></svg>
             </span>
-            <span class="alert-task__severity">{{ severityLabel(task.severity) }}</span>
-            <strong>{{ task.title }}</strong>
+            <span class="alert-task__severity">{{ workspace ? taskPriorityLabel(task) : severityLabel(task.severity) }}</span>
+            <strong>{{ workspace ? taskDisplayTitle(task) : task.title }}</strong>
             <span v-if="!isDisplayOnlySwpCall(task)" class="alert-task__type">
               {{ typeLabel(task.type) }}
             </span>
           </div>
-          <p>{{ task.description }}</p>
+          <p v-if="!workspace">{{ task.description }}</p>
+          <p v-else class="alert-task__subtitle">{{ task.type === 'call' ? '患者呼叫' : typeLabel(task.type) }}<span v-if="task.canLocate === false"> · 位置待匹配</span></p>
+          <details v-if="workspace" class="alert-task__details"><summary>事件详情</summary><p>{{ task.title }}</p><p>{{ task.description }}</p><small v-if="task.canLocate === false">当前事件尚未匹配到模型中的位置。</small></details>
           <div class="alert-task__meta">
-            <span v-if="task.roomName && task.canLocate !== false">{{ task.roomName }}</span>
-            <span v-if="task.bedName && task.canLocate !== false">{{ formatBedLabel(task.bedName) }}</span>
+            <span v-if="!workspace && task.roomName && task.canLocate !== false">{{ task.roomName }}</span>
+            <span v-if="!workspace && task.bedName && task.canLocate !== false">{{ formatBedLabel(task.bedName) }}</span>
             <span v-if="task.startedAt" class="alert-task__time">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></svg>
               {{ isDisplayOnlySwpCall(task) ? '呼叫' : isVitalWarning(task) ? '预警' : task.source === 'swp-inspection' ? '巡视' : '发生' }}

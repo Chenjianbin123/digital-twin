@@ -13,7 +13,7 @@ assert.match(app, /nurse-station-wallboard/);
 assert.match(app, /set-wallboard/);
 assert.match(panel, /wallboard\??:\s*boolean/);
 assert.match(panel, /大屏模式/);
-assert.match(panel, /退出大屏/);
+assert.match(panel, /返回工作台/);
 assert.match(panel, /setWallboard/);
 assert.match(styles, /digital-twin__main--wallboard/);
 

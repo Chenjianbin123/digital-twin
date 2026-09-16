@@ -32,6 +32,14 @@ export class PlanRenderer {
   private pulsePhase = 0;
   private animId: number | null = null;
   private fontScale = 1.25;
+  private theme: 'light' | 'dark' = 'dark';
+
+  setTheme(theme: 'light' | 'dark') {
+    if (theme === this.theme) return;
+    this.theme = theme;
+    this.draw();
+  }
+
 
   /** 按画布尺寸放大字号，保证侧栏场景里可读 */
   private px(base: number): number {
@@ -144,13 +152,13 @@ export class PlanRenderer {
   private drawBackground(w: number, h: number) {
     const ctx = this.ctx;
     const g = ctx.createRadialGradient(w * 0.5, h * 0.35, 0, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
-    g.addColorStop(0, '#243447');
-    g.addColorStop(0.55, '#1a2533');
-    g.addColorStop(1, '#121a24');
+    g.addColorStop(0, (this.theme === 'light' ? '#edf7fb' : '#243447'));
+    g.addColorStop(0.55, (this.theme === 'light' ? '#e6f0f5' : '#1a2533'));
+    g.addColorStop(1, (this.theme === 'light' ? '#dce8ef' : '#121a24'));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
 
-    ctx.strokeStyle = 'rgba(79, 195, 247, 0.04)';
+    ctx.strokeStyle = (this.theme === 'light' ? 'rgba(52, 117, 143, 0.06)' : 'rgba(79, 195, 247, 0.04)');
     ctx.lineWidth = 1;
     const step = 28;
     for (let x = 0; x < w; x += step) {
@@ -184,8 +192,8 @@ export class PlanRenderer {
     }
 
     const panelGrad = ctx.createLinearGradient(x, y, x + w, y + h);
-    panelGrad.addColorStop(0, 'rgba(10,34,52,0.74)');
-    panelGrad.addColorStop(1, 'rgba(6,18,32,0.42)');
+    panelGrad.addColorStop(0, (this.theme === 'light' ? '#f9fcfd' : 'rgba(10,34,52,0.74)'));
+    panelGrad.addColorStop(1, (this.theme === 'light' ? '#e4f1f7' : 'rgba(6,18,32,0.42)'));
     this.fillRoundRect(x, y, w, h, 14, panelGrad, 'rgba(83,213,255,0.24)');
 
     ctx.save();
@@ -203,7 +211,7 @@ export class PlanRenderer {
     const leftX = x + this.px(18);
     const centerY = y + h / 2;
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#f3fbff';
+    ctx.fillStyle = (this.theme === 'light' ? '#244654' : '#f3fbff');
     ctx.font = `800 ${this.px(22)}px ${FONT}`;
     ctx.fillText(ward.sickroomName, leftX, centerY - this.px(10));
 
@@ -214,9 +222,9 @@ export class PlanRenderer {
     const chipW = this.px(84);
     const chipGap = this.px(8);
     const chips: Array<[string, string, string]> = [
-      [`${stats.occupied}/${stats.total}`, '在床', '#73e0a9'],
-      [`${stats.empty}`, '空床', '#b8c7d4'],
-      [`${occRate}%`, '入住率', '#53d5ff'],
+      [`${stats.occupied}/${stats.total}`, '在床', this.theme === 'light' ? '#28775f' : '#73e0a9'],
+      [`${stats.empty}`, '空床', this.theme === 'light' ? '#647d89' : '#b8c7d4'],
+      [`${occRate}%`, '入住率', this.theme === 'light' ? '#217c94' : '#53d5ff'],
     ];
     if (calling)
       chips.push([`${calling}`, '呼叫', '#ff5c8a']);
@@ -238,7 +246,7 @@ export class PlanRenderer {
     const summary = staff.length
       ? staff.map(item => `${item.role} ${item.name}`).join('   ·   ')
       : '医护信息 暂无';
-    ctx.fillStyle = 'rgba(196,221,236,0.78)';
+    ctx.fillStyle = (this.theme === 'light' ? '#536f7e' : 'rgba(196,221,236,0.78)');
     ctx.font = `700 ${this.px(12)}px ${FONT}`;
     ctx.textBaseline = 'middle';
     ctx.fillText(this.ellipsisText(summary, maxW), x, y);
@@ -247,13 +255,13 @@ export class PlanRenderer {
 
   private drawHeaderMetricChip(x: number, y: number, w: number, h: number, val: string, label: string, color: string) {
     const ctx = this.ctx;
-    this.fillRoundRect(x, y, w, h, 9, 'rgba(5,14,28,0.34)', 'rgba(255,255,255,0.08)');
+    this.fillRoundRect(x, y, w, h, 9, (this.theme === 'light' ? '#f7fbfd' : 'rgba(5,14,28,0.34)'), (this.theme === 'light' ? '#c5dce7' : 'rgba(255,255,255,0.08)'));
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = color;
     ctx.font = `800 ${this.px(19)}px ${FONT}`;
     ctx.fillText(val, x + w / 2, y + h * 0.4);
-    ctx.fillStyle = 'rgba(196,221,236,0.72)';
+    ctx.fillStyle = (this.theme === 'light' ? '#536f7e' : 'rgba(196,221,236,0.72)');
     ctx.font = `700 ${this.px(11)}px ${FONT}`;
     ctx.fillText(label, x + w / 2, y + h * 0.74);
     ctx.textAlign = 'left';
@@ -277,9 +285,9 @@ export class PlanRenderer {
     const floorW = w - 20;
     const floorH = h - 20;
     const floorGrad = ctx.createLinearGradient(floorX, floorY, floorX + floorW, floorY + floorH);
-    floorGrad.addColorStop(0, '#ebe4d8');
-    floorGrad.addColorStop(0.5, '#e2dbd0');
-    floorGrad.addColorStop(1, '#d8d0c4');
+    floorGrad.addColorStop(0, (this.theme === 'light' ? '#e6eff3' : '#ebe4d8'));
+    floorGrad.addColorStop(0.5, (this.theme === 'light' ? '#dfe9ef' : '#e2dbd0'));
+    floorGrad.addColorStop(1, (this.theme === 'light' ? '#d3e1e8' : '#d8d0c4'));
     this.fillRoundRect(floorX, floorY, floorW, floorH, 10, floorGrad);
 
     ctx.strokeStyle = 'rgba(0,0,0,0.06)';
@@ -451,8 +459,8 @@ export class PlanRenderer {
     this.fillRoundRect(x + depth, y + depth, w, h, 10, 'rgba(0,0,0,0.18)');
 
     const bodyGrad = ctx.createLinearGradient(x, y, x, y + h);
-    bodyGrad.addColorStop(0, bed.isOccupied ? '#faf8f5' : '#f2f2f2');
-    bodyGrad.addColorStop(1, bed.isOccupied ? '#ece6dc' : '#e0e0e0');
+    bodyGrad.addColorStop(0, this.theme === 'light' ? '#ffffff' : bed.isOccupied ? '#faf8f5' : '#f2f2f2');
+    bodyGrad.addColorStop(1, this.theme === 'light' ? '#edf5f8' : bed.isOccupied ? '#ece6dc' : '#e0e0e0');
     this.fillRoundRect(x, y, w, h, 10, bodyGrad, isSelected ? '#4fc3f7' : isHovered ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.12)', isSelected ? 2 : 1);
 
     ctx.fillStyle = status.color;
@@ -573,9 +581,9 @@ export class PlanRenderer {
   ): number {
     const entries: Array<readonly [string, string, string]> = [];
     if (doctor?.trim())
-      entries.push(['医生', this.stripRolePrefix(doctor, '主治医生'), '#4fc3f7']);
+      entries.push(['医生', this.stripRolePrefix(doctor, '主治医生'), this.theme === 'light' ? '#237a96' : '#4fc3f7']);
     if (nurse?.trim())
-      entries.push(['护士', this.stripRolePrefix(nurse, '责任护士'), '#73e0a9']);
+      entries.push(['护士', this.stripRolePrefix(nurse, '责任护士'), this.theme === 'light' ? '#28775f' : '#73e0a9']);
     if (!entries.length || y + this.px(26) > bottomY)
       return y;
 

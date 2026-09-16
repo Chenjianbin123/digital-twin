@@ -18,6 +18,9 @@ const props = defineProps<{
 }>();
 
 const introText = computed(() => htmlToPlainText(props.info?.hospitalNote));
+const introExpanded = ref(false);
+const canExpandIntro = computed(() => introText.value.length > 120);
+watch(introText, () => { introExpanded.value = false; });
 
 const logoUrl = computed(() => resolveFileUrl(props.info?.hospitalLogoPic));
 const logoFailed = ref(false);
@@ -53,12 +56,31 @@ const hasContent = computed(() =>
 
     <div v-if="loading" class="hospital-intro__loading">加载医院介绍...</div>
 
-    <template v-else-if="info">
-      <p v-if="introText" class="hospital-intro__note">{{ introText }}</p>
+    <template v-else>
+      <div v-if="(logoUrl && !logoFailed) || info?.hospitalName" class="hospital-intro__footer">
+        <img
+          v-if="logoUrl && !logoFailed"
+          class="hospital-intro__logo"
+          :src="logoUrl"
+          :alt="info?.hospitalName || '医院 Logo'"
+          @error="handleLogoError"
+        >
+        <span v-if="info?.hospitalName" class="hospital-intro__name">{{ info?.hospitalName }}</span>
+      </div>
+      <div v-if="introText" class="hospital-intro__description">
+        <p class="hospital-intro__note" :class="{ 'hospital-intro__note--collapsed': canExpandIntro && !introExpanded }">{{ introText }}</p>
+        <button v-if="canExpandIntro" class="hospital-intro__expand" type="button" :aria-expanded="introExpanded" @click="introExpanded = !introExpanded">
+          {{ introExpanded ? '收起介绍' : '展开完整介绍' }} <span aria-hidden="true">{{ introExpanded ? '−' : '+' }}</span>
+        </button>
+      </div>
 
       <div v-if="visibleMetrics.length" class="hospital-intro__grid">
         <article v-for="item in visibleMetrics" :key="item.key" class="hospital-intro__metric">
-          <span class="hospital-intro__metric-icon" :class="`hospital-intro__metric-icon--${item.key}`" aria-hidden="true" />
+          <svg class="hospital-intro__metric-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <template v-if="item.key === 'rooms'"><path d="M4 21V4h16v17M2 21h20M9 21v-5h6v5M8 8h2m4 0h2M8 12h2m4 0h2" /></template>
+            <template v-else-if="item.key === 'patient'"><circle cx="12" cy="7" r="3" /><path d="M5 21v-3a7 7 0 0 1 14 0v3" /></template>
+            <template v-else><path d="M4 4v16h16M8 15l4-5 4 2 4-6" /></template>
+          </svg>
           <div class="hospital-intro__metric-body">
             <span class="hospital-intro__metric-label">{{ item.label }}</span>
             <span class="hospital-intro__metric-value">
@@ -68,16 +90,7 @@ const hasContent = computed(() =>
         </article>
       </div>
 
-      <div v-if="(logoUrl && !logoFailed) || info.hospitalName" class="hospital-intro__footer">
-        <img
-          v-if="logoUrl && !logoFailed"
-          class="hospital-intro__logo"
-          :src="logoUrl"
-          :alt="info.hospitalName || '医院 Logo'"
-          @error="handleLogoError"
-        >
-        <span v-if="info.hospitalName" class="hospital-intro__name">{{ info.hospitalName }}</span>
-      </div>
+
     </template>
   </section>
 </template>
@@ -150,33 +163,6 @@ const hasContent = computed(() =>
     border: 1px solid rgba(77, 208, 255, 0.18);
     border-radius: 8px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  }
-
-  &__metric-icon {
-    flex-shrink: 0;
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    background: rgba(0, 116, 178, 0.22);
-    border: 1px solid rgba(77, 208, 255, 0.26);
-    position: relative;
-    box-shadow: inset 0 0 14px rgba(77, 208, 255, 0.08);
-
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 6px;
-      border-radius: 3px;
-      background: linear-gradient(135deg, #4deaff, #0099cc);
-      opacity: 0.92;
-    }
-
-    &--bed::after { border-radius: 2px; height: 8px; top: 11px; inset-inline: 5px; }
-    &--temp::after { border-radius: 50%; width: 8px; height: 8px; top: 6px; left: 10px; }
-    &--rooms::after { clip-path: polygon(50% 10%, 90% 40%, 90% 85%, 10% 85%, 10% 40%); }
-    &--device::after { inset: 7px 5px; border-radius: 2px; }
-    &--patient::after { border-radius: 50%; width: 10px; height: 10px; top: 5px; left: 9px; box-shadow: 0 8px 0 -2px #00d4ff; }
-    &--rate::after { clip-path: polygon(20% 80%, 45% 45%, 65% 60%, 85% 25%, 85% 80%); }
   }
 
   &__metric-body {

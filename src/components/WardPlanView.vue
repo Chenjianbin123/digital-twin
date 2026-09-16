@@ -5,6 +5,7 @@ import type { TwinBedEntity, TwinWardEntity } from '@/types/twin';
 
 const props = defineProps<{
   ward: TwinWardEntity;
+  theme?: 'light' | 'dark';
   selectedBed?: TwinBedEntity | null;
 }>();
 
@@ -22,6 +23,7 @@ onMounted(() => {
     canvas: canvasRef.value,
     onBedClick: bed => emit('bedClick', bed),
   });
+  renderer.setTheme(props.theme ?? 'dark');
   renderer.updateWard(props.ward);
   renderer.setSelectedBed(props.selectedBed ?? null);
 });
@@ -33,6 +35,8 @@ watch(() => props.ward, (ward) => {
 watch(() => props.selectedBed, (bed) => {
   renderer?.setSelectedBed(bed ?? null);
 });
+
+watch(() => props.theme, theme => renderer?.setTheme(theme ?? 'dark'));
 
 onUnmounted(() => {
   renderer?.dispose();

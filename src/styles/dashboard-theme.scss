@@ -1,3 +1,26 @@
+/* 深色侧栏沿用原护士站蓝青色阶；仅恢复颜色，不改变工作区布局。 */
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace {
+  --workspace-surface: #0c202d;
+  --workspace-ink: #dceaf2;
+  --workspace-muted: #a7bfcd;
+  --workspace-line: #789bad30;
+  --station-surface: #102735;
+  --station-inset: #0c202d;
+  --station-border: #789bad30;
+  --station-muted: #a7bfcd;
+  background: #0c202d;
+  .station-hero { background: linear-gradient(135deg, #153440, #102735); }
+  .workspace-tabs { background: #102735; }
+  .workspace-tabs button[aria-selected='true'] { color: #82e2d5; }
+  .workspace-tabs button:focus-visible { outline-color: #82e2d5; }
+  .inspection-overview, .handoff-card, .data-health, .surface-panel--focus, .nurse-panel__details, .nurse-metric-chart { background: #102735; }
+  .alert-task--workspace { background: linear-gradient(110deg, #102735, #0c202d); border-bottom-color: #789bad30; }
+  .metric-item { background: #153440; }
+  .inspection-metric, .data-health__freshness-item { background: #0a202d; }
+  .focus-room { background: #0b2230; }
+  .station-hero__alert-toggle, .station-hero__wallboard-toggle { background: #132e3b; border-color: #789bad30; }
+}
+
 /* 主题仅作用于外围工作台，不改变模型材质、模型内屏幕和登录场景。
    使用显式覆盖优先级兼容既有组件 scoped 样式，避免主题依赖组件加载顺序。 */
 .digital-twin[data-theme='light'] {
@@ -50,4 +73,472 @@
   .dash-bottom :is(button, span) { color: #486c61 !important; text-shadow: none !important; }
   .dash-bottom__item--active, .dash-bottom__sub-item--active { background: #dcebe0 !important; border-color: #b4cfbc !important; box-shadow: none !important; }
   .dash-bottom__icon { background-color: #e7efe8 !important; border-color: #9dbfae !important; box-shadow: none !important; }
+}
+
+/* 工作区布局的主题边界：分组靠间距与分隔线，避免再套一层卡片。 */
+.digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
+  --workspace-surface: #fcfdfb;
+  --workspace-ink: #294740;
+  --workspace-muted: #657970;
+  --workspace-line: #dde5df;
+  background: #fcfdfb !important;
+  :is(.station-hero, .inspection-overview, .handoff-card, .data-health, .surface-panel--focus, .nurse-panel__details, .nurse-metric-chart, .alert-task-panel) { background: transparent !important; border-radius: 0; }
+  .workspace-tabs button { background: transparent !important; color: #64776f !important; }
+  .workspace-tabs button[aria-selected='true'] { color: #315e4f !important; background: linear-gradient(115deg, #dceee8, #edf5f2) !important; border-color: #90baae; box-shadow: inset 0 1px 0 #ffffffa0; }
+  .workspace-tabs button > span { color: inherit !important; }
+  .workspace-status--alert > span { color: #9d4354 !important; }
+  .workspace-status--warn > span { color: #8c642b !important; }
+  .alert-task { background: transparent !important; border-bottom-color: #e0e7e1 !important; }
+  .alert-task__severity { color: #98505d !important; background: #f9eff1 !important; }
+  .alert-task__meta-live { background: transparent !important; border: 0; }
+  .alert-task-panel__filters { background: transparent !important; }
+  .alert-task-panel__filters button { background: transparent !important; }
+  .alert-task-panel__filters button.is-active { background: #e7efe8 !important; }
+  .alert-task-panel__more { background: transparent !important; }
+  .station-hero__chip { background: transparent !important; }
+  .metric-item { background: #f2f6f1 !important; }
+}
+
+.digital-twin[data-theme="light"] .nurse-panel.nurse-workspace .handoff-card li { color: var(--workspace-muted); }
+
+.digital-twin[data-theme='light'] .nurse-panel.nurse-workspace .alert-task__details summary { color: #365f55; }
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .alert-task--workspace { border-color: #52849c45; box-shadow: inset 0 1px 0 #a0dcf009; }
+
+/* 面板采用同一蓝青色层级，浅色保持实体白卡，深色保留原有底色。 */
+.digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
+  --workspace-surface: #f0f5f6;
+  --workspace-ink: #233e49;
+  --workspace-muted: #536e79;
+  --workspace-line: #d5e2e7;
+  background: var(--workspace-surface) !important;
+  .station-hero { background: linear-gradient(110deg, #ffffff, #edf6f7) !important; }
+  .workspace-tabs { background: linear-gradient(180deg, #dbe9ef, #edf4f7); border-top: 2px solid #75b8c6; border-bottom-color: #c6dae2; box-shadow: inset 0 1px 0 #ffffff80; }
+  .workspace-tabs button { border-color: #c1d6df !important; }
+  .workspace-scroll { background: linear-gradient(180deg, #eaf2f6 0, #f0f5f6 160px); }
+  .workspace-section-intro h2 { color: #294c59 !important; }
+  .workspace-tabs button[aria-selected='true'] { color: #176574 !important; background: linear-gradient(110deg, #dceff2, #edf7f9) !important; border-color: #96c5cf !important; }
+  .workspace-tabs button[aria-selected='true']::after { box-shadow: none; }
+  .workspace-scroll { scrollbar-color: #a4bec6 transparent; }
+  .alert-task--workspace { background: linear-gradient(110deg, #f7fbfd, #ffffff 55%) !important; border: 1px solid #cddfe7 !important; box-shadow: inset 0 1px 0 #ffffff, 0 2px 5px #23445405 !important; }
+  .alert-task__head strong, .station-hero__eyebrow { color: #233e49 !important; }
+  .alert-task__subtitle, .alert-task__details summary { color: #536e79 !important; }
+  .alert-task__signal { background: #f5f8fa; border-color: #dce8eb; }
+  .alert-task__meta { padding-top: 10px; border-top: 1px solid #edf2f4; }
+  .alert-task-panel__filters button.is-active { background: #dceff2 !important; border-color: #96c5cf !important; }
+}
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace {
+  .station-hero { background: radial-gradient(ellipse at 95% 0, #2b7f8a22, transparent 70%), linear-gradient(135deg, #153440, #102735); }
+  .alert-task--workspace { border-color: #42647670; background: linear-gradient(110deg, #142f3e, #0e2432); box-shadow: inset 0 1px 0 #a0dcf00d; }
+  .alert-task__meta { padding-top: 10px; border-top: 1px solid #7194a21c; }
+  .alert-task__signal { background: #233e4c; }
+}
+
+/* 控制台结构共用，深蓝配色仅作用于深色主题。 */
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .station-hero {
+ background: radial-gradient(ellipse at 95% 0, #26677870, transparent 68%), linear-gradient(115deg, #102b3b, #102432) !important;
+ border-bottom-color: #5a95a450 !important;
+ .station-hero__eyebrow { color: #edf9fc !important; }
+ .station-hero__kicker { color: #88becb !important; }
+ .station-hero__overview-foot { border-top-color: #83b7c52b !important; }
+ .station-hero__identity-icon { color: #93e7e4 !important; background: #24535f !important; border: 0 !important; }
+ .station-hero__wallboard-toggle, .station-hero__alert-toggle { color: #c5e1e9 !important; background: #20404f !important; border-color: #6895a44d !important; }
+ .station-hero__wallboard-toggle:hover, .station-hero__alert-toggle:hover { background: #2a5362 !important; border-color: #82ced0 !important; }
+ .station-hero__wallboard-toggle { border-left: 2px solid #78dcd9 !important; }
+ .workspace-status > span { color: #b7ced8 !important; }
+ .workspace-status--alert > span { color: #f2acb9 !important; }
+ .workspace-status--warn > span { color: #edcd96 !important; }
+ .workspace-status > .workspace-status__sync { color: #a5c3d0 !important; }
+ .workspace-status > .workspace-status__sync--attention { color: #edcd96 !important; }
+ .station-hero__alert-toggle[aria-pressed='true'] { color: #9fe9d5 !important; border-color: #69c9ac70 !important; }
+}
+
+.digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
+ .station-hero {
+  background: radial-gradient(ellipse at 100% 0, #c9e7ed80, transparent 70%), linear-gradient(110deg, #f9fcfd, #eaf3f7) !important;
+  border-bottom-color: #cadfe7 !important;
+  &::before { background-image: linear-gradient(90deg, transparent 31px, #55899c0c 32px), linear-gradient(transparent 31px, #55899c0c 32px); }
+  &::after { background: #3f9fae; box-shadow: 68px 0 0 #3f9fae30; }
+  .station-hero__eyebrow { color: #233e49 !important; }
+  .station-hero__kicker { color: #527c8b !important; }
+  .station-hero__identity-icon { color: #287d8c !important; background: #d5eaf0 !important; border: 0 !important; }
+  .station-hero__overview-foot { border-top-color: #cadfe7 !important; }
+  .workspace-status > span { color: #536e79 !important; }
+  .workspace-status--alert > span { color: #a13d51 !important; }
+  .workspace-status--warn > span { color: #865a19 !important; }
+  .workspace-status > .workspace-status__sync { color: #536e79 !important; }
+  .workspace-status > .workspace-status__sync--attention { color: #865a19 !important; }
+  .station-hero__wallboard-toggle { border-left: 2px solid #3996a6 !important; }
+  button:focus-visible { outline-color: #287d8c; }
+ }
+ .workspace-tabs { border-top: 0; background: #edf5f8; box-shadow: none; }
+ button { color: #365e6d !important; background: #eef5f8 !important; border-color: #c5dce5 !important; }
+ button:hover:not(:disabled) { background: #deedf3 !important; }
+ .alert-task-panel__filters button.is-active { background: #dceff2 !important; }
+ .alert-task-panel__filters button strong { color: #306675 !important; background: #dcebf1 !important; border-color: #bfd8e2 !important; }
+ .station-hero__alert-toggle[aria-pressed='true'] { color: #23665e !important; border-color: #81bbae !important; }
+}
+
+.digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
+ .metric-item { background: linear-gradient(135deg, #ffffff, #edf6f9) !important; border: 1px solid #cbdee7 !important; box-shadow: inset 0 2px 0 #83c4d038 !important; }
+ .metric-item > strong { color: #247184 !important; }
+ .metric-item--alert > strong { color: #b43c57 !important; }
+ .metric-item__icon { color: #548e9f; }
+ .metric-item__progress { background: #dce9ef !important; }
+ .metric-item__progress i { background: #4798aa !important; }
+ .handoff-card li { background: #f9fcfd !important; border-color: #d2e2e9 !important; }
+ .data-health ul { border-color: #d2e2e9; background: #ffffff; }
+ .data-health li:nth-child(odd) { background: #edf5f8; }
+ .data-health__freshness-item { background: #f9fcfd !important; border-color: #d2e2e9 !important; }
+}
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace {
+ .metric-item { background: linear-gradient(135deg, #173847, #102735); border-color: #47748766; box-shadow: inset 0 2px 0 #6dcbd524; }
+ .handoff-card li, .data-health__freshness-item { background: #102b3a; }
+ .data-health ul { background: #0d2533; }
+}
+
+.digital-twin[data-theme='light'] .nurse-panel.nurse-workspace .surface-panel--feed {
+ background: #f9fcfd !important; border-color: #cddfe7 !important;
+ .feed__time { color: #587684 !important; }
+ .feed__text { color: #294b59 !important; }
+ .feed__tag { color: #276d7d !important; background: #e8f3f7; border-color: #c7e0e8; }
+}
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .surface-panel--feed {
+ background: #102735;
+ .feed__time { color: #a6c4d2; }
+ .feed__text { color: #d4e7ef; }
+ .feed__tag { color: #8fdadf; }
+}
+
+/* 病区切换抽屉与工作台使用同一主题祖先，打开期间也能即时跟随主题。 */
+.digital-twin .area-switcher {
+ font-family: "Microsoft YaHei UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+ .area-switcher__body { scrollbar-width: thin; scrollbar-color: #416879 #0a202e; padding: 2px 4px 2px 2px; }
+ .area-switcher__search { flex-shrink: 0; }
+}
+.digital-twin[data-theme='light'] .area-switcher {
+ background: #233d4a38;
+ .area-switcher__drawer { color: #233e49; background: #f0f5f8; border-left-color: #c5dce5; box-shadow: -12px 0 36px #203f4e1a; }
+ .area-switcher__header h2 { color: #233e49; }
+ .area-switcher__header p, .area-switcher__row-copy span, .area-switcher__empty, .area-switcher__hint { color: #536e79; }
+ .area-switcher__close { color: #536e79; }
+ .area-switcher__close:hover:not(:disabled) { color: #245e70; background: #dcebf1; }
+ .area-switcher__search { color: #347e91; background: #fff; border-color: #c5dce5; }
+ .area-switcher__search input { color: #233e49; }
+ .area-switcher__search input::placeholder { color: #647f8b; }
+ .area-switcher__search:focus-within { border-color: #398a9e; box-shadow: 0 0 0 3px #398a9e1a; }
+ .area-switcher__body { scrollbar-color: #9bbac7 #edf4f7; }
+ .area-switcher__row { color: #294b59; background: #fff; border-color: #cddfe7; }
+ .area-switcher__row:hover:not(:disabled) { border-color: #75adbd; background: #f5fafc; }
+ .area-switcher__row--candidate { border-color: #479aaf; background: #e0f0f5; box-shadow: inset 3px 0 #479aaf; }
+ .area-switcher__badge { color: #205f71; background: #cbe9f1; }
+ .area-switcher__check { color: #267d92; }
+ .area-switcher__empty { border-color: #c5dce5; }
+ .area-switcher__footer { border-color: #cddfe7; }
+ .area-switcher__error { color: #a13d51; }
+ .area-switcher__status-dot { background: #32856d; box-shadow: none; }
+ .area-switcher__confirm { color: #fff; background: #267d92; }
+ .area-switcher__confirm:hover:not(:disabled) { background: #1e687c; }
+ .area-switcher__spinner { border-color: #ffffff45; border-top-color: #fff; }
+ :is(.area-switcher__close, .area-switcher__row, .area-switcher__confirm):focus-visible { outline-color: #267d92; }
+}
+
+.digital-twin[data-theme='light'] .area-switcher {
+ --switcher-accent: #287d92; --switcher-line: #c8dfe8;
+ .area-switcher__drawer { background: radial-gradient(ellipse at 100% 0, #cbe7f180, transparent 42%), #f0f5f8; }
+ .area-switcher__list-head { color: #536e79; }
+ .area-switcher__ward-icon { color: #558899; background: #f0f7fa; }
+ .area-switcher__row { box-shadow: inset 0 1px 0 #fff; }
+ .area-switcher__row--candidate { background: linear-gradient(110deg, #dceff5, #f1f9fc); }
+ .area-switcher__row--candidate .area-switcher__ward-icon { color: #24768a; background: #cde8f1; }
+}
+.digital-twin[data-theme='dark'] .area-switcher {
+ .area-switcher__drawer { background: radial-gradient(ellipse at 100% 0, #27627740, transparent 42%), #081c29; }
+ .area-switcher__row--candidate { background: linear-gradient(110deg, #153d50, #0b2939); }
+}
+
+/* 三维场景切换层与工作台主题一致，包含首次加载及失败回退。 */
+.digital-twin[data-theme='light'] .scene-switch-loader {
+ --loader-accent: #247e92; --loader-soft: #3c9bb620; --loader-glow: #3c9bb60c;
+ color: #233e49; background: #eaf2f6e8;
+ &--ward { --loader-accent: #3d6fa7; --loader-soft: #5588bf20; --loader-glow: #5588bf0c; }
+ &--interior { --loader-accent: #287d70; --loader-soft: #459c8720; --loader-glow: #459c870c; }
+ &[data-state='fallback'] { --loader-accent: #926018; --loader-soft: #b4843020; --loader-glow: #b484300c; }
+ .scene-switch-loader__card { border-color: #bfd6e1; background: radial-gradient(ellipse at 0 0, var(--loader-soft), transparent 60%), linear-gradient(135deg, #fff, #f2f8fb); box-shadow: 0 24px 70px #294c601c, inset 0 1px #fff; }
+ .scene-switch-loader__eyebrow, .scene-switch-loader__visual-caption, .scene-switch-loader__headline p, .scene-switch-loader__route-node small, .scene-switch-loader__route-note, .scene-switch-loader__progress-meta, .scene-switch-loader__card-foot p { color: #536f7e; }
+ .scene-switch-loader__icon { background: linear-gradient(135deg, var(--loader-soft), #f7fbfd); box-shadow: inset 0 1px #fff, 0 10px 24px #355a6c12; }
+ .scene-switch-loader__visual-plane { box-shadow: 0 8px 0 -1px #e3eef4, 0 9px 0 var(--loader-soft); }
+ .scene-switch-loader__route { background: #eaf3f7; border-color: #d0e2ea; }
+ .scene-switch-loader__route-node strong { color: #294b59; }
+ .scene-switch-loader__route-node--target strong { color: var(--loader-accent); }
+ .scene-switch-loader__route-arrow { color: #638596; }
+ .scene-switch-loader__progress { background: #d3e5ed; }
+ .scene-switch-loader__card-foot { border-color: #d0e2ea; }
+ .scene-switch-loader__actions button { color: #365e6d; background: #edf5f8; border-color: #bfd6e1; }
+ .scene-switch-loader__actions .scene-switch-loader__retry { color: #fff; background: var(--loader-accent); border-color: var(--loader-accent); }
+}
+.digital-twin[data-theme='light'] .dash-bottom {
+ :is(.dash-bottom__main, .dash-bottom__sub) { background: #f5fafcf5 !important; border-color: #bdd6e1 !important; }
+ button { color: #4c6d7d !important; }
+ button:hover { background: #e4f1f6 !important; }
+ .dash-bottom__item--active, .dash-bottom__sub-item--active { color: #246b7f !important; background: #dbeef4 !important; border-color: #91bfce !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+ .digital-twin[data-theme='light'] .scene-switch-loader { background: #eaf2f6; backdrop-filter: none; }
+}
+
+/* 走廊与病房侧栏共享语义色阶，避免透明深色卡片叠在浅色外壳上。 */
+.digital-twin .digital-twin__panel--overlay {
+ --room-surface: #102735; --room-inset: #153443; --room-line: #6f9cac38;
+ --room-ink: #dcebf2; --room-muted: #a6c0cd; --room-accent: #81dce0;
+ --room-alert: #ef9aae; --room-ok: #8cdbbb; --room-warn: #e4c28c;
+ background: #0c202d; color: var(--room-ink) !important;
+ font-family: "Microsoft YaHei UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+ scrollbar-width: thin; scrollbar-color: #648c9e transparent;
+ .digital-twin__panel-body { background: transparent !important; }
+ :is(.hospital-intro, .area-dashboard, .ward-info-panel) { color: var(--room-ink) !important; background: transparent; font-size: 14px; }
+ :is(.hospital-intro, .dash-section, .area-dashboard__intro, .ward-info-panel > section, .door-staff-cards, .status-history, .alert-task-panel) { background: var(--room-surface) !important; border: 1px solid var(--room-line) !important; border-radius: 10px; box-shadow: none !important; }
+ :is(.hospital-intro, .dash-section, .ward-info-panel > section, .door-staff-cards, .status-history) { padding: 16px; }
+ :is(.hospital-intro__title, .dash-head__title, .ward-info-panel h2, .ward-info-panel h3, .door-staff-cards__title, .status-history h3) { color: var(--room-ink) !important; text-shadow: none; font-weight: 600; }
+ :is(.hospital-intro__note, .hospital-intro__name, .hospital-intro__metric-label, .ward-info-panel__subtitle, .stat-chip__label, .inspection-card__foot, .bed-status, .room-card__status, .person-card__label, .person-card__sub, .env-label, .status-history .time, .status-history .room, .status-history .bed, .status-history .category) { color: var(--room-muted) !important; }
+ :is(.hospital-intro__note, .inspection-card__foot) { line-height: 1.7; font-size: 13px; }
+ :is(.hospital-intro__metric, .monitor-row, .person-card, .stat-chip, .staff-role-card, .room-card, .bed-chip, .env-item, .patient-info, .vitals-card, .bed-detail-section) { color: var(--room-ink) !important; background: var(--room-inset) !important; border: 1px solid var(--room-line); border-radius: 8px; box-shadow: none !important; }
+ :is(.staff-role-card__name, .staff-role-card__badge, .bed-patient, .bed-name, .room-card__name, .feed__text) { color: var(--room-ink) !important; text-shadow: none; }
+ :is(.staff-role-card__hint, .door-staff-cards__subhead) { color: var(--room-muted) !important; }
+ :is(.stat-chip__val, .person-card__value, .hospital-intro__metric-value, .monitor-row__percent) { color: var(--room-accent) !important; font-family: "Bahnschrift", "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+ .stat-chip__val { font-size: 28px; }
+ .stat-chip--occupied .stat-chip__val { color: var(--room-ok) !important; }
+ .stat-chip--empty .stat-chip__val { color: var(--room-muted) !important; }
+ :is(.bed-list__item, .status-history li, .hospital-intro__footer, .inspection-card__foot) { border-color: var(--room-line); }
+ .bed-list__item:hover { background: var(--room-inset); }
+ .bed-list__item--selected { background: var(--room-inset); outline: 1px solid var(--room-accent); }
+ :is(.area-dashboard__back-station, .close-btn, .task-card__actions button) { color: var(--room-accent) !important; border: 1px solid var(--room-line); background: var(--room-inset); border-radius: 6px; }
+ .ward-info-panel__header { border-left: 3px solid var(--room-accent) !important; }
+ .ward-info-panel__stats { padding: 0; border: 0 !important; background: transparent !important; }
+ .ward-info-panel__inspection { border-left: 3px solid var(--room-accent) !important; }
+ .ward-info-panel__inspection p, .ward-info-panel__hint > p { color: var(--room-muted) !important; }
+ .inspection-card__head strong { color: var(--room-accent) !important; }
+ .status-history ul { scrollbar-width: thin; scrollbar-color: #8baeba transparent; }
+ .status-history .time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+ .status-history .label { color: var(--room-ink) !important; }
+ .status-history__item--call .label { color: var(--room-alert) !important; }
+ .status-history__item--env .label { color: var(--room-warn) !important; }
+ .alert-task-panel { padding: 14px; }
+ .alert-task { background: var(--room-inset) !important; border: 1px solid var(--room-line); border-left: 3px solid var(--task-accent); border-radius: 8px; box-shadow: none; }
+ .alert-task::before, .alert-task::after { display: none; }
+ .alert-task__head strong { color: var(--room-ink) !important; }
+ :is(.alert-task__subtitle, .alert-task__meta, .alert-task-panel__summary, .alert-task-panel__remaining) { color: var(--room-muted) !important; }
+ .alert-task__unlocated { white-space: nowrap; width: auto; max-width: none; padding: 5px 8px; border: 0; background: transparent; color: var(--room-muted) !important; }
+ .alert-task-panel__filters { background: var(--room-inset); border-color: var(--room-line); }
+ .alert-task-panel__filters button { color: var(--room-muted) !important; }
+ .alert-task-panel__filters button.is-active { color: var(--room-accent) !important; background: var(--room-surface); border-color: var(--room-line); }
+ .alert-task-panel__more { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 0 0; background: transparent; }
+ .alert-task-panel__remaining { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; }
+ .alert-task-panel__remaining > svg { width: 18px; height: 18px; flex-shrink: 0; }
+ .alert-task-panel__more button { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; padding: 8px 12px; min-height: 36px; font-size: 12px; border-radius: 6px; color: var(--room-accent) !important; background: var(--room-inset); border: 1px solid var(--room-line); }
+ .alert-task-panel__more-arrow { display: inline-flex; margin: 0; }
+ .alert-task-panel__more-arrow svg { width: 16px; height: 16px; }
+}
+.digital-twin[data-theme='light'] .digital-twin__panel--overlay {
+ --room-surface: #f9fcfd; --room-inset: #edf5f9; --room-line: #cbdfe8;
+ --room-ink: #294b59; --room-muted: #526f7d; --room-accent: #267b91;
+ --room-alert: #ac3d56; --room-ok: #2f7c67; --room-warn: #895d20;
+ background: #edf4f7 !important;
+ .ward-info-panel__header { background: linear-gradient(110deg, #e0eff5, #f7fbfd) !important; }
+ .door-staff-cards__title-count, .monitor-row__tag, .room-card__badge { color: #276d80 !important; background: #d9edf3; border-color: #bfd9e3; }
+ .alert-task { --task-accent: #b9556b; }
+ .alert-task__severity { color: #a53d54 !important; background: #faedf0; }
+ .alert-task__meta-live { color: #276b59 !important; background: #e5f3ec; border-color: #c7e0d5; }
+ .alert-task__meta span { color: #526f7d !important; background-color: transparent; }
+ .alert-task-panel__filters button strong { color: #276d80 !important; background: #d9edf3; }
+ .alert-task__signal { color: #a53d54 !important; background: #faedf0; }
+ .alert-task__locate { color: #276d80 !important; background: #e4f1f6; border-color: #bfd9e3; }
+}
+@media(max-width: 600px) {
+ .digital-twin .digital-twin__panel--overlay {
+ .alert-task { grid-template-columns: minmax(0,1fr); }
+ .alert-task__actions { border: 0; padding-left: 0; justify-self: end; }
+ }
+}
+
+.digital-twin .digital-twin__panel--overlay {
+ .area-dashboard__intro, .area-dashboard__intro p, .monitor-row__count, .monitor-row__count strong, .alert-task__subtitle, .alert-task__subtitle span, .bed-list .bed-name, .bed-list .bed-patient { color: var(--room-ink) !important; }
+ .ward-info-panel .stat-chip__val { color: var(--room-accent) !important; }
+ .ward-info-panel .stat-chip--occupied .stat-chip__val { color: var(--room-ok) !important; }
+ .ward-info-panel .stat-chip--empty .stat-chip__val { color: var(--room-muted) !important; }
+ .status-history h3 { color: var(--room-ink) !important; }
+ .staff-role-card__badge { color: var(--room-accent) !important; background: transparent; }
+ .ward-info-panel__header::after { color: var(--room-accent); opacity: .7; }
+ .ward-info-panel { background: transparent !important; }
+}
+.digital-twin .digital-twin__panel--overlay .alert-task__main > p { color: var(--room-muted) !important; font-size: 13px; line-height: 1.6; }
+
+/* 走廊细节与病房列表：统一阅读节奏、状态对比度和操作层级。 */
+.digital-twin .digital-twin__panel--overlay {
+ .monitor-row { padding: 14px; gap: 20px; }
+ .monitor-row__count { font-size: 13px; }
+ .monitor-row__count em { color: var(--room-accent) !important; font: 600 26px/1.4 "Bahnschrift", "Segoe UI", sans-serif; margin: 0 5px; }
+ .monitor-row__percent { font-size: 20px; }
+ .monitor-row__bar { height: 5px; border: 0; background: var(--room-line); border-radius: 3px; margin-top: 9px; overflow: hidden; }
+ .monitor-row__bar i { border: 0; background: var(--room-accent); box-shadow: none; border-radius: inherit; }
+ .person-grid { gap: 10px; }
+ .person-card { display: grid; grid-template-columns: 40px minmax(0,1fr); grid-template-rows: auto auto auto; align-items: center; justify-items: start; gap: 5px 12px; padding: 16px; text-align: left; }
+ .person-card__ring { grid-column: 1; grid-row: 1/3; display: grid; place-items: center; width: 40px; height: 44px; margin: 0; border: 1px solid var(--room-line); border-radius: 7px; background: var(--room-surface); color: var(--room-accent); box-shadow: none; }
+ .person-card__ring svg { width: 25px; height: 25px; }
+ .person-card__label { grid-column: 2; font-size: 13px; margin: 0; }
+ .person-card__value { grid-column: 2; font-size: 30px; margin: 0; line-height: 1.2; }
+ .person-card__sub { grid-column: 1/-1; margin: 6px 0 0; padding-top: 10px; width: 100%; border-top: 1px solid var(--room-line); font-size: 12px; }
+ .room-card__name { font-size: 20px; font-weight: 600; }
+ .room-card__title-block { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; }
+ .room-card__priority { color: var(--room-muted) !important; background: var(--room-surface); border: 1px solid var(--room-line); font-size: 11px; }
+ .room-card__inspection { padding: 9px 10px; background: var(--room-surface); border: 1px solid var(--room-line); border-radius: 6px; gap: 8px; flex-wrap: wrap; }
+ .room-card__inspection span, .room-card__inspection small { color: var(--room-muted) !important; font-size: 12px; }
+ .room-card__inspection--overdue span { color: var(--room-alert) !important; }
+ .room-card__inspection--due span { color: var(--room-warn) !important; }
+ .room-card__inspection--done span { color: var(--room-ok) !important; }
+ .bed-chip { padding: 9px 10px; gap: 10px; min-height: 38px; }
+ .bed-chip__no { color: var(--room-ink) !important; font-size: 13px; font-weight: 600; }
+ .bed-chip__patient { color: var(--room-muted) !important; font-size: 13px; }
+ .bed-chip__state { color: var(--room-ok) !important; font-size: 12px; }
+ .bed-chip--calling .bed-chip__state { color: var(--room-alert) !important; }
+ .bed-chip--offline .bed-chip__state, .bed-chip--empty .bed-chip__state { color: var(--room-muted) !important; }
+ .bed-chip--lowBattery .bed-chip__state { color: var(--room-warn) !important; }
+ .room-card__enter { display: block; width: 100%; padding: 10px 14px; min-height: 40px; margin-top: 12px; border: 1px solid var(--room-accent); border-radius: 6px; color: var(--room-accent) !important; background: var(--room-surface); font-size: 14px; font-weight: 600; }
+ .room-card__enter:hover { background: var(--room-inset); box-shadow: inset 0 0 0 1px var(--room-accent); }
+ .room-card__enter:focus-visible, .bed-list__item:focus-visible { outline: 2px solid var(--room-accent); outline-offset: 2px; }
+ .ward-info-panel__hint > p { font-size: 14px; margin-bottom: 14px; }
+ .bed-list { display: grid; gap: 8px; }
+ .bed-list > li { border: 0; }
+ .bed-list__item { min-height: 62px; width: 100%; padding: 12px; border: 1px solid var(--room-line); border-radius: 7px; background: var(--room-inset); }
+ .bed-name { font-size: 15px; font-weight: 600; }
+ .bed-dot { width: 6px; height: 6px; box-shadow: none !important; }
+ .bed-patient { font-size: 14px; }
+ .bed-status { font-size: 12px; margin-top: 4px; }
+ .status-history h3 { font-size: 16px; margin-bottom: 12px; }
+ .status-history ul { max-height: 280px; padding-right: 4px; }
+ .status-history li { display: grid; grid-template-columns: 76px minmax(44px,auto) minmax(0,1fr); gap: 6px 10px; padding: 12px 0; font-size: 13px; align-items: baseline; }
+ .status-history .time { grid-column: 1; grid-row: 1/3; font: 400 13px/1.7 "Bahnschrift", "Segoe UI", sans-serif; }
+ .status-history .category { grid-column: 2; grid-row: 1; font-size: 12px; padding: 1px 6px; border: 1px solid var(--room-line); border-radius: 4px; justify-self: start; }
+ .status-history .label { grid-column: 3; grid-row: 1; font-weight: 500; overflow-wrap: anywhere; }
+ .status-history .room { grid-column: 2; grid-row: 2; max-width: 120px; font-size: 12px; }
+ .status-history .bed { grid-column: 3; grid-row: 2; font-size: 12px; }
+}
+@media(max-width: 400px) {
+ .digital-twin .digital-twin__panel--overlay {
+ .person-card { padding: 12px; grid-template-columns: 30px minmax(0,1fr); gap: 5px 8px; }
+ .person-card__ring { width: 30px; height: 36px; }
+ .person-card__ring svg { width: 21px; height: 21px; }
+ .status-history li { grid-template-columns: 64px 42px minmax(0,1fr); gap: 5px 6px; }
+ .status-history .time { font-size: 12px; }
+ }
+}
+
+/* 病房详情采用单层容器，医护摘要与床位清单紧凑排列。 */
+.digital-twin .digital-twin__panel--overlay .room-card {
+ background: var(--room-surface) !important; border-color: var(--room-line); box-shadow: none;
+ .room-card__accent { width: 3px; }
+ .room-card__body { padding: 16px; }
+ .room-card__name { font-size: 22px; letter-spacing: .03em; }
+ .room-card__badge { padding: 4px 9px; border-radius: 5px; font-size: 14px; font-variant-numeric: tabular-nums; }
+ .room-card__status { margin: 6px 0 12px; font-size: 13px; }
+ .room-card__inspection { border: 0; border-left: 2px solid var(--room-line); border-radius: 0 5px 5px 0; background: var(--room-inset); padding: 8px 10px; }
+ .door-staff-cards { padding: 12px 0 !important; margin: 0; border: 0 !important; background: transparent !important; }
+ .door-staff-cards__primary { gap: 8px; }
+ .staff-role-card { display: grid; grid-template-columns: 52px minmax(0,1fr); grid-template-rows: auto auto; align-content: center; align-items: center; justify-items: start; min-height: 94px; padding: 14px 12px; gap: 6px 12px; border-radius: 7px; text-align: left; }
+ .staff-role-card::before, .staff-role-card::after { display: none; }
+ .staff-role-card__avatar-wrap { grid-column: 1; grid-row: 1/3; margin: 0; }
+ .staff-avatar { width: 50px !important; height: 50px !important; box-shadow: none !important; }
+ .staff-role-card__badge { grid-column: 2; grid-row: 1; margin: 0; padding: 0; font-size: 14px; background: transparent; color: var(--room-muted) !important; }
+ .staff-role-card__name { grid-column: 2; grid-row: 2; margin: 0; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.4; }
+ .room-card__beds { margin-top: 0; gap: 0; border: 1px solid var(--room-line); border-radius: 7px; overflow: hidden; }
+ .bed-chip { border: 0; border-radius: 0; background: transparent !important; padding: 11px 12px; }
+ .bed-chip + .bed-chip { border-top: 1px solid var(--room-line); }
+ .bed-chip__state { padding: 2px 6px; border-radius: 4px; background: var(--room-inset); }
+ .room-card__enter { display: flex; justify-content: center; align-items: center; min-height: 42px; margin-top: 12px; background: var(--room-accent); color: #0b2735 !important; letter-spacing: .03em; }
+ .room-card__enter:hover { filter: brightness(1.07); background: var(--room-accent); }
+}
+.digital-twin[data-theme='light'] .digital-twin__panel--overlay .room-card .room-card__enter { color: #fff !important; }
+@media(max-width: 400px) {
+ .digital-twin .digital-twin__panel--overlay .room-card {
+  .room-card__body { padding: 12px; }
+  .door-staff-cards__primary { grid-template-columns: minmax(0,1fr); }
+ }
+}
+.digital-twin .digital-twin__panel--overlay .room-card .bed-chip__state { width: fit-content; justify-self: start; flex: 0 0 auto; }
+.digital-twin .digital-twin__panel--overlay .room-card .staff-role-card__badge { font-size: 14px !important; }
+.digital-twin .digital-twin__panel--overlay .room-card .staff-role-card__name { font-size: 16px !important; }
+
+/* 病房视角工具、数据同步浮层和图例随浅色主题联动。 */
+.digital-twin[data-theme='light'] {
+ .ward-interior-status { color: #294b59; background: #f4f9fcf5; border-color: #bfd8e4; box-shadow: 0 4px 18px #294c6010; }
+ .ward-interior-status__time, .ward-interior-status small { color: #536f7e; }
+ .ward-interior-status button, .ward-scene-3d__actions button { color: #286c80; background: #e8f3f8; border-color: #a9ccd9; }
+ .ward-interior-status summary { color: #865e21; }
+ .ward-interior-status[data-status='error'] { border-color: #c17b89; }
+ .ward-interior-status[data-status='warning'], .ward-interior-status[data-status='stale'] { border-color: #c2a06b; }
+ .ward-interior-status :focus-visible { outline-color: #277d93; }
+ .ward-scene-3d__actions { color: #294b59; background: #f4f9fcf5; border-color: #bfd8e4; box-shadow: 0 4px 16px #294c6010; }
+ .ward-scene-3d__actions button:hover:not(:disabled), .ward-interior-status button:hover:not(:disabled) { background: #d9edf4; }
+ .ward-legend__toggle { color: #426a7c; background: #e9f3f7; border-color: #bfd8e4; }
+ .ward-legend__panel { color: #294b59; background: #f7fbfdf5; border-color: #bfd8e4; box-shadow: 0 8px 24px #294c6020; }
+ .ward-legend__hint { color: #536f7e; }
+ .ward-legend__item { color: #294b59; }
+ .ward-legend__toggle:focus-visible { outline-color: #277d93; }
+ .ward-plan-view { background: #e6f0f5; }
+}
+.digital-twin[data-theme='light'] .ward-scene-3d__occupancy { color: #294b59; background: #f4f9fcf5; border-color: #bfd8e4; box-shadow: 0 4px 16px #294c6010; }
+.digital-twin[data-theme='light'] .ward-scene-3d__occupancy p { color: #536f7e; }
+.digital-twin[data-theme='light'] .ward-scene-3d__actions button:focus-visible { outline-color: #277d93; }
+
+// 场景尚未挂载时也使用浅色底，避免同步期间露出根容器的深色背景。
+.digital-twin[data-theme='light'] {
+  --scene-loading-background: #e6f0f5;
+
+  .ward-scene-3d {
+    background: radial-gradient(ellipse at 50% 30%, #f5fafc, #e6f0f5 75%);
+  }
+
+  .ward-scene-3d__vignette {
+    background: radial-gradient(ellipse at center, transparent 65%, #426b810a 100%);
+  }
+}
+
+.digital-twin[data-theme='light'] .area-scene-3d__reset {
+  background: #f4f9fcf5; color: #286c80; border-color: #bfd8e4;
+}
+.digital-twin[data-theme='light'] .area-scene-3d__reset:hover { background: #d9edf4; }
+.digital-twin[data-theme='dark'] .ward-terminal-dialog {
+  color-scheme: dark; background: #102735; color: #dceaf2; border-color: #365967;
+  select, button { background: #153443; border-color: #365967; }
+}
+@media (max-width: 600px) {
+  .digital-twin .ward-terminal-dialog header, .digital-twin .ward-terminal-dialog label { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .digital-twin .digital-twin__scene-layer { transition: none; }
+  .digital-twin .nurse-station-visual__scene { animation: none; }
+}
+
+/* 医院介绍：机构身份、可展开简介、单行指标。 */
+.digital-twin .digital-twin__panel--overlay .hospital-intro {
+  padding: 18px;
+  .hospital-intro__head { margin-bottom: 14px; }
+  .hospital-intro__title { font-size: 14px; letter-spacing: .04em; }
+  .hospital-intro__mark { width: 3px; height: 14px; background: var(--room-accent); clip-path: none; border: 0; }
+  .hospital-intro__line { background: var(--room-line); height: 1px; }
+  .hospital-intro__footer { margin: 0 0 12px; padding: 0; border: 0; gap: 10px; }
+  .hospital-intro__name { color: var(--room-ink) !important; font-size: 20px; line-height: 1.45; font-weight: 600; overflow-wrap: anywhere; }
+  .hospital-intro__logo { width: 36px; height: 36px; border: 1px solid var(--room-line); border-radius: 8px; flex-shrink: 0; }
+  .hospital-intro__note { max-height: none; overflow: visible; margin: 0; color: var(--room-muted) !important; font-size: 14px; line-height: 1.85; text-align: left; overflow-wrap: anywhere; }
+  .hospital-intro__note--collapsed { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+  .hospital-intro__expand { display: flex; align-items: center; gap: 8px; min-height: 32px; margin-top: 5px; padding: 0; border: 0; background: transparent; color: var(--room-accent); font: inherit; font-size: 12px; cursor: pointer; }
+  .hospital-intro__expand:hover { text-decoration: underline; }
+  .hospital-intro__expand:focus-visible { outline: 2px solid var(--room-accent); outline-offset: 3px; border-radius: 3px; }
+  .hospital-intro__grid { grid-template-columns: repeat(auto-fit, minmax(82px, 1fr)); gap: 8px; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--room-line); }
+  .hospital-intro__metric { position: relative; display: block; min-height: 90px; padding: 12px 10px; transform: none; }
+  .hospital-intro__metric-symbol { position: absolute; width: 17px; height: 17px; right: 10px; top: 12px; color: var(--room-accent); opacity: .75; }
+  .hospital-intro__metric-label { display: block; padding-right: 22px; font-size: 12px; line-height: 1.5; }
+  .hospital-intro__metric-body { gap: 10px; }
+  .hospital-intro__metric-value { font-size: 28px; line-height: 1.1; font-weight: 600; overflow-wrap: anywhere; }
+  .hospital-intro__metric-value small { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--room-muted); }
+  .hospital-intro__loading { color: var(--room-muted); padding: 12px 0; }
 }

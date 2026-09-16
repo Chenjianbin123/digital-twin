@@ -8,7 +8,7 @@ test('病房走廊场景参数集中在独立配置文件中', async () => {
   const config = await projectFile('src/config/ward-corridor-scene.ts');
 
   assert.match(config, /export const wardCorridorSceneConfig/);
-  assert.match(config, /3-v-1\.glb\?v=20260827-3v1-model-v1/);
+  assert.match(config, /3-v-1-optimized\.glb\?v=20260912-lossless/);
   assert.match(config, /rotationX: 0/);
   assert.match(config, /slotCount: 10/);
   assert.match(config, /doorNodeNames: \['门1', '门2', '门3', '门4', '门5', '门6', '门7', '门8', '门9', '门10'\]/);

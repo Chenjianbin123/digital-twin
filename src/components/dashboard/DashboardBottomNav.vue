@@ -24,7 +24,7 @@ const sceneItems = computed(() => [
 
 const interiorItems = computed(() => [
   { key: '3d', label: '3D', view: '3d' as const },
-  { key: 'plan', label: '2.5D', view: 'plan' as const },
+  { key: 'plan', label: '入住平面图', view: 'plan' as const },
 ]);
 </script>
 
@@ -58,6 +58,7 @@ const interiorItems = computed(() => [
         :key="item.key"
         type="button"
         class="dash-bottom__sub-item"
+        :aria-pressed="props.wardInteriorView === item.view"
         :class="{ 'dash-bottom__sub-item--active': props.wardInteriorView === item.view }"
         @click="emit('setWardInteriorView', item.view)"
       >

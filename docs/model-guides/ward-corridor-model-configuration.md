@@ -1,61 +1,52 @@
 # 病房走廊模型配置说明
 
-## 1. 放置和切换模型
+## 模型与节点
+当前入口为 sceneType = ward，配置位于 src/config/ward-corridor-scene.ts。
+模型使用 3-v-1-optimized.glb，rotationX = 0，slotCount = 10，CanvasTexture flipY = false。
+原始 3-v-1.glb 保留，可通过切换 model.url 回退。替换资源后递增 URL 版本号。
 
-将走廊 GLB 放入：
+节点契约为门1至门10、门口机1至门口机10；GLTFLoader 可能将多材质门解析成 Group，绑定与相机均按完整命名节点处理。
+地板、天花板、墙壁、墙壁2用于相机边界，不可随意重命名。
 
-```text
-public/models/hospital-corridor/
-```
+## 真实门位与分组示意
+areaLayouts 按病区 ID 隔离。未配置时使用“病房分组示意 · 非实际位置”，不能宣称为实测楼层布局。
+示意模式按稳定标识在当前场景会话内保留槽位：优先 sickroomId，其次 deviceCode，最后 sickroomCode；不把内部标识伪装成业务房号。接口数组重排不移动已有病房，删除数据保留空槽位，超过十个房间分组展示。
+重新创建场景后会重新建立示意分组；它不是永久空间坐标。
 
-编辑 `src/config/ward-corridor-scene.ts` 的 `model.url`：
-
+有确认过的医院平面对应表后，在 areaLayouts 配置：
 ```ts
-model: {
-  url: '/models/hospital-corridor/hospital-in.glb?v=2',
-  // ...
-}
+areaLayouts: {
+  // 以真实病区 ID 和病房编号替换以下示例，不能直接用于现场。
+  123: [
+    { roomCode: 'EXAMPLE-301', doorNode: '门1', deviceNode: '门口机1' },
+  ],
+},
 ```
+配置启用后不再按相邻空间或数组顺序猜测。重复房号、重复门位、重复门口机或不存在的节点会报告异常并暂停相关绑定。
+未配置病房可从异常详情中的列表进入。暂无数据与未配置均不可点击。
 
-同名模型重新导出时递增 `?v=`，避免浏览器继续使用旧缓存。
+## 交互和显示
+房号导航支持方向键、Home、End，Esc及“恢复总览”重置。
+选中病房后可进入病房内，返回走廊保持选择；调整窗口尺寸不再清除当前相机。
+门上标签显示房号、状态摘要与选中态，不额外展示患者姓名。
+隐藏面板时导航扩展可用宽度，移动端支持横向滚动房号。
+加载失败保留统一错误提示和重试入口，底层切换到程序化备用几何。
 
-模型加载后会执行 Blender Z-up 到 Three.js Y-up 的 `rotationX` 旋转，并自动居中、落地。默认值是 `-Math.PI / 2`，除非新模型明确使用不同坐标轴，否则不要修改。
+## 性能与资源
+无损优化脚本：scripts/optimize-corridor-textures.py，需要 Pillow。
+脚本检查解码后的 RGBA 像素完全一致，并保留原文件，不使用有损降采样。
+51,274,520 字节降至 42,798,412 字节，减少约 16.53%；贴图分辨率和几何未变，因此不代表显存同步下降。
+门口屏按数据签名跳过未变化内容；渲染并发上限为 2，同门排队任务合并，过期结果释放纹理。
+隐藏场景暂停动画和门口屏更新，返回时补齐最新数据。
+AreaScene3D 暴露 getCorridorDiagnostics 供本地诊断加载、绘制与屏幕更新计数，不向业务界面输出病人数据。
 
-## 2. 六门节点契约
-
-当前病区按六扇门绑定，`model.slotCount` 必须保持为 `6`，`model.doorNodeNames` 必须按业务顺序包含：
-
-```text
-门1、门2、门2.001、门3、门4、门5
-```
-
-这些节点只负责确定门的空间位置和病房绑定顺序。门口屏模板解析、实时数据渲染、点击进入病房和房间权限逻辑仍由 `area-scene.ts` 保持，不要移入配置文件。
-
-`canvasTextureFlipY` 控制动态 CanvasTexture 的 UV 方向。模型导出方式未改变时保持 `false`。
-
-## 3. 镜头和交互
-
-`camera.overviewFov` 控制病房数量对应的走廊总览 FOV。`camera.modelBoundsView` 控制加载 GLB 后根据包围盒计算的初始位置：
-
-- `xOffset`：相机横向偏移及走廊宽度系数。
-- `y`：相机高度和地面安全距离。
-- `zInset`：相机距离走廊末端的范围。
-- `targetY`、`targetZLengthFactor`：观察目标点。
-
-`controls` 控制 OrbitControls 的旋转、缩放范围和速度。当前走廊已开放水平旋转、俯仰和较大的缩放距离，替换模型后如需改变交互只修改此处。
-
-## 4. 备用几何
-
-GLB 加载失败时，系统会使用 `fallbackGeometry` 生成走廊外壳和门脸。它不会替代成功加载的高清 GLB，也不包含门口屏业务逻辑。新模型验证期间可以暂时保留默认值，以便观察加载失败时的可用状态。
-
-## 5. 验证
-
-```bash
-node scripts/ward-corridor-scene-config-boundary.test.mjs
-node --experimental-strip-types --test src/core/ward-corridor-model.test.ts src/core/ward-corridor-camera.test.ts src/core/area-corridor-controls.test.ts
-node --test scripts/area-scene-zoom-boundary.test.mjs scripts/area-scene-visibility-boundary.test.mjs
+## 验证
+```sh
+npm run typecheck
 npm run build
+npm test
 ```
-
-页面验收至少检查：模型加载完成后六扇门均可识别；门口屏内容仍随真实病区数据更新；走廊可拖拽、旋转和缩放；加载失败时能回退到备用几何；护士站与走廊切换后显示状态正确。
+浏览器复验脚本为 scripts/verify-ward-corridor.pw.js，应在独立 mock 会话运行，不能对生产病区注入测试数据。
+检查十门定位、进入返回、数据重排、空数据、超额分组、键盘、浅深主题及 320/768/1024/1440 宽度。
+现场验收还需确认真实门位表、真实数据模板与目标医院设备的帧率/显存。
 

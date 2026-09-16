@@ -1,6 +1,12 @@
 import type { CameraPresetId } from '@/types/twin';
 
 export interface WardInteriorSceneConfig {
+  modular: {
+    unitUrl: string;
+    slots: readonly { position: readonly [number, number, number]; rotationY: number }[];
+    hiddenRoomNodes: readonly string[];
+    sharedEquipmentOffset: readonly [number, number, number];
+  };
   model: {
     url: string;
     baseSize: { width: number; height: number; depth: number };
@@ -77,20 +83,30 @@ export interface WardInteriorSceneConfig {
 
 /** 病房内部模型、镜头、交互和床位排布参数。业务数据与模型节点校验不在此配置。 */
 export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
+  modular: {
+    unitUrl: '/models/smart-ward-interior/bed-refined-v1.glb?v=20260915',
+    // Validated native double-room slots. Additional occupants extend the room while keeping these native bed proportions.
+    slots: [
+      { position: [-1.670222, 0.903284, -0.070125], rotationY: Math.PI / 2 },
+      { position: [-1.670222, 0.903284, 2.301], rotationY: Math.PI / 2 },
+    ],
+    hiddenRoomNodes: ['Medicinal_Props.020_Medical_Props_0.005', 'Medicinal_Props.020_Medical_Props_0.002'],
+    sharedEquipmentOffset: [2, 0, 2.4],
+  },
   model: {
-    url: '/models/smart-ward-interior/room-v1.glb?v=20260901-room-v1-native',
+    url: '/models/smart-ward-interior/room-refined-v1.glb?v=20260915',
     baseSize: { width: 12, height: 3.92, depth: 9 },
     canvasTextureFlipY: false,
   },
   room: { height: 4.2 },
   camera: {
-    perspective: { fov: 45, near: 0.1, far: 100 },
-    initial: { position: [0.819, 1.313, 5.265], target: [0, 1, -0.8] },
+    perspective: { fov: 67, near: 0.1, far: 100 },
+    initial: { position: [0.5, 2.4, 3.95], target: [-1.3, 1.4, 0.25] },
     presets: [
-      { id: 'free', label: '自由视角', position: [0.819, 1.313, 5.265], target: [0, 1, -0.8] },
-      { id: 'door', label: '门口视角', position: [0.819, 1.313, 5.265], target: [0, 1, -0.8] },
-      { id: 'nurse', label: '巡视视角', position: [8.8, 5.8, 6.8], target: [0, 0.9, -1.6] },
-      { id: 'top', label: '俯视视角', position: [0, 18, 0.01], target: [0, 0, 0] },
+      { id: 'free', label: '自由视角', position: [0.5, 2.4, 3.95], target: [-1.3, 1.4, 0.25] },
+      { id: 'door', label: '门口视角', position: [0.5, 2.4, 3.95], target: [-1.3, 1.4, 0.25] },
+      { id: 'nurse', label: '巡视视角', position: [0.5, 2.3, 2.8], target: [-1.75, 1.3, 1] },
+      { id: 'top', label: '俯视视角', position: [-0.8, 2.7, 1.05], target: [-1, 1, 1] },
     ],
     viewportScale: { referenceAspect: 0.92, min: 1, max: 2 },
     presetTransitionDuration: 0.75,

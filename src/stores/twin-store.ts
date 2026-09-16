@@ -1,3 +1,4 @@
+import { findUniqueStatusBed } from '@/core/ward-data-binding';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { syncAlertAck } from '@/api/alert-ack';
@@ -413,6 +414,8 @@ export const useTwinStore = defineStore('twin', () => {
     if (type === 'ward-interior' && !ensureRoomForInterior())
       return;
 
+    const returningToCorridor = sceneType.value === 'ward-interior' && type === 'ward';
+    const returnIndex = currentRoomIndex.value;
     sceneType.value = type;
 
     if (type === 'nurse-station' || type === 'ward') {
@@ -420,7 +423,7 @@ export const useTwinStore = defineStore('twin', () => {
       bedDetailsLoading.value = false;
       bedDetailsError.value = null;
       clearAlertFocusSelection();
-      currentRoomIndex.value = -1;
+      currentRoomIndex.value = returningToCorridor && area.value?.rooms[returnIndex] ? returnIndex : -1;
       selectedBedCode.value = null;
     }
     else if (currentRoomIndex.value < 0) {
@@ -439,7 +442,7 @@ export const useTwinStore = defineStore('twin', () => {
     void loadCurrentWardBedDetails();
   }
 
-  async function loadCurrentWardBedDetails() {
+  async function loadCurrentWardBedDetails(forceRefresh = false) {
     const room = currentWard.value;
     if (!room)
       return;
@@ -450,7 +453,7 @@ export const useTwinStore = defineStore('twin', () => {
       const result = await loadBedDeviceDetails(
         room.beds,
         () => requestGeneration === bedDetailsRequestGeneration && currentWard.value === room,
-        { forceRefresh: false },
+        { forceRefresh },
       );
       if (requestGeneration === bedDetailsRequestGeneration && currentWard.value === room && result.warnings.length)
         bedDetailsError.value = result.warnings.join('；');
@@ -654,11 +657,6 @@ export const useTwinStore = defineStore('twin', () => {
     if (!['remote', 'database'].includes(dataSource.value) || areaId == null || isAreaSwitching.value)
       return false;
     const requestToken = areaRequestGuard.begin();
-    const previousSceneType = sceneType.value;
-    const previousRoomIndex = currentRoomIndex.value;
-    const previousRoom = currentWard.value;
-    const previousBedCode = selectedBedCode.value;
-    const previousInteriorView = wardInteriorView.value;
     const loadingToken = options.silent ? null : refreshLoadingGuard.begin();
     if (loadingToken != null)
       isLoading.value = true;
@@ -670,6 +668,11 @@ export const useTwinStore = defineStore('twin', () => {
       });
       if (!areaRequestGuard.isCurrent(requestToken) || selectedAreaId.value !== areaId)
         return false;
+      const previousSceneType = sceneType.value;
+      const previousRoomIndex = currentRoomIndex.value;
+      const previousRoom = currentWard.value;
+      const previousBedCode = selectedBedCode.value;
+      const previousInteriorView = wardInteriorView.value;
       area.value = snapshot.area;
       deviceCodes.value = snapshot.deviceCodes;
       hospitalInfo.value = snapshot.hospitalInfo;
@@ -682,6 +685,8 @@ export const useTwinStore = defineStore('twin', () => {
         if (previousSceneType === 'ward-interior' && currentRoomIndex.value >= 0)
           await loadCurrentWardBedDetails();
       }
+      if (!areaRequestGuard.isCurrent(requestToken) || selectedAreaId.value !== areaId)
+        return false;
       lastFetchedAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false });
       lastFetchedAtMs.value = Date.now();
       dataPhase.value = 'ready';
@@ -791,7 +796,7 @@ export const useTwinStore = defineStore('twin', () => {
   }
 
   function setRoomIndex(index: number) {
-    if (!area.value || index < 0 || index >= area.value.rooms.length)
+    if (!area.value || !Number.isInteger(index) || index < 0 || index >= area.value.rooms.length)
       return;
     clearAlertFocusSelection();
     currentRoomIndex.value = index;
@@ -815,6 +820,7 @@ export const useTwinStore = defineStore('twin', () => {
   }
 
   function enterRoom(index: number) {
+    if (!Number.isInteger(index) || !area.value?.rooms[index]) return;
     setRoomIndex(index);
     cameraPreset.value = 'door';
     wardInteriorView.value = '3d';
@@ -1041,14 +1047,10 @@ export const useTwinStore = defineStore('twin', () => {
     if (!area.value || selectedAreaId.value !== expectedAreaId)
       return false;
 
-    for (const room of area.value.rooms) {
-      const bed = room.beds.find(b => b.bedCode === bedCode || b.deviceCode === statusBarInfo.deviceCode);
-      if (bed) {
-        bed.statusBarInfo = { ...bed.statusBarInfo, ...statusBarInfo, bedCode: bed.bedCode };
-        return true;
-      }
-    }
-    return false;
+    const match = findUniqueStatusBed(area.value, bedCode, statusBarInfo.deviceCode);
+    if (!match) return false;
+    match.bed.statusBarInfo = { ...match.bed.statusBarInfo, ...statusBarInfo, bedCode: match.bed.bedCode };
+    return true;
   }
 
   function updateEnv(expectedAreaId: number | null, sickroomId: string, envData: DoorEnvParams) {
@@ -1446,6 +1448,7 @@ export const useTwinStore = defineStore('twin', () => {
     enterArea,
     switchArea,
     refreshCurrentArea,
+    refreshWardBedDetails: () => loadCurrentWardBedDetails(true),
     loadArea,
     startRemoteServices,
     stopRemoteServices,

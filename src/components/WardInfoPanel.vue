@@ -1,12 +1,19 @@
 <script setup lang="ts">
 
 import { computed } from 'vue';
+import { useLiveClock } from '@/composables/use-live-clock';
+import WardCallList from '@/components/WardCallList.vue';
+import type { SwpEventSyncState } from '@/types/swp-events';
+import WardBedNavigator from '@/components/WardBedNavigator.vue';
+import { wardField, wardDataNotice } from '@/core/ward-presentation';
+import { wardBedPatientKey } from '@/core/ward-data-binding';
+import type { DataStatus } from '@/core/data-status';
 
 import { displayPatientName, maskSickName } from '@/utils/mask-patient';
 
 import DoorStaffCards from '@/components/DoorStaffCards.vue';
 import StatusHistory from '@/components/StatusHistory.vue';
-import { resolveBedStatus } from '@/core/bed-status';
+
 import { formatBedLabel, type AlertTask } from '@/core/alert-workflow';
 import type { EnvAlertResult } from '@/core/env-alert';
 import type { InspectionRoomSummary } from '@/types/inspection';
@@ -23,6 +30,9 @@ const props = defineProps<{
   selectedBed: TwinBedEntity | null;
 
   selectedStatus: BedStatusMeta | null;
+  dataStatus?: DataStatus;
+  callTasks?: AlertTask[];
+  callSync?: SwpEventSyncState;
 
   envAlert: EnvAlertResult;
 
@@ -40,6 +50,7 @@ const emit = defineEmits<{
 
   close: [];
   bedClick: [bed: TwinBedEntity];
+  locateCall: [taskId: string];
   markAlertHandling: [taskId: string];
   resolveAlert: [taskId: string];
 
@@ -49,7 +60,7 @@ const emit = defineEmits<{
 
 const bedStats = computed(() => props.ward ? getWardBedStats(props.ward) : null);
 const visibleNursingLabels = computed(() => (
-  props.selectedBed?.nursingLabels?.filter(label => label.labelName.trim()) ?? []
+  props.selectedBed?.isOccupied ? props.selectedBed.nursingLabels?.filter(label => label.labelName.trim()) ?? [] : []
 ));
 
 function staffText(value: unknown) {
@@ -87,8 +98,8 @@ function staffPicText(...values: unknown[]) {
 
 const managedCareSourceSick = computed(() => {
   const selectedSick = props.selectedBed?.sickInfo;
-  if (selectedSick)
-    return selectedSick;
+  if (props.selectedBed)
+    return props.selectedBed.isOccupied ? selectedSick ?? null : null;
   return props.ward?.beds.find(bed => bed.sickInfo)?.sickInfo ?? null;
 });
 
@@ -141,7 +152,7 @@ const otherCareStaff = computed(() => {
   const selectedBed = props.selectedBed;
   const fallbackBed = props.ward?.beds.find(bed => bed.sickInfo || bed.bedDeviceInfo) ?? null;
   const bed = selectedBed ?? fallbackBed;
-  const sick = bed?.sickInfo ?? null;
+  const sick = bed?.isOccupied ? bed.sickInfo ?? null : null;
   const directorName = staffText(bed?.bedDeviceInfo?.deptDirectorName);
   const headNurseName = staffText(sick?.areaHeadNurseName);
 
@@ -178,6 +189,18 @@ function inspectionTime(value: string | null | undefined) {
 
 
 
+const { now: envNow } = useLiveClock();
+const envSyncText = computed(() => {
+  const sync = props.ward?.envSync;
+  if (!sync) return '更新时间未知';
+  const time = sync.lastSuccessAt
+    ? new Date(sync.lastSuccessAt).toLocaleTimeString('zh-CN', { hour12: false }) : null;
+  if (sync.failed) return time ? `更新失败 · 上次接收 ${time}，仅供参考` : '暂未获取环境数据';
+  if (sync.lastSuccessAt && envNow.value.getTime() - sync.lastSuccessAt >= 60_000)
+    return `数据已过期 · 上次接收 ${time}，仅供参考`;
+  return time ? `最近接收 ${time}` : '等待环境数据';
+});
+
 const envItems = computed(() => {
 
   const env = props.ward?.doorEnvData;
@@ -201,20 +224,6 @@ const envItems = computed(() => {
 });
 
 
-
-function bedStatusLabel(bed: TwinBedEntity) {
-
-  return resolveBedStatus(bed).label;
-
-}
-
-
-
-function bedStatusColor(bed: TwinBedEntity) {
-
-  return resolveBedStatus(bed).color;
-
-}
 
 function severityLabel(severity: AlertTask['severity']) {
   if (severity === 'critical')
@@ -314,6 +323,8 @@ function alertTime(value?: string) {
 
 
 
+    <WardBedNavigator v-if="ward" :ward="ward" :selected-bed="selectedBed" @select="emit('bedClick', $event)" />
+    <WardCallList v-if="ward && callTasks" :ward="ward" :tasks="callTasks" :sync="callSync" @locate="emit('locateCall', $event)" />
     <section
       v-if="activeAlertTask"
       class="ward-info-panel__task"
@@ -359,6 +370,190 @@ function alertTime(value?: string) {
 
 
 
+    <section v-if="selectedBed && selectedStatus" class="ward-info-panel__bed">
+
+      <div class="ward-info-panel__bed-header">
+
+        <div class="bed-detail-identity">
+          <span>BED</span>
+          <h3>{{ selectedBed.bedName }}</h3>
+        </div>
+
+        <button type="button" aria-label="关闭患者详情" class="close-btn" @click="emit('close')">
+
+          ×
+
+        </button>
+
+      </div>
+
+      <p v-if="wardDataNotice(dataStatus)" class="ward-care-notice" role="status">{{ wardDataNotice(dataStatus) }}</p>
+      <section v-if="selectedBed.isOccupied" class="ward-care-summary" aria-label="当前护理摘要">
+        <strong>{{ selectedBed.sickInfo?.sickName?.trim() ? displayPatientName(selectedBed.sickInfo.sickName, true) : '患者资料待同步' }}</strong>
+        <p>住院号：{{ wardField(selectedBed.sickInfo?.sickNo) }} · 责任护士：{{ wardField(selectedBed.sickInfo?.dutyNurseName) }}</p>
+        <dl class="patient-info">
+          <dt>护理等级</dt><dd>{{ wardField(selectedBed.sickInfo?.nursingLevel || selectedBed.nursingLevel) }}</dd>
+          <dt>过敏史</dt><dd>{{ wardField(selectedBed.sickInfo?.sickAllergy) }}</dd>
+          <dt>隔离方式</dt><dd>{{ wardField(selectedBed.sickInfo?.sickIsolation) }}</dd>
+          <dt>安全防护</dt><dd>{{ wardField(selectedBed.sickInfo?.sickSafetyPrecautions) }}</dd>
+        </dl>
+      </section>
+      <div class="bed-detail-section bed-detail-section--status">
+        <div class="status-badge" :style="{ backgroundColor: selectedStatus.color }">
+          <i />
+          {{ selectedStatus.label }}
+        </div>
+
+        <div v-if="selectedBed.isCalling" class="call-alert">
+          床位正在呼叫护士站
+        </div>
+
+        <div v-if="visibleNursingLabels.length" class="nursing-tags">
+          <span
+
+            v-for="tag in visibleNursingLabels"
+
+            :key="tag.labelCode || tag.labelName"
+
+            class="nursing-tag"
+
+            :style="{ '--tag-color': tag.labelColor, '--tag-text-color': tag.labelTextColor ?? '#fff' }"
+
+          >
+
+            {{ tag.labelName }}
+
+          </span>
+        </div>
+      </div>
+
+
+
+      <div v-if="selectedBed.isOccupied && ['300', '301'].includes(selectedBed.statusBarInfo?.status ?? '')" class="infusion-info">
+
+        <span>输液泵运行中</span>
+
+      </div>
+
+      <div v-else-if="selectedBed.isOccupied && ['302', '305'].includes(selectedBed.statusBarInfo?.status ?? '')" class="infusion-info infusion-info--done">
+
+        <span>输液已完成</span>
+
+      </div>
+      <section v-if="selectedBed.isOccupied && selectedBed.latestVitals" class="vitals-card" aria-label="最新体征">
+        <h4>最新体征</h4>
+        <div class="vitals-grid">
+          <span>
+            <small>体温</small>
+            <strong>{{ wardField(selectedBed.latestVitals.temp) }}</strong>
+          </span>
+          <span>
+            <small>脉搏</small>
+            <strong>{{ wardField(selectedBed.latestVitals.pulse) }}</strong>
+          </span>
+          <span>
+            <small>呼吸</small>
+            <strong>{{ wardField(selectedBed.latestVitals.breath) }}</strong>
+          </span>
+          <span>
+            <small>血压</small>
+            <strong>{{ wardField(selectedBed.latestVitals.bloodPressure) }}</strong>
+          </span>
+          <span>
+            <small>血氧</small>
+            <strong>{{ wardField(selectedBed.latestVitals.bloodOxygen) }}</strong>
+          </span>
+          <span>
+            <small>血糖</small>
+            <strong>{{ wardField(selectedBed.latestVitals.bloodSugar) }}</strong>
+          </span>
+          <span>
+            <small>记录时间</small>
+          <strong>{{ wardField(selectedBed.latestVitals.recordTime) }}</strong>
+        </span>
+        </div>
+        <p class="vitals-card__note">最新体征记录来自真实数据源；是否预警以当前后端预警事件为准。</p>
+      </section>
+
+      <p v-else-if="selectedBed.isOccupied" class="empty-bed-tip">暂无体征记录，等待数据同步。</p>
+      <template v-if="selectedBed.isOccupied && selectedBed.sickInfo">
+
+        <details :key="wardBedPatientKey(selectedBed)" class="bed-detail-section bed-detail-section--patient">
+          <summary class="bed-detail-section__title">完整患者档案</summary>
+          <dl class="patient-info">
+
+          <dt>患者</dt>
+
+          <dd>{{ maskSickName(selectedBed.sickInfo.sickName) }}</dd>
+
+          <dt>性别/年龄</dt>
+
+          <dd>{{ wardField(selectedBed.sickInfo.sickSex) }} / {{ wardField(selectedBed.sickInfo.sickAge) }}</dd>
+
+          <dt>住院号</dt>
+
+          <dd>{{ wardField(selectedBed.sickInfo.sickNo) }}</dd>
+
+          <dt>入院时间</dt>
+
+          <dd>{{ wardField(selectedBed.sickInfo.sickInTime) }}</dd>
+
+          <dt>护理等级</dt>
+
+          <dd :style="{ color: selectedBed.sickInfo.nursingColor }">
+
+            {{ wardField(selectedBed.sickInfo.nursingLevel) }}
+
+          </dd>
+
+          <dt>主治医生</dt>
+
+          <dd>{{ wardField(selectedBed.sickInfo.visitDoctorName) }}</dd>
+
+          <dt>责任护士</dt>
+
+          <dd>{{ wardField(selectedBed.sickInfo.dutyNurseName) }}</dd>
+
+          <dt>饮食</dt>
+
+          <dd>{{ wardField(selectedBed.sickInfo.sickDiet) }}</dd>
+
+          <dt>过敏史</dt>
+
+          <dd>{{ wardField(selectedBed.sickInfo.sickAllergy) }}</dd>
+
+          <dt>隔离方式</dt>
+
+          <dd>{{ wardField(selectedBed.sickInfo.sickIsolation) }}</dd>
+
+          <dt v-if="selectedBed.sickInfo.sickSafetyPrecautions">安全防护</dt>
+
+          <dd v-if="selectedBed.sickInfo.sickSafetyPrecautions">
+
+            {{ selectedBed.sickInfo.sickSafetyPrecautions }}
+
+          </dd>
+
+          </dl>
+        </details>
+
+      </template>
+
+      <p v-if="!selectedBed.isOccupied || !selectedBed.sickInfo" class="empty-bed-tip">
+
+        {{ selectedBed.isOccupied ? '已入住，患者资料尚未提供或正在同步。' : '当前为空床，不展示患者资料。' }}
+
+      </p>
+
+
+
+
+    </section>
+
+
+
+
+    <p v-if="ward && !selectedBed" class="empty-bed-tip">选择床位查看患者摘要；模型未加载时仍可使用床位切换。</p>
     <section v-if="ward && bedStats" class="ward-info-panel__stats">
 
       <div class="stat-chip">
@@ -436,7 +631,7 @@ function alertTime(value?: string) {
 
     <section
 
-      v-if="envItems.length"
+      v-if="envItems.length || ward?.envSync"
 
       class="ward-info-panel__env"
 
@@ -445,6 +640,7 @@ function alertTime(value?: string) {
     >
 
       <h3>环境数据</h3>
+      <p class="env-label">{{ envSyncText }}</p>
 
       <div class="ward-info-panel__env-grid">
 
@@ -486,216 +682,6 @@ function alertTime(value?: string) {
 
 
 
-    <section v-if="selectedBed && selectedStatus" class="ward-info-panel__bed">
-
-      <div class="ward-info-panel__bed-header">
-
-        <div class="bed-detail-identity">
-          <span>BED</span>
-          <h3>{{ selectedBed.bedName }}</h3>
-        </div>
-
-        <button class="close-btn" @click="emit('close')">
-
-          ×
-
-        </button>
-
-      </div>
-
-      <div class="bed-detail-section bed-detail-section--status">
-        <div class="status-badge" :style="{ backgroundColor: selectedStatus.color }">
-          <i />
-          {{ selectedStatus.label }}
-        </div>
-
-        <div v-if="selectedBed.isCalling" class="call-alert">
-          床位正在呼叫护士站
-        </div>
-
-        <div v-if="visibleNursingLabels.length" class="nursing-tags">
-          <span
-
-            v-for="tag in visibleNursingLabels"
-
-            :key="tag.labelCode || tag.labelName"
-
-            class="nursing-tag"
-
-            :style="{ '--tag-color': tag.labelColor, '--tag-text-color': tag.labelTextColor ?? '#fff' }"
-
-          >
-
-            {{ tag.labelName }}
-
-          </span>
-        </div>
-      </div>
-
-
-
-      <template v-if="selectedBed.sickInfo">
-
-        <section class="bed-detail-section bed-detail-section--patient">
-          <div class="bed-detail-section__title">患者档案</div>
-          <dl class="patient-info">
-
-          <dt>患者</dt>
-
-          <dd>{{ maskSickName(selectedBed.sickInfo.sickName) }}</dd>
-
-          <dt>性别/年龄</dt>
-
-          <dd>{{ selectedBed.sickInfo.sickSex }} / {{ selectedBed.sickInfo.sickAge }}岁</dd>
-
-          <dt>住院号</dt>
-
-          <dd>{{ selectedBed.sickInfo.sickNo }}</dd>
-
-          <dt>入院时间</dt>
-
-          <dd>{{ selectedBed.sickInfo.sickInTime || '--' }}</dd>
-
-          <dt>护理等级</dt>
-
-          <dd :style="{ color: selectedBed.sickInfo.nursingColor }">
-
-            {{ selectedBed.sickInfo.nursingLevel }}
-
-          </dd>
-
-          <dt>主治医生</dt>
-
-          <dd>{{ selectedBed.sickInfo.visitDoctorName }}</dd>
-
-          <dt>责任护士</dt>
-
-          <dd>{{ selectedBed.sickInfo.dutyNurseName }}</dd>
-
-          <dt>饮食</dt>
-
-          <dd>{{ selectedBed.sickInfo.sickDiet || '无' }}</dd>
-
-          <dt>过敏史</dt>
-
-          <dd>{{ selectedBed.sickInfo.sickAllergy || '无' }}</dd>
-
-          <dt>隔离方式</dt>
-
-          <dd>{{ selectedBed.sickInfo.sickIsolation || '无' }}</dd>
-
-          <dt v-if="selectedBed.sickInfo.sickSafetyPrecautions">安全防护</dt>
-
-          <dd v-if="selectedBed.sickInfo.sickSafetyPrecautions">
-
-            {{ selectedBed.sickInfo.sickSafetyPrecautions }}
-
-          </dd>
-
-          </dl>
-        </section>
-
-      </template>
-
-      <section v-if="selectedBed.latestVitals" class="vitals-card" aria-label="最新体征">
-        <h4>最新体征</h4>
-        <div class="vitals-grid">
-          <span>
-            <small>体温</small>
-            <strong>{{ selectedBed.latestVitals.temp || '--' }}</strong>
-          </span>
-          <span>
-            <small>脉搏</small>
-            <strong>{{ selectedBed.latestVitals.pulse || '--' }}</strong>
-          </span>
-          <span>
-            <small>呼吸</small>
-            <strong>{{ selectedBed.latestVitals.breath || '--' }}</strong>
-          </span>
-          <span>
-            <small>血压</small>
-            <strong>{{ selectedBed.latestVitals.bloodPressure || '--' }}</strong>
-          </span>
-          <span>
-            <small>血氧</small>
-            <strong>{{ selectedBed.latestVitals.bloodOxygen || '--' }}</strong>
-          </span>
-          <span>
-            <small>血糖</small>
-            <strong>{{ selectedBed.latestVitals.bloodSugar || '--' }}</strong>
-          </span>
-          <span>
-            <small>记录时间</small>
-          <strong>{{ selectedBed.latestVitals.recordTime || '--' }}</strong>
-        </span>
-        </div>
-        <p class="vitals-card__note">最新体征记录来自真实数据源；是否预警以当前后端预警事件为准。</p>
-      </section>
-
-      <p v-if="!selectedBed.sickInfo" class="empty-bed-tip">
-
-        当前为空床
-
-      </p>
-
-
-
-      <div v-if="['300', '301'].includes(selectedBed.statusBarInfo?.status ?? '')" class="infusion-info">
-
-        <span>输液泵运行中</span>
-
-      </div>
-
-      <div v-else-if="['302', '305'].includes(selectedBed.statusBarInfo?.status ?? '')" class="infusion-info infusion-info--done">
-
-        <span>输液已完成</span>
-
-      </div>
-
-    </section>
-
-
-
-    <section v-else-if="ward" class="ward-info-panel__hint">
-
-      <p>点击场景中的床位查看详情</p>
-
-      <ul class="bed-list">
-
-        <li v-for="bed in ward.beds" :key="bed.bedCode">
-
-          <button
-            type="button"
-            class="bed-list__item"
-            :class="{ 'bed-list__item--selected': selectedBed?.bedCode === bed.bedCode }"
-            :aria-label="`选择${bed.bedName}`"
-            @click="emit('bedClick', bed)"
-          >
-            <span class="bed-name">
-
-              <i class="bed-dot" :style="{ backgroundColor: bedStatusColor(bed) }" />
-
-              {{ bed.bedName }}
-
-            </span>
-
-            <span class="bed-meta">
-
-              <span class="bed-patient">{{ displayPatientName(bed.sickInfo?.sickName, bed.isOccupied) }}</span>
-
-              <span class="bed-status">{{ bedStatusLabel(bed) }}</span>
-
-            </span>
-          </button>
-
-        </li>
-
-      </ul>
-
-    </section>
-
-
-
     <StatusHistory :history="statusHistory" />
 
   </div>
@@ -705,6 +691,17 @@ function alertTime(value?: string) {
 
 
 <style scoped lang="scss">
+.ward-care-summary .patient-info {
+  display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px 12px; padding: 12px; margin: 10px 0;
+  dt { color: var(--room-muted, #a6c0cd) !important; font-size: 13px; }
+  dd { color: var(--room-ink, #dcebf2) !important; margin: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+}
+.ward-info-panel__bed .call-alert { color: var(--room-alert, #ff9cb7) !important; }
+
+.ward-care-summary { padding: 12px 0; strong { font-size: 18px; } p { margin: 8px 0; line-height: 1.6; } }
+.ward-care-notice { padding: 10px; border: 1px solid #b79354; border-radius: 6px; line-height: 1.6; }
+.bed-detail-section--patient summary { cursor: pointer; padding: 8px 0; }
+
 
 @keyframes ward-panel-sweep {
   0% {
@@ -825,7 +822,7 @@ function alertTime(value?: string) {
     animation: ward-panel-rail 7s ease-in-out infinite;
   }
 
-  > * {
+  > :not(.ward-bed-nav) {
     position: relative;
     z-index: 1;
   }

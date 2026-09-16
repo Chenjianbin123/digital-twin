@@ -2,11 +2,15 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
 import { AreaScene, type AreaCameraDebugState, type AreaModelState, type AreaNodePickInfo } from '@/core/area-scene';
 import { buildAreaStructureSignature } from '@/core/area-scene-identity';
+import WardCorridorToolbar from './WardCorridorToolbar.vue';
+import type { CorridorLayoutState } from '@/core/ward-corridor-layout';
 import type { RoomSummary } from '@/core/area-summary';
 import type { NurseStationViewModel } from '@/core/nurse-station-view-model';
 import { twinSceneToAreaPhase, type TwinAreaEntity, type TwinSceneType } from '@/types/twin';
 
 const props = defineProps<{
+  panelsVisible?: boolean;
+  alertTitle?: string;
   theme?: 'light' | 'dark';
   area: TwinAreaEntity;
   areaId: number | null;
@@ -23,7 +27,7 @@ const areaPhase = computed(() =>
   twinSceneToAreaPhase(props.sceneType ?? 'nurse-station'),
 );
 // 开发调试开关：true 显示护士站/病房走廊视角参数面板，false 隐藏。
-const CAMERA_DEBUG_PANEL_ENABLED = true;
+const CAMERA_DEBUG_PANEL_ENABLED = false;
 
 const cameraDebugEnabled = computed(() =>
   CAMERA_DEBUG_PANEL_ENABLED
@@ -37,11 +41,13 @@ const cameraDebugOpen = ref(true);
 const cameraDebugState = ref<AreaCameraDebugState | null>(null);
 const cameraDebugCopied = ref(false);
 const pickedNode = ref<AreaNodePickInfo | null>(null);
+const corridorLayout = ref<CorridorLayoutState | null>(null);
 
 const emit = defineEmits<{
   roomClick: [roomIndex: number];
   focusRoom: [roomIndex: number];
   modelState: [state: AreaModelState];
+  resetCorridor: [];
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -55,6 +61,25 @@ let mountFailed = false;
 function resetStationView() {
   if (areaPhase.value === 'station')
     scene?.resetToNurseStationView();
+}
+
+function resetCorridor() {
+  scene?.resetToNurseStationView();
+  emit('resetCorridor');
+}
+
+function changeCorridorPage(page: number) {
+  emit('resetCorridor');
+  scene?.setCorridorPage(page);
+}
+
+function focusCorridorRoom(index: number) {
+  scene?.focusRoom(index);
+  emit('focusRoom', index);
+}
+
+function retryCorridorScreens() {
+  scene?.retryCorridorScreens();
 }
 
 function applyAreaToScene(full = true) {
@@ -86,11 +111,17 @@ function mountScene() {
   try {
     scene = new AreaScene({
       container: host,
+      areaId: props.areaId,
+      onCorridorLayout: state => (corridorLayout.value = state),
       modelKind: props.modelKind ?? (areaPhase.value === 'corridor' ? 'corridor' : 'station'),
       onRoomClick: index => emit('roomClick', index),
-      onNodePick: info => (pickedNode.value = info),
+      onNodePick: cameraDebugEnabled.value ? info => (pickedNode.value = info) : undefined,
       onModelState: state => emit('modelState', state),
-      onCorridorState: state => emit('modelState', state),
+      onCorridorState: state => {
+        emit('modelState', state);
+        if (state === 'ready' && props.active !== false && (props.focusedRoomIndex ?? -1) >= 0)
+          scene?.focusRoom(props.focusedRoomIndex!);
+      },
       onCameraState: state => (cameraDebugState.value = state),
     });
     scene.setTheme(props.theme ?? 'light');
@@ -105,6 +136,8 @@ function mountScene() {
   scene.setNurseStationViewModel(props.nurseStationViewModel ? toRaw(props.nurseStationViewModel) : null);
   scene.setViewPhase(areaPhase.value, false);
   scene.setActive(props.active !== false);
+  if (props.active !== false && (props.focusedRoomIndex ?? -1) >= 0)
+    scene.focusRoom(props.focusedRoomIndex!);
   requestAnimationFrame(() => scene?.refreshLayout());
   mountRetryCount = 0;
   return true;
@@ -198,8 +231,6 @@ onUnmounted(() => {
 watch(
   () => buildAreaStructureSignature(props.area),
   () => {
-    if (!props.area?.rooms?.length)
-      return;
     if (!scene)
       tryMountScene();
     else
@@ -208,9 +239,9 @@ watch(
 );
 
 watch(
-  () => props.roomSummaries,
+  () => props.area,
   () => {
-    if (!scene || !props.area?.rooms?.length)
+    if (!scene)
       return;
     applyAreaToScene(false);
   },
@@ -238,12 +269,22 @@ watch(() => props.theme, theme => scene?.setTheme(theme ?? 'light'));
 
 watch(() => props.active, (active) => {
   scene?.setActive(active !== false);
+  if (active && (props.focusedRoomIndex ?? -1) >= 0)
+    scene?.focusRoom(props.focusedRoomIndex!);
 });
+defineExpose({ getCorridorDiagnostics: () => scene?.getCorridorDiagnostics() });
 </script>
 
 <template>
   <div class="area-scene-3d">
     <div ref="containerRef" class="area-scene-3d__canvas-host" />
+    <WardCorridorToolbar v-if="areaPhase === 'corridor' && corridorLayout && active !== false"
+      :area="area" :summaries="roomSummaries ?? []" :layout="corridorLayout"
+      :alert-title="alertTitle"
+      :focused-room-index="focusedRoomIndex ?? -1" :panels-visible="panelsVisible !== false"
+      @focus="focusCorridorRoom" @enter="emit('roomClick', $event)"
+      @retry="retryCorridorScreens"
+      @reset="resetCorridor" @page="changeCorridorPage" />
 
     <div v-if="areaPhase === 'station'" class="area-scene-3d__shade" aria-hidden="true" />
 
@@ -281,7 +322,7 @@ watch(() => props.active, (active) => {
       <code>fov: {{ cameraDebugState.fov }}</code>
     </aside>
 
-    <aside v-if="areaPhase === 'corridor' && pickedNode" class="area-scene-3d__node-debug" aria-label="射线命中节点">
+    <aside v-if="cameraDebugEnabled && areaPhase === 'corridor' && pickedNode" class="area-scene-3d__node-debug" aria-label="射线命中节点">
       <header>
         <strong>射线命中节点</strong>
         <button type="button" @click="pickedNode = null">关闭</button>
@@ -304,13 +345,13 @@ watch(() => props.active, (active) => {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: #0a1218;
+  background: var(--scene-loading-background, #0a1218);
 
   &__canvas-host {
     position: absolute;
     inset: 0;
     overflow: hidden;
-    background: #0a1218;
+    background: var(--scene-loading-background, #0a1218);
   }
 
   &__shade {
@@ -320,10 +361,10 @@ watch(() => props.active, (active) => {
     pointer-events: none;
     background: linear-gradient(
       180deg,
-      rgba(6, 14, 26, 0.35) 0%,
+      rgba(6, 14, 26, 0.06) 0%,
       transparent 18%,
       transparent 72%,
-      rgba(6, 14, 26, 0.45) 100%
+      rgba(6, 14, 26, 0.12) 100%
     );
   }
 

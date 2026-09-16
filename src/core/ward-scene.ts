@@ -1,8 +1,13 @@
 import * as THREE from 'three';
+import { frameWardSubjects } from './ward-camera-framing';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { acquireSceneLoad } from './scene-load-queue';
+import { createWardBedUnit, disposeWardBedUnit, placeWardBedUnit, prepareModularWardRoom, type WardBedUnit } from './ward-bed-unit';
+import { WardRoomExpansion } from './ward-room-expansion';
+import { wardBedPatientKey } from './ward-data-binding';
+import { isWardBedInfusing, selectOccupiedWardBeds, wardInteriorRoomKey } from './ward-interior-beds';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { easeOutCubic } from '@/core/camera-easing';
@@ -65,11 +70,13 @@ export type WardInteriorModelState = 'loading' | 'ready' | 'fallback';
 
 export interface WardSceneOptions {
   container: HTMLElement;
+  theme?: 'light' | 'dark';
   onBedClick?: (bed: TwinBedEntity) => void;
   onModelState?: (state: WardInteriorModelState) => void;
 }
 
 interface BedMeshGroup {
+  unit?: WardBedUnit;
   bedCode: string;
   group: THREE.Group;
   indicator: THREE.Mesh;
@@ -94,6 +101,8 @@ interface CameraTransition {
   toPos: THREE.Vector3;
   fromTarget: THREE.Vector3;
   toTarget: THREE.Vector3;
+  fromFov?: number;
+  toFov?: number;
 }
 
 export class WardScene {
@@ -116,13 +125,17 @@ export class WardScene {
   private resizeObserver: ResizeObserver | null = null;
   private container: HTMLElement;
   private alertLevel: EnvAlertLevel = 'normal';
+  private theme: 'light' | 'dark' = 'dark';
   private cameraTransition: CameraTransition | null = null;
-  private activePresetId: CameraPresetId | null = null;
+  private cameraIntent: 'overview' | 'focus' | 'manual' = 'overview';
   private suppressBedClick = false;
   private accentStrips: THREE.Mesh[] = [];
   private ceilingPanels: THREE.Mesh[] = [];
   private roomGroup = new THREE.Group();
   private wardInteriorModel: THREE.Group | null = null;
+  private roomExpansion: WardRoomExpansion | null = null;
+  private bedUnitAsset: THREE.Group | null = null;
+  private terminalSignatures = new Map<string, { value: string; at: number; patientKey: string }>();
   private wardInteriorParts: WardInteriorAssetParts | null = null;
   private wardInteriorModelLoadToken = 0;
   /** 外壳/灯网格原始包围；约束时每帧套用配置边距。 */
@@ -144,16 +157,17 @@ export class WardScene {
   constructor(options: WardSceneOptions) {
     const { container, onBedClick, onModelState } = options;
     this.container = container;
+    this.theme = options.theme ?? 'dark';
     this.onBedClick = onBedClick;
     this.onModelState = onModelState;
 
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    const width = Math.max(1, container.clientWidth);
+    const height = Math.max(1, container.clientHeight);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(SCENE_BG);
+    this.scene.background = new THREE.Color(this.backgroundTint);
     if (wardInteriorSceneConfig.appearance.baseFogDensity > 0)
-      this.scene.fog = new THREE.FogExp2(SCENE_BG, wardInteriorSceneConfig.appearance.baseFogDensity);
+      this.scene.fog = new THREE.FogExp2(this.backgroundTint, wardInteriorSceneConfig.appearance.baseFogDensity);
 
     const perspective = wardInteriorSceneConfig.camera.perspective;
     this.camera = new THREE.PerspectiveCamera(perspective.fov, width / height, perspective.near, perspective.far);
@@ -164,6 +178,9 @@ export class WardScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    // Native ward furniture is static between data updates; camera motion does not change its shadows.
+    this.renderer.shadowMap.autoUpdate = !wardInteriorSceneConfig.modular.unitUrl;
+    this.renderer.shadowMap.needsUpdate = true;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = wardInteriorSceneConfig.appearance.exposure;
@@ -238,6 +255,7 @@ export class WardScene {
   }
 
   private cancelCameraTransition = () => {
+    this.cameraIntent = 'manual';
     this.cameraTransition = null;
   };
 
@@ -666,11 +684,22 @@ export class WardScene {
     await Promise.all(ward.beds.map(bed => this.refreshBedTerminal(bed)));
   }
 
-  private async refreshBedTerminal(bed: TwinBedEntity) {
+  private async refreshBedTerminal(input: TwinBedEntity) {
+    const bed: TwinBedEntity = JSON.parse(JSON.stringify(input));
     const meshGroup = this.bedMeshes.get(bed.bedCode);
     if (!meshGroup?.bedTerminalScreen)
       return;
 
+    // Templates can read arbitrary bed fields. Hash the complete normalized snapshot,
+    // keeping a good texture only while the same patient remains on the bed.
+    const signature = JSON.stringify(bed);
+    const previous = this.terminalSignatures.get(bed.bedCode);
+    const patientKey = wardBedPatientKey(bed);
+    if (previous?.value === signature && Date.now() - previous.at < 300_000)
+      return;
+    this.terminalSignatures.set(bed.bedCode, { value: signature, at: Date.now(), patientKey });
+    if (previous && previous.patientKey !== patientKey)
+      this.applyBedTerminalTexture(meshGroup, createBedTemplateStatusTexture(bed, 'loading'));
     const token = (this.bedTerminalRefreshToken.get(bed.bedCode) ?? 0) + 1;
     this.bedTerminalRefreshToken.set(bed.bedCode, token);
     const status = resolveBedStatus(bed);
@@ -678,14 +707,6 @@ export class WardScene {
     let tex: THREE.CanvasTexture;
     if (bed.templateId) {
       try {
-        const loadingTexture = createBedTemplateStatusTexture(bed, 'loading');
-        if (meshGroup.group.userData.wardInteriorModelBed)
-          configureWardInteriorCanvasTexture(loadingTexture);
-        meshGroup.bedTerminalTexture?.dispose();
-        meshGroup.bedTerminalTexture = loadingTexture;
-        const loadingMat = meshGroup.bedTerminalScreen.material as THREE.MeshBasicMaterial;
-        loadingMat.map = loadingTexture;
-        loadingMat.needsUpdate = true;
         const parsed = await loadParsedTemplate(bed.templateId);
         if (token !== this.bedTerminalRefreshToken.get(bed.bedCode))
           return;
@@ -694,6 +715,7 @@ export class WardScene {
       catch (error) {
         if (token !== this.bedTerminalRefreshToken.get(bed.bedCode))
           return;
+        this.terminalSignatures.set(bed.bedCode, { value: '', at: 0, patientKey });
         tex = createBedTemplateStatusTexture(
           bed,
           'error',
@@ -705,12 +727,21 @@ export class WardScene {
       tex = createBedTemplateStatusTexture(bed, 'missing');
     }
 
-    if (token !== this.bedTerminalRefreshToken.get(bed.bedCode)) {
+    if (token !== this.bedTerminalRefreshToken.get(bed.bedCode) || this.bedMeshes.get(bed.bedCode) !== meshGroup) {
       tex.dispose();
       return;
     }
 
-    if (meshGroup.group.userData.wardInteriorModelBed)
+    this.applyBedTerminalTexture(meshGroup, tex);
+  }
+
+  private applyBedTerminalTexture(meshGroup: BedMeshGroup, tex: THREE.CanvasTexture) {
+    if (!meshGroup.bedTerminalScreen) {
+      tex.dispose();
+      return;
+    }
+
+    if (meshGroup.unit || meshGroup.group.userData.wardInteriorModelBed)
       configureWardInteriorCanvasTexture(tex);
 
     if (meshGroup.bedTerminalTexture)
@@ -1630,12 +1661,15 @@ export class WardScene {
     }
   }
 
+  private wardKeyLight: THREE.DirectionalLight | null = null;
+
   private setupLights() {
     this.scene.add(new THREE.AmbientLight(0xf4faf6, 0.38));
     this.scene.add(new THREE.HemisphereLight(0xf7f3ee, 0x8a847c, 0.28));
 
     const key = new THREE.DirectionalLight(0xfff8f0, 0.72);
     key.position.set(5, 12, 8);
+    this.wardKeyLight = key;
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
     key.shadow.camera.near = 1;
@@ -1660,6 +1694,7 @@ export class WardScene {
     loader.setDRACOLoader(dracoLoader);
     this.onModelState?.('loading');
     let model: THREE.Group | null = null;
+    let unitAsset: THREE.Group | null = null;
 
     const release = await acquireSceneLoad();
     try {
@@ -1672,7 +1707,17 @@ export class WardScene {
         return;
       }
 
-      const parts = getWardInteriorAssetParts(model);
+      if (wardInteriorSceneConfig.modular.unitUrl) {
+        unitAsset = (await loader.loadAsync(wardInteriorSceneConfig.modular.unitUrl)).scene;
+        if (token !== this.wardInteriorModelLoadToken) {
+          disposeWardInteriorModel(model);
+          disposeWardInteriorModel(unitAsset);
+          return;
+        }
+      }
+      const parts = unitAsset
+        ? prepareModularWardRoom(model, unitAsset)
+        : getWardInteriorAssetParts(model);
       model.name = 'blender-smart-ward-interior';
       prepareWardInteriorModelMaterials(model, {
         envMapIntensity: wardInteriorSceneConfig.appearance.envMapIntensity,
@@ -1681,18 +1726,27 @@ export class WardScene {
       if (parts.bedPrototype)
         parts.bedPrototype.visible = false;
       hideWardInteriorCeiling(parts.architecture);
+      if (parts.mode === 'modular') {
+        // The key represents indoor fill: the closed source shell must not block it before it reaches the beds.
+        for (const name of ['外壳', '灯']) model.getObjectByName(name)?.traverse(node => {
+          if (node instanceof THREE.Mesh) node.castShadow = false;
+        });
+      }
       fitWardInteriorEnvironment(parts, this.roomW, this.roomD, ROOM_H);
       this.wardInteriorBoundMeshes = captureWardInteriorBoundMeshes(model);
       if (!this.wardInteriorBoundMeshes)
         console.warn('[WardScene] ward interior bound meshes missing; camera falls back to room pan limits');
-      if (parts.mode === 'baked' && parts.baseBounds) {
+      if ((parts.mode === 'baked' || parts.mode === 'modular') && parts.baseBounds) {
         this.roomW = Math.max(parts.baseBounds.size.x, 4);
         this.roomD = Math.max(parts.baseBounds.size.z, 4);
         this.fitControlsToRoom();
       }
 
       this.wardInteriorModel = model;
+      this.bedUnitAsset = unitAsset;
+      if (unitAsset) this.roomExpansion = new WardRoomExpansion(model);
       this.wardInteriorParts = parts;
+      this.fitControlsToRoom();
       this.wardInteriorPlacementDiagnosticsLogged = false;
       this.scene.add(model);
       this.roomGroup.visible = false;
@@ -1702,6 +1756,8 @@ export class WardScene {
         this.updateWard(this.ward);
         void this.syncWardBedTemplates(this.ward);
       }
+      this.setCameraPreset('door');
+      if (this.selectedBedCode) this.focusSelectedBed(this.selectedBedCode);
       await this.warmGpu();
       if (token !== this.wardInteriorModelLoadToken)
         return;
@@ -1710,11 +1766,14 @@ export class WardScene {
       // this.logCameraView('模型就绪');
     }
     catch (error) {
+      if (unitAsset && unitAsset !== this.bedUnitAsset)
+        disposeWardInteriorModel(unitAsset);
       if (token !== this.wardInteriorModelLoadToken) {
         if (model && model !== this.wardInteriorModel)
           disposeWardInteriorModel(model);
         return;
       }
+      this.clearRoomExpansion();
       if (model) {
         if (this.wardInteriorModel === model) {
           this.clearBedMeshes();
@@ -1725,10 +1784,14 @@ export class WardScene {
         }
         disposeWardInteriorModel(model);
       }
+      if (this.bedUnitAsset) {
+        disposeWardInteriorModel(this.bedUnitAsset);
+        this.bedUnitAsset = null;
+      }
       this.roomGroup.visible = false;
       this.clearRoomShell();
       this.onModelState?.('fallback');
-      console.warn('[WardScene] failed to load room-v1 GLB', error);
+      console.warn('[WardScene] failed to load ward assets', error);
     }
     finally {
       dracoLoader.dispose();
@@ -1779,6 +1842,16 @@ export class WardScene {
     const token = (this.bedTerminalRefreshToken.get(meshGroup.bedCode) ?? 0) + 1;
     this.bedTerminalRefreshToken.set(meshGroup.bedCode, token);
     meshGroup.bedTerminalTexture?.dispose();
+    this.terminalSignatures.delete(meshGroup.bedCode);
+    if (meshGroup.unit) {
+      this.disposeMesh(meshGroup.selectionRing);
+      this.disposeMesh(meshGroup.selectionPulse);
+      this.disposeMesh(meshGroup.selectionBeam);
+      this.disposeMesh(meshGroup.vitalWarningRing);
+      this.disposeMesh(meshGroup.indicator);
+      disposeWardBedUnit(meshGroup.unit);
+      return;
+    }
 
     if (meshGroup.group.userData.wardInteriorBakedBed) {
       meshGroup.group.remove(meshGroup.selectionRing, meshGroup.selectionPulse, meshGroup.selectionBeam);
@@ -2051,7 +2124,7 @@ export class WardScene {
     const fogDensity = wardInteriorSceneConfig.appearance.baseFogDensity;
     this.scene.fog = fogDensity > 0
       ? new THREE.FogExp2(
-          SCENE_BG,
+          this.backgroundTint,
           fogDensity - Math.max(this.roomW, this.roomD) * wardInteriorSceneConfig.appearance.fogSpanFactor,
         )
       : null;
@@ -2060,6 +2133,15 @@ export class WardScene {
   }
 
   private applyOpenWardControls() {
+    if (this.wardInteriorParts?.mode === 'modular') {
+      this.controls.minPolarAngle = 0.05;
+      this.controls.maxPolarAngle = Math.PI / 2 + 0.01;
+      this.controls.minAzimuthAngle = -Infinity;
+      this.controls.maxAzimuthAngle = Infinity;
+      this.controls.minDistance = 0.6;
+      this.controls.maxDistance = 8 + (this.roomExpansion?.extraDepth ?? 0);
+      return;
+    }
     const limits = resolveWardSceneControlLimits(this.roomW, this.roomD);
     this.controls.minPolarAngle = limits.minPolarAngle;
     this.controls.maxPolarAngle = limits.maxPolarAngle;
@@ -2140,6 +2222,11 @@ export class WardScene {
     this.enforcingControlBounds = true;
     try {
       this.applyOpenWardControls();
+      if (this.wardInteriorParts?.mode === 'modular') {
+        this.applyWardInteriorViewBoundsConstraint();
+        this.camera.lookAt(this.controls.target);
+        return;
+      }
       this.applyWardInteriorViewBoundsConstraint();
       const panChanged = this.clampWardInteriorPanTarget();
       const orbitChanged = this.clampWardInteriorCameraOrbit();
@@ -2179,6 +2266,10 @@ export class WardScene {
   }
 
   private applyBedPose(group: THREE.Group, index: number, total: number) {
+    if (group.userData.wardBedUnit) {
+      placeWardBedUnit(group, index, this.roomExpansion?.slots);
+      return;
+    }
     if (group.userData.wardInteriorBakedBed)
       return;
     if (group.userData.wardInteriorModelBed) {
@@ -2299,9 +2390,31 @@ export class WardScene {
     };
   }
 
+  private createModularBedMesh(bed: TwinBedEntity, index: number): BedMeshGroup {
+    if (!this.bedUnitAsset) throw new Error('Bed unit asset is not ready');
+    const unit = createWardBedUnit(this.bedUnitAsset, bed.bedCode);
+    const group = unit.group;
+    placeWardBedUnit(group, index, this.roomExpansion?.slots);
+    const selection = this.createSelectionMeshes(resolveBedStatus(bed));
+    group.add(selection.ring, selection.pulse, selection.beam);
+    const indicator = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), new THREE.MeshStandardMaterial({ color: 0x2fe6a6 }));
+    indicator.position.set(0.2, 0.92, -0.83);
+    group.add(indicator);
+    const mattress = unit.body.getObjectByProperty('isMesh', true) as THREE.Mesh;
+    const bedTerminalTexture = this.createBedTerminalTexture(bed, resolveBedStatus(bed));
+    configureWardInteriorCanvasTexture(bedTerminalTexture);
+    unit.screen.material.map = bedTerminalTexture;
+    this.scene.add(group);
+    return { bedCode: bed.bedCode, group, unit, indicator, mattress,
+      selectionRing: selection.ring, selectionPulse: selection.pulse, selectionBeam: selection.beam,
+      vitalWarningRing: this.createVitalWarningRing(group), bedTerminalScreen: unit.screen, bedTerminalTexture };
+  }
+
   private createBedMesh(bed: TwinBedEntity, index: number, total: number): BedMeshGroup | null {
     if (!this.wardInteriorParts)
       return null;
+    if (this.wardInteriorParts.mode === 'modular')
+      return this.createModularBedMesh(bed, index);
     if (this.wardInteriorParts.mode === 'baked')
       return this.createBakedModelBedMesh(bed, index, total);
     return this.createModelBedMesh(bed, index, total);
@@ -2536,16 +2649,76 @@ export class WardScene {
     };
   }
 
+  private clearRoomExpansion() {
+    this.roomExpansion?.dispose();
+    this.roomExpansion = null;
+  }
+
+  private fitModularRoomShadow() {
+    const light = this.wardKeyLight;
+    const bounds = this.wardInteriorBoundMeshes;
+    if (!light || !bounds) return;
+    const box = new THREE.Box3(
+      new THREE.Vector3(bounds.shellMinX, bounds.shellMinY, bounds.shellMinZ),
+      new THREE.Vector3(bounds.shellMaxX, bounds.shellMaxY, bounds.shellMaxZ),
+    );
+    const center = box.getCenter(new THREE.Vector3());
+    light.target.position.set(center.x, bounds.shellMinY, center.z);
+    light.position.copy(light.target.position).add(new THREE.Vector3(1, 10, 2));
+    this.scene.add(light.target);
+    light.target.updateMatrixWorld();
+    light.updateMatrixWorld();
+    const camera = light.shadow.camera;
+    camera.near = 0.1;
+    camera.far = box.getSize(new THREE.Vector3()).length() + 20;
+    light.shadow.updateMatrices(light);
+    const local = box.clone().applyMatrix4(camera.matrixWorldInverse);
+    camera.left = local.min.x - 0.3;
+    camera.right = local.max.x + 0.3;
+    camera.bottom = local.min.y - 0.3;
+    camera.top = local.max.y + 0.3;
+    camera.updateProjectionMatrix();
+    light.shadow.bias = -0.00008;
+    light.shadow.normalBias = 0.006;
+    light.shadow.radius = 2;
+    light.shadow.intensity = 0.8;
+  }
+
+  private updateModularLayout(count: number): boolean {
+    if (!this.roomExpansion || !this.wardInteriorModel) return false;
+    const changed = this.roomExpansion.update(count);
+    if (changed) {
+      this.wardInteriorBoundMeshes = captureWardInteriorBoundMeshes(this.wardInteriorModel);
+      this.fitModularRoomShadow();
+      this.fitControlsToRoom();
+    }
+    return changed;
+  }
+
+  getBedTerminalCanvas(bedCode: string): HTMLCanvasElement | null {
+    const image = this.bedMeshes.get(bedCode)?.bedTerminalTexture?.image;
+    return image instanceof HTMLCanvasElement ? image : null;
+  }
+
   updateWard(ward: TwinWardEntity) {
+    this.renderer.shadowMap.needsUpdate = true;
+    const changedRoom = this.ward && wardInteriorRoomKey(this.ward) !== wardInteriorRoomKey(ward);
+    if (changedRoom) {
+      this.clearBedMeshes();
+      this.selectedBedCode = null;
+    }
     this.ward = ward;
-    const dynamicBeds = ward.beds.slice(0, WARD_INTERIOR_MAX_BEDS);
-    if (ward.beds.length > WARD_INTERIOR_MAX_BEDS) {
+    const dynamicBeds = wardInteriorSceneConfig.modular.unitUrl
+      ? selectOccupiedWardBeds(ward).beds
+      : ward.beds.slice(0, WARD_INTERIOR_MAX_BEDS);
+    if (!wardInteriorSceneConfig.modular.unitUrl && ward.beds.length > WARD_INTERIOR_MAX_BEDS) {
       console.warn(
         `[WardScene] ${ward.sickroomName || ward.sickroomCode || '当前病房'} 返回 ${ward.beds.length} 张床位，`
         + `场景最多展示前 ${WARD_INTERIOR_MAX_BEDS} 张`,
       );
     }
 
+    this.updateModularLayout(dynamicBeds.length);
     const count = Math.max(1, dynamicBeds.length);
     if (count !== this.lastBedCount) {
       this.bedCount = count;
@@ -2561,7 +2734,8 @@ export class WardScene {
         }
       }
       this.fitControlsToRoom();
-      this.clearBedMeshes();
+      if (this.wardInteriorParts?.mode !== 'modular')
+        this.clearBedMeshes();
     }
 
     const existingCodes = new Set(this.bedMeshes.keys());
@@ -2586,6 +2760,7 @@ export class WardScene {
         this.applyBedPose(meshGroup.group, index, dynamicBeds.length);
       this.updateBedVisual(bed);
     }
+    if (changedRoom) this.setCameraPreset('door');
     if (this.wardInteriorParts)
       syncWardInteriorBakedBedVisibility(this.wardInteriorParts, dynamicBeds.length);
     if (this.wardInteriorParts)
@@ -2600,11 +2775,16 @@ export class WardScene {
     const status = resolveBedStatus(bed);
     const isEmpty = status.state === 'empty';
     this.setBedSelectionVisible(meshGroup, this.selectedBedCode === bed.bedCode);
+    if (meshGroup.unit) {
+      meshGroup.unit.infusion.visible = isWardBedInfusing(bed);
+    }
     const mat = meshGroup.mattress.material as THREE.MeshStandardMaterial;
     const mattressGlow = this.getMattressEmissive(status, isEmpty);
-    mat.color.set(isEmpty ? 0xb0bec5 : 0xf5f7fa);
-    mat.emissive.set(mattressGlow.color);
-    mat.emissiveIntensity = mattressGlow.intensity;
+    if (!meshGroup.unit) {
+      mat.color.set(isEmpty ? 0xb0bec5 : 0xf5f7fa);
+      mat.emissive.set(mattressGlow.color);
+      mat.emissiveIntensity = mattressGlow.intensity;
+    }
 
     const indicatorMat = meshGroup.indicator.material as THREE.MeshStandardMaterial;
     indicatorMat.color.set(status.color);
@@ -2630,15 +2810,46 @@ export class WardScene {
     return this.wardInteriorParts?.mode !== 'prototype';
   }
 
-  setCameraPreset(presetId: CameraPresetId) {
-    if (this.activePresetId === presetId && !this.cameraTransition)
-      return;
+  private frameNativeSubjects(bedCode?: string) {
+    if (!this.roomExpansion || !this.wardInteriorBoundMeshes) return false;
+    const bounds = getWardInteriorPaddedBounds(this.wardInteriorBoundMeshes);
+    if (!bounds) return false;
+    const subject = new THREE.Box3();
+    for (const [code, mesh] of this.bedMeshes) {
+      if (bedCode && code !== bedCode) continue;
+      if (mesh.unit) {
+        mesh.group.updateWorldMatrix(true, true);
+        subject.union(new THREE.Box3().setFromObject(mesh.unit.body));
+        subject.union(new THREE.Box3().setFromObject(mesh.unit.screen));
+      }
+    }
+    if (subject.isEmpty()) return false;
+    const pose = frameWardSubjects(subject, bounds, this.camera.aspect, !!bedCode);
+    this.camera.far = Math.max(100, (bounds.maxZ - bounds.minZ) * 2);
+    this.cameraTransition = {
+      elapsed: 0,
+      duration: bedCode ? wardInteriorSceneConfig.camera.bedFocusTransitionDuration : wardInteriorSceneConfig.camera.presetTransitionDuration,
+      fromPos: this.camera.position.clone(), toPos: pose.position,
+      fromTarget: this.controls.target.clone(), toTarget: pose.target,
+      fromFov: this.camera.fov, toFov: pose.fov,
+    };
+    return true;
+  }
 
-    this.activePresetId = presetId;
+  setCameraPreset(presetId: CameraPresetId) {
+    this.cameraIntent = presetId === 'door' ? 'overview' : 'manual';
+    if (presetId === 'door' && this.frameNativeSubjects()) return;
     const preset = getCameraPreset(presetId);
     const toPos = new THREE.Vector3(...preset.position);
     const toTarget = new THREE.Vector3(...preset.target);
-    if (!this.usesNativeCameraPose()) {
+    if (this.roomExpansion) {
+      const offset = this.roomExpansion.extraDepth;
+      toPos.z += offset;
+      toTarget.z += offset;
+      this.camera.far = Math.max(100, offset * 2 + 30);
+      this.camera.updateProjectionMatrix();
+    }
+    else if (!this.usesNativeCameraPose()) {
       const scale = this.getRoomViewScale();
       const viewportScale = resolveWardCameraViewportScale(this.camera.aspect);
       const cameraScale = (presetId === 'door' ? Math.min(1.08, scale) : scale) * viewportScale;
@@ -2656,6 +2867,7 @@ export class WardScene {
     this.cameraTransition = {
       elapsed: 0,
       duration: wardInteriorSceneConfig.camera.presetTransitionDuration,
+      fromFov: this.camera.fov, toFov: wardInteriorSceneConfig.camera.perspective.fov,
       fromPos: this.camera.position.clone(),
       toPos,
       fromTarget: this.controls.target.clone(),
@@ -2663,13 +2875,26 @@ export class WardScene {
     };
   }
 
+  private get backgroundTint() {
+    if (this.alertLevel !== 'normal') return getEnvSceneTint(this.alertLevel);
+    return this.theme === 'light' ? 0xe6f0f5 : SCENE_BG;
+  }
+
+  setTheme(theme: 'light' | 'dark') {
+    this.renderer.shadowMap.needsUpdate = true;
+    if (this.theme === theme) return;
+    this.theme = theme;
+    this.scene.background = new THREE.Color(this.backgroundTint);
+    if (this.scene.fog) this.scene.fog.color.setHex(this.backgroundTint);
+  }
+
   setEnvAlertLevel(level: EnvAlertLevel) {
     if (this.alertLevel === level)
       return;
     this.alertLevel = level;
-    const tint = getEnvSceneTint(level);
+    const tint = this.backgroundTint;
     this.scene.background = new THREE.Color(tint);
-    this.scene.fog = new THREE.FogExp2(tint, 0.028);
+    this.scene.fog = level === 'normal' ? null : new THREE.FogExp2(tint, 0.028);
   }
 
   setSelectedBedCode(bedCode: string | null) {
@@ -2695,17 +2920,21 @@ export class WardScene {
   }
 
   private focusSelectedBed(bedCode: string) {
+    if (!this.bedMeshes.has(bedCode)) { this.cancelCameraTransition(); return; }
+    this.cameraIntent = 'focus';
+    if (this.frameNativeSubjects(bedCode)) return;
     const meshGroup = this.bedMeshes.get(bedCode);
     if (!meshGroup)
       return;
 
-    const target = meshGroup.group.position.clone();
-    target.y = 0.78;
-    const offset = new THREE.Vector3(1.8, 2.25, 3.2);
+    const target = meshGroup.unit
+      ? new THREE.Box3().setFromObject(meshGroup.unit.body).getCenter(new THREE.Vector3())
+      : meshGroup.group.position.clone();
+    if (!meshGroup.unit) target.y = 0.78;
+    const offset = meshGroup.unit ? new THREE.Vector3(1.7, 0.8, 1.7) : new THREE.Vector3(1.8, 2.25, 3.2);
     const viewportScale = resolveWardCameraViewportScale(this.camera.aspect);
     offset.multiplyScalar(viewportScale);
     const toPos = target.clone().add(offset);
-    this.activePresetId = null;
     this.cameraTransition = {
       elapsed: 0,
       duration: wardInteriorSceneConfig.camera.bedFocusTransitionDuration,
@@ -2734,7 +2963,14 @@ export class WardScene {
       ...[...this.bedMeshes.values()].map(m => m.group),
       ...(this.wardInteriorModel ? [this.wardInteriorModel] : []),
     ];
-    const intersects = this.raycaster.intersectObjects(groups, true);
+    const intersects = this.raycaster.intersectObjects(groups, true).filter(hit => {
+      let object: THREE.Object3D | null = hit.object;
+      while (object) {
+        if (!object.visible) return false;
+        object = object.parent;
+      }
+      return true;
+    });
 
     if (intersects.length > 0) {
       const hit = intersects[0];
@@ -2750,8 +2986,10 @@ export class WardScene {
         obj = obj.parent;
       if (obj?.userData.bedCode) {
         const bed = this.ward.beds.find(b => b.bedCode === obj!.userData.bedCode);
-        if (bed)
+        if (bed) {
+          if (this.selectedBedCode === bed.bedCode) this.focusSelectedBed(bed.bedCode);
           this.onBedClick?.(bed);
+        }
       }
     }
   };
@@ -2761,10 +2999,17 @@ export class WardScene {
     const height = this.container.clientHeight;
     if (width <= 0 || height <= 0)
       return;
+    const previousAspect = this.camera.aspect;
     const previousViewportScale = resolveWardCameraViewportScale(this.camera.aspect);
     this.camera.aspect = width / height;
     const nextViewportScale = resolveWardCameraViewportScale(this.camera.aspect);
-    if (
+    if (this.roomExpansion) {
+      if (Math.abs(this.camera.aspect - previousAspect) > 0.001) {
+        if (this.cameraIntent === 'overview') this.setCameraPreset('door');
+        else if (this.cameraIntent === 'focus' && this.selectedBedCode) this.focusSelectedBed(this.selectedBedCode);
+      }
+    }
+    else if (
       this.wardInteriorParts?.mode !== 'baked'
       && Math.abs(nextViewportScale - previousViewportScale) > 0.001
     ) {
@@ -2822,6 +3067,10 @@ export class WardScene {
     if (this.cameraTransition) {
       this.cameraTransition.elapsed += delta;
       const t = easeOutCubic(this.cameraTransition.elapsed / this.cameraTransition.duration);
+      if (this.cameraTransition.fromFov !== undefined && this.cameraTransition.toFov !== undefined) {
+        this.camera.fov = THREE.MathUtils.lerp(this.cameraTransition.fromFov, this.cameraTransition.toFov, t);
+        this.camera.updateProjectionMatrix();
+      }
       this.camera.position.lerpVectors(this.cameraTransition.fromPos, this.cameraTransition.toPos, t);
       this.controls.target.lerpVectors(this.cameraTransition.fromTarget, this.cameraTransition.toTarget, t);
       this.enforceWardInteriorControlBounds();
@@ -2901,6 +3150,7 @@ export class WardScene {
 
   dispose() {
     ++this.wardInteriorModelLoadToken;
+    this.clearRoomExpansion();
     this.clearBedMeshes();
     if (this.wardInteriorModel) {
       this.scene.remove(this.wardInteriorModel);
@@ -2909,6 +3159,12 @@ export class WardScene {
       this.wardInteriorParts = null;
       this.wardInteriorBoundMeshes = null;
     }
+    if (this.bedUnitAsset) {
+      disposeWardInteriorModel(this.bedUnitAsset);
+      this.bedUnitAsset = null;
+    }
+    this.terminalSignatures.clear();
+    this.bedTerminalRefreshToken.clear();
     this.clearRoomShell();
     this.quiltTexture?.dispose();
     this.pillowcaseTexture?.dispose();
@@ -2927,6 +3183,7 @@ export class WardScene {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     this.timer.disconnect();
     this.controls.dispose();
+    this.wardKeyLight?.shadow.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
     this.labelRenderer.domElement.remove();

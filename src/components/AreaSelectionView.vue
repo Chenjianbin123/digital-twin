@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import EntranceThemeToggle from './EntranceThemeToggle.vue';
+import type { DashboardTheme } from '@/core/use-dashboard-theme';
 import { computed, ref, watch } from 'vue';
 import AreaSelectionIcon from './AreaSelectionIcon.vue';
 import type { HospAreaRecord } from '@/types/hospital-area';
 
 const props = defineProps<{
+  theme?: DashboardTheme;
   areas: HospAreaRecord[];
   preferredAreaId: number | null;
   rememberedAreaId: number | null;
@@ -14,6 +17,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  'toggle-theme': [];
   enter: [areaId: number];
   retry: [];
 }>();
@@ -62,13 +66,14 @@ function enterChosenArea() {
 </script>
 
 <template>
-  <section class="area-selection" aria-labelledby="area-selection-title">
+  <section class="area-selection" :data-theme="theme ?? 'light'" aria-labelledby="area-selection-title">
     <header class="area-selection__header">
       <strong class="area-selection__brand"><i aria-hidden="true">智</i>智慧医院</strong>
       <span class="area-selection__platform">数字孪生智慧医院管理平台</span>
       <span class="area-selection__service">
         <span class="area-selection__status-dot" aria-hidden="true" />
         病区服务待接入
+        <EntranceThemeToggle :theme="theme ?? 'light'" @toggle="$emit('toggle-theme')" />
       </span>
     </header>
 

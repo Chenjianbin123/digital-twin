@@ -49,6 +49,14 @@ function clampedPercent(value: number | null | undefined) {
         class="metric-item"
         :class="`metric-item--${item.tone}`"
       >
+        <svg class="metric-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <template v-if="item.key === 'occupied'"><circle cx="12" cy="7" r="3"/><path d="M5 21v-3a7 7 0 0 1 14 0v3"/></template>
+          <template v-else-if="item.key === 'empty'"><path d="M3 6v15m18-9v9M3 17h18M3 10h5v7m0-5h10a3 3 0 0 1 3 3v2"/></template>
+          <template v-else-if="item.key === 'calls'"><path d="M6 9a6 6 0 0 1 12 0c0 6 3 7 3 8H3c0-1 3-2 3-8m4 12h4"/></template>
+          <template v-else-if="item.key === 'vital'"><path d="M2 12h5l3-8 4 16 3-8h5"/></template>
+          <template v-else-if="item.key === 'infusing'"><path d="M12 2v3m-4 0h8v9l-4 4-4-4V5Zm4 13v4M8 9h8"/></template>
+          <template v-else><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4m-5-9h2l2-3 2 6 2-3h2"/></template>
+        </svg>
         <span>{{ item.label }}</span>
         <strong>{{ item.value }}<small>{{ item.unit }}</small></strong>
         <div

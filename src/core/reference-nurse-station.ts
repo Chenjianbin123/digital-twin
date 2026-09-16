@@ -53,8 +53,37 @@ export function bindReferenceStationDisplays(
   return displays;
 }
 
+const adaptedWallDisplays = new WeakSet<THREE.Object3D>();
+
+/** Move the exported face and bezel together in world axes, regardless of glTF node rotation. */
+export function adaptReferenceWallDisplay(model: THREE.Object3D) {
+  if (adaptedWallDisplays.has(model)) return;
+  const face = model.getObjectByName('Screen_Main');
+  const frame = model.getObjectByName('Screen_Main_Frame');
+  if (!(face instanceof THREE.Mesh) || !(frame instanceof THREE.Mesh)) return;
+  model.updateMatrixWorld(true);
+  const center = new THREE.Box3().setFromObject(face).getCenter(new THREE.Vector3());
+  const resize = new THREE.Matrix4().makeTranslation(center.x, center.y + .10, center.z)
+    .multiply(new THREE.Matrix4().makeScale(1.24, .88, 1))
+    .multiply(new THREE.Matrix4().makeTranslation(-center.x, -center.y, -center.z));
+  const transform = (object: THREE.Object3D, matrix: THREE.Matrix4) => {
+    const local = object.parent!.matrixWorld.clone().invert().multiply(matrix).multiply(object.matrixWorld);
+    local.decompose(object.position, object.quaternion, object.scale);
+    object.updateMatrixWorld(true);
+  };
+  transform(face, resize);
+  transform(frame, resize);
+  const clockOffset = new THREE.Matrix4().makeTranslation(.18, 0, 0);
+  for (const name of ['Clock_Frame', 'Clock_Display', 'Wall_Motto']) {
+    const object = model.getObjectByName(name);
+    if (object) transform(object, clockOffset);
+  }
+  adaptedWallDisplays.add(model);
+}
+
 /** The reference model is authored in metres and faces +Z in glTF coordinates. */
 export function prepareReferenceStation(model: THREE.Object3D) {
+  adaptReferenceWallDisplay(model);
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return;
     object.castShadow = !/Glass|Glazing|Screen|LED/i.test(object.name);

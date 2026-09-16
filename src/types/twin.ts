@@ -80,6 +80,8 @@ export interface TwinWardEntity {
   doorStaff?: DoorMainStaff;
   doorDeptUsers?: DoorDeptUser[];
   doorEnvData?: DoorEnvParams;
+  /** 最近一次环境接口成功接收时间，不代表传感器采样时间。 */
+  envSync?: { lastSuccessAt: number | null; failed: boolean };
   beds: TwinBedEntity[];
 }
 

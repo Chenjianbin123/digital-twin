@@ -16,7 +16,7 @@ assert.match(dataStatus, /label: '巡视记录'/);
 assert.match(viewModel, /buildDataFreshnessItems/);
 assert.match(viewModel, /realtime:/);
 assert.match(panel, /props\.viewModel\.dataFreshnessItems/);
-assert.match(panel, /viewModel\.realtime\.label/);
+assert.match(panel, /viewModel\.realtime\.detail/);
 assert.match(panel, /freshnessTimeLabel/);
 assert.match(panel, /最近同步/);
 assert.match(app, /lastFetchedAtMs/);

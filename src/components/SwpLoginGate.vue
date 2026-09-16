@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import EntranceThemeToggle from './EntranceThemeToggle.vue';
+import type { DashboardTheme } from '@/core/use-dashboard-theme';
 import { computed, onMounted, ref } from "vue";
 import { confirmSwpRole, loginSwpUser } from "@/api/auth";
 import {
@@ -15,10 +17,12 @@ import type { AuthRole, AuthSession, AuthUser } from "@/types/auth";
 const ENABLE_ROLE_SELECTION = false;
 
 const props = defineProps<{
+  theme?: DashboardTheme;
   notice?: string;
 }>();
 
 const emit = defineEmits<{
+  'toggle-theme': [];
   authenticated: [session: AuthSession];
 }>();
 
@@ -137,7 +141,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="swp-login">
+  <main class="swp-login" :data-theme="theme ?? 'light'">
     <img
       class="swp-login__scene"
       src="/images/smart-ward-nurse-station/login-bg.jpg"
@@ -146,10 +150,10 @@ onMounted(() => {
     <div class="swp-login__shade" aria-hidden="true" />
     <div class="swp-login__tech-grid" aria-hidden="true" />
 
-    <div class="swp-login__masthead" aria-hidden="true">
+    <div class="swp-login__masthead">
       <span>智慧病房 <b>/</b> DIGITAL TWIN</span>
       <span class="swp-login__masthead-line" />
-      <span>三维可视化 · 护理协同</span>
+      <EntranceThemeToggle :theme="theme ?? 'light'" @toggle="$emit('toggle-theme')" />
     </div>
 
     <section class="swp-login__brand" aria-label="系统名称">

@@ -4,7 +4,7 @@ import { wardInteriorSceneConfig } from '../config/ward-interior-scene.ts';
 export const WARD_INTERIOR_MODEL_URL = wardInteriorSceneConfig.model.url;
 export const WARD_INTERIOR_BASE_SIZE = wardInteriorSceneConfig.model.baseSize;
 
-export type WardInteriorModelMode = 'prototype' | 'baked';
+export type WardInteriorModelMode = 'prototype' | 'baked' | 'modular';
 
 export interface WardInteriorBakedBedSlot {
   index: number;
@@ -952,6 +952,8 @@ export function fitWardInteriorEnvironment(
   roomDepth: number,
   roomHeight: number,
 ) {
+  if (parts.mode === 'modular')
+    return;
   if (parts.mode === 'baked') {
     fitBakedWardInteriorEnvironment(parts as WardInteriorAssetParts);
     return;

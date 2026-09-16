@@ -64,6 +64,7 @@ export function getHospitalCorridorDoorOrder(
         if (!mesh && child instanceof THREE.Mesh)
           mesh = child;
       });
+      if (mesh) mesh.userData.corridorDoorNodeName = node.name;
       return mesh;
     })
     .filter((node): node is THREE.Mesh => !!node);
@@ -99,12 +100,8 @@ export function getHospitalCorridorEntranceScreenOrder(
         return false;
       if (/^走廊屏/.test(node.name))
         return false;
-      const materials = Array.isArray(node.material) ? node.material : [node.material];
       return /^门口机\d+$/.test(node.name)
-        || materials.some(material =>
-        material.name.includes('门口机内')
-        || (material.name.includes('门口机') && /屏|screen|display/i.test(material.name)),
-        );
+        || getHospitalCorridorEntranceScreenMaterialIndex(node) >= 0;
     })
     .sort((left, right) => {
       const leftCenter = new THREE.Box3().setFromObject(left).getCenter(new THREE.Vector3());
@@ -166,6 +163,11 @@ export function getHospitalCorridorDisplayScreenOrder(
 
 export function getHospitalCorridorEntranceScreenMaterialIndex(mesh: THREE.Mesh) {
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  // Dynamic textures replace materials; mesh identity must survive that replacement.
+  const savedIndex = mesh.userData.hospitalCorridorTemplateMaterialIndex;
+  if (mesh.userData.hospitalCorridorTemplateDevice === true
+    && Number.isInteger(savedIndex) && savedIndex >= 0 && savedIndex < materials.length)
+    return savedIndex as number;
   return materials.findIndex(material =>
     material.name.includes('门口机内')
     || (material.name.includes('门口机') && /屏|screen|display/i.test(material.name)),
@@ -325,6 +327,8 @@ export function configureWardCorridorCanvasTexture(
 }
 
 export interface WardCorridorRoomLike {
+  sickroomId?: string;
+  deviceCode?: string;
   sickroomName?: string;
   sickroomCode?: string;
   templateId?: number;
@@ -372,6 +376,8 @@ export function buildWardCorridorBindingSignature(
 ): string {
   return rooms.map(room => [
     room.sickroomCode ?? room.sickroomName ?? '',
+    room.sickroomId ?? '',
+    room.deviceCode ?? '',
     room.templateId ?? 0,
     room.director ?? '',
   ].join(':')).join('|');
@@ -398,7 +404,7 @@ export function buildWardCorridorSlots(
       return {
         slotIndex,
         roomIndex: null,
-        label: '空床',
+        label: '未配置',
         interactive: false,
       };
     }

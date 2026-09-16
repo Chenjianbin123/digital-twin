@@ -12,12 +12,12 @@ const viewModel = readFileSync(
 );
 
 test('nurse station hero uses Chinese labels for visible status prompts', () => {
-  assert.match(panel, /class="station-hero__eyebrow">护士站指挥中心<\/span>/);
-  assert.match(panel, /class="station-hero__status-live"[\s\S]*?viewModel\.realtime\.status[\s\S]*?viewModel\.realtime\.label/);
+  assert.match(panel, /class="station-hero__eyebrow">护士站工作台<\/span>/);
+  assert.match(panel, /viewModel\.realtime\.status !== 'ready'[\s\S]*?viewModel\.realtime\.detail/);
   assert.match(viewModel, /ready: '实时数据'/);
-  assert.match(panel, /return "需要立即处理"/);
-  assert.match(panel, /return "需要复核"/);
-  assert.match(panel, /return "系统运行正常"/);
+  assert.match(panel, /displayedStationState.label/);
+  assert.match(panel, /护士站工作区/);
+  assert.match(panel, /workspace-status/);
   assert.doesNotMatch(panel, /NURSE COMMAND|LIVE DATA|ACTION REQUIRED|REVIEW REQUIRED|SYSTEM ONLINE/);
 });
 test('nurse station hero labels stay on one line', () => {

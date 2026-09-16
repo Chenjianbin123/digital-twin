@@ -1,3 +1,4 @@
+import { findUniqueStatusBed } from '@/core/ward-data-binding';
 import { resolveBedStatus } from '@/core/bed-status';
 import { startStatusChannel, stopStatusChannel, subscribeStatusChannel } from '@/services/status-channel';
 import type { useTwinStore } from '@/stores/twin-store';
@@ -8,22 +9,14 @@ type TwinStore = ReturnType<typeof useTwinStore>;
 let unsubscribe: (() => void) | null = null;
 
 function handleStatusMessage(store: TwinStore, payload: StatusBarInfo) {
-  store.updateBedStatus(store.selectedAreaId, payload.bedCode, payload);
-
-  for (const room of store.area?.rooms ?? []) {
-    const bed = room.beds.find(b => b.bedCode === payload.bedCode);
-    if (bed) {
-      const meta = resolveBedStatus({ ...bed, statusBarInfo: payload });
-      store.pushHistory({
-        category: 'infusion',
-        bedCode: payload.bedCode,
-        bedName: bed.bedName,
-        label: meta.label,
-        roomName: room.sickroomName,
-      });
-      break;
-    }
-  }
+  if (!store.area) return;
+  const match = findUniqueStatusBed(store.area, payload.bedCode, payload.deviceCode);
+  if (!match || !store.updateBedStatus(store.selectedAreaId, payload.bedCode, payload)) return;
+  const meta = resolveBedStatus(match.bed);
+  store.pushHistory({
+    category: 'infusion', bedCode: match.bed.bedCode, bedName: match.bed.bedName,
+    label: meta.label, roomName: match.room.sickroomName,
+  });
 }
 
 export function startStatusPusher(store: TwinStore, intervalMs = 3500) {

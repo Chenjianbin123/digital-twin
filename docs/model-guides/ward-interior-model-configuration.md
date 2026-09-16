@@ -1,63 +1,74 @@
 # 病房内部模型配置说明
 
-## 1. 放置和切换模型
+## 当前双模型方案
 
-将病房内部 GLB 放入：
+`src/config/ward-interior-scene.ts` 配置两个资源：
 
-```text
-public/models/smart-ward-interior/
-```
+- `model.url`：`/models/smart-ward-interior/room-refined-v1.glb?v=20260915`，固定病房外壳。
+- `modular.unitUrl`：`/models/smart-ward-interior/bed-refined-v1.glb?v=20260915`，可复用的完整床位单元。
 
-编辑 `src/config/ward-interior-scene.ts` 的 `model.url`。同名模型重新导出时递增 `?v=` 参数，避免旧缓存：
+资源位于 `public/models/smart-ward-interior/`。重新导出时递增版本参数。原始提供文件未覆盖；床组和独立设备保持原生比例，扩容只在运行时延长建筑中段。
 
-```ts
-model: {
-  url: '/models/smart-ward-interior/smart_ward_interior.glb?v=5',
-  baseSize: { width: 12, height: 3.92, depth: 9 },
-  canvasTextureFlipY: false,
-},
-```
+房间必须包含 `外壳`、`灯` 节点。床位单元必须包含 `BedUnit`、`BedBody`、`BedsideCabinet`、`BedTerminal`、`BedTerminalSurface`、`IVStand`、`InfusionEquipment`。终端表面必须为局部 YZ 平面的 Mesh。每床独立终端几何体、材质及纹理，静态部件共享资源；不要把患者画面烘焙回模型。
 
-`baseSize` 是 Blender 模型的基准包围尺寸，程序会按当前病房宽、深和 `room.height` 分别适配建筑和道具位置。模型替换后如果房间比例变化，先更新 `baseSize`，再检查床位是否越界。
+## 患者与床位映射
 
-## 2. 必须保留的节点
+以 `isOccupied` 筛选入住床位，按床名自然排序并用 `bedCode` 绑定。缺失或重复床号全部排除并提示，避免错配患者。换房清理旧绑定，同房患者离开后移除对应床组，未变化的床组和终端纹理继续复用。平面图也使用这份入住列表。
 
-运行时会校验以下节点，缺失会回退到生成式病房：
+输液架随床组创建；输液瓶、液体和管路仅在原始状态为 `300` 或 `301` 时显示。呼叫优先级不覆盖正在输液的事实。
 
-```text
-WardArchitecture
-WardProps
-BedPrototype
-Bed_1_Mattress
-SmartBedhead_1_Status
-BedTerminalSurface
-Monitor_1_Screen
-```
+## 容量与摆放
 
-`BedPrototype` 用于克隆一至七张床。床旁终端和监护屏的 CanvasTexture 仍由现有模板解析、床位状态和告警逻辑更新，不能把这些节点改成共享动态材质。
+当前资源是固定双床房，扩容时保留原病房的墙、地面、顶面、门窗和室内设备。0–2 人使用原始尺寸；3 人及以上沿房间长度增加床位，每床沿用原始床组比例和相邻间距。门所在端的部件整体平移，窗帘所在端不动，建筑中段延长。缩减患者数量时从原始几何恢复，避免变换累积。
 
-## 3. 镜头预设和响应式视距
+这仍是展示用房间扩展，不代表实际病房尺寸或通道规范。大房间默认保持室内近景；可通过侧栏选择床位定位，或使用“查看床头屏”切换床号查看模板。
 
-`camera.initial` 控制首次进入病房的相机位置和目标点；`camera.presets` 保持四个 ID 不变：`free`、`door`、`nurse`、`top`。可以修改每个预设的 `position` 和 `target`，但不要删除或重命名 ID，因为页面按钮按 ID 切换。
+床头屏放大窗口直接复用该床已渲染的 CanvasTexture 画布，不另造模板或患者信息，不额外请求接口。模板错误、未配置和加载状态也保持一致。换房、患者离开或退出 3D 时关闭预览。
 
-`camera.viewportScale` 用于窄屏自动后退，避免手机画面裁切。`presetTransitionDuration` 和 `bedFocusTransitionDuration` 分别控制预设切换、选床聚焦的动画时长。
+旧 `modelBedLayout.maxBeds: 7` 只用于旧模型路径，不截断当前完整入住列表。
 
-## 4. 交互、外观和床位排布
+`modular.hiddenRoomNodes` 隐藏无床模型中残留的两组悬空药品；共享医疗设备按 `sharedEquipmentOffset` 整体移到床区外。这些调整仅发生在运行时。
 
-- `controls`：开放旋转、缩放范围以及阻尼、旋转和缩放速度。
-- `appearance`：背景色、曝光和雾效；雾密度会按房间跨度自动衰减。
-- `modelBedLayout`：床模块基准宽度、靠墙偏移、横向边距、缩放上下限和最大床位数。
-- `room.height`：生成式房间外壳和 GLB 建筑适配的高度。
+## 镜头与失败状态
 
-当前业务约定是一至七张床，`maxBeds` 为七；服务端超过七张时，场景只展示排序靠前的七张并输出控制台警告。
+保留 `free`、`door`、`nurse`、`top` 四个镜头 ID。使用模型坐标及更新后的外壳边界，扩容后镜头随门所在端移动。复位视角按钮返回室内近景。加载任一资产失败时展示失败状态，页面重试重新加载，不生成替代病房。
 
-## 5. 验证
+数据同步中或异常时提示当前结果可能过期，不把请求失败表示为无人入住。
 
-```bash
-node scripts/ward-interior-scene-config-boundary.test.mjs
-node --experimental-strip-types --test src/core/camera-presets.test.ts src/core/ward-interior-model.test.ts src/core/ward-scene-controls.test.ts
-node --test scripts/ward-interior-model-integration-boundary.test.mjs scripts/ward-scene-view-boundary.test.mjs
-npm run build
-```
+## 验证
 
-页面验收至少检查：四个视角均能切换；拖拽、旋转、缩放范围可用；一至七张床都位于房间内且不重叠；床旁终端、监护屏和告警状态仍显示真实数据；模型加载失败时页面应保持加载失败状态，不展示程序化病房。
+运行 `npm run typecheck`、`npm test`、`npm run build`。真实组件浏览器验收覆盖 0/1/2/3/7/8 人、空床、重复床号、同房增减、跨房同床号、输液变化、异步模板返回、反复切换、资产失败和重试。
+
+验收使用本地模板和明确标注的模拟患者，不等同于医院真实接口或终端设备验收。房间原资源约 21 MB，床位资源约 25.5 MB；资产体积和高面数设备仍有后续压缩空间。
+
+## 原始床组来源
+
+床组使用 `onlyBed-v3(1).glb`，通过 `scripts/adapt-ward-bed-v3.mjs <源文件> <输出文件>` 生成接入版 `bed-unit-v3.glb`。保留原始二进制缓冲、贴图、床头墙、设备带、椅子、植物和帘轨，仅调整层级、节点命名与坐标基准，并将终端屏幕、输液瓶分别从外壳和支架中分组。源文件保持不变。
+
+在原始摆放基础上，整组沿 X 方向向室内移动 0.09 个模型单位，避免帘轨穿墙；不改变床组比例。终端 UV 继续由运行时独立重建，每床使用独立模板纹理。
+
+## 2026-09-15 精修资源接入
+
+当前病房资源来自 `output/ward-model-refinement/plants/ward-room-with-plants.glb`，床组来自 `output/ward-model-refinement/bed-refined/bed-unit-refined.glb`。原始资源保留；回退时将配置恢复为 `noBed-v2.glb?v=20260911-modular-v1` 和 `bed-unit-v3.glb?v=20260911-onlybed-v3-1`。
+
+新增窗户、植物随窗端保持位置；天花灯、风口、手消设备从建筑伸缩网格中分离，保持原生尺寸。扩容时复制天花灯，缩容和销毁时只移除复制节点，共享几何与材质由原模型统一释放。墙面防撞条和踢脚继续随建筑延长。
+
+本轮验收使用真实 Vue/Three.js 组件和模拟患者，不代表登录后的医院接口验收。资源大小为病房约 18.4 MB、床组约 11.2 MB；不能由下载体积推断帧率。
+
+## 2026-09-15 保留模型精度的阴影优化
+
+精修 GLB、材质、贴图和面数保持不变。模块化病房复用静态阴影图，`updateWard` 与 `setTheme` 标记阴影需要刷新；增减床位、输液设备显隐、换房及资产加载后的数据应用均由 `updateWard` 覆盖。相机移动只重新渲染主画面。旧的非模块化路径仍逐帧更新阴影。
+
+后续若引入会投影的模型动画，必须随动画更新阴影或恢复逐帧阴影，不能直接沿用静态假设。
+
+本机同视角交替两轮测试：逐帧阴影帧间隔中位数约 83.3 ms，缓存阴影约 66.7 ms。静止后两种方式的 canvas PNG SHA-256 一致。该结果来自本地模拟患者验收页，不等同于医院目标硬件或普遍帧率保证。
+
+## 床头机请求复用规则
+
+- 整区刷新仍强制查询最新床头机数据；随后的当前病房加载复用刚应用的结果，不再二次强制查询。
+- 进入病房和切换3D/平面图使用普通加载。相同床位对象、完整数据快照未变化且30秒内有效时跳过查询；Vue响应式对象通过toRaw识别原对象。
+- 手动 refreshWardBedDetails 始终强制查询；仅合并同设备、同患者上下文的在途请求。患者身份变化时不共用旧请求。
+- 请求失败不会留下失败Promise或有效标记；请求期间数据变化、离开房间或会话清理后，不回写过时结果。
+- 不跨新床位对象复制患者缓存，不改变环境、报警、呼叫等现有轮询周期。
+
+回归测试：scripts/bed-device-request-reuse.test.mjs，覆盖真实加载模块、Vue响应式包装、并发、强制刷新、过期、失败及患者更换竞争。

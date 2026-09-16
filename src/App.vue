@@ -1,18 +1,23 @@
 <script setup lang="ts">
+import { roomCallTasks } from '@/core/ward-call-list';
+import WardInteriorStatus from '@/components/WardInteriorStatus.vue';
+import { wardBedPatientKey } from '@/core/ward-data-binding';
+import { wardInteriorRoomKey, selectOccupiedWardBeds } from '@/core/ward-interior-beds';
 import { storeToRefs } from 'pinia';
 import { useDashboardTheme } from '@/core/use-dashboard-theme';
 import '@/styles/dashboard-theme.scss';
+import '@/styles/entrance-theme.scss';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import DashboardAreaNav from '@/components/dashboard/DashboardAreaNav.vue';
 import DashboardBottomNav from '@/components/dashboard/DashboardBottomNav.vue';
-import DashboardHeader from '@/components/dashboard/DashboardHeader.vue';
 import NurseStationPreviewLink from '@/components/NurseStationPreviewLink.vue';
+import DashboardHeader from '@/components/dashboard/DashboardHeader.vue';
 import DashboardLeftPanel from '@/components/dashboard/DashboardLeftPanel.vue';
 import AreaSelectionView from '@/components/AreaSelectionView.vue';
 import AreaSwitcher from '@/components/AreaSwitcher.vue';
 import SceneSwitchLoader from '@/components/SceneSwitchLoader.vue';
 import EnvAlertBanner from '@/components/EnvAlertBanner.vue';
 import { formatBedLabel } from '@/core/alert-workflow';
+import type { TwinBedEntity } from '@/types/twin';
 import type { AlertTask } from '@/core/alert-workflow';
 import { buildAreaSceneIdentity } from '@/core/area-scene-identity';
 import { prepareAreaSelection } from '@/core/area-selection-bootstrap';
@@ -146,6 +151,15 @@ const dataStatus = computed(() => resolveDataStatus({
   nowMs: dataStatusNow.value,
 }));
 
+const currentRoomCalls = computed(() => currentWard.value ? roomCallTasks(alertTasks.value, currentWard.value, currentRoomIndex.value) : []);
+
+const wardInteriorDataStatus = computed(() => {
+  if (dataStatus.value === 'error' || dataStatus.value === 'stale') return dataStatus.value;
+  if (bedDetailsError.value) return 'warning';
+  if (bedDetailsLoading.value) return 'loading';
+  return dataStatus.value;
+});
+
 const nurseStationViewModel = computed(() => area.value
   ? buildNurseStationViewModel({
       areaId: selectedAreaId.value,
@@ -164,6 +178,25 @@ const nurseStationViewModel = computed(() => area.value
     })
   : null);
 
+const planDialogBedCode = ref<string | null>(null);
+function openPlanBed(bed: TwinBedEntity) {
+  store.selectBed(bed);
+  planDialogBedCode.value = bed.bedCode;
+}
+function closePlanBed() { planDialogBedCode.value = null; }
+watch(() => [wardInteriorView.value, sceneType.value,
+  currentWard.value ? wardInteriorRoomKey(currentWard.value) : '',
+  selectedBed.value ? wardBedPatientKey(selectedBed.value) : ''], closePlanBed, { flush: 'sync' });
+const wardSyncBusy = computed(() => bedDetailsLoading.value || dataPhase.value === 'loading');
+async function retryWardSync() {
+  if (wardSyncBusy.value) return;
+  if (store.dataSource === 'mock') await store.refreshWardBedDetails();
+  else await store.refreshCurrentArea({ preserveScene: true, silent: true });
+}
+
+const occupiedPlanWard = computed(() => currentWard.value
+  ? { ...currentWard.value, beds: selectOccupiedWardBeds(currentWard.value).beds }
+  : null);
 const preloadedWard = computed(() => currentWard.value ?? area.value?.rooms[0] ?? null);
 const currentInspectionSummary = computed(() =>
   currentRoomIndex.value >= 0
@@ -484,6 +517,8 @@ onBeforeUnmount(() => {
 
 <template>
   <SwpLoginGate
+    :theme="theme"
+    @toggle-theme="toggleTheme"
     v-if="!authSession"
     :notice="authNotice"
     @authenticated="handleAuthenticated"
@@ -492,6 +527,8 @@ onBeforeUnmount(() => {
   <div v-else class="digital-twin" :data-theme="theme">
     <Transition name="startup-fade">
       <StartupLoader
+    :theme="theme"
+    @toggle-theme="toggleTheme"
         v-if="showStartupLoader"
         :progress="bootProgress"
         :phase="bootPhase"
@@ -499,6 +536,8 @@ onBeforeUnmount(() => {
     </Transition>
 
     <AreaSelectionView
+    :theme="theme"
+    @toggle-theme="toggleTheme"
       v-if="!area"
       :areas="areaOptions"
       :preferred-area-id="preferredAreaId"
@@ -542,7 +581,10 @@ onBeforeUnmount(() => {
         @logout="handleLogout"
       >
         <template #actions>
-          <NurseStationPreviewLink v-if="isNurseStation" />
+          <details v-if="isNurseStation" class="workspace-tools">
+            <summary>工具</summary>
+            <div><NurseStationPreviewLink /></div>
+          </details>
         </template>
       </DashboardHeader>
 
@@ -575,25 +617,13 @@ onBeforeUnmount(() => {
       </button>
 
       <div class="digital-twin__scene">
-        <DashboardLeftPanel v-if="panelsVisible" :area="area" />
+        <DashboardLeftPanel v-if="panelsVisible && isNurseStation" :area="area" />
 
-        <DashboardAreaNav
-          v-if="isWard && panelsVisible"
-          :rooms="area.rooms"
-          :room-summaries="roomSummaries"
-          :focused-room-index="currentRoomIndex"
-          @focus-room="store.focusRoom"
-          @enter-room="store.enterRoom"
-        />
 
-        <EnvAlertBanner
-          v-if="isWardInterior && currentWard && panelsVisible"
-          class="digital-twin__env-banner"
-          :alert="currentEnvAlert"
-        />
+
 
         <div
-          v-if="activeAlertTask && !isNurseStation && panelsVisible"
+          v-if="activeAlertTask && isWardInterior && panelsVisible"
           class="digital-twin__locate-banner"
           :class="[
             `digital-twin__locate-banner--${activeAlertTask.severity}`,
@@ -640,18 +670,24 @@ onBeforeUnmount(() => {
           {{ alertLocateNotice }}
         </div>
 
-        <div
-          v-if="isWardInterior && (bedDetailsLoading || bedDetailsError)"
-          class="digital-twin__bed-device-state"
-          :class="{ 'digital-twin__bed-device-state--error': bedDetailsError }"
-          role="status"
-          aria-live="polite"
-        >
-          <span class="digital-twin__bed-device-dot" aria-hidden="true" />
-          <span>{{ bedDetailsLoading ? '正在加载床头屏信息' : bedDetailsError }}</span>
+        <div v-if="isWardInterior" class="ward-overview">
+        <WardInteriorStatus
+          v-if="isWardInterior && currentWard"
+          :ward="currentWard"
+          :status="wardInteriorDataStatus"
+          :busy="wardSyncBusy"
+          :last-synced-at="lastFetchedAtMs"
+          :warnings="bedDetailsError ? [bedDetailsError, ...dataWarnings] : dataWarnings"
+          @retry="retryWardSync"
+        />
+        <EnvAlertBanner
+          v-if="isWardInterior && currentWard && panelsVisible"
+          class="digital-twin__env-banner"
+          :alert="currentEnvAlert"
+        />
         </div>
+        <WardLegend v-if="isWard && panelsVisible" />
 
-        <WardLegend v-if="(isWard || isWardInterior) && panelsVisible" />
 
         <NurseStationVisualScene
           :theme="theme"
@@ -668,6 +704,7 @@ onBeforeUnmount(() => {
         />
 
         <AreaScene3D
+          :theme="theme"
           v-if="area && scenes.ward.requested"
           class="digital-twin__scene-layer"
           :class="{ 'digital-twin__scene-layer--inactive': !corridorSceneActive }"
@@ -679,6 +716,9 @@ onBeforeUnmount(() => {
           :configured-device-count="deviceCodes.length"
           scene-type="ward"
           model-kind="corridor"
+          :alert-title="activeAlertTask?.title"
+          :panels-visible="panelsVisible"
+          @reset-corridor="store.setSceneType('ward')"
           :active="corridorSceneActive"
           @model-state="scenes.ward.onState"
           @room-click="store.enterRoom"
@@ -691,6 +731,9 @@ onBeforeUnmount(() => {
           class="digital-twin__scene-layer"
           :class="{ 'digital-twin__scene-layer--inactive': !interiorSceneActive }"
           :ward="preloadedWard"
+          :theme="theme"
+          :data-status="wardInteriorDataStatus"
+          shared-status
           :camera-preset="cameraPreset"
           :env-alert-level="currentEnvAlert.level"
           :selected-bed-code="selectedBed?.bedCode ?? null"
@@ -698,24 +741,30 @@ onBeforeUnmount(() => {
           :active="interiorSceneActive"
           @model-state="scenes['ward-interior'].onState"
           @bed-click="store.selectBed"
+          @request-plan="store.setWardInteriorView('plan')"
         />
         <WardPlanView
-          v-if="isWardInterior && currentWard && wardInteriorView !== '3d'"
+          v-if="isWardInterior && occupiedPlanWard && wardInteriorView !== '3d'"
           class="digital-twin__scene-layer"
           :class="{ 'digital-twin__scene-layer--inactive': wardInteriorView !== 'plan' }"
-          :ward="currentWard"
+          :ward="occupiedPlanWard"
+          :theme="theme"
           :selected-bed="selectedBed"
-          @bed-click="store.selectBed"
+          @bed-click="openPlanBed"
         />
 
         <WardPlanBedDialog
-          v-if="isWardInterior && wardInteriorView === 'plan' && selectedBed"
+          :data-status="wardInteriorDataStatus"
+          :theme="theme"
+          v-if="isWardInterior && wardInteriorView === 'plan' && selectedBed && selectedBed.isOccupied && planDialogBedCode === selectedBed.bedCode"
           :bed="selectedBed"
-          @close="store.clearSelection"
+          @close="closePlanBed"
         />
 
       </div>
 
+      <div :class="{ 'ward-navigation-dock': isWardInterior }">
+      <div id="ward-tools-host"><WardLegend v-if="isWardInterior && wardInteriorView === 'plan'" embedded /></div>
       <DashboardBottomNav
         v-if="!(isNurseStation && nurseStationWallboard)"
         :scene-type="sceneType"
@@ -728,6 +777,7 @@ onBeforeUnmount(() => {
         @toggle-simulation="store.toggleSimulation()"
       />
 
+      </div>
       <SceneSwitchLoader
         :feedback="sceneSwitchFeedback"
         @retry="retryScene"
@@ -797,6 +847,10 @@ onBeforeUnmount(() => {
             />
 
             <WardInfoPanel
+              :call-tasks="currentRoomCalls"
+              :call-sync="swpEventSync"
+              @locate-call="store.openAlertTask"
+              :data-status="wardInteriorDataStatus"
               v-else-if="isWardInterior && currentWard"
               :area="area"
               :ward="currentWard"
@@ -820,6 +874,30 @@ onBeforeUnmount(() => {
 
 
 <style scoped lang="scss">
+.ward-overview { position: absolute; top: 72px; left: 16px; z-index: 15; width: min(550px, calc(100% - 32px)); max-height: 38%; overflow: auto; }
+.ward-overview .digital-twin__env-banner { position: static; margin-top: 8px; pointer-events: auto; }
+.digital-twin__main--interior:not(.digital-twin__main--panels-hidden) .ward-overview { width: min(550px, calc(100% - 500px)); }
+@include down($bp-md) {
+  .ward-overview, .digital-twin__main--interior:not(.digital-twin__main--panels-hidden) .ward-overview { top: 64px; left: 8px; width: calc(100% - 16px); max-height: 28%; }
+
+}
+@include down($bp-sm) { .ward-overview, .digital-twin__main--interior:not(.digital-twin__main--panels-hidden) .ward-overview { top: 96px; } }
+.ward-navigation-dock {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 24;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(420px, calc(100% - 16px)); pointer-events: none;
+  #ward-tools-host { pointer-events: auto; max-width: 100%; }
+  :deep(.dash-bottom__sub-item) { white-space: nowrap; flex-shrink: 0; }
+  :deep(.dash-bottom) { position: static; transform: none; }
+  :deep(.ward-scene-3d__occupancy) { position: static; max-width: 100%; padding: 6px 10px; }
+}
+@include down($bp-md) {
+  .digital-twin__main--interior:not(.digital-twin__main--panels-hidden) .ward-navigation-dock { bottom: calc(var(--mobile-panel-height) + 10px + env(safe-area-inset-bottom)); }
+}
+
+@keyframes station-panel-reveal {
+  from { opacity: 0; transform: translateX(6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 
 @keyframes digital-panel-enter {
   0% {
@@ -922,7 +1000,7 @@ onBeforeUnmount(() => {
 
   min-height: 100dvh;
 
-  background: #060e1a;
+  background: var(--scene-loading-background, #060e1a);
 
   color: #e0e6ed;
 
@@ -966,45 +1044,6 @@ onBeforeUnmount(() => {
 
   }
 
-  &__bed-device-state {
-    position: absolute;
-    z-index: 24;
-    top: 76px;
-    left: 50%;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    max-width: min(520px, calc(100% - 32px));
-    min-height: 34px;
-    padding: 7px 13px;
-    color: #dffaf7;
-    font-size: 13px;
-    background: rgba(8, 37, 43, 0.9);
-    border: 1px solid rgba(124, 223, 210, 0.38);
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(2, 18, 22, 0.24);
-    transform: translateX(-50%);
-
-    &--error {
-      color: #ffe9df;
-      background: rgba(74, 32, 27, 0.92);
-      border-color: rgba(255, 151, 125, 0.52);
-    }
-  }
-
-  &__bed-device-dot {
-    width: 7px;
-    height: 7px;
-    flex: 0 0 7px;
-    background: #6de3d1;
-    border-radius: 50%;
-    box-shadow: 0 0 0 4px rgba(109, 227, 209, 0.12);
-  }
-
-  &__bed-device-state--error &__bed-device-dot {
-    background: #ff9579;
-    box-shadow: 0 0 0 4px rgba(255, 149, 121, 0.12);
-  }
 
   &__locate-banner {
     position: absolute;
@@ -1852,5 +1891,35 @@ onBeforeUnmount(() => {
     right: auto;
     transform: translateX(-50%);
   }
+}
+
+.workspace-tools { position: relative; font-size: 12px; color: #91b1b7; }
+.workspace-tools summary { cursor: pointer; padding: 10px; border-radius: 6px; }
+.workspace-tools > div { position: absolute; right: 0; top: calc(100% + 8px); min-width: 160px; padding: 12px; border: 1px solid #74969e50; border-radius: 8px; background: #102630; box-shadow: 0 8px 24px #03131c30; }
+.digital-twin[data-theme='light'] .workspace-tools { color: #45665a; }
+.digital-twin[data-theme='light'] .workspace-tools > div { background: #fff; border-color: #d9e4dc; }
+.digital-twin__main--station .digital-twin__panel { padding-top: 56px; }
+.digital-twin__main--station .digital-twin__panel-body { min-height: 0; overflow: hidden; }
+@media(min-width:1024px) {
+  .digital-twin__main--station { --scene-panel-width: clamp(400px, 28vw, 600px); }
+  .digital-twin__main--station.digital-twin__main--wallboard { --scene-panel-width: clamp(340px, 23vw, 480px); }
+}
+@media(max-width:1023px) {
+  .digital-twin__main--station { --mobile-panel-height: min(58vh, 58cqh, 560px); }
+  .digital-twin__main--station .digital-twin__panel { padding-top: 0; }
+  .workspace-tools { display: none; }
+}
+.digital-twin__main--interior .ward-navigation-dock :deep(.dash-bottom) {
+  position: static; left: auto; right: auto; bottom: auto; transform: none;
+}
+
+// 护士站只在出现时过渡，停止外层持续扫描，避免打扰工作区阅读。
+.digital-twin__panel.digital-twin__panel--station {
+  animation: station-panel-reveal 240ms cubic-bezier(.2, .7, .3, 1);
+  will-change: auto;
+  &::before, &::after { display: none; animation: none; will-change: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .digital-twin__panel.digital-twin__panel--station { animation: none; }
 }
 </style>

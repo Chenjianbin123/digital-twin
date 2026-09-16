@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch, useId } from "vue";
 import AlertTaskPanel from "@/components/AlertTaskPanel.vue";
 import DoorStaffCards from "@/components/DoorStaffCards.vue";
 import DashSectionHeader from "@/components/dashboard/DashSectionHeader.vue";
@@ -42,6 +42,23 @@ const props = defineProps<{
   wallboard?: boolean;
 }>();
 
+const workspaceTab = ref<'tasks' | 'overview' | 'inspection'>('tasks');
+const workspaceId = useId();
+const workspaceTabs = [{ key: 'tasks', label: '待办' }, { key: 'overview', label: '概览' }, { key: 'inspection', label: '巡视' }] as const;
+const activeWorkspaceTab = computed(() => props.wallboard ? 'overview' : workspaceTab.value);
+const pendingTaskCount = computed(() => (props.alertTasks ?? []).filter(task => task.status === 'pending').length);
+watch(() => props.area.areaCode, () => { workspaceTab.value = 'tasks'; });
+function onWorkspaceKeydown(event: KeyboardEvent, index: number) {
+  let next = index;
+  if (event.key === 'ArrowRight') next = (index + 1) % workspaceTabs.length;
+  else if (event.key === 'ArrowLeft') next = (index + workspaceTabs.length - 1) % workspaceTabs.length;
+  else if (event.key === 'Home') next = 0;
+  else if (event.key === 'End') next = workspaceTabs.length - 1;
+  else return;
+  event.preventDefault();
+  workspaceTab.value = workspaceTabs[next].key;
+  (event.currentTarget as HTMLElement).parentElement?.querySelectorAll<HTMLButtonElement>('button')[next]?.focus();
+}
 const alertFilter = ref<"active" | "handling" | "all">("active");
 
 const emit = defineEmits<{
@@ -257,12 +274,6 @@ const statusTone = computed(() =>
       : "ok",
 );
 
-const statusModeLabel = computed(() => {
-  if (statusTone.value === "alert") return "需要立即处理";
-  if (statusTone.value === "warn") return "需要复核";
-  return "系统运行正常";
-});
-
 const displayedShiftHandoff = computed(() => props.viewModel.shiftHandoff);
 
 function dataHealthStatusLabel(status: DataStatus) {
@@ -473,7 +484,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
 <template>
   <section
-    class="nurse-panel"
+    class="nurse-panel nurse-workspace"
     :class="{ 'nurse-panel--wallboard': wallboard }"
     aria-label="护士站工作台"
   >
@@ -482,13 +493,9 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       <div class="station-hero__overview-head">
         <div class="station-hero__identity">
           <svg class="station-hero__identity-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h16v7H4zM6 14V3h12v11M9 6h6v5H9zM10 18h4m-2-2v4" /></svg>
-          <div>
-            <span class="station-hero__eyebrow">护士站指挥中心</span>
-            <span
-              class="station-hero__status-live"
-              :class="`station-hero__status-live--${viewModel.realtime.status}`"
-              :title="viewModel.realtime.detail"
-            ><i aria-hidden="true" />{{ viewModel.realtime.label }}</span>
+          <div class="station-hero__wordmark">
+            <span class="station-hero__kicker" aria-hidden="true">NURSING WORKSPACE</span>
+            <span class="station-hero__eyebrow">护士站工作台</span>
           </div>
         </div>
         <button
@@ -499,33 +506,16 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
           @click="emit('setWallboard', !wallboard)"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg>
-          {{ wallboard ? '退出大屏' : '大屏模式' }}
+          {{ wallboard ? '返回工作台' : '展示模式' }}
         </button>
       </div>
 
-      <div class="station-hero__body">
-        <div class="station-state" :class="`station-state--${statusTone}`">
-          <div class="station-state__heading">
-            <span class="station-state__signal" aria-hidden="true" />
-            <strong>当前运行状态</strong>
-            <span :class="`station-hero__badge station-hero__badge--${statusTone}`">{{ displayedStationState.label }}</span>
-          </div>
-          <div class="station-state__message">
-            <small>{{ statusModeLabel }}</small>
-            <p>{{ displayedStationState.message }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="station-hero__overview-metrics" aria-label="病区关键指标">
-        <div><span>病房数量</span><strong>{{ metrics.rooms }}<small>间</small></strong></div>
-        <div><span>在线设备</span><strong>{{ metrics.deviceOnline }}<small>/ {{ metrics.deviceTotal }} 台</small></strong></div>
-        <div><span>真实事件</span><strong>{{ swpEvents?.length ?? 0 }}<small>项</small></strong></div>
-      </div>
       <div class="station-hero__overview-foot">
-        <div class="station-hero__overview-tags">
-          <span class="station-hero__chip station-hero__chip--load">{{ loadLabel }}</span>
-          <span v-if="metrics.vitalWarnings" class="station-hero__chip station-hero__chip--vital">体征预警 {{ metrics.vitalWarnings }} 项</span>
+        <div v-if="displayedStationState.level !== 'normal' || loadLabel === '高负载' || viewModel.realtime.status !== 'ready'" class="workspace-status" :class="`workspace-status--${statusTone}`" role="status">
+          <span class="station-state__signal" aria-hidden="true" />
+          <span v-if="displayedStationState.level !== 'normal'">{{ displayedStationState.label }}</span>
+          <span v-if="loadLabel === '高负载'">床位高负载</span>
+          <span v-if="viewModel.realtime.status !== 'ready'" class="workspace-status__sync" :class="{ 'workspace-status__sync--attention': ['error', 'stale'].includes(viewModel.realtime.status) }">{{ viewModel.realtime.detail }}</span>
         </div>
         <button
           type="button"
@@ -540,13 +530,28 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       </div>
     </header>
 
+    <div v-if="!wallboard" class="workspace-tabs" role="tablist" aria-label="护士站工作区">
+      <button v-for="(tab, index) in workspaceTabs" :key="tab.key" :id="`${workspaceId}-${tab.key}`" type="button" role="tab" :aria-selected="activeWorkspaceTab === tab.key" :aria-controls="`${workspaceId}-content-${tab.key}`" :tabindex="activeWorkspaceTab === tab.key ? 0 : -1" @click="workspaceTab = tab.key" @keydown="onWorkspaceKeydown($event, index)">
+        <svg class="workspace-tabs__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <template v-if="tab.key === 'tasks'"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2h6v2M9 10h6M9 14h6M9 18h3" /></template>
+          <template v-else-if="tab.key === 'overview'"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 21v-5m3 5v-8m4 8v-11" /></template>
+          <template v-else><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z" /><path d="m8 12 3 3 5-6" /></template>
+        </svg>
+        <span class="workspace-tabs__label">{{ tab.label }}</span>
+        <span v-if="tab.key === 'tasks' && pendingTaskCount" class="workspace-tabs__count">{{ pendingTaskCount }}</span>
+      </button>
+    </div>
+    <div class="workspace-scroll">
+      <div v-show="activeWorkspaceTab === 'tasks'" :id="`${workspaceId}-content-tasks`" role="tabpanel" :aria-labelledby="`${workspaceId}-tasks`" tabindex="0">
+        <div class="workspace-section-intro"><h2>待办事项</h2><span>按当前事件记录统计</span></div>
     <AlertTaskPanel
       :tasks="alertTasks ?? []"
       :ack-records="alertAckRecords"
       :hidden-tasks="hiddenAlertTasks"
       :filter="alertFilter"
-      title="优先处理"
-      :max-items="4"
+      title="待办事项"
+      :max-items="8"
+      workspace
       compact
       @locate="emit('locateAlert', $event)"
       @mark-handling="emit('markAlertHandling', $event)"
@@ -555,50 +560,13 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       @update:filter="setAlertFilter"
     />
 
-    <section class="inspection-overview">
-      <div class="inspection-overview__head">
-        <div>
-          <span class="station-section-title"><svg class="station-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8 12l3 3 5-6"/></svg>巡视总览</span>
-          <strong>真实巡视记录</strong>
-        </div>
-        <small>{{ inspectionSyncLabel }}</small>
+
       </div>
-      <div class="inspection-overview__metrics">
-        <article class="inspection-metric inspection-metric--normal">
-          <span>已巡视</span>
-          <strong>{{ inspectionOverview.normal }}</strong>
-          <small>间病房</small>
-        </article>
-        <article class="inspection-metric inspection-metric--due">
-          <span>待关注</span>
-          <strong>{{ inspectionOverview.due }}</strong>
-          <small>间病房</small>
-        </article>
-        <article class="inspection-metric inspection-metric--overdue">
-          <span>巡视超时</span>
-          <strong>{{ inspectionOverview.overdue }}</strong>
-          <small>间病房</small>
-        </article>
-      </div>
-      <ul v-if="inspectionAttentionRooms.length" class="inspection-overview__rooms">
-        <li v-for="room in inspectionAttentionRooms" :key="room.roomCode">
-          <button type="button" @click="handleRoomClick(room.roomIndex)">
-            <span>
-              <strong>{{ room.roomName }}</strong>
-              <small>
-                {{ room.latestNurseName || "巡视人员待同步" }}
-                · {{ inspectionTime(room.latestAt) }}
-              </small>
-            </span>
-            <em :class="`is-${room.state}`">{{ room.stateLabel }}</em>
-          </button>
-        </li>
-      </ul>
-      <p v-else-if="inspectionOverview.noRecord">
-        {{ inspectionOverview.noRecord }} 间病房暂无巡视记录，等待数据同步。
-      </p>
-      <p v-else>当前没有巡视超时或待关注病房。</p>
-    </section>
+      <div v-show="activeWorkspaceTab === 'overview'" :id="`${workspaceId}-content-overview`" :role="wallboard ? 'region' : 'tabpanel'" :aria-labelledby="wallboard ? undefined : `${workspaceId}-overview`" :aria-label="wallboard ? '病区展示概览' : undefined" tabindex="0">
+    <NurseStationMetricChart
+      :kpis="stationKpis"
+      :realtime-status="viewModel.realtime"
+    />
 
     <section
       class="handoff-card"
@@ -645,65 +613,6 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       <p v-if="!dataHealth.canDeclareNormal">
         数据未完全同步时，不能据此判断病区无异常，请结合现场设备确认。
       </p>
-    </section>
-
-    <!-- <section class="kpi-grid" aria-label="护士站核心指标">
-      <article
-        v-for="item in stationKpis"
-        :key="item.key"
-        class="kpi-card"
-        :class="`kpi-card--${item.tone}`"
-      >
-        <span class="kpi-card__label">{{ item.label }}</span>
-        <strong
-          >{{ item.value }}<small>{{ item.unit }}</small></strong
-        >
-      </article>
-    </section> -->
-
-    <NurseStationMetricChart
-      :kpis="stationKpis"
-      :realtime-status="viewModel.realtime"
-    />
-
-    <section
-      v-if="focusRooms.length"
-      class="surface-panel surface-panel--focus"
-    >
-      <DashSectionHeader
-        :title="attentionRooms.length ? '重点病房' : '病房巡视'"
-        :count="focusRooms.length"
-      />
-      <ul class="focus-list">
-        <li
-          v-for="room in focusRooms"
-          :key="`${room.sickroomCode}-${room.roomIndex}`"
-        >
-          <button
-            type="button"
-            class="focus-room"
-            :class="[
-              `focus-room--${room.priority}`,
-              { 'focus-room--vital': roomHasVitalWarnings(room) },
-            ]"
-            :aria-label="`进入走廊并定位${room.sickroomName}`"
-            @click="handleRoomClick(room.roomIndex)"
-          >
-            <span
-              class="focus-room__bar"
-              :style="{ backgroundColor: room.accentColor }"
-            />
-            <svg class="station-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 21V4h12v17M2 21h20M8 8h4M8 12h4M17 9h3v12"/></svg><span class="focus-room__main">
-              <strong>{{ room.sickroomName }}</strong>
-              <span>{{ roomPatrolText(room) }}</span>
-            </span>
-            <span class="focus-room__side">
-              <em>{{ priorityLabel(room.priority) }}</em>
-              <span>{{ room.occupiedBeds }}/{{ room.totalBeds }}</span>
-            </span>
-          </button>
-        </li>
-      </ul>
     </section>
 
     <details class="nurse-panel__details">
@@ -818,6 +727,97 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
         </section>
       </div>
     </details>
+
+      </div>
+      <div v-show="activeWorkspaceTab === 'inspection'" :id="`${workspaceId}-content-inspection`" role="tabpanel" :aria-labelledby="`${workspaceId}-inspection`" tabindex="0">
+    <section class="inspection-overview">
+      <div class="inspection-overview__head">
+        <div>
+          <span class="station-section-title"><svg class="station-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8 12l3 3 5-6"/></svg>巡视总览</span>
+          <strong>真实巡视记录</strong>
+        </div>
+        <small>{{ inspectionSyncLabel }}</small>
+      </div>
+      <div class="inspection-overview__metrics">
+        <article class="inspection-metric inspection-metric--normal">
+          <span>已巡视</span>
+          <strong>{{ inspectionOverview.normal }}</strong>
+          <small>间病房</small>
+        </article>
+        <article class="inspection-metric inspection-metric--due">
+          <span>待关注</span>
+          <strong>{{ inspectionOverview.due }}</strong>
+          <small>间病房</small>
+        </article>
+        <article class="inspection-metric inspection-metric--overdue">
+          <span>巡视超时</span>
+          <strong>{{ inspectionOverview.overdue }}</strong>
+          <small>间病房</small>
+        </article>
+      </div>
+      <ul v-if="inspectionAttentionRooms.length" class="inspection-overview__rooms">
+        <li v-for="room in inspectionAttentionRooms" :key="room.roomCode">
+          <button type="button" @click="handleRoomClick(room.roomIndex)">
+            <span>
+              <strong>{{ room.roomName }}</strong>
+              <small>
+                {{ room.latestNurseName || "巡视人员待同步" }}
+                · {{ inspectionTime(room.latestAt) }}
+              </small>
+            </span>
+            <em :class="`is-${room.state}`">{{ room.stateLabel }}</em>
+          </button>
+        </li>
+      </ul>
+      <p v-else-if="inspectionOverview.noRecord">
+        {{ inspectionOverview.noRecord }} 间病房暂无巡视记录，等待数据同步。
+      </p>
+      <p v-else>当前没有巡视超时或待关注病房。</p>
+    </section>
+
+    <section
+      v-if="focusRooms.length"
+      class="surface-panel surface-panel--focus"
+    >
+      <DashSectionHeader
+        :title="attentionRooms.length ? '重点病房' : '病房巡视'"
+        :count="focusRooms.length"
+      />
+      <ul class="focus-list">
+        <li
+          v-for="room in focusRooms"
+          :key="`${room.sickroomCode}-${room.roomIndex}`"
+        >
+          <button
+            type="button"
+            class="focus-room"
+            :class="[
+              `focus-room--${room.priority}`,
+              { 'focus-room--vital': roomHasVitalWarnings(room) },
+            ]"
+            :aria-label="`进入走廊并定位${room.sickroomName}`"
+            @click="handleRoomClick(room.roomIndex)"
+          >
+            <span
+              class="focus-room__bar"
+              :style="{ backgroundColor: room.accentColor }"
+            />
+            <svg class="station-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 21V4h12v17M2 21h20M8 8h4M8 12h4M17 9h3v12"/></svg><span class="focus-room__main">
+              <strong>{{ room.sickroomName }}</strong>
+              <span>{{ roomPatrolText(room) }}</span>
+            </span>
+            <span class="focus-room__side">
+              <em>{{ priorityLabel(room.priority) }}</em>
+              <span>{{ room.occupiedBeds }}/{{ room.totalBeds }}</span>
+            </span>
+          </button>
+        </li>
+      </ul>
+    </section>
+
+
+      </div>
+    </div>
   </section>
 </template>
 
@@ -2745,3 +2745,5 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 }
 
 </style>
+
+<style scoped lang="scss" src="../styles/nurse-workspace.scss"></style>

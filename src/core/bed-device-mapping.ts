@@ -45,6 +45,7 @@ function isTemplateOrIconImage(path: string): boolean {
 function resolveStaffPortrait(
   previous: DoorSickInfo | undefined,
   previousKey: 'visitDoctorUserPic' | 'dutyNurseUserPic',
+  current: BedSickInfoVo,
   ...candidates: unknown[]
 ): string {
   for (const candidate of candidates) {
@@ -52,6 +53,19 @@ function resolveStaffPortrait(
     if (next && !isTemplateOrIconImage(next))
       return next;
   }
+  // 缺图兜底只限已确认的同一患者及同名医护，避免换人后沿用旧头像。
+  const old = (previous ?? {}) as Record<string, unknown>;
+  const next = current as Record<string, unknown>;
+  const sharedIds = ['sickIdentifier', 'sickSerialNo', 'sickNo']
+    .filter(key => text(old[key]).trim() && text(next[key]).trim());
+  const samePatient = sharedIds.length > 0
+    && sharedIds.every(key => text(old[key]).trim() === text(next[key]).trim())
+    && !(['sickName', 'sickInTime'].some(key => text(old[key]).trim()
+      && text(next[key]).trim() && text(old[key]).trim() !== text(next[key]).trim()));
+  const staffKey = previousKey === 'visitDoctorUserPic' ? 'visitDoctorName' : 'dutyNurseName';
+  if (!samePatient || !text(next[staffKey]).trim()
+    || text(old[staffKey]).trim() !== text(next[staffKey]).trim())
+    return '';
   const last = text(previous?.[previousKey]).trim();
   if (last && !isTemplateOrIconImage(last))
     return last;
@@ -123,6 +137,7 @@ function mapBedSickInfo(
     visitDoctorUserPic: resolveStaffPortrait(
       previous,
       'visitDoctorUserPic',
+      sick,
       raw.visitDoctorUserPic,
       raw.bedDoctorUserPic,
       raw.doctorUserPic,
@@ -133,6 +148,7 @@ function mapBedSickInfo(
     dutyNurseUserPic: resolveStaffPortrait(
       previous,
       'dutyNurseUserPic',
+      sick,
       raw.dutyNurseUserPic,
       raw.nurseUserPic,
       raw.dutyNursePic,
@@ -188,6 +204,17 @@ export function applyBedDeviceInfoToTwinBed(
   const device = data.bedDeviceInfoVo;
   const labels = mapNursingLabels(data.bedSickNursingLabelList);
   const sick = mapBedSickInfo(data.bedSickInfoVo, device, labels, bed.sickInfo);
+  const previousPatient = (bed.sickInfo ?? {}) as Record<string, unknown>;
+  const nextPatient = (sick ?? {}) as Record<string, unknown>;
+  const patientChanged = !sick || ['sickIdentifier', 'sickSerialNo', 'sickNo', 'sickName', 'sickInTime']
+    .some(key => text(previousPatient[key]).trim() && text(nextPatient[key]).trim()
+      && text(previousPatient[key]).trim() !== text(nextPatient[key]).trim());
+  if (patientChanged) {
+    delete bed.latestVitals;
+    // 输液结果属于患者；设备离线、电量及独立呼叫仍由各自数据源管理。
+    if (['300', '301', '302', '305'].includes(bed.statusBarInfo?.status ?? ''))
+      delete bed.statusBarInfo;
+  }
   const bedCode = text(device.bedCode, bed.bedCode);
   const bedName = text(device.bedName, bed.bedName);
   const deviceCode = text(device.deviceCode, bed.deviceCode);

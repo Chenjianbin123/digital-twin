@@ -6,14 +6,16 @@ const config = readFileSync(new URL('../src/config/ward-interior-scene.ts', impo
 const wardScene = readFileSync(new URL('../src/core/ward-scene.ts', import.meta.url), 'utf8');
 const modelGuide = readFileSync(new URL('../docs/model-guides/ward-interior-model-configuration.md', import.meta.url), 'utf8');
 
-test('declares a seven-bed modular ward capacity', () => {
+test('documents native double room and expanded original room', () => {
   assert.match(config, /maxBeds:\s*7/);
-  assert.match(modelGuide, /一至七张床/);
+  assert.match(modelGuide, /固定双床房/);
+  assert.match(modelGuide, /保留原病房/);
 });
 
-test('caps the runtime bed list before cloning prototype modules', () => {
+test('does not truncate occupied beds in the modular path', () => {
   assert.match(wardScene, /const WARD_INTERIOR_MAX_BEDS = wardInteriorSceneConfig\.modelBedLayout\.maxBeds;/);
-  assert.match(wardScene, /const dynamicBeds = ward\.beds\.slice\(0, WARD_INTERIOR_MAX_BEDS\);/);
+  assert.match(wardScene, /\? selectOccupiedWardBeds\(ward\)\.beds\s*:/m);
+  assert.doesNotMatch(wardScene, /selectOccupiedWardBeds\(ward\)\.beds\.slice/);
   assert.match(wardScene, /this\.createBedMesh\(bed, index, dynamicBeds\.length\)/);
 });
 

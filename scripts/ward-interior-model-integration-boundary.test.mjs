@@ -53,10 +53,10 @@ test('applies baked interior camera poses at native scale without live camera de
   assert.doesNotMatch(wardScene, /console\.(?:info|log)\('\[WardScene\] 视角/);
 });
 
-test('does not flash or fall back to the generated room while loading room-v1', () => {
+test('does not flash or fall back to the generated room while loading modular ward assets', () => {
   assert.match(wardScene, /this\.roomGroup\.visible = false/);
   assert.doesNotMatch(wardScene, /using generated fallback/);
-  assert.match(wardScene, /failed to load room-v1 GLB/);
+  assert.match(wardScene, /failed to load ward assets/);
   assert.match(wardScene, /\+\+this\.wardInteriorModelLoadToken/);
   assert.match(wardScene, /disposeWardInteriorModel/);
 });

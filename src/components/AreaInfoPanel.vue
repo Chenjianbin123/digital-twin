@@ -239,7 +239,7 @@ function inspectionTime(value: string | null | undefined) {
       <ul class="monitor-list">
         <li v-for="row in bedMonitorRows" :key="row.key" class="monitor-row" :class="`monitor-row--${row.tone}`">
           <div class="monitor-row__left">
-            <span class="monitor-row__count">当前 <em>{{ row.count }}</em> {{ row.unit }}</span>
+            <span class="monitor-row__count">{{ row.label }} <em>{{ row.count }}</em> {{ row.unit }}</span>
             <div class="monitor-row__bar">
               <i :style="{ width: `${Math.max(row.percent, row.count > 0 ? 8 : 0)}%` }" />
             </div>
@@ -256,7 +256,10 @@ function inspectionTime(value: string | null | undefined) {
       <DashSectionHeader title="人员构成" />
       <div class="person-grid">
         <article v-for="item in personnelStats" :key="item.key" class="person-card" :class="`person-card--${item.tone}`">
-          <span class="person-card__ring" aria-hidden="true" />
+          <span class="person-card__ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <template v-if="item.key === 'door'"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M9 6h6v6H9zm2 12h2"/></template>
+            <template v-else><circle cx="12" cy="7" r="3"/><path d="M5 21v-3a7 7 0 0 1 14 0v3"/><path v-if="item.key === 'doctor'" d="M9 13v4a3 3 0 0 0 6 0v-4"/><path v-else-if="item.key === 'nurse'" d="M10 18h4m-2-2v4"/></template>
+          </svg></span>
           <span class="person-card__label">{{ item.label }}</span>
           <span class="person-card__value">{{ item.value }}</span>
           <span class="person-card__sub">{{ item.sub }}</span>

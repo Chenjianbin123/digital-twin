@@ -1,16 +1,20 @@
 <script setup lang="ts">
+import EntranceThemeToggle from './EntranceThemeToggle.vue';
+import type { DashboardTheme } from '@/core/use-dashboard-theme';
 import { computed } from 'vue';
-const props = defineProps<{ progress: number; phase: string }>();
+const props = defineProps<{
+  theme?: DashboardTheme; progress: number; phase: string }>();
+defineEmits<{ 'toggle-theme': [] }>();
 const displayProgress = computed(() => Number.isFinite(props.progress) ? Math.min(100, Math.max(0, Math.round(props.progress))) : 0);
 </script>
 
 <template>
-  <section class="startup-loader" aria-label="系统初始化">
+  <section class="startup-loader" :data-theme="theme ?? 'light'" aria-label="系统初始化">
     <img class="startup-loader__background" src="/images/smart-ward-nurse-station/login-bg.jpg" alt="" />
     <div class="startup-loader__shade" aria-hidden="true" />
     <header class="startup-loader__header">
       <span class="startup-loader__brand"><i aria-hidden="true">智</i>智慧病房数字孪生平台</span>
-      <span class="startup-loader__caption">空间可视 · 数据互联</span>
+      <EntranceThemeToggle :theme="theme ?? 'light'" @toggle="$emit('toggle-theme')" />
     </header>
     <div class="startup-loader__annotations" aria-hidden="true">
       <span class="startup-loader__annotation startup-loader__annotation--ward"><i />病区空间</span>

@@ -1,3 +1,5 @@
+import { toRaw } from 'vue';
+import { wardBedPatientKey } from '@/core/ward-data-binding';
 import { queryBedDeviceInfo } from '@/api/bed-device';
 import {
   applyBedDeviceInfoToTwinBed,
@@ -8,7 +10,10 @@ import { loadParsedTemplate } from '@/core/template/template-cache';
 import type { BedDeviceInfoData } from '@/types/bed-device';
 import type { TwinBedEntity } from '@/types/twin';
 
-const bedInfoCache = new Map<string, BedDeviceInfoData>();
+const BED_DETAILS_TTL_MS = 30_000;
+const pendingBedInfo = new Map<string, Promise<BedDeviceInfoData>>();
+let freshBeds = new WeakMap<TwinBedEntity, { signature: string; at: number }>();
+let cacheGeneration = 0;
 
 export interface BedDeviceLoadOptions {
   forceRefresh?: boolean;
@@ -20,18 +25,19 @@ export interface BedDeviceLoadResult {
   failed: number;
 }
 
-async function loadOneBedDeviceInfo(
-  deviceCode: string,
-  forceRefresh: boolean,
-): Promise<BedDeviceInfoData> {
-  if (!forceRefresh) {
-    const cached = bedInfoCache.get(deviceCode);
-    if (cached)
-      return structuredClone(cached);
+async function loadOneBedDeviceInfo(deviceCode: string, patientKeys: string[]): Promise<BedDeviceInfoData> {
+  // A known patient change must not join a request started for the previous patient.
+  const requestKey = JSON.stringify([deviceCode, [...new Set(patientKeys)].sort()]);
+  const pending = pendingBedInfo.get(requestKey);
+  if (pending) return pending;
+  const request = queryBedDeviceInfo(deviceCode);
+  pendingBedInfo.set(requestKey, request);
+  try {
+    return await request;
   }
-  const data = await queryBedDeviceInfo(deviceCode);
-  bedInfoCache.set(deviceCode, structuredClone(data));
-  return data;
+  finally {
+    if (pendingBedInfo.get(requestKey) === request) pendingBedInfo.delete(requestKey);
+  }
 }
 
 /**
@@ -43,6 +49,7 @@ export async function loadBedDeviceDetails(
   isCurrent: () => boolean = () => true,
   options: BedDeviceLoadOptions = {},
 ): Promise<BedDeviceLoadResult> {
+  const generation = cacheGeneration;
   const warnings: string[] = [];
   const bedGroups = new Map<string, TwinBedEntity[]>();
   let loaded = 0;
@@ -62,16 +69,30 @@ export async function loadBedDeviceDetails(
     bedGroups.set(deviceCode, group);
   }
 
-  const entries = [...bedGroups.entries()];
+  // Only reuse an already-applied, unchanged snapshot; never copy cached patients into a new bed object.
+  const entries = [...bedGroups.entries()].filter(([, group]) => {
+    const fresh = !options.forceRefresh && group.every(bed => {
+      const cached = freshBeds.get(toRaw(bed));
+      return cached && Date.now() - cached.at < BED_DETAILS_TTL_MS
+        && cached.signature === JSON.stringify(bed);
+    });
+    if (fresh) loaded += group.length;
+    return !fresh;
+  });
+  for (const [, group] of entries) {
+    for (const bed of group) freshBeds.delete(toRaw(bed));
+  }
+  const snapshots = new Map(beds.map(bed => [bed, JSON.stringify(bed)]));
   const settled = await Promise.allSettled(
-    entries.map(([deviceCode]) => loadOneBedDeviceInfo(deviceCode, !!options.forceRefresh)),
+    entries.map(([deviceCode, group]) => loadOneBedDeviceInfo(deviceCode, group.map(wardBedPatientKey))),
   );
 
   settled.forEach((result, index) => {
     const [deviceCode, group] = entries[index];
     if (result.status === 'fulfilled') {
-      if (isCurrent()) {
+      if (generation === cacheGeneration && isCurrent()) {
         group.forEach((bed) => {
+          if (snapshots.get(bed) !== JSON.stringify(bed)) return;
           if (!isBedDeviceResponseApplicable(bed, deviceCode, result.value)) {
             const responseCode = String(result.value.bedDeviceInfoVo?.deviceCode ?? '').trim() || '未知设备';
             warnings.push(
@@ -80,7 +101,8 @@ export async function loadBedDeviceDetails(
             failed += 1;
             return;
           }
-          applyBedDeviceInfoToTwinBed(bed, result.value);
+          applyBedDeviceInfoToTwinBed(bed, structuredClone(result.value));
+          freshBeds.set(toRaw(bed), { signature: JSON.stringify(bed), at: Date.now() });
           loaded += 1;
         });
       }
@@ -142,7 +164,9 @@ export async function enrichAreaBedTemplateIds(
 }
 
 export function clearBedDeviceInfoCache(): void {
-  bedInfoCache.clear();
+  cacheGeneration += 1;
+  pendingBedInfo.clear();
+  freshBeds = new WeakMap();
 }
 
 /** 旧名称保留，避免外部清理逻辑失效。 */

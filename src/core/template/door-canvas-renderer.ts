@@ -132,9 +132,16 @@ function resolveImageUrl(src?: string): string | null {
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
+    const finish = (value: HTMLImageElement | null) => {
+      clearTimeout(timeout);
+      img.onload = null;
+      img.onerror = null;
+      resolve(value);
+    };
+    const timeout = setTimeout(() => finish(null), 8000);
     img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
+    img.onload = () => finish(img);
+    img.onerror = () => finish(null);
     img.src = url;
   });
 }
@@ -497,6 +504,8 @@ function collectImageUrls(nodes: TemplateNode[], urls: Set<string>) {
 }
 
 export interface DoorRenderOptions extends RenderOptions {
+  /** Do not cache an incomplete corridor template as a successful screen. */
+  requireTemplateImages?: boolean;
   room?: TwinWardEntity;
   /** 对齐主项目 windowMode，未传时由 room.director / 模板宽高推断 */
   isHorizontal?: boolean;
@@ -525,11 +534,16 @@ export async function renderDoorTemplateToCanvas(
   collectImageUrls(template.nodes, imageUrls);
 
   const imageMap = new Map<string, HTMLImageElement>();
+  let failedImages = 0;
   await Promise.all([...imageUrls].map(async (url) => {
     const img = await loadImage(url);
     if (img)
       imageMap.set(url, img);
+    else
+      failedImages++;
   }));
+  if (options.requireTemplateImages && failedImages)
+    throw new Error(`门口屏模板图片加载失败（${failedImages} 张），请检查资源服务`);
 
   const sortedNodes = sortByZIndex(template.nodes);
   for (const node of sortedNodes)

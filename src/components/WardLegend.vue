@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { getStatusLegend } from '@/core/bed-status';
 
+defineProps<{ embedded?: boolean }>();
 const legend = getStatusLegend();
 const expanded = ref(false);
 
@@ -18,10 +19,11 @@ function isPulseState(state: string) {
 </script>
 
 <template>
-  <div class="ward-legend" :class="{ 'ward-legend--open': expanded }">
+  <div class="ward-legend" :class="{ 'ward-legend--open': expanded, 'ward-legend--embedded': embedded }">
     <button
       type="button"
       class="ward-legend__toggle"
+      :aria-expanded="expanded"
       :title="expanded ? '收起图例' : '展开图例'"
       @click="toggle"
     >
@@ -63,6 +65,15 @@ function isPulseState(state: string) {
   bottom: 10px;
   z-index: 10;
   pointer-events: none;
+
+  &--embedded {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    z-index: 4;
+    .ward-legend__toggle { min-height: 36px; }
+    .ward-legend__panel { position: absolute; bottom: 44px; right: 0; width: min(280px, calc(100vw - 64px)); box-sizing: border-box; }
+  }
 
   &__toggle {
     pointer-events: auto;

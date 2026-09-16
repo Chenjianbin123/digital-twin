@@ -160,6 +160,7 @@ onBeforeUnmount(() => {
       >
         <header class="area-switcher__header">
           <div>
+            <span class="area-switcher__eyebrow" aria-hidden="true">WARD WORKSPACE</span>
             <h2 id="area-switcher-title">切换工作病区</h2>
             <p>当前：{{ currentArea?.areaName ?? '当前病区' }}</p>
           </div>
@@ -175,11 +176,12 @@ onBeforeUnmount(() => {
         </header>
 
         <label class="area-switcher__search">
-          <span aria-hidden="true">⌕</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg>
           <span class="area-switcher__sr-only">搜索病区</span>
-          <input v-model="query" type="search" placeholder="搜索病区" :disabled="switching">
+          <input v-model="query" type="search" placeholder="搜索病区名称或编号" :disabled="switching">
         </label>
 
+        <div class="area-switcher__list-head"><span>可选病区 <strong>{{ filteredAreas.length }}</strong></span><small>{{ query ? '搜索结果' : '选择工作空间' }}</small></div>
         <div class="area-switcher__body">
           <div v-if="filteredAreas.length" class="area-switcher__list" aria-label="可切换病区">
             <button
@@ -192,12 +194,13 @@ onBeforeUnmount(() => {
               :disabled="switching"
               @click="candidateAreaId = areaOption.id"
             >
+              <svg class="area-switcher__ward-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3h14v18M3 21h18M9 21v-5h6v5M9 7h2m2 0h2M9 11h2m2 0h2"/></svg>
               <span class="area-switcher__row-copy">
                 <strong>{{ areaOption.areaName }}</strong>
                 <span>{{ areaOption.areaCode || areaOption.areaOutCode || '未设置编号' }}</span>
               </span>
               <span v-if="areaOption.id === currentAreaId" class="area-switcher__badge">当前</span>
-              <span v-else-if="areaOption.id === candidateAreaId" class="area-switcher__check" aria-hidden="true">✓</span>
+              <span v-else class="area-switcher__check" :class="{ 'area-switcher__check--selected': areaOption.id === candidateAreaId }" aria-hidden="true">{{ areaOption.id === candidateAreaId ? '✓' : '›' }}</span>
             </button>
           </div>
           <div v-else class="area-switcher__empty">未找到匹配病区</div>
@@ -503,5 +506,42 @@ onBeforeUnmount(() => {
   .area-switcher-enter-active .area-switcher__drawer,
   .area-switcher-leave-active .area-switcher__drawer { transition: none; }
   .area-switcher__spinner { animation: none; }
+}
+
+.area-switcher {
+ --switcher-accent: #7ddde1;
+ --switcher-line: #75b7ca30;
+ &__drawer { padding: 28px 24px 20px; }
+ &__header { position: relative; padding-bottom: 20px; border-bottom: 1px solid var(--switcher-line); margin-bottom: 18px; }
+ &__header::before { content: ""; position: absolute; top: -28px; left: 0; width: 56px; height: 2px; background: var(--switcher-accent); box-shadow: 62px 0 0 var(--switcher-line); }
+ &__eyebrow { display: block; color: var(--switcher-accent); font: 500 10px/1.4 "Bahnschrift", "Segoe UI", sans-serif; letter-spacing: .18em; margin-bottom: 8px; }
+ &__header h2 { font-size: 24px; letter-spacing: .04em; }
+ &__header p { margin-top: 10px; font-size: 13px; }
+ &__close { border: 1px solid var(--switcher-line); border-radius: 7px; }
+ &__search { min-height: 44px; border-radius: 8px; margin-bottom: 14px; }
+ &__search svg { width: 18px; height: 18px; flex-shrink: 0; }
+ &__list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 13px; color: #b1cbd6; }
+ &__list-head strong { padding: 2px 7px; margin-left: 5px; border-radius: 4px; background: #75b7ca14; color: var(--switcher-accent); font-variant-numeric: tabular-nums; }
+ &__list-head small { font-size: 12px; }
+ &__list { gap: 9px; }
+ &__row { min-height: 76px; padding: 14px; border-radius: 8px; gap: 12px; }
+ &__row-copy { flex: 1; }
+ &__row-copy strong { font-size: 15px; font-weight: 600; }
+ &__row-copy span { font-family: "Bahnschrift", "Segoe UI", sans-serif; font-size: 12px; letter-spacing: .04em; }
+ &__ward-icon { width: 36px; height: 40px; flex: 0 0 36px; padding: 7px; border: 1px solid var(--switcher-line); border-radius: 6px; color: #75adc0; background: #75b7ca0b; }
+ &__row--candidate &__ward-icon { color: var(--switcher-accent); background: #75b7ca20; }
+ &__check { opacity: .55; font-size: 22px; }
+ &__check--selected { opacity: 1; font-size: 16px; }
+ &__badge { font-size: 11px; font-weight: 600; padding: 4px 7px; }
+ &__footer { margin-top: 12px; padding-top: 16px; }
+ &__hint { font-size: 13px; }
+ &__confirm { min-height: 46px; border-radius: 7px; font-size: 14px; font-weight: 600; }
+ @media(max-width: 400px) {
+  &__drawer { padding: 20px 14px 14px; }
+  &__header { padding-bottom: 14px; margin-bottom: 14px; }
+  &__header h2 { font-size: 21px; }
+  &__row { padding: 12px; gap: 10px; }
+  &__ward-icon { width: 30px; flex-basis: 30px; height: 34px; padding: 5px; }
+ }
 }
 </style>

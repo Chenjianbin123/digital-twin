@@ -76,3 +76,23 @@ test('runtime glass avoids refraction pass and only fixed lights cache shadows',
   assert.equal(key.shadow.autoUpdate,false);
   assert.equal(key.shadow.needsUpdate,true);
 });
+
+test('wide wall display preserves face-frame alignment and does not accumulate on repeated preparation', () => {
+  const model = modelFixture();
+  const face = model.getObjectByName('Screen_Main') as THREE.Mesh;
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(3.33, 1.53, .09), new THREE.MeshStandardMaterial());
+  frame.name = 'Screen_Main_Frame'; frame.position.copy(face.position); model.add(frame);
+  const size = (node: THREE.Object3D) => new THREE.Box3().setFromObject(node).getSize(new THREE.Vector3());
+  prepareReferenceStation(model);
+  assert.ok(Math.abs(size(face).x - 3.24 * 1.24) < 1e-6);
+  assert.ok(Math.abs(size(face).y - 1.44 * .88) < 1e-6);
+  assert.ok(Math.abs(face.position.y - 2.1) < 1e-6);
+  assert.deepEqual(frame.position.toArray(), face.position.toArray());
+  assert.ok(Math.abs(model.getObjectByName('Clock_Display')!.position.x - 2.31) < 1e-6);
+  const before = face.matrixWorld.toArray();
+  prepareReferenceStation(model);
+  assert.deepEqual(face.matrixWorld.toArray(), before);
+  const displays = bindReferenceStationDisplays(model, () => new THREE.Texture());
+  assert.deepEqual(displays[0].screen.position.toArray(), face.position.toArray());
+  assert.deepEqual(displays[0].screen.scale.toArray(), face.scale.toArray());
+});

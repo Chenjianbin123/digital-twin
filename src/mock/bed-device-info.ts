@@ -2,8 +2,8 @@ import type { BedDeviceInfoData } from '@/types/bed-device';
 import type { DoorDeviceInfo } from '@/types/ward';
 import { MOCK_DOOR_DEVICE_LIST } from './door-device-list';
 
-function buildBedDeviceInfo(room: DoorDeviceInfo, bedCode: string): BedDeviceInfoData | null {
-  const bed = room.bedDeviceList.find(item => item.bedCode === bedCode);
+function buildBedDeviceInfo(room: DoorDeviceInfo, deviceCode: string): BedDeviceInfoData | null {
+  const bed = room.bedDeviceList.find(item => item.deviceCode === deviceCode);
   if (!bed)
     return null;
   const patient = room.doorSickInfoList.find(item => item.bedCode === bed.bedCode);

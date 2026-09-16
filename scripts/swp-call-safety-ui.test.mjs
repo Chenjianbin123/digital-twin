@@ -23,7 +23,7 @@ assert.match(panel, /@keyframes alert-card-scan/);
 assert.match(panel, /@keyframes alert-call-ring/);
 assert.match(panel, /prefers-reduced-motion: reduce/);
 assert.match(station, /呼叫提醒/);
-assert.match(station, /:max-items="4"/);
+assert.match(station, /:max-items="8"/);
 assert.match(viewModel, /calling: live\.callingCount/);
 assert.ok(
   (store.match(/if \(!task \|\| isSourceManagedTask\(task\)\)\s*return;/g) ?? []).length >= 1,

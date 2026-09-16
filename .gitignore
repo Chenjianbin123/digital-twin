@@ -8,5 +8,8 @@ dist
 .superpowers
 artifacts
 recordings
+output/
+.playwright-cli/
+**/__pycache__/
 *.log
 tsconfig.tsbuildinfo

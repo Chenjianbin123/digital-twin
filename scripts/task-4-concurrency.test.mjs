@@ -487,7 +487,7 @@ try {
     assert.deepEqual(store.statusHistory, []);
   });
 
-  await run('env responses relocate by sickroom id and newest request wins', async () => {
+  await run('env requests do not overlap and responses relocate by sickroom id', async () => {
     const pending = [];
     globalThis.fetch = (_url, options) => new Promise(resolve => {
       const sickroomId = JSON.parse(options.body).sickroomId;
@@ -518,18 +518,19 @@ try {
 
     startEnvFetcher(store, 5);
     try {
-      await waitFor(() => pending.filter(item => item.sickroomId === 101).length >= 2);
-      const room101 = pending.filter(item => item.sickroomId === 101);
+      await waitFor(() => pending.filter(item => item.sickroomId === 101).length === 1);
+      await new Promise(resolve => setTimeout(resolve, 20));
+      assert.equal(pending.filter(item => item.sickroomId === 101).length, 1);
       store.area = { ...store.area, rooms: [store.area.rooms[1], store.area.rooms[0]] };
-      room101[1].resolve('28');
-      await new Promise(resolve => setTimeout(resolve, 0));
-      room101[0].resolve('21');
-      await new Promise(resolve => setTimeout(resolve, 0));
-
-      assert.equal(updates.length, 1);
+      pending.find(item => item.sickroomId === 101).resolve('21');
+      await waitFor(() => updates.length === 1);
       assert.equal(updates[0][0], 1);
       assert.equal(updates[0][1], '101');
-      assert.equal(updates[0][2].temp, '28℃');
+      assert.equal(updates[0][2].temp, '21℃');
+      await waitFor(() => pending.filter(item => item.sickroomId === 101).length === 2);
+      pending.filter(item => item.sickroomId === 101)[1].resolve('28');
+      await waitFor(() => updates.length === 2);
+      assert.equal(updates[1][2].temp, '28℃');
     }
     finally {
       stopEnvFetcher();

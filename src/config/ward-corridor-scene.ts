@@ -1,4 +1,8 @@
+import type { CorridorRoomBinding } from '../core/ward-corridor-layout.ts';
+
 export interface WardCorridorSceneConfig {
+  /** Keyed by selected area ID. Missing entry means a schematic, not a surveyed floor plan. */
+  areaLayouts: Record<string, readonly CorridorRoomBinding[]>;
   model: {
     url: string;
     rotationX: number;
@@ -77,10 +81,11 @@ export interface WardCorridorSceneConfig {
   };
 }
 
-/** 病房走廊模型、镜头和备用几何参数。六门节点顺序同时决定病房绑定顺序。 */
+/** 十门模型契约。实际房号由病区配置或会话内稳定展示槽位绑定。 */
 export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
+  areaLayouts: {},
   model: {
-    url: "/models/hospital-corridor/3-v4.glb?v=20260827-3v1-model-v1",
+    url: '/models/hospital-corridor/3-v-1-optimized.glb?v=20260912-lossless',
     rotationX: 0,
     slotCount: 10,
     doorNodeNames: [
