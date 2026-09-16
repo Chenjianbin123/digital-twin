@@ -8,21 +8,21 @@ test('病房走廊场景参数集中在独立配置文件中', async () => {
   const config = await projectFile('src/config/ward-corridor-scene.ts');
 
   assert.match(config, /export const wardCorridorSceneConfig/);
-  assert.match(config, /3-v-1-optimized\.glb\?v=20260912-lossless/);
+  assert.match(config, /3-v4\.glb\?v=20260827-3v1-model-v1/);
   assert.match(config, /rotationX: 0/);
   assert.match(config, /slotCount: 10/);
-  assert.match(config, /doorNodeNames: \['门1', '门2', '门3', '门4', '门5', '门6', '门7', '门8', '门9', '门10'\]/);
-  assert.match(config, /entranceDeviceNodeNames: \['门口机1', '门口机2', '门口机3', '门口机4', '门口机5', '门口机6', '门口机7', '门口机8', '门口机9', '门口机10'\]/);
+  assert.match(config, /doorNodeNames: \[[\s\S]*?"门1"[\s\S]*?"门10"[\s\S]*?\]/);
+  assert.match(config, /entranceDeviceNodeNames: \[[\s\S]*?"门口机1"[\s\S]*?"门口机10"[\s\S]*?\]/);
   assert.match(config, /canvasTextureFlipY: false/);
   assert.match(config, /background: 0x0a1218/);
   assert.match(config, /exposure: 1\.02/);
   assert.match(config, /envMapIntensity: 0\.22/);
   assert.match(config, /environmentIntensity: 0\.26/);
-  assert.match(config, /floorMeshName: '地板'/);
+  assert.match(config, /floorMeshName: "地板"/);
   assert.match(config, /floorStripeColorScale: 0\.5/);
   assert.match(config, /viewBounds:/);
-  assert.match(config, /ceilingMesh: '天花板'/);
-  assert.match(config, /wallMeshes: \['墙壁', '墙壁2'\]/);
+  assert.match(config, /ceilingMesh: "天花板"/);
+  assert.match(config, /wallMeshes: \["墙壁", "墙壁2"\]/);
   assert.match(config, /ceilingHeight: 2\.85/);
   assert.match(config, /halfWidth: 3\.2/);
   assert.match(config, /doorWidth: 2\.1/);

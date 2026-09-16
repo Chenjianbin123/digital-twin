@@ -2,8 +2,8 @@
 
 ## 模型与节点
 当前入口为 sceneType = ward，配置位于 src/config/ward-corridor-scene.ts。
-模型使用 3-v-1-optimized.glb，rotationX = 0，slotCount = 10，CanvasTexture flipY = false。
-原始 3-v-1.glb 保留，可通过切换 model.url 回退。替换资源后递增 URL 版本号。
+模型使用 3-v4.glb，rotationX = 0，slotCount = 10，CanvasTexture flipY = false。
+3-v-1.glb / 3-v-1-optimized.glb 仍可保留作回退；替换资源后递增 URL 版本号。
 
 节点契约为门1至门10、门口机1至门口机10；GLTFLoader 可能将多材质门解析成 Group，绑定与相机均按完整命名节点处理。
 地板、天花板、墙壁、墙壁2用于相机边界，不可随意重命名。

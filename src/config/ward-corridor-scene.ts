@@ -85,7 +85,7 @@ export interface WardCorridorSceneConfig {
 export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
   areaLayouts: {},
   model: {
-    url: '/models/hospital-corridor/3-v-1-optimized.glb?v=20260912-lossless',
+    url: "/models/hospital-corridor/3-v4.glb?v=20260827-3v1-model-v1",
     rotationX: 0,
     slotCount: 10,
     doorNodeNames: [
