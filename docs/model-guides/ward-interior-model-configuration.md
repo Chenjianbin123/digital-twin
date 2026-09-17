@@ -4,7 +4,7 @@
 
 `src/config/ward-interior-scene.ts` 配置两个资源：
 
-- `model.url`：`/models/smart-ward-interior/room-refined-v1.glb?v=20260915`，固定病房外壳。
+- `model.url`：`/models/smart-ward-interior/room-refined-v1.glb?v=20260917`，固定病房外壳。
 - `modular.unitUrl`：`/models/smart-ward-interior/bed-refined-v1.glb?v=20260915`，可复用的完整床位单元。
 
 资源位于 `public/models/smart-ward-interior/`。重新导出时递增版本参数。原始提供文件未覆盖；床组和独立设备保持原生比例，扩容只在运行时延长建筑中段。

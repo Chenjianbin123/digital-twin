@@ -26,7 +26,7 @@ export class WardRoomExpansion {
         room.attach(node);
       }
     }
-    const structuralNames = new Set(['外壳', '灯', '底边条']);
+    const structuralNames = new Set(['外壳', '灯']);
     let minZ = Infinity;
     let maxZ = -Infinity;
     for (const node of room.children) {

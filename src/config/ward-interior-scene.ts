@@ -94,7 +94,7 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
     sharedEquipmentOffset: [2, 0, 2.4],
   },
   model: {
-    url: '/models/smart-ward-interior/room-refined-v1.glb?v=20260915',
+    url: '/models/smart-ward-interior/room-refined-v1.glb?v=20260917',
     baseSize: { width: 12, height: 3.92, depth: 9 },
     canvasTextureFlipY: false,
   },

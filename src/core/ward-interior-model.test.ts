@@ -99,7 +99,7 @@ function createBakedScreen(name: string, z: number) {
 test('uses the versioned smart ward interior model URL', () => {
   assert.equal(
     WARD_INTERIOR_MODEL_URL,
-    '/models/smart-ward-interior/room-refined-v1.glb?v=20260915',
+    '/models/smart-ward-interior/room-refined-v1.glb?v=20260917',
   );
 });
 
