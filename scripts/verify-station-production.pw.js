@@ -64,7 +64,7 @@ async page => {
     });
     const failedPage=await page.context().newPage();
     try {
-      await failedPage.route('**/nurse-station-design-v2.glb?*',route=>route.abort());
+      await failedPage.route('**/nurse-station-design-v3.glb?*',route=>route.abort());
       await failedPage.goto(page.url());
       await failedPage.waitForFunction(()=>document.querySelector('#state')?.textContent==='fallback');
       const model=await failedPage.evaluate(()=>fixture.scene.nurseStationModel);

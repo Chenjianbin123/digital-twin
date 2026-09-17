@@ -34,7 +34,7 @@ assert.match(dashboardFrame, /dash-frame--minimal/);
 assert.match(app, /<div :class="\{ 'ward-navigation-dock': isWardInterior \}">/);
 assert.match(app, /id="ward-tools-host"/);
 assert.match(app, /<DashboardBottomNav/);
-assert.match(sceneConfig, /nurse-station-design-v2\.glb\?v=20260909/);
+assert.match(sceneConfig, /nurse-station-design-v3\.glb\?v=20260909/);
 assert.match(sceneConfig, /maxSize: \{ x: 11\.04, y: 2\.3895, z: 5\.102 \}/);
 assert.doesNotMatch(areaScene, /NURSE_STATION_MODEL_HEIGHT_SCALE/);
 assert.doesNotMatch(areaScene, /model\.scale\.y\s*\*=/);
