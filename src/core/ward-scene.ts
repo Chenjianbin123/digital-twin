@@ -2398,6 +2398,7 @@ export class WardScene {
     const selection = this.createSelectionMeshes(resolveBedStatus(bed));
     group.add(selection.ring, selection.pulse, selection.beam);
     const indicator = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), new THREE.MeshStandardMaterial({ color: 0x2fe6a6 }));
+    indicator.visible = false;
     indicator.position.set(0.2, 0.92, -0.83);
     group.add(indicator);
     const mattress = unit.body.getObjectByProperty('isMesh', true) as THREE.Mesh;
@@ -2578,6 +2579,7 @@ export class WardScene {
         emissiveIntensity: 0.85,
       }),
     );
+    indicator.visible = false;
     indicator.position.set(-BED_WIDTH / 2 + 0.14, 1.42, HEADBOARD_Z + 0.22);
     group.add(indicator);
     const vitalWarningRing = this.createVitalWarningRing(group);

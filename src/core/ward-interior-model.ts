@@ -669,6 +669,7 @@ export function cloneWardInteriorBed(
 
   const mattress = requireMesh(group, 'Bed_1_Mattress');
   const indicator = requireMesh(group, 'SmartBedhead_1_Status');
+  indicator.visible = false;
   const bedTerminalScreen = requireMesh(group, 'BedTerminalSurface');
   const bedsideMonitor = group.getObjectByName('Monitor_1_Screen') as THREE.Mesh | undefined;
   if (bedsideMonitor?.parent)
@@ -700,6 +701,7 @@ export function bindWardInteriorBakedBed(
 
   ensureMattressStandardMaterial(mattress);
   cloneMeshMaterial(indicator);
+  indicator.visible = false;
   cloneMeshMaterial(bedTerminalScreen);
   const bedsideMonitor = group.getObjectByName('Monitor_1_Screen') as THREE.Mesh | undefined;
   if (bedsideMonitor?.parent)

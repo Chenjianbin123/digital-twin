@@ -56,6 +56,8 @@ export function createWardBedUnit(prototype: THREE.Object3D, bedCode: string): W
   }
   const infusion = requireNode(group, 'InfusionEquipment');
   infusion.visible = false;
+  // Bedhead status orb is not shown in the twin; keep geometry for asset compatibility.
+  group.getObjectByName('球体')?.traverse(node => { node.visible = false; });
   return { group, body, screen, infusion };
 }
 
