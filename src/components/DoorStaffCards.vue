@@ -458,7 +458,7 @@ function roleClass(roleKey: string) {
 
   border-radius: 12px;
   box-shadow:
-    0 12px 26px rgba(0, 0, 0, 0.14),
+    0 12px 26px rgba(20, 40, 48, 0.14),
     inset 0 1px 0 rgba(193, 247, 255, 0.1),
     inset 3px 0 0 rgba(77, 224, 255, 0.42);
 
@@ -667,7 +667,7 @@ function roleClass(roleKey: string) {
 
   box-shadow:
     inset 0 1px 0 rgba(193, 247, 255, 0.08),
-    0 8px 18px rgba(0, 0, 0, 0.12);
+    0 8px 18px rgba(20, 40, 48, 0.12);
 
   transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
 
@@ -687,7 +687,7 @@ function roleClass(roleKey: string) {
     transform: translateY(-1px);
     border-color: rgba(131, 237, 255, 0.45);
     box-shadow:
-      0 12px 26px rgba(0, 0, 0, 0.18),
+      0 12px 26px rgba(20, 40, 48, 0.18),
       0 0 20px rgba(55, 206, 255, 0.12),
       inset 0 1px 0 rgba(193, 247, 255, 0.12);
   }
@@ -764,9 +764,9 @@ function roleClass(roleKey: string) {
 
     background:
       linear-gradient(155deg, rgba(22, 53, 68, 0.58), rgba(4, 16, 30, 0.42)),
-      rgba(255, 255, 255, 0.035);
+      rgba(247, 251, 253, 0.035);
 
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(247, 251, 253, 0.1);
 
   }
 
@@ -791,14 +791,14 @@ function roleClass(roleKey: string) {
     position: relative;
     padding: 3px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(247, 251, 253, 0.06);
 
     &::before {
       content: '';
       position: absolute;
       inset: 0;
       border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.12);
+      border: 2px solid rgba(247, 251, 253, 0.12);
       pointer-events: none;
     }
   }
@@ -833,9 +833,9 @@ function roleClass(roleKey: string) {
 
     object-fit: cover;
 
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(247, 251, 253, 0.2);
 
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 4px 12px rgba(20, 40, 48, 0.25);
 
 
 
@@ -863,7 +863,7 @@ function roleClass(roleKey: string) {
 
       font-weight: 700;
 
-      color: #fff;
+      color: #f7fbfd;
 
       background: linear-gradient(135deg, #546e7a, #37474f);
 
@@ -939,7 +939,7 @@ function roleClass(roleKey: string) {
 
     color: #b0bec5;
 
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(247, 251, 253, 0.08);
 
   }
 
@@ -951,7 +951,7 @@ function roleClass(roleKey: string) {
 
     font-weight: 600;
 
-    color: #fff;
+    color: #f7fbfd;
 
     text-align: center;
 
@@ -1023,7 +1023,7 @@ function roleClass(roleKey: string) {
     linear-gradient(150deg, rgba(11, 47, 72, 0.9), rgba(4, 18, 34, 0.86)),
     rgba(4, 15, 28, 0.9);
   box-shadow:
-    0 24px 70px rgba(0, 0, 0, 0.46),
+    0 24px 70px rgba(20, 40, 48, 0.46),
     0 0 44px rgba(72, 213, 255, 0.18),
     inset 0 1px 0 rgba(204, 249, 255, 0.14);
   animation: staff-intro-card-in 180ms cubic-bezier(0.22, 0.8, 0.24, 1) both;
@@ -1092,7 +1092,7 @@ function roleClass(roleKey: string) {
 
   strong {
     display: block;
-    color: #fff;
+    color: #f7fbfd;
     font-size: 24px;
     font-weight: 900;
     letter-spacing: 0.04em;

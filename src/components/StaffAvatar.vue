@@ -113,8 +113,8 @@ const placeholderText = computed(() => props.placeholderLabel || props.name.char
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
-  border: 2px solid rgba(255, 255, 255, 0.28);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32);
+  border: 2px solid rgba(247, 251, 253, 0.28);
+  box-shadow: 0 4px 14px rgba(20, 40, 48, 0.32);
 
   &--lg {
     width: 60px;
@@ -158,7 +158,7 @@ const placeholderText = computed(() => props.placeholderLabel || props.name.char
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    color: #fff;
+    color: #f7fbfd;
     background: linear-gradient(135deg, #546e7a, #37474f);
 
     &.staff-avatar--lg {
@@ -179,13 +179,13 @@ const placeholderText = computed(() => props.placeholderLabel || props.name.char
 
     &.staff-avatar--doctor {
       background:
-        radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.42), transparent 18%),
+        radial-gradient(circle at 32% 26%, rgba(247, 251, 253, 0.42), transparent 18%),
         linear-gradient(135deg, #48d5ff, #0277bd 58%, #06456f);
     }
 
     &.staff-avatar--nurse {
       background:
-        radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.38), transparent 18%),
+        radial-gradient(circle at 32% 26%, rgba(247, 251, 253, 0.38), transparent 18%),
         linear-gradient(135deg, #ff94c2, #d82b73 58%, #7b1b58);
     }
   }

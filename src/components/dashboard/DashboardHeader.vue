@@ -297,7 +297,7 @@ const dataStatusLabel = computed(() => ({
     font-size: dash-font(22);
     font-weight: 800;
     letter-spacing: 0;
-    color: #fff;
+    color: #f7fbfd;
     white-space: normal;
     text-shadow:
       0 0 20px rgba(77, 208, 255, 0.65),
@@ -561,7 +561,7 @@ const dataStatusLabel = computed(() => ({
       background:
         linear-gradient(180deg, rgba(10, 38, 54, 0.5), rgba(5, 23, 36, 0.3)),
         rgba(4, 22, 33, 0.18);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      box-shadow: inset 0 1px 0 rgba(247, 251, 253, 0.035);
       backdrop-filter: blur(5px);
     }
 

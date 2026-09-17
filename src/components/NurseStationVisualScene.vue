@@ -123,7 +123,7 @@ const emit = defineEmits<{
     z-index: 4;
     background:
       radial-gradient(ellipse at 50% 42%, rgba(255, 252, 246, 0.05) 0%, transparent 62%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 22%);
+      linear-gradient(180deg, rgba(247, 251, 253, 0.025), transparent 22%);
     mix-blend-mode: screen;
     opacity: 0.16;
   }
@@ -195,7 +195,7 @@ const emit = defineEmits<{
           rgba(91, 225, 255, 0.04) 55px,
           transparent 56px
         );
-      mask-image: linear-gradient(to bottom, transparent, #000 28%, #000 72%, transparent);
+      mask-image: linear-gradient(to bottom, transparent, #0b1418 28%, #0b1418 72%, transparent);
       opacity: 0.5;
       transform: perspective(420px) rotateX(58deg) scale(1.35) translateY(18%);
       transform-origin: center bottom;
@@ -229,7 +229,7 @@ const emit = defineEmits<{
       linear-gradient(90deg, transparent 0 49.8%, rgba(105, 237, 255, 0.16) 50%, transparent 50.2%),
       linear-gradient(0deg, transparent 0 49.8%, rgba(105, 237, 255, 0.12) 50%, transparent 50.2%);
     background-size: 180px 180px;
-    mask-image: radial-gradient(circle at center, #000 0%, transparent 70%);
+    mask-image: radial-gradient(circle at center, #0b1418 0%, transparent 70%);
     opacity: 0.18;
   }
 

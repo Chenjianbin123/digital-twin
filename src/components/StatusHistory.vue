@@ -40,7 +40,7 @@ function categoryLabel(category: StatusHistoryEntry['category']) {
   background: rgba(6, 20, 36, 0.28);
   border: 1px solid rgba(77, 208, 255, 0.11);
   border-radius: 10px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(247, 251, 253, 0.035);
 
   h3 {
     margin: 0 0 8px;
@@ -71,7 +71,7 @@ function categoryLabel(category: StatusHistoryEntry['category']) {
     gap: 4px;
     padding: 6px 0;
     font-size: 11px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(247, 251, 253, 0.05);
     color: rgba(174, 204, 229, 0.82);
   }
 

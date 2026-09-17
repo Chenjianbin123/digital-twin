@@ -1,0 +1,17 @@
+[
+  {"el":"login body ink on deep bg","fg":"#ecfaff","bg":"#061621","size":"body"},
+  {"el":"login muted on deep bg","fg":"#abc7d0","bg":"#061621","size":"body"},
+  {"el":"login brand kicker","fg":"#8fe7e2","bg":"#061621","size":"large"},
+  {"el":"login masthead","fg":"#bed9e1","bg":"#061621","size":"body"},
+  {"el":"login field head","fg":"#c9e0e6","bg":"#0b2535","size":"body"},
+  {"el":"login input text","fg":"#effdff","bg":"#0d3040","size":"body"},
+  {"el":"login placeholder","fg":"#95b2c0","bg":"#0d3040","size":"body"},
+  {"el":"login CTA label","fg":"#06313b","bg":"#65dcd6","size":"large"},
+  {"el":"login card foot","fg":"#9fbfca","bg":"#0b2535","size":"body"},
+  {"el":"login error text","fg":"#ffdda7","bg":"#714c25","size":"body"},
+  {"el":"station theme surface text","fg":"#294b59","bg":"#f7fbfd","size":"body"},
+  {"el":"station switcher confirm","fg":"#f7fbfd","bg":"#267d92","size":"large"},
+  {"el":"station switcher search tint","fg":"#32788a","bg":"#f7fbfd","size":"body"},
+  {"el":"dash header action white on cyan","fg":"#f7fbfd","bg":"#267d92","size":"large"},
+  {"el":"muted gray on light panel","fg":"#576770","bg":"#edf6f7","size":"body"}
+]

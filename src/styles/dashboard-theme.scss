@@ -1,3 +1,11 @@
+/* Shared paper/ink tokens used by light theme surfaces (anti-slop: tinted, not pure bw). */
+.digital-twin {
+  --dash-paper: #f7fbfd;
+  --dash-ink: #0b1418;
+  --dash-shadow: rgba(20, 40, 48, 0.22);
+  --dash-highlight: rgba(247, 251, 253, 0.08);
+}
+
 /* 深色侧栏沿用原护士站蓝青色阶；仅恢复颜色，不改变工作区布局。 */
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace {
   --workspace-surface: #0c202d;
@@ -24,7 +32,7 @@
 /* 主题仅作用于外围工作台，不改变模型材质、模型内屏幕和登录场景。
    使用显式覆盖优先级兼容既有组件 scoped 样式，避免主题依赖组件加载顺序。 */
 .digital-twin[data-theme='light'] {
-  --station-surface: #ffffff;
+  --station-surface: #f7fbfd;
   --station-inset: #f5f8f7;
   --station-border: #d8e2df;
   --station-muted: #5a716f;
@@ -40,9 +48,9 @@
   .nurse-panel { scrollbar-color: #afc4bb #eef2f0; }
   .nurse-panel :is(span, p, small, strong, h2, h3, em, summary) { color: #4f6865 !important; text-shadow: none !important; }
   .nurse-panel :is(.station-hero__eyebrow, .station-section-title, .dash-head__title, .alert-task__head strong, .focus-room__main strong) { color: #294c48 !important; }
-  .nurse-panel :is(.station-hero, .inspection-overview, .handoff-card, .data-health, .surface-panel, .nurse-metric-chart, .nurse-panel__details, .alert-task-panel) { background: #fff !important; border-color: #d7e2dc !important; box-shadow: none !important; }
+  .nurse-panel :is(.station-hero, .inspection-overview, .handoff-card, .data-health, .surface-panel, .nurse-metric-chart, .nurse-panel__details, .alert-task-panel) { background: #f7fbfd !important; border-color: #d7e2dc !important; box-shadow: none !important; }
   .nurse-panel :is(.inspection-metric, .metric-item, .focus-room, .data-health__freshness-item, .env-card, .ops-row, .alert-task-panel__more) { background: #f3f7f4 !important; border-color: #dce5df !important; box-shadow: none !important; }
-  .nurse-panel .alert-task { background: #fff !important; border-color: #e3e9e5 !important; border-left-color: var(--task-accent) !important; }
+  .nurse-panel .alert-task { background: #f7fbfd !important; border-color: #e3e9e5 !important; border-left-color: var(--task-accent) !important; }
   .nurse-panel .alert-task--critical { --task-accent: #b95567; }
   .nurse-panel .alert-task--high { --task-accent: #a67525; }
   .nurse-panel .alert-task__severity { color: #a13d51 !important; background: #faebee !important; }
@@ -111,7 +119,7 @@
   --workspace-muted: #536e79;
   --workspace-line: #d5e2e7;
   background: var(--workspace-surface) !important;
-  .station-hero { background: linear-gradient(110deg, #ffffff, #edf6f7) !important; }
+  .station-hero { background: linear-gradient(110deg, #f7fbfd, #edf6f7) !important; }
   .workspace-tabs { background: linear-gradient(180deg, #dbe9ef, #edf4f7); border-top: 2px solid #75b8c6; border-bottom-color: #c6dae2; box-shadow: inset 0 1px 0 #ffffff80; }
   .workspace-tabs button { border-color: #c1d6df !important; }
   .workspace-scroll { background: linear-gradient(180deg, #eaf2f6 0, #f0f5f6 160px); }
@@ -119,7 +127,7 @@
   .workspace-tabs button[aria-selected='true'] { color: #176574 !important; background: linear-gradient(110deg, #dceff2, #edf7f9) !important; border-color: #96c5cf !important; }
   .workspace-tabs button[aria-selected='true']::after { box-shadow: none; }
   .workspace-scroll { scrollbar-color: #a4bec6 transparent; }
-  .alert-task--workspace { background: linear-gradient(110deg, #f7fbfd, #ffffff 55%) !important; border: 1px solid #cddfe7 !important; box-shadow: inset 0 1px 0 #ffffff, 0 2px 5px #23445405 !important; }
+  .alert-task--workspace { background: linear-gradient(110deg, #f7fbfd, #f7fbfd 55%) !important; border: 1px solid #cddfe7 !important; box-shadow: inset 0 1px 0 #f7fbfd, 0 2px 5px #23445405 !important; }
   .alert-task__head strong, .station-hero__eyebrow { color: #233e49 !important; }
   .alert-task__subtitle, .alert-task__details summary { color: #536e79 !important; }
   .alert-task__signal { background: #f5f8fa; border-color: #dce8eb; }
@@ -179,14 +187,14 @@
 }
 
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
- .metric-item { background: linear-gradient(135deg, #ffffff, #edf6f9) !important; border: 1px solid #cbdee7 !important; box-shadow: inset 0 2px 0 #83c4d038 !important; }
+ .metric-item { background: linear-gradient(135deg, #f7fbfd, #edf6f9) !important; border: 1px solid #cbdee7 !important; box-shadow: inset 0 2px 0 #83c4d038 !important; }
  .metric-item > strong { color: #247184 !important; }
  .metric-item--alert > strong { color: #b43c57 !important; }
  .metric-item__icon { color: #548e9f; }
  .metric-item__progress { background: #dce9ef !important; }
  .metric-item__progress i { background: #4798aa !important; }
  .handoff-card li { background: #f9fcfd !important; border-color: #d2e2e9 !important; }
- .data-health ul { border-color: #d2e2e9; background: #ffffff; }
+ .data-health ul { border-color: #d2e2e9; background: #f7fbfd; }
  .data-health li:nth-child(odd) { background: #edf5f8; }
  .data-health__freshness-item { background: #f9fcfd !important; border-color: #d2e2e9 !important; }
 }
@@ -222,12 +230,12 @@
  .area-switcher__header p, .area-switcher__row-copy span, .area-switcher__empty, .area-switcher__hint { color: #536e79; }
  .area-switcher__close { color: #536e79; }
  .area-switcher__close:hover:not(:disabled) { color: #245e70; background: #dcebf1; }
- .area-switcher__search { color: #347e91; background: #fff; border-color: #c5dce5; }
+ .area-switcher__search { color: #32788a; background: #f7fbfd; border-color: #c5dce5; }
  .area-switcher__search input { color: #233e49; }
  .area-switcher__search input::placeholder { color: #647f8b; }
  .area-switcher__search:focus-within { border-color: #398a9e; box-shadow: 0 0 0 3px #398a9e1a; }
  .area-switcher__body { scrollbar-color: #9bbac7 #edf4f7; }
- .area-switcher__row { color: #294b59; background: #fff; border-color: #cddfe7; }
+ .area-switcher__row { color: #294b59; background: #f7fbfd; border-color: #cddfe7; }
  .area-switcher__row:hover:not(:disabled) { border-color: #75adbd; background: #f5fafc; }
  .area-switcher__row--candidate { border-color: #479aaf; background: #e0f0f5; box-shadow: inset 3px 0 #479aaf; }
  .area-switcher__badge { color: #205f71; background: #cbe9f1; }
@@ -236,9 +244,9 @@
  .area-switcher__footer { border-color: #cddfe7; }
  .area-switcher__error { color: #a13d51; }
  .area-switcher__status-dot { background: #32856d; box-shadow: none; }
- .area-switcher__confirm { color: #fff; background: #267d92; }
+ .area-switcher__confirm { color: #f7fbfd; background: #267d92; }
  .area-switcher__confirm:hover:not(:disabled) { background: #1e687c; }
- .area-switcher__spinner { border-color: #ffffff45; border-top-color: #fff; }
+ .area-switcher__spinner { border-color: #ffffff45; border-top-color: #f7fbfd; }
  :is(.area-switcher__close, .area-switcher__row, .area-switcher__confirm):focus-visible { outline-color: #267d92; }
 }
 
@@ -247,7 +255,7 @@
  .area-switcher__drawer { background: radial-gradient(ellipse at 100% 0, #cbe7f180, transparent 42%), #f0f5f8; }
  .area-switcher__list-head { color: #536e79; }
  .area-switcher__ward-icon { color: #558899; background: #f0f7fa; }
- .area-switcher__row { box-shadow: inset 0 1px 0 #fff; }
+ .area-switcher__row { box-shadow: inset 0 1px 0 #f7fbfd; }
  .area-switcher__row--candidate { background: linear-gradient(110deg, #dceff5, #f1f9fc); }
  .area-switcher__row--candidate .area-switcher__ward-icon { color: #24768a; background: #cde8f1; }
 }
@@ -263,9 +271,9 @@
  &--ward { --loader-accent: #3d6fa7; --loader-soft: #5588bf20; --loader-glow: #5588bf0c; }
  &--interior { --loader-accent: #287d70; --loader-soft: #459c8720; --loader-glow: #459c870c; }
  &[data-state='fallback'] { --loader-accent: #926018; --loader-soft: #b4843020; --loader-glow: #b484300c; }
- .scene-switch-loader__card { border-color: #bfd6e1; background: radial-gradient(ellipse at 0 0, var(--loader-soft), transparent 60%), linear-gradient(135deg, #fff, #f2f8fb); box-shadow: 0 24px 70px #294c601c, inset 0 1px #fff; }
+ .scene-switch-loader__card { border-color: #bfd6e1; background: radial-gradient(ellipse at 0 0, var(--loader-soft), transparent 60%), linear-gradient(135deg, #f7fbfd, #f2f8fb); box-shadow: 0 24px 70px #294c601c, inset 0 1px #f7fbfd; }
  .scene-switch-loader__eyebrow, .scene-switch-loader__visual-caption, .scene-switch-loader__headline p, .scene-switch-loader__route-node small, .scene-switch-loader__route-note, .scene-switch-loader__progress-meta, .scene-switch-loader__card-foot p { color: #536f7e; }
- .scene-switch-loader__icon { background: linear-gradient(135deg, var(--loader-soft), #f7fbfd); box-shadow: inset 0 1px #fff, 0 10px 24px #355a6c12; }
+ .scene-switch-loader__icon { background: linear-gradient(135deg, var(--loader-soft), #f7fbfd); box-shadow: inset 0 1px #f7fbfd, 0 10px 24px #355a6c12; }
  .scene-switch-loader__visual-plane { box-shadow: 0 8px 0 -1px #e3eef4, 0 9px 0 var(--loader-soft); }
  .scene-switch-loader__route { background: #eaf3f7; border-color: #d0e2ea; }
  .scene-switch-loader__route-node strong { color: #294b59; }
@@ -274,7 +282,7 @@
  .scene-switch-loader__progress { background: #d3e5ed; }
  .scene-switch-loader__card-foot { border-color: #d0e2ea; }
  .scene-switch-loader__actions button { color: #365e6d; background: #edf5f8; border-color: #bfd6e1; }
- .scene-switch-loader__actions .scene-switch-loader__retry { color: #fff; background: var(--loader-accent); border-color: var(--loader-accent); }
+ .scene-switch-loader__actions .scene-switch-loader__retry { color: #f7fbfd; background: var(--loader-accent); border-color: var(--loader-accent); }
 }
 .digital-twin[data-theme='light'] .dash-bottom {
  :is(.dash-bottom__main, .dash-bottom__sub) { background: #f5fafcf5 !important; border-color: #bdd6e1 !important; }
@@ -456,7 +464,7 @@
  .room-card__enter { display: flex; justify-content: center; align-items: center; min-height: 42px; margin-top: 12px; background: var(--room-accent); color: #0b2735 !important; letter-spacing: .03em; }
  .room-card__enter:hover { filter: brightness(1.07); background: var(--room-accent); }
 }
-.digital-twin[data-theme='light'] .digital-twin__panel--overlay .room-card .room-card__enter { color: #fff !important; }
+.digital-twin[data-theme='light'] .digital-twin__panel--overlay .room-card .room-card__enter { color: #f7fbfd !important; }
 @media(max-width: 400px) {
  .digital-twin .digital-twin__panel--overlay .room-card {
   .room-card__body { padding: 12px; }

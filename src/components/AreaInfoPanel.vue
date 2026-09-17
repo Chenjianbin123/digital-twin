@@ -456,7 +456,7 @@ function inspectionTime(value: string | null | undefined) {
   background: rgba(6, 20, 36, 0.26);
   border: 1px solid rgba(77, 208, 255, 0.11);
   border-radius: 10px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(247, 251, 253, 0.035);
   border-bottom-color: rgba(77, 208, 255, 0.11);
 
   &:last-child {
@@ -485,7 +485,7 @@ function inspectionTime(value: string | null | undefined) {
     font-size: dash-font(15);
     font-weight: 700;
     letter-spacing: 1.2px;
-    color: #ffffff;
+    color: #f7fbfd;
     white-space: nowrap;
     text-shadow: 0 0 12px rgba(77, 208, 255, 0.25);
   }
@@ -633,7 +633,7 @@ function inspectionTime(value: string | null | undefined) {
       font-style: normal;
       font-weight: 800;
       font-size: dash-font(14);
-      color: #fff;
+      color: #f7fbfd;
       margin: 0 2px;
     }
   }
@@ -704,7 +704,7 @@ function inspectionTime(value: string | null | undefined) {
   border-radius: 8px;
   text-align: center;
   overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(247, 251, 253, 0.035);
 
   &__ring {
     width: 46px;
@@ -776,12 +776,12 @@ function inspectionTime(value: string | null | undefined) {
     rgba(7, 22, 39, 0.22);
   border: 1px solid rgba(77, 208, 255, 0.15);
   transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s, background 0.18s;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  box-shadow: 0 8px 18px rgba(20, 40, 48, 0.14), inset 0 1px 0 rgba(247, 251, 253, 0.035);
 
   &:hover {
     transform: translateX(-2px);
     border-color: rgba(77, 208, 255, 0.42);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2), 0 0 18px rgba(77, 208, 255, 0.13);
+    box-shadow: 0 12px 24px rgba(20, 40, 48, 0.2), 0 0 18px rgba(77, 208, 255, 0.13);
   }
 
   &--focused {
@@ -818,7 +818,7 @@ function inspectionTime(value: string | null | undefined) {
   &__name {
     font-size: dash-font(14);
     font-weight: 700;
-    color: #fff;
+    color: #f7fbfd;
     line-height: 1.25;
   }
 
@@ -1009,7 +1009,7 @@ function inspectionTime(value: string | null | undefined) {
   padding: 6px 8px;
   font-size: dash-font(10);
   background: rgba(3, 17, 32, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(247, 251, 253, 0.045);
   border-left: 2px solid var(--bed-accent, #00d4ff);
   border-radius: 6px;
 

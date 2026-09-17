@@ -444,7 +444,7 @@ defineExpose({ getCorridorDiagnostics: () => scene?.getCorridorDiagnostics() });
     border-radius: 6px;
     background: rgba(5, 20, 28, 0.84);
     color: rgba(225, 250, 248, 0.92);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 8px 24px rgba(20, 40, 48, 0.22);
     backdrop-filter: blur(10px);
     pointer-events: auto;
 
@@ -497,7 +497,7 @@ defineExpose({ getCorridorDiagnostics: () => scene?.getCorridorDiagnostics() });
     border-radius: 12px;
     background: rgba(4, 18, 28, 0.9);
     color: #dffaff;
-    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
+    box-shadow: 0 10px 32px rgba(20, 40, 48, 0.28);
     pointer-events: auto;
 
     header {

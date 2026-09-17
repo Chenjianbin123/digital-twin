@@ -147,7 +147,7 @@ function clampedPercent(value: number | null | undefined) {
   padding: 9px 10px;
   border: 1px solid rgba(104, 229, 255, 0.1);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(247, 251, 253, 0.04);
 
   > span,
   &__detail {
@@ -178,7 +178,7 @@ function clampedPercent(value: number | null | undefined) {
     margin-top: 7px;
     overflow: hidden;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(247, 251, 253, 0.08);
 
     i {
       display: block;

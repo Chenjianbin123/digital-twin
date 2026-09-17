@@ -248,7 +248,7 @@ onBeforeUnmount(() => {
     flex-direction: column;
     color: #e5f6fb;
     background: #081c29;
-    box-shadow: -18px 0 42px rgba(0, 0, 0, 0.46);
+    box-shadow: -18px 0 42px rgba(20, 40, 48, 0.46);
   }
 
   &__header {
@@ -263,7 +263,7 @@ onBeforeUnmount(() => {
       font-size: 20px;
       line-height: 1.35;
       letter-spacing: 0;
-      color: #fff;
+      color: #f7fbfd;
     }
 
     p {
@@ -286,7 +286,7 @@ onBeforeUnmount(() => {
     line-height: 1;
     cursor: pointer;
 
-    &:hover:not(:disabled) { color: #fff; background: rgba(77, 208, 255, 0.1); }
+    &:hover:not(:disabled) { color: #f7fbfd; background: rgba(77, 208, 255, 0.1); }
     &:focus-visible { outline: 2px solid #8ce4f5; outline-offset: 2px; }
     &:disabled { opacity: 0.4; cursor: not-allowed; }
   }
@@ -459,7 +459,7 @@ onBeforeUnmount(() => {
     cursor: pointer;
 
     &:hover:not(:disabled) { background: #83e3f7; }
-    &:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    &:focus-visible { outline: 2px solid #f7fbfd; outline-offset: 3px; }
     &:disabled { opacity: 0.45; cursor: not-allowed; }
   }
 

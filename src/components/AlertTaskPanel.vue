@@ -376,7 +376,7 @@ function taskStatusText(task: AlertTask) {
   box-shadow:
     inset 0 1px 0 rgba(210, 246, 255, 0.07),
     inset 0 0 36px rgba(24, 126, 171, 0.06),
-    0 14px 30px rgba(0, 0, 0, 0.2);
+    0 14px 30px rgba(20, 40, 48, 0.2);
   backdrop-filter: blur(12px) saturate(1.12);
   padding-bottom: 8px;
 
@@ -581,13 +581,13 @@ function taskStatusText(task: AlertTask) {
   gap: 10px;
   min-height: 82px;
   padding: 10px 10px 14px 13px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(247, 251, 253, 0.08);
   border-radius: 10px;
   background:
     linear-gradient(104deg, rgba(15, 44, 63, 0.56), rgba(5, 16, 28, 0.54) 54%, rgba(17, 29, 44, 0.5));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    0 7px 18px rgba(0, 0, 0, 0.16);
+    inset 0 1px 0 rgba(247, 251, 253, 0.035),
+    0 7px 18px rgba(20, 40, 48, 0.16);
   animation: alert-card-enter 0.42s cubic-bezier(0.2, 0.72, 0.18, 1) both;
   transition:
     transform 0.22s ease,
@@ -610,8 +610,8 @@ function taskStatusText(task: AlertTask) {
     border-color: rgba(255, 82, 82, 0.42);
     box-shadow:
       inset 3px 0 0 rgba(255, 82, 82, 0.88),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 7px 18px rgba(0, 0, 0, 0.16);
+      inset 0 1px 0 rgba(247, 251, 253, 0.04),
+      0 7px 18px rgba(20, 40, 48, 0.16);
   }
 
   &--high {
@@ -664,7 +664,7 @@ function taskStatusText(task: AlertTask) {
       inset 3px 0 0 rgba(255, 89, 105, 0.92),
       inset 0 1px 0 rgba(255, 230, 235, 0.07),
       0 0 0 1px rgba(255, 88, 105, 0.06),
-      0 9px 22px rgba(0, 0, 0, 0.2);
+      0 9px 22px rgba(20, 40, 48, 0.2);
 
     &::after {
       border-color: rgba(91, 210, 255, 0.46);
@@ -693,7 +693,7 @@ function taskStatusText(task: AlertTask) {
       inset 3px 0 0 rgba(255, 74, 96, 0.98),
       inset 0 1px 0 rgba(255, 226, 230, 0.08),
       0 0 0 1px rgba(255, 74, 96, 0.08),
-      0 10px 24px rgba(0, 0, 0, 0.22);
+      0 10px 24px rgba(20, 40, 48, 0.22);
 
     .alert-task__signal {
       border-color: rgba(255, 191, 112, 0.72);
@@ -730,7 +730,7 @@ function taskStatusText(task: AlertTask) {
     box-shadow:
       inset 3px 0 0 rgba(255, 158, 75, 0.86),
       inset 0 1px 0 rgba(255, 235, 215, 0.06),
-      0 8px 20px rgba(0, 0, 0, 0.18);
+      0 8px 20px rgba(20, 40, 48, 0.18);
 
     .alert-task__severity {
       background: rgba(222, 112, 42, 0.72);
@@ -787,7 +787,7 @@ function taskStatusText(task: AlertTask) {
     strong {
       min-width: 0;
       overflow: hidden;
-      color: #fff;
+      color: #f7fbfd;
       font-size: 13px;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -841,7 +841,7 @@ function taskStatusText(task: AlertTask) {
 
   &__severity {
     padding: 2px 6px;
-    color: #fff;
+    color: #f7fbfd;
     background: rgba(255, 82, 82, 0.72);
   }
 
@@ -866,7 +866,7 @@ function taskStatusText(task: AlertTask) {
     span {
       padding: 2px 6px;
       color: rgba(198, 221, 238, 0.78);
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(247, 251, 253, 0.06);
     }
 
     .alert-task__meta-wait {
@@ -1004,7 +1004,7 @@ function taskStatusText(task: AlertTask) {
   &__ghost {
     border: 1px solid rgba(180, 215, 235, 0.2);
     color: rgba(216, 235, 248, 0.86);
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(247, 251, 253, 0.06);
 
     &--handling {
       border-color: rgba(77, 208, 255, 0.58);
@@ -1026,7 +1026,7 @@ function taskStatusText(task: AlertTask) {
     border-color: rgba(116, 220, 255, 0.38);
     box-shadow:
       inset 3px 0 0 rgba(93, 213, 255, 0.72),
-      0 10px 24px rgba(0, 0, 0, 0.22),
+      0 10px 24px rgba(20, 40, 48, 0.22),
       0 0 18px rgba(58, 176, 223, 0.06);
     transform: translateY(-1px);
   }
@@ -1035,7 +1035,7 @@ function taskStatusText(task: AlertTask) {
     border-color: rgba(255, 112, 125, 0.72);
     box-shadow:
       inset 3px 0 0 rgba(255, 89, 105, 0.95),
-      0 10px 25px rgba(0, 0, 0, 0.24),
+      0 10px 25px rgba(20, 40, 48, 0.24),
       0 0 18px rgba(255, 89, 105, 0.08);
   }
 
@@ -1047,7 +1047,7 @@ function taskStatusText(task: AlertTask) {
     border-color: rgba(255, 134, 133, 0.9);
     box-shadow:
       inset 3px 0 0 rgba(255, 74, 96, 1),
-      0 10px 26px rgba(0, 0, 0, 0.26),
+      0 10px 26px rgba(20, 40, 48, 0.26),
       0 0 20px rgba(255, 74, 96, 0.12);
   }
 }

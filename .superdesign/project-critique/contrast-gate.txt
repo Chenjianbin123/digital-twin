@@ -1,0 +1,18 @@
+element                          fg        bg        ratio  need  verdict
+login body ink on deep bg        #ecfaff   #061621   17.20   4.5  ok
+login muted on deep bg           #abc7d0   #061621   10.32   4.5  ok
+login brand kicker               #8fe7e2   #061621   12.84     3  ok
+login masthead                   #bed9e1   #061621   12.41   4.5  ok
+login field head                 #c9e0e6   #0b2535   11.49   4.5  ok
+login input text                 #effdff   #0d3040   13.32   4.5  ok
+login placeholder                #95b2c0   #0d3040    6.21   4.5  ok
+login CTA label                  #06313b   #65dcd6    8.45     3  ok
+login card foot                  #9fbfca   #0b2535    8.10   4.5  ok
+login error text                 #ffdda7   #714c25    5.85   4.5  ok
+station theme surface text       #294b59   #f7fbfd    8.99   4.5  ok
+station switcher confirm         #f7fbfd   #267d92    4.55     3  ok
+station switcher search tint     #32788a   #f7fbfd    4.82   4.5  ok
+dash header action white on cyan #f7fbfd   #267d92    4.55     3  ok
+muted gray on light panel        #576770   #edf6f7    5.34   4.5  ok
+
+== CONTRAST GATE PASS ==

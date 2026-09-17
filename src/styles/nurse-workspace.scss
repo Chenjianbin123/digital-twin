@@ -122,7 +122,7 @@
 .nurse-panel.nurse-workspace .station-hero {
   position: relative; isolation: isolate; overflow: hidden;
   padding: 22px 24px 14px;
-  &::before { content: ""; pointer-events: none; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, transparent 31px, #84dce908 32px), linear-gradient(transparent 31px, #84dce908 32px); background-size: 32px 32px; mask-image: linear-gradient(90deg, transparent 35%, #000); }
+  &::before { content: ""; pointer-events: none; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, transparent 31px, #84dce908 32px), linear-gradient(transparent 31px, #84dce908 32px); background-size: 32px 32px; mask-image: linear-gradient(90deg, transparent 35%, #0b1418); }
   &::after { content: ""; pointer-events: none; position: absolute; top: 0; left: 24px; width: 64px; height: 2px; background: #80e6df; box-shadow: 68px 0 0 #80e6df36; }
   .station-hero__overview-head { flex-wrap: nowrap; gap: 12px; }
   .station-hero__identity-icon { width: 44px; height: 48px; flex-basis: 44px; padding: 10px; border-radius: 0; clip-path: polygon(0 0, 75% 0, 100% 22%, 100% 100%, 25% 100%, 0 78%); }

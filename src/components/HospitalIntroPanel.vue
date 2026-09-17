@@ -34,7 +34,7 @@ function handleLogoError() {
 }
 
 const visibleMetrics = computed(() =>
-  (props.keyMetrics ?? []).filter(m => m.value != null && m.value !== '' && m.value !== '—'),
+  (props.keyMetrics ?? []).filter(m => m.value != null && m.value !== '' && m.value !== '-'),
 );
 
 const hasContent = computed(() =>
@@ -162,7 +162,7 @@ const hasContent = computed(() =>
     background: rgba(6, 22, 40, 0.4);
     border: 1px solid rgba(77, 208, 255, 0.18);
     border-radius: 8px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow: inset 0 1px 0 rgba(247, 251, 253, 0.04);
   }
 
   &__metric-body {
@@ -206,7 +206,7 @@ const hasContent = computed(() =>
     height: 24px;
     object-fit: contain;
     border-radius: 4px;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(247, 251, 253, 0.9);
     padding: 2px;
   }
 

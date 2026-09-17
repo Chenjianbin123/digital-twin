@@ -1059,18 +1059,18 @@ onBeforeUnmount(() => {
     border: 1px solid rgba(255, 183, 77, 0.42);
     border-radius: 10px;
     background: linear-gradient(135deg, rgba(30, 14, 18, 0.72), rgba(6, 22, 38, 0.72));
-    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.26), inset 3px 0 0 rgba(255, 183, 77, 0.9);
+    box-shadow: 0 16px 34px rgba(20, 40, 48, 0.26), inset 3px 0 0 rgba(255, 183, 77, 0.9);
     backdrop-filter: blur(10px);
     pointer-events: auto;
 
     &--critical {
       border-color: rgba(255, 82, 82, 0.5);
-      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.26), inset 3px 0 0 rgba(255, 82, 82, 0.95);
+      box-shadow: 0 16px 34px rgba(20, 40, 48, 0.26), inset 3px 0 0 rgba(255, 82, 82, 0.95);
     }
 
     &--medium {
       border-color: rgba(77, 208, 255, 0.34);
-      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.26), inset 3px 0 0 rgba(77, 208, 255, 0.78);
+      box-shadow: 0 16px 34px rgba(20, 40, 48, 0.26), inset 3px 0 0 rgba(77, 208, 255, 0.78);
     }
 
     &--handling {
@@ -1093,7 +1093,7 @@ onBeforeUnmount(() => {
     strong {
       display: block;
       margin-top: 5px;
-      color: #fff;
+      color: #f7fbfd;
       font-size: 17px;
       line-height: 1.2;
     }
@@ -1175,7 +1175,7 @@ onBeforeUnmount(() => {
   &__locate-status {
     padding: 4px 8px;
     color: rgba(226, 244, 255, 0.86);
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(247, 251, 253, 0.08);
   }
 
   &__locate-notice {
@@ -1188,7 +1188,7 @@ onBeforeUnmount(() => {
     border: 1px solid rgba(255, 190, 90, 0.42);
     border-radius: 8px;
     background: rgba(52, 34, 18, 0.92);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+    box-shadow: 0 12px 28px rgba(20, 40, 48, 0.24);
     color: #ffe0a5;
     font-size: 12px;
     font-weight: 750;
@@ -1251,7 +1251,7 @@ onBeforeUnmount(() => {
     background: linear-gradient(180deg, rgba(12, 58, 68, 0.52), rgba(6, 31, 45, 0.62));
     box-shadow:
       0 8px 18px rgba(0, 18, 26, 0.18),
-      0 0 0 1px rgba(255, 255, 255, 0.025) inset,
+      0 0 0 1px rgba(247, 251, 253, 0.025) inset,
       inset 0 0 10px rgba(170, 255, 246, 0.045);
     color: rgba(234, 255, 253, 0.9);
     font: 800 11px/1 inherit;
@@ -1268,7 +1268,7 @@ onBeforeUnmount(() => {
     }
 
     &:focus-visible {
-      outline: 2px solid #ffffff;
+      outline: 2px solid #f7fbfd;
       outline-offset: 3px;
     }
 
@@ -1395,10 +1395,10 @@ onBeforeUnmount(() => {
     padding-top: 50px;
     border-left-color: rgba(100, 231, 255, 0.42);
     box-shadow:
-      -24px 0 58px rgba(0, 0, 0, 0.34),
+      -24px 0 58px rgba(20, 40, 48, 0.34),
       -2px 0 30px rgba(40, 204, 245, 0.13),
       inset 2px 0 0 rgba(176, 243, 255, 0.12),
-      inset -1px 0 0 rgba(0, 0, 0, 0.14);
+      inset -1px 0 0 rgba(20, 40, 48, 0.14);
 
     @include down($bp-md) {
       width: 100%;
@@ -1522,10 +1522,10 @@ onBeforeUnmount(() => {
       rgba(6, 18, 32, var(--panel-glass-alpha));
     border-left: 1px solid var(--panel-border);
     box-shadow:
-      -18px 0 42px rgba(0, 0, 0, 0.24),
+      -18px 0 42px rgba(20, 40, 48, 0.24),
       -1px 0 18px rgba(40, 204, 245, 0.08),
       inset 1px 0 0 rgba(176, 243, 255, 0.08),
-      inset -1px 0 0 rgba(0, 0, 0, 0.12);
+      inset -1px 0 0 rgba(20, 40, 48, 0.12);
     backdrop-filter: blur(16px) saturate(135%);
     -webkit-backdrop-filter: blur(16px) saturate(135%);
     will-change: background-position;
@@ -1618,10 +1618,10 @@ onBeforeUnmount(() => {
         rgba(6, 18, 32, var(--panel-glass-alpha));
       border-left-color: rgba(77, 208, 255, 0.28);
       box-shadow:
-        -14px 0 34px rgba(0, 0, 0, 0.22),
+        -14px 0 34px rgba(20, 40, 48, 0.22),
         -1px 0 18px rgba(40, 204, 245, 0.07),
         inset 1px 0 0 rgba(176, 243, 255, 0.06),
-        inset -1px 0 0 rgba(0, 0, 0, 0.1);
+        inset -1px 0 0 rgba(20, 40, 48, 0.1);
 
       @include down($bp-md) {
         width: 100%;
@@ -1676,10 +1676,10 @@ onBeforeUnmount(() => {
         rgba(6, 18, 32, var(--panel-glass-alpha));
       border-left-color: rgba(83, 222, 255, 0.5);
       box-shadow:
-        -24px 0 54px rgba(0, 0, 0, 0.3),
+        -24px 0 54px rgba(20, 40, 48, 0.3),
         -2px 0 26px rgba(64, 214, 255, 0.16),
         inset 2px 0 0 rgba(176, 243, 255, 0.13),
-        inset -1px 0 0 rgba(0, 0, 0, 0.16);
+        inset -1px 0 0 rgba(20, 40, 48, 0.16);
 
       &::before {
         height: 2px;
@@ -1724,7 +1724,7 @@ onBeforeUnmount(() => {
         border: 1px solid rgba(83, 222, 255, 0.24);
         border-radius: 12px;
         box-shadow:
-          0 12px 28px rgba(0, 0, 0, 0.14),
+          0 12px 28px rgba(20, 40, 48, 0.14),
           inset 0 1px 0 rgba(193, 247, 255, 0.1),
           inset 3px 0 0 rgba(77, 224, 255, 0.52);
       }
@@ -1897,7 +1897,7 @@ onBeforeUnmount(() => {
 .workspace-tools summary { cursor: pointer; padding: 10px; border-radius: 6px; }
 .workspace-tools > div { position: absolute; right: 0; top: calc(100% + 8px); min-width: 160px; padding: 12px; border: 1px solid #74969e50; border-radius: 8px; background: #102630; box-shadow: 0 8px 24px #03131c30; }
 .digital-twin[data-theme='light'] .workspace-tools { color: #45665a; }
-.digital-twin[data-theme='light'] .workspace-tools > div { background: #fff; border-color: #d9e4dc; }
+.digital-twin[data-theme='light'] .workspace-tools > div { background: #f7fbfd; border-color: #d9e4dc; }
 .digital-twin__main--station .digital-twin__panel { padding-top: 56px; }
 .digital-twin__main--station .digital-twin__panel-body { min-height: 0; overflow: hidden; }
 @media(min-width:1024px) {

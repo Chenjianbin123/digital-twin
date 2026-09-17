@@ -9,9 +9,9 @@ const metrics = computed(() => {
   const vm = props.viewModel;
   const available = (key: string) => vm.dataFreshnessItems.some(item => item.key === key && (item.status === 'ready' || item.syncedAt));
   return [
-    { label: '在床患者', value: available('ward') ? vm.metrics.occupied : '—', unit: '人' },
-    { label: '患者呼叫', value: available('events') ? vm.metrics.calling : '—', unit: '项', alert: available('events') && vm.metrics.calling > 0 },
-    { label: '在线设备', value: available('ward') ? vm.metrics.deviceOnline : '—', unit: '台' },
+    { label: '在床患者', value: available('ward') ? vm.metrics.occupied : '-', unit: '人' },
+    { label: '患者呼叫', value: available('events') ? vm.metrics.calling : '-', unit: '项', alert: available('events') && vm.metrics.calling > 0 },
+    { label: '在线设备', value: available('ward') ? vm.metrics.deviceOnline : '-', unit: '台' },
   ];
 });
 </script>
@@ -28,7 +28,7 @@ const metrics = computed(() => {
       <dl><div v-for="metric in metrics" :key="metric.label"><dt>{{ metric.label }}</dt><dd :class="{ 'is-alert': metric.alert }">{{ metric.value }}<small>{{ metric.unit }}</small></dd></div></dl>
       <footer :class="{ 'is-warning': viewModel.realtime.status !== 'ready' }">
         <span>● {{ viewModel.realtime.label }}</span>
-        <p v-if="viewModel.realtime.status !== 'ready'">{{ viewModel.realtime.detail }}；未获取项显示“—”，已有数值请核对。</p>
+        <p v-if="viewModel.realtime.status !== 'ready'">{{ viewModel.realtime.detail }}；未获取项显示“-”，已有数值请核对。</p>
       </footer>
     </div>
   </aside>

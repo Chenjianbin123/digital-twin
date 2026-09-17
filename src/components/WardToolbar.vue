@@ -194,7 +194,7 @@ const emit = defineEmits<{
     display: flex;
     padding: 3px;
     gap: 2px;
-    background: rgba(0, 0, 0, 0.25);
+    background: rgba(20, 40, 48, 0.25);
     border-radius: 8px;
     flex-shrink: 0;
   }
@@ -203,8 +203,8 @@ const emit = defineEmits<{
     padding: 6px 10px;
     font-size: 13px;
     color: #c5d0db;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(247, 251, 253, 0.06);
+    border: 1px solid rgba(247, 251, 253, 0.08);
     border-radius: 6px;
     cursor: pointer;
     max-width: 160px;
@@ -236,7 +236,7 @@ const emit = defineEmits<{
 
     &:hover:not(:disabled) {
       color: #c5d0db;
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(247, 251, 253, 0.06);
     }
 
     &:disabled {
@@ -250,11 +250,11 @@ const emit = defineEmits<{
     }
 
     &--ghost {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(247, 251, 253, 0.06);
+      border: 1px solid rgba(247, 251, 253, 0.08);
 
       &:hover:not(:disabled) {
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(247, 251, 253, 0.1);
       }
     }
 

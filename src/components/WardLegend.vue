@@ -81,7 +81,7 @@ function isPulseState(state: string) {
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(247, 251, 253, 0.12);
     border-radius: 20px;
     background: rgba(10, 18, 28, 0.72);
     backdrop-filter: blur(8px);
@@ -114,9 +114,9 @@ function isPulseState(state: string) {
     padding: 10px 12px;
     background: rgba(10, 18, 28, 0.88);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(247, 251, 253, 0.08);
     border-radius: 10px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 8px 24px rgba(20, 40, 48, 0.35);
   }
 
   &__hint {

@@ -417,7 +417,7 @@ function alertTime(value?: string) {
 
             class="nursing-tag"
 
-            :style="{ '--tag-color': tag.labelColor, '--tag-text-color': tag.labelTextColor ?? '#fff' }"
+            :style="{ '--tag-color': tag.labelColor, '--tag-text-color': tag.labelTextColor ?? '#f7fbfd' }"
 
           >
 
@@ -860,7 +860,7 @@ function alertTime(value?: string) {
       rgba(6, 20, 36, 0.28);
     border-color: rgba(83, 222, 255, 0.2);
     box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.12),
+      0 10px 24px rgba(20, 40, 48, 0.12),
       inset 0 1px 0 rgba(193, 247, 255, 0.08),
       inset 3px 0 0 rgba(77, 224, 255, 0.22);
 
@@ -893,7 +893,7 @@ function alertTime(value?: string) {
     border-left: 3px solid rgba(83, 222, 255, 0.82);
     border-radius: 10px;
     box-shadow:
-      0 12px 26px rgba(0, 0, 0, 0.16),
+      0 12px 26px rgba(20, 40, 48, 0.16),
       inset 0 1px 0 rgba(193, 247, 255, 0.1),
       inset 0 0 20px rgba(47, 199, 238, 0.06);
 
@@ -924,7 +924,7 @@ function alertTime(value?: string) {
       margin: 0;
       padding-right: 92px;
       font-size: dash-font(22);
-      color: #fff;
+      color: #f7fbfd;
       line-height: 1.2;
       letter-spacing: 0.04em;
       text-shadow: 0 0 16px rgba(77, 224, 255, 0.35);
@@ -965,12 +965,12 @@ function alertTime(value?: string) {
     border: 1px solid rgba(255, 183, 77, 0.34);
     border-radius: 10px;
     background: linear-gradient(135deg, rgba(54, 28, 10, 0.28), rgba(6, 20, 36, 0.34));
-    box-shadow: inset 3px 0 0 rgba(255, 183, 77, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    box-shadow: inset 3px 0 0 rgba(255, 183, 77, 0.9), inset 0 1px 0 rgba(247, 251, 253, 0.035);
 
     &--critical {
       border-color: rgba(255, 82, 82, 0.42);
       background: linear-gradient(135deg, rgba(64, 15, 24, 0.34), rgba(6, 20, 36, 0.34));
-      box-shadow: inset 3px 0 0 rgba(255, 82, 82, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      box-shadow: inset 3px 0 0 rgba(255, 82, 82, 0.95), inset 0 1px 0 rgba(247, 251, 253, 0.035);
     }
 
     &--vital {
@@ -1000,7 +1000,7 @@ function alertTime(value?: string) {
     &--medium {
       border-color: rgba(77, 208, 255, 0.24);
       background: linear-gradient(135deg, rgba(8, 40, 56, 0.3), rgba(6, 20, 36, 0.34));
-      box-shadow: inset 3px 0 0 rgba(77, 208, 255, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      box-shadow: inset 3px 0 0 rgba(77, 208, 255, 0.78), inset 0 1px 0 rgba(247, 251, 253, 0.035);
     }
 
     &--handling {
@@ -1037,13 +1037,13 @@ function alertTime(value?: string) {
     }
 
     span {
-      color: #fff;
+      color: #f7fbfd;
       background: rgba(255, 82, 82, 0.78);
     }
 
     strong {
       min-width: 0;
-      color: #fff;
+      color: #f7fbfd;
       font-size: dash-font(14);
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1065,7 +1065,7 @@ function alertTime(value?: string) {
       padding: 3px 7px;
       border-radius: 999px;
       color: rgba(205, 226, 240, 0.8);
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(247, 251, 253, 0.06);
       font-size: dash-font(11);
       font-weight: 750;
     }
@@ -1157,7 +1157,7 @@ function alertTime(value?: string) {
     border: 1px solid rgba(83, 222, 255, 0.22);
     box-shadow:
       inset 0 1px 0 rgba(193, 247, 255, 0.08),
-      0 6px 16px rgba(0, 0, 0, 0.1);
+      0 6px 16px rgba(20, 40, 48, 0.1);
     transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 
     &::before {
@@ -1245,7 +1245,7 @@ function alertTime(value?: string) {
 
     border-radius: 10px;
     box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.12),
+      0 10px 24px rgba(20, 40, 48, 0.12),
       inset 0 1px 0 rgba(193, 247, 255, 0.08),
       inset 3px 0 0 rgba(77, 224, 255, 0.22);
 
@@ -1322,7 +1322,7 @@ function alertTime(value?: string) {
       align-items: center;
       gap: 8px;
       padding: 7px 8px;
-      border: 1px solid rgba(255, 255, 255, 0.055);
+      border: 1px solid rgba(247, 251, 253, 0.055);
       border-radius: 7px;
       background: rgba(3, 16, 28, 0.34);
     }
@@ -1416,7 +1416,7 @@ function alertTime(value?: string) {
 
     border-radius: 10px;
     box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.12),
+      0 10px 24px rgba(20, 40, 48, 0.12),
       inset 0 1px 0 rgba(193, 247, 255, 0.08),
       inset 3px 0 0 rgba(77, 224, 255, 0.22);
 
@@ -1528,7 +1528,7 @@ function alertTime(value?: string) {
 
     border-radius: 10px;
     box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.12),
+      0 10px 24px rgba(20, 40, 48, 0.12),
       inset 0 1px 0 rgba(193, 247, 255, 0.08),
       inset 3px 0 0 rgba(77, 224, 255, 0.22);
 
@@ -1544,7 +1544,7 @@ function alertTime(value?: string) {
 
     align-items: center;
 
-    h3 { margin: 0; font-size: dash-font(18); color: #fff; }
+    h3 { margin: 0; font-size: dash-font(18); color: #f7fbfd; }
 
   }
 
@@ -1565,7 +1565,7 @@ function alertTime(value?: string) {
     transition: 180ms ease;
 
     &:hover {
-      color: #fff;
+      color: #f7fbfd;
       border-color: rgba(128, 239, 255, 0.7);
       background: rgba(81, 212, 255, 0.18);
       box-shadow: 0 0 14px rgba(64, 229, 255, 0.24);
@@ -1634,8 +1634,8 @@ function alertTime(value?: string) {
       width: 5px;
       height: 5px;
       border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 0 8px rgba(255, 255, 255, 0.92);
+      background: #f7fbfd;
+      box-shadow: 0 0 8px rgba(247, 251, 253, 0.92);
       animation: ward-panel-dot-pulse 1.8s ease-in-out infinite;
     }
 
@@ -1663,7 +1663,7 @@ function alertTime(value?: string) {
     border-radius: 5px;
     color: var(--tag-text-color);
     background: linear-gradient(135deg, color-mix(in srgb, var(--tag-color) 84%, #17324a), color-mix(in srgb, var(--tag-color) 42%, #06111e));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.13), 0 0 10px color-mix(in srgb, var(--tag-color) 26%, transparent);
+    box-shadow: inset 0 1px 0 rgba(247, 251, 253,0.13), 0 0 10px color-mix(in srgb, var(--tag-color) 26%, transparent);
     font-size: dash-font(11);
     font-weight: 650;
     line-height: 1.25;
@@ -1735,7 +1735,7 @@ function alertTime(value?: string) {
       padding: 8px;
       border-radius: 8px;
       background: rgba(6, 20, 36, 0.32);
-      border: 1px solid rgba(255, 255, 255, 0.045);
+      border: 1px solid rgba(247, 251, 253, 0.045);
     }
 
     small,
@@ -1832,7 +1832,7 @@ function alertTime(value?: string) {
     border: 1px solid rgba(83, 222, 255, 0.2);
     border-radius: 10px;
     box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.12),
+      0 10px 24px rgba(20, 40, 48, 0.12),
       inset 0 1px 0 rgba(193, 247, 255, 0.08),
       inset 3px 0 0 rgba(77, 224, 255, 0.22);
 
@@ -1880,7 +1880,7 @@ function alertTime(value?: string) {
       gap: 8px;
       padding: 9px 0;
       border: 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(247, 251, 253, 0.06);
       background: transparent;
       color: inherit;
       text-align: left;
@@ -1992,7 +1992,7 @@ function alertTime(value?: string) {
     border: 1px solid rgba(83, 222, 255, 0.22);
     border-radius: 12px;
     box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.12),
+      0 10px 24px rgba(20, 40, 48, 0.12),
       inset 0 1px 0 rgba(193, 247, 255, 0.08),
       inset 3px 0 0 rgba(77, 224, 255, 0.22);
   }
@@ -2042,7 +2042,7 @@ function alertTime(value?: string) {
     border-color: rgba(119, 231, 255, 0.16);
     box-shadow:
       inset 0 1px 0 rgba(193, 247, 255, 0.08),
-      0 5px 14px rgba(0, 0, 0, 0.12);
+      0 5px 14px rgba(20, 40, 48, 0.12);
   }
 
   :deep(.staff-role-card--inline) {
@@ -2087,7 +2087,7 @@ function alertTime(value?: string) {
     border: 1px solid rgba(83, 222, 255, 0.2);
     border-radius: 10px;
     box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.12),
+      0 10px 24px rgba(20, 40, 48, 0.12),
       inset 0 1px 0 rgba(193, 247, 255, 0.08),
       inset 3px 0 0 rgba(77, 224, 255, 0.22);
   }

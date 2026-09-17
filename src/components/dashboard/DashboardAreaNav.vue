@@ -69,7 +69,7 @@ const visible = computed(() => props.rooms.length > 1);
   background:
     linear-gradient(105deg, rgba(3, 24, 38, 0.68), rgba(4, 47, 70, 0.42));
   box-shadow:
-    0 10px 26px rgba(0, 0, 0, 0.2),
+    0 10px 26px rgba(20, 40, 48, 0.2),
     0 0 16px rgba(38, 199, 244, 0.08),
     inset 2px 0 0 rgba(71, 226, 255, 0.52),
     inset 0 1px 0 rgba(166, 242, 255, 0.1);
@@ -135,7 +135,7 @@ const visible = computed(() => props.rooms.length > 1);
     overflow: auto;
     padding-right: 4px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(72, 214, 255, 0.58) rgba(255, 255, 255, 0.06);
+    scrollbar-color: rgba(72, 214, 255, 0.58) rgba(247, 251, 253, 0.06);
 
     &::-webkit-scrollbar {
       width: 5px;
@@ -153,7 +153,7 @@ const visible = computed(() => props.rooms.length > 1);
     flex: 0 1 auto;
 
     &--active .dash-area-nav__btn {
-      color: #fff;
+      color: #f7fbfd;
       background: linear-gradient(135deg, rgba(0, 151, 208, 0.72), rgba(3, 92, 134, 0.68));
       border-color: rgba(118, 232, 255, 0.92);
       box-shadow:
@@ -191,8 +191,8 @@ const visible = computed(() => props.rooms.length > 1);
     &:hover {
       border-color: rgba(77, 208, 255, 0.4);
       background: linear-gradient(135deg, rgba(11, 133, 180, 0.8), rgba(4, 78, 112, 0.78));
-      color: #fff;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.26);
+      color: #f7fbfd;
+      box-shadow: 0 6px 16px rgba(20, 40, 48, 0.26);
     }
   }
 

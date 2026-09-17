@@ -113,7 +113,7 @@ nav button[data-priority='warning'], nav button[data-priority='infusing'] { bord
 nav strong { display: block; max-width: 128px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
 button:hover:not(:disabled):not([aria-pressed='true']) { background: #82b4c526; }
 nav small { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-button[aria-pressed="true"] { color: #fff; background: #075a83; border-color: #075a83; }
+button[aria-pressed="true"] { color: #f7fbfd; background: #075a83; border-color: #075a83; }
 button:focus-visible, summary:focus-visible { outline: 3px solid #0088b8; outline-offset: 2px; }
 button:disabled { opacity: .45; cursor: default; }
 .corridor-tools__selected { padding-top: 8px; border-top: 1px solid #93aebb66; }

@@ -983,9 +983,9 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       border-radius: 14px;
       border-color: rgba(99, 229, 255, 0.42);
       box-shadow:
-        0 18px 38px rgba(0, 0, 0, 0.24),
+        0 18px 38px rgba(20, 40, 48, 0.24),
         0 0 30px rgba(77, 208, 255, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        inset 0 1px 0 rgba(247, 251, 253, 0.1);
     }
 
     .station-hero__body {
@@ -1053,7 +1053,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       box-shadow:
         inset 0 1px 0 rgba(210, 246, 255, 0.08),
         inset 0 0 42px rgba(24, 126, 171, 0.08),
-        0 16px 34px rgba(0, 0, 0, 0.24);
+        0 16px 34px rgba(20, 40, 48, 0.24);
     }
 
     :deep(.alert-task-panel__toolbar) {
@@ -1119,8 +1119,8 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       border-radius: 14px;
       border-color: rgba(100, 229, 255, 0.32);
       box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.07),
-        0 16px 34px rgba(0, 0, 0, 0.18);
+        inset 0 1px 0 rgba(247, 251, 253, 0.07),
+        0 16px 34px rgba(20, 40, 48, 0.18);
     }
 
     :deep(.nurse-metric-chart__head strong) {
@@ -1146,8 +1146,8 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     linear-gradient(180deg, rgba(12, 34, 54, 0.58), rgba(7, 22, 37, 0.46)),
     rgba(8, 24, 42, 0.42);
   box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 10px 24px rgba(20, 40, 48, 0.12),
+    inset 0 1px 0 rgba(247, 251, 253, 0.04);
 }
 
 .handoff-card {
@@ -1245,7 +1245,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     min-width: 0;
     padding: 6px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(247, 251, 253, 0.04);
 
     > span,
     > strong,
@@ -1373,8 +1373,8 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     ),
     linear-gradient(145deg, rgba(11, 39, 60, 0.78), rgba(6, 20, 36, 0.58));
   box-shadow:
-    0 16px 34px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 16px 34px rgba(20, 40, 48, 0.18),
+    inset 0 1px 0 rgba(247, 251, 253, 0.08),
     inset 0 0 0 1px rgba(68, 214, 255, 0.04);
 
   &::after {
@@ -1390,7 +1390,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     background-size: 22px 22px;
     mask-image: linear-gradient(
       135deg,
-      rgba(0, 0, 0, 0.95),
+      rgba(20, 40, 48, 0.95),
       transparent 66%
     );
   }
@@ -1436,7 +1436,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       linear-gradient(90deg, transparent 49%, rgba(105, 235, 255, 0.28) 50%, transparent 51%),
       linear-gradient(0deg, transparent 49%, rgba(105, 235, 255, 0.24) 50%, transparent 51%);
     background-size: 12px 12px;
-    mask-image: linear-gradient(135deg, transparent, #000 46%);
+    mask-image: linear-gradient(135deg, transparent, #0b1418 46%);
   }
 
   &::before {
@@ -1633,7 +1633,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       background: linear-gradient(
         90deg,
         transparent,
-        rgba(255, 255, 255, 0.42),
+        rgba(247, 251, 253, 0.42),
         transparent
       );
       transform: skewX(-18deg);
@@ -1667,7 +1667,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       background: linear-gradient(
         135deg,
         rgba(130, 206, 232, 0.11),
-        rgba(255, 255, 255, 0.045)
+        rgba(247, 251, 253, 0.045)
       );
       border: 1px solid rgba(142, 220, 240, 0.14);
       color: rgba(195, 220, 240, 0.82);
@@ -1925,7 +1925,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     rgba(15, 46, 70, 0.46),
     rgba(9, 26, 45, 0.42)
   );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(247, 251, 253, 0.035);
 
   &__label {
     display: block;
@@ -2012,7 +2012,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     height: 6px;
     margin-top: 5px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(247, 251, 253, 0.08);
     overflow: hidden;
 
     i {
@@ -2073,7 +2073,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   padding: 7px 9px 7px 0;
   border: 1px solid rgba(96, 210, 255, 0.1);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(247, 251, 253, 0.045);
   cursor: pointer;
   transition:
     background 0.14s,
@@ -2127,7 +2127,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     em {
       padding: 2px 7px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.09);
+      background: rgba(247, 251, 253, 0.09);
       color: rgba(225, 242, 255, 0.88);
       font-size: dash-font(12);
       font-style: normal;
@@ -2175,8 +2175,8 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   min-width: 0;
   padding: 8px 8px;
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(247, 251, 253, 0.045);
+  border: 1px solid rgba(247, 251, 253, 0.07);
 
   span {
     display: block;
@@ -2208,7 +2208,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   gap: 8px;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(247, 251, 253, 0.07);
   font-size: dash-font(12);
 
   span {
@@ -2244,7 +2244,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     gap: 6px;
     align-items: start;
     padding-bottom: 6px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(247, 251, 253, 0.06);
     font-size: dash-font(12);
   }
 
@@ -2369,7 +2369,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       justify-content: space-between;
       gap: 8px;
       padding: 7px 8px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(247, 251, 253, 0.06);
       border-radius: 7px;
       color: #eefcff;
       background: rgba(3, 16, 28, 0.42);
@@ -2424,7 +2424,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   flex: 1;
   gap: 1px 5px;
   padding: 7px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(247, 251, 253, 0.06);
   border-radius: 7px;
   background: rgba(3, 17, 30, 0.38);
 

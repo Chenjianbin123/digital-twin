@@ -117,7 +117,7 @@ const basicRows = computed(() => {
       linear-gradient(135deg, rgba(12, 35, 58, 0.94), rgba(5, 17, 32, 0.9)),
       repeating-linear-gradient(90deg, rgba(91, 219, 255, 0.035) 0 1px, transparent 1px 42px);
     box-shadow:
-      0 22px 80px rgba(0, 0, 0, 0.46),
+      0 22px 80px rgba(20, 40, 48, 0.46),
       inset 0 0 34px rgba(77, 208, 255, 0.08);
     animation: ward-plan-dialog-in 0.28s ease both;
   }
@@ -176,9 +176,9 @@ const basicRows = computed(() => {
     gap: 14px;
     margin-top: 22px;
     padding: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(247, 251, 253, 0.08);
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.055);
+    background: rgba(247, 251, 253, 0.055);
 
     strong {
       font-size: 28px;
@@ -243,7 +243,7 @@ const basicRows = computed(() => {
 .ward-plan-bed-dialog[data-theme='light'] {
   color-scheme: light;
   background: #294b5940;
-  .ward-plan-bed-dialog__card { color: #294b59; border-color: #bfd8e4; background: linear-gradient(145deg, #ffffff, #edf5f9); box-shadow: 0 20px 64px #294b5926; }
+  .ward-plan-bed-dialog__card { color: #294b59; border-color: #bfd8e4; background: linear-gradient(145deg, #f7fbfd, #edf5f9); box-shadow: 0 20px 64px #294b5926; }
   .ward-plan-bed-dialog__close { color: #286c80; background: #e8f3f8; border-color: #bfd8e4; }
   .ward-plan-bed-dialog__kicker, dt { color: #526f7d; }
   dd { color: #294b59; }

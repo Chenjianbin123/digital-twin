@@ -111,7 +111,7 @@ const interiorItems = computed(() => [
     border-color: rgba(93, 219, 255, 0.2);
     box-shadow:
       0 14px 34px rgba(0, 13, 24, 0.36),
-      0 0 0 1px rgba(255, 255, 255, 0.035) inset,
+      0 0 0 1px rgba(247, 251, 253, 0.035) inset,
       0 0 28px rgba(77, 208, 255, 0.12);
   }
 
@@ -266,7 +266,7 @@ const interiorItems = computed(() => [
       border-color: rgba(93, 219, 255, 0.12);
       box-shadow:
         0 10px 24px rgba(0, 13, 24, 0.25),
-        0 0 0 1px rgba(255, 255, 255, 0.025) inset;
+        0 0 0 1px rgba(247, 251, 253, 0.025) inset;
       backdrop-filter: blur(8px);
     }
 
