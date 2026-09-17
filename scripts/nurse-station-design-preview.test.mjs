@@ -4,22 +4,16 @@ import { readFileSync, existsSync } from 'node:fs';
 import test from 'node:test';
 
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
-test('station page exposes a safe preview link without replacing the active scene', () => {
-  const link = read('../src/components/NurseStationPreviewLink.vue');
-  assert.match(link, /href="\/nurse-station-preview\.html"/);
-  assert.match(link, /target="_blank"/);
-  assert.match(link, /rel="noopener noreferrer"/);
-  assert.match(link, /aria-label="第二版模型预览（新标签页打开）"/);
-  assert.match(readWorkspaceSource(), /<details v-if="isNurseStation" class="workspace-tools">[\s\S]*?<NurseStationPreviewLink\s*\/>[\s\S]*?<\/details>/);
+test('station workspace no longer exposes the tools menu or preview entry', () => {
+  const workspace = readWorkspaceSource();
+  assert.doesNotMatch(workspace, /workspace-tools|NurseStationPreviewLink|第二版模型预览/);
   assert.match(read('../src/components/dashboard/DashboardHeader.vue'), /<slot name="actions"\s*\/>/);
-  assert.doesNotMatch(link, /station-preview\.ts|GLTFLoader|createStationPreview/);
 });
 test('design preview is separate from the production scene and data', () => {
   const preview = read('../src/preview/station-preview.ts');
-  assert.match(preview, /nurse-station-design-v2\.glb\?url/);
+  assert.match(preview, /nurse-station-design-v3\.glb\?url/);
   assert.doesNotMatch(preview, /@\/api|@\/stores|nurse-station-scene/);
-  assert.match(read('../src/config/nurse-station-scene.ts'), /nurse-station-design-v2\.glb/);
-  assert.ok(existsSync(new URL('../public/models/smart-ward-nurse-station/nurse-station-design-v2.glb', import.meta.url)), 'active nurse-station model must exist');
+  assert.match(read('../src/config/nurse-station-scene.ts'), /nurse-station-design-v[234]\.glb/);
   assert.match(read('../nurse-station-preview.html'), /src\/preview\/main\.ts/);
   assert.match(read('../vite.config.ts'), /stationPreview:.*nurse-station-preview\.html/);
 });

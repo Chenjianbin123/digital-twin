@@ -9,7 +9,6 @@ import { defineRecoverableComponent } from '@/core/define-recoverable-component'
 import { useWorkspacePanels } from '@/core/use-workspace-panels';
 import { buildWorkspaceMetrics, getAreaTemperature } from '@/core/workspace-metrics';
 import DashboardBottomNav from '@/components/dashboard/DashboardBottomNav.vue';
-import NurseStationPreviewLink from '@/components/NurseStationPreviewLink.vue';
 import DashboardHeader from '@/components/dashboard/DashboardHeader.vue';
 import DashboardLeftPanel from '@/components/dashboard/DashboardLeftPanel.vue';
 import AreaSwitcher from '@/components/AreaSwitcher.vue';
@@ -324,14 +323,7 @@ onBeforeUnmount(() => {
         @refresh="store.reset()"
         @open-area-switch="isAreaSwitcherOpen = true"
         @logout="handleLogout"
-      >
-        <template #actions>
-          <details v-if="isNurseStation" class="workspace-tools">
-            <summary>工具</summary>
-            <div><NurseStationPreviewLink /></div>
-          </details>
-        </template>
-      </DashboardHeader>
+      />
 
       <AreaSwitcher
         v-if="area && selectedAreaId != null"

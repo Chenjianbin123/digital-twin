@@ -32,29 +32,50 @@
 /* 主题仅作用于外围工作台，不改变模型材质、模型内屏幕和登录场景。
    使用显式覆盖优先级兼容既有组件 scoped 样式，避免主题依赖组件加载顺序。 */
 .digital-twin[data-theme='light'] {
-  --station-surface: #f7fbfd;
-  --station-inset: #f5f8f7;
-  --station-border: #d8e2df;
-  --station-muted: #5a716f;
-  .dash-header.dash-header { background: #f4f7f5f5; border-color: #d2ded9; box-shadow: 0 2px 10px #344b4510; }
-  .dash-header__title { color: #294c4a !important; }
-  .dash-header__dept, .dash-header__operator strong { color: #526b68 !important; }
-  .dash-header button, .digital-twin__panel-toggle { background: #e7eeeb !important; color: #365f5c !important; border-color: #c9d9d2 !important; }
-  .dash-header__area-icon { color: #477b7a !important; }
-  .dash-header__tag, .dash-header__data-status { color: #356b59 !important; background: #e3eee8 !important; border-color: #cbded3 !important; }
-  .dash-header__data-status--warning, .dash-header__tag--mock { color: #895c1e !important; background: #fbf2df !important; }
-  .dash-header__data-status--error, .dash-header__data-status--stale { color: #a43d4e !important; background: #fbecef !important; }
-  .digital-twin__panel, .digital-twin__panel-body, .nurse-panel { background: #eef2f0 !important; color: #314f4d; border-color: #d3dfda !important; box-shadow: none !important; }
+  --station-surface: #e2eaee;
+  --station-inset: #d5e0e5;
+  --station-border: #9aafb8;
+  --station-muted: #5a717c;
+  --tech-cyan: #3d7585;
+  --tech-cyan-soft: rgba(61, 117, 133, 0.12);
+  --tech-cyan-line: rgba(61, 117, 133, 0.28);
+  .dash-header.dash-header {
+    background: #dce6ea;
+    border-color: #9aafb8;
+    box-shadow: none;
+    border-bottom-width: 1px;
+  }
+  .dash-header__title {
+    color: #243944 !important;
+    letter-spacing: .08em !important;
+    font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif !important;
+    font-weight: 600 !important;
+  }
+  .dash-header__dept, .dash-header__operator strong { color: #5a717c !important; }
+  .dash-header button, .digital-twin__panel-toggle {
+    background: #d0dce2 !important;
+    color: #243944 !important;
+    border-color: #9aafb8 !important;
+    border-radius: 3px !important;
+  }
+  .dash-header__area-icon { color: var(--tech-cyan) !important; }
+  .dash-header__tag, .dash-header__data-status {
+    color: #3a6572 !important;
+    background: #cfdce2 !important;
+    border-color: #9aafb8 !important;
+    border-radius: 3px !important;
+    font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
+    letter-spacing: .03em;
+  }
+  .dash-header__data-status--warning, .dash-header__tag--mock { color: #7a5a28 !important; background: #ebe0c8 !important; }
+  .dash-header__data-status--error, .dash-header__data-status--stale { color: #8a4554 !important; background: #ead8dc !important; }
+  .digital-twin__panel, .digital-twin__panel-body, .nurse-panel { background: #d5e0e5 !important; color: #243944; border-color: #9aafb8 !important; box-shadow: none !important; }
   .digital-twin__panel.digital-twin__panel--station {
-    background:
-      linear-gradient(180deg, rgba(247, 251, 253, 0.92) 0%, rgba(234, 244, 248, 0.9) 100%) !important;
-    border-left: 1px solid #a9cbd7 !important;
-    box-shadow:
-      -18px 0 40px rgba(35, 68, 84, 0.1),
-      inset 2px 0 0 rgba(247, 251, 253, 0.7),
-      inset 0 1px 0 #f7fbfd !important;
-    backdrop-filter: blur(8px) saturate(118%);
-    -webkit-backdrop-filter: blur(8px) saturate(118%);
+    background: linear-gradient(180deg, #e6eef1 0%, #dce6ea 100%) !important;
+    border-left: 2px solid #3d7585 !important;
+    box-shadow: -10px 0 28px rgba(28, 48, 56, 0.08) !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   .nurse-panel.nurse-workspace { background: transparent !important; }
   .nurse-panel { scrollbar-color: #afc4bb #eef2f0; }
@@ -97,26 +118,26 @@
 
 /* 工作区布局的主题边界：分组靠间距与分隔线，避免再套一层卡片。 */
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
-  --workspace-surface: #f0f5f6;
-  --workspace-ink: #233e49;
-  --workspace-muted: #536e79;
-  --workspace-line: #d5e2e7;
+  --workspace-surface: #d8e3e8;
+  --workspace-ink: #243944;
+  --workspace-muted: #5a717c;
+  --workspace-line: #9aafb8;
   background: transparent !important;
   :is(.inspection-overview, .handoff-card, .data-health, .surface-panel--focus, .nurse-panel__details, .nurse-metric-chart, .alert-task-panel) { background: transparent !important; border-radius: 0; }
-  .workspace-tabs button { background: transparent !important; color: #5b7786 !important; }
-  .workspace-tabs button[aria-selected='true'] { color: #176574 !important; background: linear-gradient(115deg, #f7fbfd, #e7f4f7) !important; border-color: #96c5cf; box-shadow: inset 0 1px 0 #f7fbfd; }
+  .workspace-tabs button { background: transparent !important; color: #5a717c !important; }
+  .workspace-tabs button[aria-selected='true'] { color: #e8f0f3 !important; background: #3d7585 !important; border-color: #3d7585; box-shadow: none; }
   .workspace-tabs button > span { color: inherit !important; }
-  .workspace-status--alert > span { color: #9d4354 !important; }
-  .workspace-status--warn > span { color: #8c642b !important; }
-  .alert-task { background: transparent !important; border-bottom-color: #e0e7e1 !important; }
-  .alert-task__severity { color: #98505d !important; background: #f9eff1 !important; }
+  .workspace-status--alert > span { color: #8a4554 !important; }
+  .workspace-status--warn > span { color: #7a5a28 !important; }
+  .alert-task { background: transparent !important; border-bottom-color: #b4c5cd !important; }
+  .alert-task__severity { color: #8a4554 !important; background: #e6d5d9 !important; border-radius: 3px !important; }
   .alert-task__meta-live { background: transparent !important; border: 0; }
   .alert-task-panel__filters { background: transparent !important; }
-  .alert-task-panel__filters button { background: transparent !important; }
-  .alert-task-panel__filters button.is-active { background: #e7efe8 !important; }
+  .alert-task-panel__filters button { background: transparent !important; border-radius: 3px !important; }
+  .alert-task-panel__filters button.is-active { background: rgba(61, 117, 133, 0.14) !important; }
   .alert-task-panel__more { background: transparent !important; }
   .station-hero__chip { background: transparent !important; }
-  .metric-item { background: #f2f6f1 !important; }
+  .metric-item { background: #e2eaee !important; }
 }
 
 .digital-twin[data-theme="light"] .nurse-panel.nurse-workspace .handoff-card li { color: var(--workspace-muted); }
@@ -124,21 +145,40 @@
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace .alert-task__details summary { color: #365f55; }
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .alert-task--workspace { border-color: #52849c45; box-shadow: inset 0 1px 0 #a0dcf009; }
 
-/* 面板采用同一蓝青色层级，浅色保持浅 HUD 玻璃，深色保留冷青底。 */
+/* 面板采用同一蓝青色层级：浅色压亮度、降饱和，偏克制高级感。 */
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
-  --workspace-surface: #f0f5f6;
-  --workspace-ink: #233e49;
-  --workspace-muted: #536e79;
-  --workspace-line: #d5e2e7;
+  --workspace-surface: #d8e3e8;
+  --workspace-ink: #243944;
+  --workspace-muted: #5a717c;
+  --workspace-line: #9aafb8;
+  --tech-cyan: #3d7585;
   background: transparent !important;
-  .workspace-scroll { background: transparent; scrollbar-color: #a4bec6 transparent; }
-  .workspace-section-intro h2 { color: #294c59 !important; }
-  .alert-task--workspace { background: linear-gradient(110deg, #f7fbfd, #f7fbfd 55%) !important; border: 1px solid #cddfe7 !important; box-shadow: inset 0 1px 0 #f7fbfd, 0 2px 5px #23445405 !important; }
-  .alert-task__head strong, .station-hero__eyebrow { color: #233e49 !important; }
-  .alert-task__subtitle, .alert-task__details summary { color: #536e79 !important; }
-  .alert-task__signal { background: #f5f8fa; border-color: #dce8eb; }
-  .alert-task__meta { padding-top: 10px; border-top: 1px solid #edf2f4; }
-  .alert-task-panel__filters button.is-active { background: #dceff2 !important; border-color: #96c5cf !important; }
+  .workspace-scroll { background: transparent; scrollbar-color: #7f96a0 transparent; }
+  .workspace-section-intro h2 {
+    color: #243944 !important;
+    letter-spacing: .06em;
+    font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
+  }
+  .workspace-section-intro h2::before {
+    background: #3d7585;
+    box-shadow: none;
+  }
+  .alert-task--workspace {
+    background: #e2eaee !important;
+    border: 1px solid #9aafb8 !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+  }
+  .alert-task__head strong, .station-hero__eyebrow { color: #243944 !important; }
+  .alert-task__subtitle, .alert-task__details summary { color: #5a717c !important; }
+  .alert-task__signal { background: #d5e0e5; border-color: #9aafb8; border-radius: 3px; }
+  .alert-task__meta { padding-top: 10px; border-top: 1px solid #b4c5cd; }
+  .alert-task-panel__filters button.is-active {
+    background: rgba(61, 117, 133, 0.14) !important;
+    border-color: #3d7585 !important;
+    border-radius: 3px !important;
+    color: #2f5f6c !important;
+  }
 }
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace {
   .station-hero { background: linear-gradient(160deg, rgba(18, 48, 60, 0.2), transparent 70%); }
@@ -186,127 +226,188 @@
   border-color: rgba(126, 202, 216, 0.24) !important;
 }
 
+/* 浅色：克制高级感，去掉霓虹与扫描线干扰。 */
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
   .station-hero {
-    background:
-      radial-gradient(ellipse at 100% 0, rgba(120, 196, 210, 0.22), transparent 58%),
-      linear-gradient(145deg, #f9fcfd, #eaf4f8) !important;
-    border-color: #b7d4df !important;
-    box-shadow:
-      inset 0 1px 0 #f7fbfd,
-      0 10px 24px rgba(35, 68, 84, 0.08) !important;
+    background: #e2eaee !important;
+    border: 1px solid #9aafb8 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 8px 20px rgba(28, 48, 56, 0.06) !important;
     &::before {
-      background:
-        radial-gradient(ellipse at 12% 0%, rgba(63, 159, 174, 0.12), transparent 42%),
-        linear-gradient(90deg, transparent 31px, rgba(85, 137, 156, 0.06) 32px);
-      background-size: auto, 32px 100%;
-      opacity: .85;
+      background: linear-gradient(90deg, transparent 31px, rgba(61, 117, 133, 0.05) 32px);
+      background-size: 32px 100%;
+      opacity: .7;
+      border-radius: inherit;
+      mask-image: none;
+      animation: none;
     }
     &::after {
-      box-shadow:
-        inset 10px 0 0 -9px rgba(63, 159, 174, 0.55),
-        inset 0 10px 0 -9px rgba(63, 159, 174, 0.5),
-        inset -10px 0 0 -9px rgba(63, 159, 174, 0.28),
-        inset 0 -10px 0 -9px rgba(63, 159, 174, 0.22);
+      inset: 0;
+      border-radius: inherit;
+      border: 0;
+      box-shadow: inset 2px 0 0 #3d7585;
     }
     .station-hero__eyebrow {
-      color: #233e49 !important;
+      color: #243944 !important;
+      text-shadow: none;
+      letter-spacing: .08em;
+      font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
+    }
+    .station-hero__kicker {
+      color: #5a717c !important;
+      letter-spacing: .18em !important;
+      text-transform: uppercase;
       text-shadow: none;
     }
-    .station-hero__kicker { color: #527c8b !important; }
     .station-hero__identity-icon {
-      color: #287d8c !important;
-      background: linear-gradient(145deg, #dff2f6, #cfe8ef) !important;
-      border: 1px solid #9ec8d4 !important;
-      box-shadow: inset 0 1px 0 #f7fbfd, 0 4px 12px rgba(40, 90, 110, 0.1) !important;
+      color: #3d7585 !important;
+      background: #d0dce2 !important;
+      border: 1px solid #9aafb8 !important;
+      border-radius: 4px !important;
+      clip-path: none !important;
+      box-shadow: none !important;
     }
     .station-hero__overview-foot {
-      border: 1px solid #c5dce6 !important;
-      background: #edf5f8 !important;
-      box-shadow: inset 0 1px 0 #f7fbfd !important;
+      border: 1px solid #9aafb8 !important;
+      border-radius: 4px !important;
+      background: #d8e3e8 !important;
+      box-shadow: none !important;
     }
     .workspace-status--alert {
-      border-color: #e5b4bd !important;
-      background: linear-gradient(90deg, #f8e8eb, #fdf6f7) !important;
+      border-color: #c4a0a8 !important;
+      background: #e6d5d9 !important;
+      border-radius: 3px !important;
     }
     .workspace-status--warn {
-      border-color: #e4d0a8 !important;
-      background: linear-gradient(90deg, #f8f0df, #fdfaf3) !important;
+      border-color: #c4b08a !important;
+      background: #ebe0c8 !important;
+      border-radius: 3px !important;
     }
-    .workspace-status > span { color: #536e79 !important; }
-    .workspace-status--alert > span { color: #a13d51 !important; }
-    .workspace-status--warn > span { color: #865a19 !important; }
-    .workspace-status > .workspace-status__sync { color: #536e79 !important; }
-    .workspace-status > .workspace-status__sync--attention { color: #865a19 !important; }
+    .workspace-status > span { color: #5a717c !important; }
+    .workspace-status--alert > span { color: #8a4554 !important; }
+    .workspace-status--warn > span { color: #7a5a28 !important; }
+    .workspace-status > .workspace-status__sync { color: #5a717c !important; }
+    .workspace-status > .workspace-status__sync--attention { color: #7a5a28 !important; }
+    .station-state__signal {
+      box-shadow: 0 0 0 3px rgba(61, 117, 133, 0.14);
+    }
     .station-hero__wallboard-toggle,
     .station-hero__alert-toggle {
-      color: #365e6d !important;
-      background: #f5fafc !important;
-      border-color: #c5dce5 !important;
-      box-shadow: inset 0 1px 0 #f7fbfd !important;
+      color: #243944 !important;
+      background: #dce6ea !important;
+      border-color: #9aafb8 !important;
+      border-radius: 3px !important;
+      box-shadow: none !important;
+      font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
+      letter-spacing: .03em;
     }
     .station-hero__wallboard-toggle:hover,
     .station-hero__alert-toggle:hover {
-      background: #e5f2f6 !important;
-      border-color: #96c5cf !important;
+      background: #cfdce2 !important;
+      border-color: #7f96a0 !important;
+      box-shadow: none !important;
     }
-    .station-hero__wallboard-toggle { border-left: 2px solid #3996a6 !important; }
+    .station-hero__wallboard-toggle {
+      border-left: 2px solid #3d7585 !important;
+      box-shadow: none !important;
+    }
     .station-hero__alert-toggle[aria-pressed='true'] {
-      color: #23665e !important;
-      border-color: #81bbae !important;
-      background: #e8f6f2 !important;
+      color: #2f5f6c !important;
+      border-color: #3d7585 !important;
+      background: rgba(61, 117, 133, 0.12) !important;
+      box-shadow: none !important;
     }
-    button:focus-visible { outline-color: #287d8c; }
+    button:focus-visible { outline-color: #3d7585; outline-offset: 2px; }
   }
 
   .workspace-tabs {
-    border: 1px solid #c5dce6 !important;
-    border-top: 1px solid #c5dce6 !important;
-    background: linear-gradient(180deg, #f4fafc, #eaf4f8) !important;
-    box-shadow: inset 0 1px 0 #f7fbfd, 0 6px 16px rgba(35, 68, 84, 0.06) !important;
+    border: 1px solid #9aafb8 !important;
+    border-radius: 6px !important;
+    background: #d5e0e5 !important;
+    box-shadow: none !important;
     button {
-      color: #5b7786 !important;
+      color: #5a717c !important;
       background: transparent !important;
       border-color: transparent !important;
+      border-radius: 4px !important;
+      font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
+      letter-spacing: .02em;
     }
     button:hover {
-      color: #294b59 !important;
-      background: rgba(52, 135, 153, 0.08) !important;
+      color: #243944 !important;
+      background: rgba(61, 117, 133, 0.08) !important;
     }
     button[aria-selected='true'] {
-      color: #176574 !important;
-      background: linear-gradient(160deg, #f7fbfd, #e7f4f7) !important;
-      border-color: #96c5cf !important;
-      box-shadow: inset 0 1px 0 #f7fbfd, 0 2px 8px rgba(40, 100, 120, 0.08) !important;
+      color: #e8f0f3 !important;
+      background: #3d7585 !important;
+      border-color: #3d7585 !important;
+      box-shadow: none !important;
+      text-shadow: none;
     }
     button[aria-selected='true']::after {
-      background: #348799;
-      box-shadow: none;
+      display: none;
+    }
+    button[aria-selected='true'] > span,
+    button[aria-selected='true'] .workspace-tabs__count {
+      color: inherit !important;
     }
     .workspace-tabs__count {
-      color: #306675 !important;
-      border-color: #bfd8e2 !important;
-      background: #e4f1f5 !important;
+      color: #3a6572 !important;
+      border-color: #9aafb8 !important;
+      background: #cfdce2 !important;
+      border-radius: 3px !important;
+      font-variant-numeric: tabular-nums;
+    }
+    button[aria-selected='true'] .workspace-tabs__count {
+      color: #e8f0f3 !important;
+      border-color: rgba(232, 240, 243, 0.28) !important;
+      background: rgba(28, 48, 56, 0.18) !important;
     }
   }
 
-  button { color: #365e6d !important; background: #eef5f8 !important; border-color: #c5dce5 !important; }
-  button:hover:not(:disabled) { background: #deedf3 !important; }
-  .alert-task-panel__filters button.is-active { background: #dceff2 !important; }
-  .alert-task-panel__filters button strong { color: #306675 !important; background: #dcebf1 !important; border-color: #bfd8e2 !important; }
+  button { color: #243944 !important; background: #d0dce2 !important; border-color: #9aafb8 !important; border-radius: 3px !important; box-shadow: none !important; }
+  button:hover:not(:disabled) { background: #c4d2d8 !important; border-color: #7f96a0 !important; }
+  .alert-task-panel__filters button.is-active { background: rgba(61, 117, 133, 0.12) !important; }
+  .alert-task-panel__filters button strong {
+    color: #3a6572 !important;
+    background: #cfdce2 !important;
+    border-color: #9aafb8 !important;
+    border-radius: 3px !important;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
- .metric-item { background: linear-gradient(135deg, #f7fbfd, #edf6f9) !important; border: 1px solid #cbdee7 !important; box-shadow: inset 0 2px 0 #83c4d038 !important; }
- .metric-item > strong { color: #247184 !important; }
- .metric-item--alert > strong { color: #b43c57 !important; }
- .metric-item__icon { color: #548e9f; }
- .metric-item__progress { background: #dce9ef !important; }
- .metric-item__progress i { background: #4798aa !important; }
- .handoff-card li { background: #f9fcfd !important; border-color: #d2e2e9 !important; }
- .data-health ul { border-color: #d2e2e9; background: #f7fbfd; }
- .data-health li:nth-child(odd) { background: #edf5f8; }
- .data-health__freshness-item { background: #f9fcfd !important; border-color: #d2e2e9 !important; }
+ .metric-item {
+   background: #e2eaee !important;
+   border: 1px solid #9aafb8 !important;
+   border-radius: 4px !important;
+   box-shadow: inset 2px 0 0 #3d7585 !important;
+ }
+ .metric-item > strong {
+   color: #2f5f6c !important;
+   font-family: "Bahnschrift", "Segoe UI", sans-serif !important;
+   font-variant-numeric: tabular-nums;
+   letter-spacing: .01em;
+   text-shadow: none;
+ }
+ .metric-item--alert > strong { color: #8a4554 !important; }
+ .metric-item__icon { color: #3d7585; filter: none; }
+ .metric-item__progress { background: #c4d2d8 !important; border-radius: 0 !important; }
+ .metric-item__progress i {
+   background: #3d7585 !important;
+   box-shadow: none;
+ }
+ .handoff-card li { background: #e2eaee !important; border-color: #9aafb8 !important; border-radius: 4px !important; }
+ .data-health ul { border-color: #9aafb8; background: #e2eaee; border-radius: 4px; }
+ .data-health li:nth-child(odd) { background: #d8e3e8; }
+ .data-health__freshness-item { background: #e2eaee !important; border-color: #9aafb8 !important; border-radius: 4px !important; }
+ .data-health__freshness-item > small,
+ .data-health li > small {
+   font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
+   font-variant-numeric: tabular-nums;
+   color: #3a6572 !important;
+ }
 }
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace {
  .metric-item { background: linear-gradient(135deg, #173847, #102735); border-color: #47748766; box-shadow: inset 0 2px 0 #6dcbd524; }
@@ -315,10 +416,10 @@
 }
 
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace .surface-panel--feed {
- background: #f9fcfd !important; border-color: #cddfe7 !important;
- .feed__time { color: #587684 !important; }
- .feed__text { color: #294b59 !important; }
- .feed__tag { color: #276d7d !important; background: #e8f3f7; border-color: #c7e0e8; }
+ background: #e2eaee !important; border-color: #9aafb8 !important; border-radius: 4px !important;
+ .feed__time { color: #5a717c !important; }
+ .feed__text { color: #243944 !important; }
+ .feed__tag { color: #3a6572 !important; background: #cfdce2; border-color: #9aafb8; border-radius: 3px; }
 }
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .surface-panel--feed {
  background: #102735;
@@ -334,40 +435,40 @@
  .area-switcher__search { flex-shrink: 0; }
 }
 .digital-twin[data-theme='light'] .area-switcher {
- background: #233d4a38;
- .area-switcher__drawer { color: #233e49; background: #f0f5f8; border-left-color: #c5dce5; box-shadow: -12px 0 36px #203f4e1a; }
- .area-switcher__header h2 { color: #233e49; }
- .area-switcher__header p, .area-switcher__row-copy span, .area-switcher__empty, .area-switcher__hint { color: #536e79; }
- .area-switcher__close { color: #536e79; }
- .area-switcher__close:hover:not(:disabled) { color: #245e70; background: #dcebf1; }
- .area-switcher__search { color: #32788a; background: #f7fbfd; border-color: #c5dce5; }
- .area-switcher__search input { color: #233e49; }
- .area-switcher__search input::placeholder { color: #647f8b; }
- .area-switcher__search:focus-within { border-color: #398a9e; box-shadow: 0 0 0 3px #398a9e1a; }
- .area-switcher__body { scrollbar-color: #9bbac7 #edf4f7; }
- .area-switcher__row { color: #294b59; background: #f7fbfd; border-color: #cddfe7; }
- .area-switcher__row:hover:not(:disabled) { border-color: #75adbd; background: #f5fafc; }
- .area-switcher__row--candidate { border-color: #479aaf; background: #e0f0f5; box-shadow: inset 3px 0 #479aaf; }
- .area-switcher__badge { color: #205f71; background: #cbe9f1; }
- .area-switcher__check { color: #267d92; }
- .area-switcher__empty { border-color: #c5dce5; }
- .area-switcher__footer { border-color: #cddfe7; }
- .area-switcher__error { color: #a13d51; }
- .area-switcher__status-dot { background: #32856d; box-shadow: none; }
- .area-switcher__confirm { color: #f7fbfd; background: #267d92; }
- .area-switcher__confirm:hover:not(:disabled) { background: #1e687c; }
- .area-switcher__spinner { border-color: #ffffff45; border-top-color: #f7fbfd; }
- :is(.area-switcher__close, .area-switcher__row, .area-switcher__confirm):focus-visible { outline-color: #267d92; }
+ background: #24394455;
+ .area-switcher__drawer { color: #243944; background: #dce6ea; border-left: 2px solid #3d7585; box-shadow: -10px 0 28px rgba(28, 48, 56, 0.1); }
+ .area-switcher__header h2 { color: #243944; letter-spacing: .06em; font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif; }
+ .area-switcher__header p, .area-switcher__row-copy span, .area-switcher__empty, .area-switcher__hint { color: #5a717c; }
+ .area-switcher__close { color: #5a717c; border-radius: 3px; }
+ .area-switcher__close:hover:not(:disabled) { color: #243944; background: #cfdce2; }
+ .area-switcher__search { color: #3a6572; background: #e2eaee; border-color: #9aafb8; border-radius: 3px; }
+ .area-switcher__search input { color: #243944; }
+ .area-switcher__search input::placeholder { color: #7a9099; }
+ .area-switcher__search:focus-within { border-color: #3d7585; box-shadow: 0 0 0 2px rgba(61, 117, 133, 0.16); }
+ .area-switcher__body { scrollbar-color: #7f96a0 #d5e0e5; }
+ .area-switcher__row { color: #243944; background: #e2eaee; border-color: #9aafb8; border-radius: 4px; box-shadow: none; }
+ .area-switcher__row:hover:not(:disabled) { border-color: #3d7585; background: #d8e3e8; }
+ .area-switcher__row--candidate { border-color: #3d7585; background: #cfdce2; box-shadow: inset 2px 0 #3d7585; }
+ .area-switcher__badge { color: #3a6572; background: #cfdce2; border-radius: 3px; }
+ .area-switcher__check { color: #3d7585; }
+ .area-switcher__empty { border-color: #9aafb8; }
+ .area-switcher__footer { border-color: #9aafb8; }
+ .area-switcher__error { color: #8a4554; }
+ .area-switcher__status-dot { background: #3d7585; box-shadow: none; }
+ .area-switcher__confirm { color: #e8f0f3; background: #3d7585; border-radius: 3px; box-shadow: none; }
+ .area-switcher__confirm:hover:not(:disabled) { background: #346576; }
+ .area-switcher__spinner { border-color: #ffffff45; border-top-color: #e8f0f3; }
+ :is(.area-switcher__close, .area-switcher__row, .area-switcher__confirm):focus-visible { outline-color: #3d7585; }
 }
 
 .digital-twin[data-theme='light'] .area-switcher {
- --switcher-accent: #287d92; --switcher-line: #c8dfe8;
- .area-switcher__drawer { background: radial-gradient(ellipse at 100% 0, #cbe7f180, transparent 42%), #f0f5f8; }
- .area-switcher__list-head { color: #536e79; }
- .area-switcher__ward-icon { color: #558899; background: #f0f7fa; }
- .area-switcher__row { box-shadow: inset 0 1px 0 #f7fbfd; }
- .area-switcher__row--candidate { background: linear-gradient(110deg, #dceff5, #f1f9fc); }
- .area-switcher__row--candidate .area-switcher__ward-icon { color: #24768a; background: #cde8f1; }
+ --switcher-accent: #3d7585; --switcher-line: #9aafb8;
+ .area-switcher__drawer { background: #dce6ea; }
+ .area-switcher__list-head { color: #5a717c; letter-spacing: .04em; }
+ .area-switcher__ward-icon { color: #3a6572; background: #cfdce2; border-radius: 3px; }
+ .area-switcher__row { box-shadow: none; }
+ .area-switcher__row--candidate { background: #cfdce2; }
+ .area-switcher__row--candidate .area-switcher__ward-icon { color: #2f5f6c; background: #bfd0d7; }
 }
 .digital-twin[data-theme='dark'] .area-switcher {
  .area-switcher__drawer { background: radial-gradient(ellipse at 100% 0, #27627740, transparent 42%), #081c29; }
@@ -395,10 +496,21 @@
  .scene-switch-loader__actions .scene-switch-loader__retry { color: #f7fbfd; background: var(--loader-accent); border-color: var(--loader-accent); }
 }
 .digital-twin[data-theme='light'] .dash-bottom {
- :is(.dash-bottom__main, .dash-bottom__sub) { background: #f5fafcf5 !important; border-color: #bdd6e1 !important; }
- button { color: #4c6d7d !important; }
- button:hover { background: #e4f1f6 !important; }
- .dash-bottom__item--active, .dash-bottom__sub-item--active { color: #246b7f !important; background: #dbeef4 !important; border-color: #91bfce !important; }
+ :is(.dash-bottom__main, .dash-bottom__sub) {
+   background: #dce6ea !important;
+   border-color: #9aafb8 !important;
+   border-radius: 6px !important;
+   box-shadow: 0 8px 20px rgba(28, 48, 56, 0.06) !important;
+ }
+ button { color: #5a717c !important; border-radius: 4px !important; font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif; letter-spacing: .02em; }
+ button:hover { background: #cfdce2 !important; }
+ .dash-bottom__item--active, .dash-bottom__sub-item--active {
+   color: #e8f0f3 !important;
+   background: #3d7585 !important;
+   border-color: #3d7585 !important;
+   box-shadow: none !important;
+   text-shadow: none;
+ }
 }
 @media (prefers-reduced-transparency: reduce) {
  .digital-twin[data-theme='light'] .scene-switch-loader { background: #eaf2f6; backdrop-filter: none; }
@@ -457,19 +569,34 @@
  .alert-task-panel__more-arrow svg { width: 16px; height: 16px; }
 }
 .digital-twin[data-theme='light'] .digital-twin__panel--overlay {
- --room-surface: #f9fcfd; --room-inset: #edf5f9; --room-line: #cbdfe8;
- --room-ink: #294b59; --room-muted: #526f7d; --room-accent: #267b91;
- --room-alert: #ac3d56; --room-ok: #2f7c67; --room-warn: #895d20;
- background: #edf4f7 !important;
- .ward-info-panel__header { background: linear-gradient(110deg, #e0eff5, #f7fbfd) !important; }
- .door-staff-cards__title-count, .monitor-row__tag, .room-card__badge { color: #276d80 !important; background: #d9edf3; border-color: #bfd9e3; }
- .alert-task { --task-accent: #b9556b; }
- .alert-task__severity { color: #a53d54 !important; background: #faedf0; }
- .alert-task__meta-live { color: #276b59 !important; background: #e5f3ec; border-color: #c7e0d5; }
- .alert-task__meta span { color: #526f7d !important; background-color: transparent; }
- .alert-task-panel__filters button strong { color: #276d80 !important; background: #d9edf3; }
- .alert-task__signal { color: #a53d54 !important; background: #faedf0; }
- .alert-task__locate { color: #276d80 !important; background: #e4f1f6; border-color: #bfd9e3; }
+ --room-surface: #e2eaee; --room-inset: #d5e0e5; --room-line: #9aafb8;
+ --room-ink: #243944; --room-muted: #5a717c; --room-accent: #3d7585;
+ --room-alert: #8a4554; --room-ok: #3d6b5c; --room-warn: #7a5a28;
+ background: #d5e0e5 !important;
+ :is(.hospital-intro, .dash-section, .area-dashboard__intro, .ward-info-panel > section, .door-staff-cards, .status-history, .alert-task-panel) {
+   border-radius: 4px !important;
+   box-shadow: none !important;
+ }
+ :is(.hospital-intro__metric, .monitor-row, .person-card, .stat-chip, .staff-role-card, .room-card, .bed-chip, .env-item, .patient-info, .vitals-card, .bed-detail-section, .alert-task) {
+   border-radius: 4px !important;
+ }
+ .ward-info-panel__header {
+   background: #d8e3e8 !important;
+   border-left: 2px solid #3d7585 !important;
+ }
+ .door-staff-cards__title-count, .monitor-row__tag, .room-card__badge { color: #3a6572 !important; background: #cfdce2; border-color: #9aafb8; border-radius: 3px; }
+ .alert-task { --task-accent: #8a4554; }
+ .alert-task__severity { color: #8a4554 !important; background: #e6d5d9; border-radius: 3px; }
+ .alert-task__meta-live { color: #3d6b5c !important; background: #d5e2dc; border-color: #9aafb8; border-radius: 3px; }
+ .alert-task__meta span { color: #5a717c !important; background-color: transparent; }
+ .alert-task-panel__filters button strong { color: #3a6572 !important; background: #cfdce2; border-radius: 3px; }
+ .alert-task__signal { color: #8a4554 !important; background: #e6d5d9; border-radius: 3px; }
+ .alert-task__locate { color: #3a6572 !important; background: #d0dce2; border-color: #9aafb8; border-radius: 3px; }
+ .room-card__enter { border-radius: 3px !important; box-shadow: none; }
+ :is(.stat-chip__val, .person-card__value, .hospital-intro__metric-value, .monitor-row__percent) {
+   font-family: "Bahnschrift", "Segoe UI", sans-serif !important;
+   font-variant-numeric: tabular-nums;
+ }
 }
 @media(max-width: 600px) {
  .digital-twin .digital-twin__panel--overlay {
@@ -587,25 +714,25 @@
 
 /* 病房视角工具、数据同步浮层和图例随浅色主题联动。 */
 .digital-twin[data-theme='light'] {
- .ward-interior-status { color: #294b59; background: #f4f9fcf5; border-color: #bfd8e4; box-shadow: 0 4px 18px #294c6010; }
- .ward-interior-status__time, .ward-interior-status small { color: #536f7e; }
- .ward-interior-status button, .ward-scene-3d__actions button { color: #286c80; background: #e8f3f8; border-color: #a9ccd9; }
- .ward-interior-status summary { color: #865e21; }
- .ward-interior-status[data-status='error'] { border-color: #c17b89; }
- .ward-interior-status[data-status='warning'], .ward-interior-status[data-status='stale'] { border-color: #c2a06b; }
- .ward-interior-status :focus-visible { outline-color: #277d93; }
- .ward-scene-3d__actions { color: #294b59; background: #f4f9fcf5; border-color: #bfd8e4; box-shadow: 0 4px 16px #294c6010; }
- .ward-scene-3d__actions button:hover:not(:disabled), .ward-interior-status button:hover:not(:disabled) { background: #d9edf4; }
- .ward-legend__toggle { color: #426a7c; background: #e9f3f7; border-color: #bfd8e4; }
- .ward-legend__panel { color: #294b59; background: #f7fbfdf5; border-color: #bfd8e4; box-shadow: 0 8px 24px #294c6020; }
- .ward-legend__hint { color: #536f7e; }
- .ward-legend__item { color: #294b59; }
- .ward-legend__toggle:focus-visible { outline-color: #277d93; }
- .ward-plan-view { background: #e6f0f5; }
+ .ward-interior-status { color: #1a3340; background: #eef4f6; border-color: #9db8c4; border-radius: 2px; box-shadow: none; }
+ .ward-interior-status__time, .ward-interior-status small { color: #4a6570; }
+ .ward-interior-status button, .ward-scene-3d__actions button { color: #1f5f70; background: #e4eef2; border-color: #9db8c4; border-radius: 2px; }
+ .ward-interior-status summary { color: #7a5014; }
+ .ward-interior-status[data-status='error'] { border-color: #c47a88; }
+ .ward-interior-status[data-status='warning'], .ward-interior-status[data-status='stale'] { border-color: #c4a06a; }
+ .ward-interior-status :focus-visible { outline-color: #1f7a8c; }
+ .ward-scene-3d__actions { color: #1a3340; background: #eef4f6; border-color: #9db8c4; border-radius: 2px; box-shadow: none; }
+ .ward-scene-3d__actions button:hover:not(:disabled), .ward-interior-status button:hover:not(:disabled) { background: #dce8ee; }
+ .ward-legend__toggle { color: #1f5f70; background: #e4eef2; border-color: #9db8c4; border-radius: 2px; }
+ .ward-legend__panel { color: #1a3340; background: #f4f8fa; border-color: #9db8c4; border-radius: 2px; box-shadow: none; }
+ .ward-legend__hint { color: #4a6570; }
+ .ward-legend__item { color: #1a3340; }
+ .ward-legend__toggle:focus-visible { outline-color: #1f7a8c; }
+ .ward-plan-view { background: #e8eef1; }
 }
-.digital-twin[data-theme='light'] .ward-scene-3d__occupancy { color: #294b59; background: #f4f9fcf5; border-color: #bfd8e4; box-shadow: 0 4px 16px #294c6010; }
-.digital-twin[data-theme='light'] .ward-scene-3d__occupancy p { color: #536f7e; }
-.digital-twin[data-theme='light'] .ward-scene-3d__actions button:focus-visible { outline-color: #277d93; }
+.digital-twin[data-theme='light'] .ward-scene-3d__occupancy { color: #1a3340; background: #eef4f6; border-color: #9db8c4; border-radius: 2px; box-shadow: none; }
+.digital-twin[data-theme='light'] .ward-scene-3d__occupancy p { color: #4a6570; }
+.digital-twin[data-theme='light'] .ward-scene-3d__actions button:focus-visible { outline-color: #1f7a8c; }
 
 // 场景尚未挂载时也使用浅色底，避免同步期间露出根容器的深色背景。
 .digital-twin[data-theme='light'] {

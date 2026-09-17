@@ -926,11 +926,6 @@
   }
 }
 
-.workspace-tools { position: relative; font-size: 12px; color: #91b1b7; }
-.workspace-tools summary { cursor: pointer; padding: 10px; border-radius: 6px; }
-.workspace-tools > div { position: absolute; right: 0; top: calc(100% + 8px); min-width: 160px; padding: 12px; border: 1px solid #74969e50; border-radius: 8px; background: #102630; box-shadow: 0 8px 24px #03131c30; }
-.digital-twin[data-theme='light'] .workspace-tools { color: #45665a; }
-.digital-twin[data-theme='light'] .workspace-tools > div { background: #f7fbfd; border-color: #d9e4dc; }
 .digital-twin__main--station .digital-twin__panel { padding-top: 56px; }
 .digital-twin__main--station .digital-twin__panel-body { min-height: 0; overflow: hidden; }
 @media(min-width:1024px) {
@@ -940,7 +935,6 @@
 @media(max-width:1023px) {
   .digital-twin__main--station { --mobile-panel-height: min(58vh, 58cqh, 560px); }
   .digital-twin__main--station .digital-twin__panel { padding-top: 0; }
-  .workspace-tools { display: none; }
 }
 .digital-twin__main--interior .ward-navigation-dock :deep(.dash-bottom) {
   position: static; left: auto; right: auto; bottom: auto; transform: none;

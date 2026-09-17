@@ -330,3 +330,64 @@
 @media (prefers-reduced-motion: reduce) {
   .nurse-panel.nurse-workspace .workspace-scroll > [role='tabpanel'] { animation: none; }
 }
+
+/* 浅色主题：克制高级感，关闭赛博动效。 */
+.digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
+  .station-hero {
+    margin: 8px 10px 0;
+    padding: 16px 16px 12px;
+    border-radius: 6px;
+  }
+  .station-hero__scanline {
+    display: none !important;
+    animation: none !important;
+  }
+  .station-hero__identity-icon {
+    border-radius: 4px;
+    clip-path: none;
+    animation: none !important;
+  }
+  .station-hero__overview-foot,
+  .station-hero__wallboard-toggle,
+  .station-hero__alert-toggle,
+  .workspace-status {
+    border-radius: 4px;
+  }
+  .station-state__signal {
+    animation: none !important;
+  }
+  .workspace-tabs {
+    margin: 8px 10px 0;
+    padding: 4px;
+    border-radius: 6px;
+    button { border-radius: 4px; }
+  }
+  :deep(.alert-task--workspace),
+  :deep(.metric-item),
+  .handoff-card li,
+  .data-health ul,
+  .data-health__freshness-item,
+  .surface-panel--feed {
+    border-radius: 4px;
+  }
+  :deep(.alert-task-panel__filters button),
+  :deep(.alert-task__locate),
+  :deep(.alert-task__severity) {
+    border-radius: 3px;
+  }
+  :deep(.metric-item > strong),
+  :deep(.alert-task-panel__filters button strong) {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
+    .station-hero__scanline,
+    .station-hero__identity-icon,
+    .station-state__signal {
+      animation: none !important;
+    }
+  }
+}
+
