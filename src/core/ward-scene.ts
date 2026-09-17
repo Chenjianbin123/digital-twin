@@ -1719,10 +1719,13 @@ export class WardScene {
         ? prepareModularWardRoom(model, unitAsset)
         : getWardInteriorAssetParts(model);
       model.name = 'blender-smart-ward-interior';
-      prepareWardInteriorModelMaterials(model, {
+      const materialOptions = {
         envMapIntensity: wardInteriorSceneConfig.appearance.envMapIntensity,
         maxMetalness: wardInteriorSceneConfig.appearance.maxMetalness,
-      });
+      };
+      prepareWardInteriorModelMaterials(model, materialOptions);
+      if (unitAsset)
+        prepareWardInteriorModelMaterials(unitAsset, materialOptions);
       if (parts.bedPrototype)
         parts.bedPrototype.visible = false;
       hideWardInteriorCeiling(parts.architecture);

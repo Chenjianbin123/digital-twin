@@ -327,9 +327,9 @@ test('caps extreme metalness so bright glTF surfaces stay readable without studi
     new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1, roughness: 0.15 }),
   );
   root.add(mesh);
-  prepareWardInteriorModelMaterials(root, { envMapIntensity: 0.22, maxMetalness: 0.78 });
+  prepareWardInteriorModelMaterials(root, { envMapIntensity: 0.22, maxMetalness: 0.32 });
   const mat = mesh.material as THREE.MeshStandardMaterial;
-  assert.equal(mat.metalness, 0.78);
+  assert.equal(mat.metalness, 0.32);
   assert.equal(mat.envMapIntensity, 0.22);
 });
 

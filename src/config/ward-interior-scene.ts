@@ -143,9 +143,10 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
     exposure: 1.12,
     baseFogDensity: 0,
     fogSpanFactor: 0,
-    envMapIntensity: 0.3,
+    envMapIntensity: 0.18,
     environmentIntensity: 0.36,
-    maxMetalness: 0.78,
+    /** Cap chrome/plastic metalness so beds and fixtures stay matte under indoor fill. */
+    maxMetalness: 0.32,
   },
   modelBedLayout: {
     baseWidth: 3.92,
