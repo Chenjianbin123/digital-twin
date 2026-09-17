@@ -340,7 +340,7 @@ onUnmounted(() => {
     min-height: 36px;
     padding: 6px 12px;
     border: 1px solid #527e96;
-    border-radius: 4px;
+    border-radius: 10px;
     color: #e6f7ff;
     background: #173e54;
     cursor: pointer;

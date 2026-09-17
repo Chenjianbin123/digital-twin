@@ -111,8 +111,12 @@
   .nurse-panel .data-health > p { background: #faf4e8 !important; color: #795c2f !important; }
   .nurse-panel :is(.station-hero__overview-foot, .station-hero__overview-metrics > div, .data-health li, .data-health__freshness, .handoff-card li, .inspection-overview > p) { border-color: #dde6e0 !important; }
   .dash-bottom :is(.dash-bottom__main, .dash-bottom__sub, .dash-bottom__sim) { background: #f6f8f5f5 !important; border-color: #c9d9ce !important; box-shadow: 0 4px 18px #31493b18 !important; }
-  .dash-bottom :is(button, span) { color: #486c61 !important; text-shadow: none !important; }
-  .dash-bottom__item--active, .dash-bottom__sub-item--active { background: #dcebe0 !important; border-color: #b4cfbc !important; box-shadow: none !important; }
+  .dash-bottom button:not(.dash-bottom__item--active):not(.dash-bottom__sub-item--active) { color: #486c61 !important; text-shadow: none !important; }
+  .dash-bottom__item:not(.dash-bottom__item--active) .dash-bottom__label,
+  .dash-bottom__sub-item:not(.dash-bottom__sub-item--active) { color: #486c61 !important; text-shadow: none !important; }
+  .dash-bottom__item--active, .dash-bottom__sub-item--active { color: #f7fbfd !important; background: #3d7585 !important; border-color: #3d7585 !important; box-shadow: none !important; }
+  .dash-bottom__item--active :is(.dash-bottom__label, .dash-bottom__scene-icon, span, svg),
+  .dash-bottom__sub-item--active { color: #f7fbfd !important; }
   .dash-bottom__icon { background-color: #e7efe8 !important; border-color: #9dbfae !important; box-shadow: none !important; }
 }
 
@@ -499,17 +503,26 @@
  :is(.dash-bottom__main, .dash-bottom__sub) {
    background: #dce6ea !important;
    border-color: #9aafb8 !important;
-   border-radius: 6px !important;
+   border-radius: 14px !important;
    box-shadow: 0 8px 20px rgba(28, 48, 56, 0.06) !important;
  }
- button { color: #5a717c !important; border-radius: 4px !important; font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif; letter-spacing: .02em; }
- button:hover { background: #cfdce2 !important; }
+ button {
+   color: #5a717c !important;
+   border-radius: 10px !important;
+   font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
+   letter-spacing: .02em;
+ }
+ button:hover:not(.dash-bottom__item--active):not(.dash-bottom__sub-item--active) { background: #cfdce2 !important; }
  .dash-bottom__item--active, .dash-bottom__sub-item--active {
-   color: #e8f0f3 !important;
+   color: #f7fbfd !important;
    background: #3d7585 !important;
    border-color: #3d7585 !important;
    box-shadow: none !important;
    text-shadow: none;
+ }
+ .dash-bottom__item--active :is(.dash-bottom__label, .dash-bottom__scene-icon, span, svg),
+ .dash-bottom__sub-item--active {
+   color: #f7fbfd !important;
  }
 }
 @media (prefers-reduced-transparency: reduce) {
@@ -714,23 +727,23 @@
 
 /* 病房视角工具、数据同步浮层和图例随浅色主题联动。 */
 .digital-twin[data-theme='light'] {
- .ward-interior-status { color: #1a3340; background: #eef4f6; border-color: #9db8c4; border-radius: 2px; box-shadow: none; }
+ .ward-interior-status { color: #1a3340; background: #eef4f6; border-color: #9db8c4; border-radius: 12px; box-shadow: none; }
  .ward-interior-status__time, .ward-interior-status small { color: #4a6570; }
- .ward-interior-status button, .ward-scene-3d__actions button { color: #1f5f70; background: #e4eef2; border-color: #9db8c4; border-radius: 2px; }
+ .ward-interior-status button, .ward-scene-3d__actions button { color: #1f5f70; background: #e4eef2; border-color: #9db8c4; border-radius: 10px; }
  .ward-interior-status summary { color: #7a5014; }
  .ward-interior-status[data-status='error'] { border-color: #c47a88; }
  .ward-interior-status[data-status='warning'], .ward-interior-status[data-status='stale'] { border-color: #c4a06a; }
  .ward-interior-status :focus-visible { outline-color: #1f7a8c; }
- .ward-scene-3d__actions { color: #1a3340; background: #eef4f6; border-color: #9db8c4; border-radius: 2px; box-shadow: none; }
+ .ward-scene-3d__actions { color: #1a3340; background: #eef4f6; border-color: #9db8c4; border-radius: 12px; box-shadow: none; }
  .ward-scene-3d__actions button:hover:not(:disabled), .ward-interior-status button:hover:not(:disabled) { background: #dce8ee; }
- .ward-legend__toggle { color: #1f5f70; background: #e4eef2; border-color: #9db8c4; border-radius: 2px; }
- .ward-legend__panel { color: #1a3340; background: #f4f8fa; border-color: #9db8c4; border-radius: 2px; box-shadow: none; }
+ .ward-legend__toggle { color: #1f5f70; background: #e4eef2; border-color: #9db8c4; border-radius: 10px; }
+ .ward-legend__panel { color: #1a3340; background: #f4f8fa; border-color: #9db8c4; border-radius: 12px; box-shadow: none; }
  .ward-legend__hint { color: #4a6570; }
  .ward-legend__item { color: #1a3340; }
  .ward-legend__toggle:focus-visible { outline-color: #1f7a8c; }
  .ward-plan-view { background: #e8eef1; }
 }
-.digital-twin[data-theme='light'] .ward-scene-3d__occupancy { color: #1a3340; background: #eef4f6; border-color: #9db8c4; border-radius: 2px; box-shadow: none; }
+.digital-twin[data-theme='light'] .ward-scene-3d__occupancy { color: #1a3340; background: #eef4f6; border-color: #9db8c4; border-radius: 12px; box-shadow: none; }
 .digital-twin[data-theme='light'] .ward-scene-3d__occupancy p { color: #4a6570; }
 .digital-twin[data-theme='light'] .ward-scene-3d__actions button:focus-visible { outline-color: #1f7a8c; }
 
