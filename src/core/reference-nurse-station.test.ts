@@ -43,12 +43,26 @@ test('reference model keeps authored units and exact screen mapping', () => {
   assert.equal(displays[5].screen.geometry.type,'CircleGeometry');
   assert.ok(displays[5].screen.position.z>-3.983);
 });
+test('live displays hide static dashboard previews while preserving frame and clock decorations', () => {
+  const model = modelFixture();
+  const previews = ['Preview_Dashboard_Title', 'Preview_Dashboard_Status', 'Preview_Dashboard_Card_0', 'Preview_Dashboard_0_1', 'Preview_Data_Footer'];
+  const retained = ['Screen_Main_Frame', 'Preview_Clock_Tick_0', 'Station_Header'];
+  for (const name of [...previews, ...retained]) { const node = new THREE.Group(); node.name = name; model.add(node); }
+  prepareReferenceStation(model);
+  for (const name of previews) assert.equal(model.getObjectByName(name)!.visible, true);
+  bindReferenceStationDisplays(model, () => new THREE.Texture());
+  for (const name of previews) assert.equal(model.getObjectByName(name)!.visible, false, name);
+  for (const name of retained) assert.equal(model.getObjectByName(name)!.visible, true, name);
+});
+
 test('missing screens fail before any material or visibility is changed', () => {
   const model=modelFixture();
+  const preview = new THREE.Group(); preview.name = 'Preview_Dashboard_Title'; model.add(preview);
   model.remove(model.getObjectByName('Screen_Work_04')!);
   let calls=0;
   assert.throws(()=>bindReferenceStationDisplays(model,()=>{calls++;return new THREE.Texture();}),/Screen_Work_04/);
   assert.equal(calls,0);
+  assert.equal(preview.visible,true);
   assert.equal(model.getObjectByName('Screen_Main')!.visible,true);
 });
 test('missing UV and missing clock are rejected explicitly', () => {

@@ -1,3 +1,4 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs/promises';
@@ -7,7 +8,7 @@ const [alertPanel, nursePanel, areaPanel, wardPanel, app, wardScene3d, wardScene
   fs.readFile(new URL('../src/components/NurseStationPanel.vue', import.meta.url), 'utf8'),
   fs.readFile(new URL('../src/components/AreaInfoPanel.vue', import.meta.url), 'utf8'),
   fs.readFile(new URL('../src/components/WardInfoPanel.vue', import.meta.url), 'utf8'),
-  fs.readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+  readWorkspaceSource(),
   fs.readFile(new URL('../src/components/WardScene3D.vue', import.meta.url), 'utf8'),
   fs.readFile(new URL('../src/core/ward-scene.ts', import.meta.url), 'utf8'),
 ]);

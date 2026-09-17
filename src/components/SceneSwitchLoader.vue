@@ -5,6 +5,7 @@ const { feedback } = defineProps<{
   feedback: SceneSwitchFeedback | null;
 }>();
 defineEmits<{ retry: []; returnStation: [] }>();
+function reloadPage() { window.location.reload(); }
 </script>
 
 <template>
@@ -66,17 +67,18 @@ defineEmits<{ retry: []; returnStation: [] }>();
 
         <div class="scene-switch-loader__progress-wrap">
           <div class="scene-switch-loader__progress-meta">
-            <span>{{ feedback.status === 'fallback' ? '模型加载未完成，请重试' : '正在加载模型与场景资源' }}</span>
+            <span>{{ feedback.recovery === 'reload' ? '页面资源未就绪，请刷新页面' : feedback.status === 'fallback' ? '模型加载未完成，请重试' : '正在加载模型与场景资源' }}</span>
             <span v-if="feedback.status !== 'fallback'" class="scene-switch-loader__activity" aria-hidden="true"><i /><i /><i /></span>
           </div>
           <div v-if="feedback.status !== 'fallback'" class="scene-switch-loader__progress" aria-hidden="true"><span /></div>
         </div>
 
         <footer class="scene-switch-loader__card-foot">
-          <p>{{ feedback.status === 'fallback' ? '业务数据仍可使用，可重新尝试加载场景。' : '首次进入需加载三维资源，请稍候。' }}</p>
+          <p>{{ feedback.recovery === 'reload' ? '刷新后将重新进入工作空间。' : feedback.status === 'fallback' ? '业务数据仍可使用，可重新尝试加载场景。' : '首次进入需加载三维资源，请稍候。' }}</p>
           <div v-if="feedback.status === 'fallback' || feedback.tone !== 'station'" class="scene-switch-loader__actions">
             <button v-if="feedback.tone !== 'station'" type="button" @click="$emit('returnStation')">返回护士站</button>
-            <button v-if="feedback.status === 'fallback'" type="button" class="scene-switch-loader__retry" @click="$emit('retry')">重试加载 <span aria-hidden="true">↻</span></button>
+            <button v-if="feedback.status === 'fallback' && feedback.recovery === 'reload'" type="button" @click="reloadPage">刷新页面</button>
+            <button v-if="feedback.status === 'fallback' && feedback.recovery !== 'reload'" type="button" class="scene-switch-loader__retry" @click="$emit('retry')">重试加载 <span aria-hidden="true">↻</span></button>
           </div>
         </footer>
       </section>

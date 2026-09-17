@@ -1,9 +1,10 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const [panel, app, dataStatus, viewModel] = await Promise.all([
   readFile(new URL('../src/components/NurseStationPanel.vue', import.meta.url), 'utf8'),
-  readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+  readWorkspaceSource(),
   readFile(new URL('../src/core/data-status.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/core/nurse-station-view-model.ts', import.meta.url), 'utf8'),
 ]);

@@ -1,3 +1,4 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -27,6 +28,6 @@ assert.match(clearBody, /area\.value = null/);
 assert.match(clearBody, /clearTemplateCache\(\)/);
 assert.match(clearBody, /clearBedTemplateIdCache\(\)/);
 
-const appSource = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8');
+const appSource = readWorkspaceSource();
 assert.match(appSource, /handleAuthExpired[\s\S]*?store\.clearSessionState\(\)/);
 assert.match(appSource, /handleLogout[\s\S]*?store\.clearSessionState\(\)/);

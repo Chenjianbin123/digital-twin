@@ -1,8 +1,9 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const [app, header, store, dataStatus, viewModel] = await Promise.all([
-  readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+  readWorkspaceSource(),
   readFile(new URL('../src/components/dashboard/DashboardHeader.vue', import.meta.url), 'utf8'),
   readFile(new URL('../src/stores/twin-store.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/core/data-status.ts', import.meta.url), 'utf8'),

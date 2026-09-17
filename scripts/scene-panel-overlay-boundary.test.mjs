@@ -1,8 +1,9 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const app = await readFile(new URL('../src/App.vue', import.meta.url), 'utf8');
+const app = await readWorkspaceSource();
 
 test('病房走廊和病房内模型保持全屏并由透明右侧面板覆盖', () => {
   assert.match(app, /'digital-twin__panel--overlay': !isNurseStation/);

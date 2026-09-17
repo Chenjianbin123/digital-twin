@@ -706,6 +706,8 @@ export const useTwinStore = defineStore('twin', () => {
   }
 
   async function loadArea(options: LoadAreaOptions = {}) {
+    const requestToken = areaRequestGuard.begin();
+    const isCurrent = () => areaRequestGuard.isCurrent(requestToken);
     const previousSceneType = sceneType.value;
     const previousRoomIndex = currentRoomIndex.value;
     const previousRoom = currentWard.value;
@@ -722,6 +724,7 @@ export const useTwinStore = defineStore('twin', () => {
       dataSource.value = getDataSource();
       if (dataSource.value === 'database') {
         const result = await fetchDatabaseTwinArea();
+        if (!isCurrent()) return;
         if (!result.area.rooms.length)
           throw new Error('数据库适配器未返回任何病房数据');
         area.value = result.area;
@@ -735,6 +738,7 @@ export const useTwinStore = defineStore('twin', () => {
           fetchDoorDeviceList(),
           fetchHospitalInfo(),
         ]);
+        if (!isCurrent()) return;
         if (deviceResult.status === 'rejected')
           throw deviceResult.reason instanceof Error ? deviceResult.reason : new Error('获取门口机数据失败');
         const result = deviceResult.value;
@@ -753,11 +757,13 @@ export const useTwinStore = defineStore('twin', () => {
         const nextArea = mapDoorListToTwinArea(result.devices);
         const bedResult = await loadBedDeviceDetails(
           nextArea.rooms.flatMap(room => room.beds),
-          () => true,
+          isCurrent,
           { forceRefresh: true },
         );
+        if (!isCurrent()) return;
         warnings.push(...bedResult.warnings);
         warnings.push(...await preloadBedTemplates(nextArea.rooms.flatMap(room => room.beds)));
+        if (!isCurrent()) return;
         dataWarnings.value = warnings;
         area.value = nextArea;
       }
@@ -781,6 +787,7 @@ export const useTwinStore = defineStore('twin', () => {
       dataPhase.value = 'ready';
     }
     catch (e) {
+      if (!isCurrent()) return;
       if (!options.silent || !area.value) {
         error.value = e instanceof Error ? e.message : '加载失败';
         dataWarnings.value = [];
@@ -788,9 +795,9 @@ export const useTwinStore = defineStore('twin', () => {
       }
     }
     finally {
-      if (!options.silent)
+      if (isCurrent() && !options.silent)
         isLoading.value = false;
-      if (!options.silent)
+      if (isCurrent() && !options.silent)
         hospitalInfoLoading.value = false;
     }
   }

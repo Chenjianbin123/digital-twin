@@ -6,27 +6,27 @@
   --dash-highlight: rgba(247, 251, 253, 0.08);
 }
 
-/* 深色侧栏沿用原护士站蓝青色阶；仅恢复颜色，不改变工作区布局。 */
+/* 深色侧栏：HUD 透明壳 + 冷青内容层，贴合数字孪生冷蓝场景。 */
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace {
-  --workspace-surface: #0c202d;
-  --workspace-ink: #dceaf2;
-  --workspace-muted: #a7bfcd;
-  --workspace-line: #789bad30;
-  --station-surface: #102735;
-  --station-inset: #0c202d;
-  --station-border: #789bad30;
-  --station-muted: #a7bfcd;
-  background: #0c202d;
-  .station-hero { background: linear-gradient(135deg, #153440, #102735); }
-  .workspace-tabs { background: #102735; }
-  .workspace-tabs button[aria-selected='true'] { color: #82e2d5; }
-  .workspace-tabs button:focus-visible { outline-color: #82e2d5; }
-  .inspection-overview, .handoff-card, .data-health, .surface-panel--focus, .nurse-panel__details, .nurse-metric-chart { background: #102735; }
-  .alert-task--workspace { background: linear-gradient(110deg, #102735, #0c202d); border-bottom-color: #789bad30; }
-  .metric-item { background: #153440; }
-  .inspection-metric, .data-health__freshness-item { background: #0a202d; }
-  .focus-room { background: #0b2230; }
-  .station-hero__alert-toggle, .station-hero__wallboard-toggle { background: #132e3b; border-color: #789bad30; }
+  --workspace-surface: transparent;
+  --workspace-ink: #e4f0f5;
+  --workspace-muted: #9db8c4;
+  --workspace-line: rgba(126, 202, 216, 0.22);
+  --station-surface: rgba(14, 38, 50, 0.48);
+  --station-inset: rgba(10, 30, 40, 0.4);
+  --station-border: rgba(126, 202, 216, 0.22);
+  --station-muted: #9db8c4;
+  background: transparent !important;
+  .station-hero { background: linear-gradient(160deg, rgba(18, 48, 60, 0.28), rgba(10, 28, 38, 0.08)); }
+  .workspace-tabs { background: rgba(12, 34, 44, 0.28); border-bottom-color: var(--workspace-line); }
+  .workspace-tabs button[aria-selected='true'] { color: #8fd9e4; }
+  .workspace-tabs button:focus-visible { outline-color: #8fd9e4; }
+  .inspection-overview, .handoff-card, .data-health, .surface-panel--focus, .nurse-panel__details, .nurse-metric-chart { background: rgba(14, 38, 50, 0.48); }
+  .alert-task--workspace { background: linear-gradient(115deg, rgba(16, 42, 56, 0.72), rgba(10, 30, 42, 0.66)); border-bottom-color: rgba(126, 202, 216, 0.2); }
+  .metric-item { background: rgba(18, 46, 58, 0.58); }
+  .inspection-metric, .data-health__freshness-item { background: rgba(10, 32, 42, 0.58); }
+  .focus-room { background: rgba(12, 34, 46, 0.62); }
+  .station-hero__alert-toggle, .station-hero__wallboard-toggle { background: rgba(16, 42, 54, 0.55); border-color: rgba(126, 202, 216, 0.28); }
 }
 
 /* 主题仅作用于外围工作台，不改变模型材质、模型内屏幕和登录场景。
@@ -45,6 +45,18 @@
   .dash-header__data-status--warning, .dash-header__tag--mock { color: #895c1e !important; background: #fbf2df !important; }
   .dash-header__data-status--error, .dash-header__data-status--stale { color: #a43d4e !important; background: #fbecef !important; }
   .digital-twin__panel, .digital-twin__panel-body, .nurse-panel { background: #eef2f0 !important; color: #314f4d; border-color: #d3dfda !important; box-shadow: none !important; }
+  .digital-twin__panel.digital-twin__panel--station {
+    background:
+      linear-gradient(180deg, rgba(247, 251, 253, 0.92) 0%, rgba(234, 244, 248, 0.9) 100%) !important;
+    border-left: 1px solid #a9cbd7 !important;
+    box-shadow:
+      -18px 0 40px rgba(35, 68, 84, 0.1),
+      inset 2px 0 0 rgba(247, 251, 253, 0.7),
+      inset 0 1px 0 #f7fbfd !important;
+    backdrop-filter: blur(8px) saturate(118%);
+    -webkit-backdrop-filter: blur(8px) saturate(118%);
+  }
+  .nurse-panel.nurse-workspace { background: transparent !important; }
   .nurse-panel { scrollbar-color: #afc4bb #eef2f0; }
   .nurse-panel :is(span, p, small, strong, h2, h3, em, summary) { color: #4f6865 !important; text-shadow: none !important; }
   .nurse-panel :is(.station-hero__eyebrow, .station-section-title, .dash-head__title, .alert-task__head strong, .focus-room__main strong) { color: #294c48 !important; }
@@ -85,14 +97,14 @@
 
 /* 工作区布局的主题边界：分组靠间距与分隔线，避免再套一层卡片。 */
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
-  --workspace-surface: #fcfdfb;
-  --workspace-ink: #294740;
-  --workspace-muted: #657970;
-  --workspace-line: #dde5df;
-  background: #fcfdfb !important;
-  :is(.station-hero, .inspection-overview, .handoff-card, .data-health, .surface-panel--focus, .nurse-panel__details, .nurse-metric-chart, .alert-task-panel) { background: transparent !important; border-radius: 0; }
-  .workspace-tabs button { background: transparent !important; color: #64776f !important; }
-  .workspace-tabs button[aria-selected='true'] { color: #315e4f !important; background: linear-gradient(115deg, #dceee8, #edf5f2) !important; border-color: #90baae; box-shadow: inset 0 1px 0 #ffffffa0; }
+  --workspace-surface: #f0f5f6;
+  --workspace-ink: #233e49;
+  --workspace-muted: #536e79;
+  --workspace-line: #d5e2e7;
+  background: transparent !important;
+  :is(.inspection-overview, .handoff-card, .data-health, .surface-panel--focus, .nurse-panel__details, .nurse-metric-chart, .alert-task-panel) { background: transparent !important; border-radius: 0; }
+  .workspace-tabs button { background: transparent !important; color: #5b7786 !important; }
+  .workspace-tabs button[aria-selected='true'] { color: #176574 !important; background: linear-gradient(115deg, #f7fbfd, #e7f4f7) !important; border-color: #96c5cf; box-shadow: inset 0 1px 0 #f7fbfd; }
   .workspace-tabs button > span { color: inherit !important; }
   .workspace-status--alert > span { color: #9d4354 !important; }
   .workspace-status--warn > span { color: #8c642b !important; }
@@ -112,21 +124,15 @@
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace .alert-task__details summary { color: #365f55; }
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .alert-task--workspace { border-color: #52849c45; box-shadow: inset 0 1px 0 #a0dcf009; }
 
-/* 面板采用同一蓝青色层级，浅色保持实体白卡，深色保留原有底色。 */
+/* 面板采用同一蓝青色层级，浅色保持浅 HUD 玻璃，深色保留冷青底。 */
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
   --workspace-surface: #f0f5f6;
   --workspace-ink: #233e49;
   --workspace-muted: #536e79;
   --workspace-line: #d5e2e7;
-  background: var(--workspace-surface) !important;
-  .station-hero { background: linear-gradient(110deg, #f7fbfd, #edf6f7) !important; }
-  .workspace-tabs { background: linear-gradient(180deg, #dbe9ef, #edf4f7); border-top: 2px solid #75b8c6; border-bottom-color: #c6dae2; box-shadow: inset 0 1px 0 #ffffff80; }
-  .workspace-tabs button { border-color: #c1d6df !important; }
-  .workspace-scroll { background: linear-gradient(180deg, #eaf2f6 0, #f0f5f6 160px); }
+  background: transparent !important;
+  .workspace-scroll { background: transparent; scrollbar-color: #a4bec6 transparent; }
   .workspace-section-intro h2 { color: #294c59 !important; }
-  .workspace-tabs button[aria-selected='true'] { color: #176574 !important; background: linear-gradient(110deg, #dceff2, #edf7f9) !important; border-color: #96c5cf !important; }
-  .workspace-tabs button[aria-selected='true']::after { box-shadow: none; }
-  .workspace-scroll { scrollbar-color: #a4bec6 transparent; }
   .alert-task--workspace { background: linear-gradient(110deg, #f7fbfd, #f7fbfd 55%) !important; border: 1px solid #cddfe7 !important; box-shadow: inset 0 1px 0 #f7fbfd, 0 2px 5px #23445405 !important; }
   .alert-task__head strong, .station-hero__eyebrow { color: #233e49 !important; }
   .alert-task__subtitle, .alert-task__details summary { color: #536e79 !important; }
@@ -135,55 +141,159 @@
   .alert-task-panel__filters button.is-active { background: #dceff2 !important; border-color: #96c5cf !important; }
 }
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace {
-  .station-hero { background: radial-gradient(ellipse at 95% 0, #2b7f8a22, transparent 70%), linear-gradient(135deg, #153440, #102735); }
-  .alert-task--workspace { border-color: #42647670; background: linear-gradient(110deg, #142f3e, #0e2432); box-shadow: inset 0 1px 0 #a0dcf00d; }
-  .alert-task__meta { padding-top: 10px; border-top: 1px solid #7194a21c; }
-  .alert-task__signal { background: #233e4c; }
+  .station-hero { background: linear-gradient(160deg, rgba(18, 48, 60, 0.2), transparent 70%); }
+  .alert-task--workspace { border-color: rgba(126, 202, 216, 0.2); background: linear-gradient(115deg, rgba(16, 42, 56, 0.7), rgba(10, 30, 42, 0.64)); box-shadow: inset 0 1px 0 rgba(180, 236, 245, 0.06); }
+  .alert-task__meta { padding-top: 10px; border-top: 1px solid rgba(126, 202, 216, 0.12); }
+  .alert-task__signal { background: rgba(28, 58, 72, 0.7); }
 }
 
-/* 控制台结构共用，深蓝配色仅作用于深色主题。 */
+/* 控制台结构共用，冷青 HUD 配色仅作用于深色主题。 */
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .station-hero {
- background: radial-gradient(ellipse at 95% 0, #26677870, transparent 68%), linear-gradient(115deg, #102b3b, #102432) !important;
- border-bottom-color: #5a95a450 !important;
- .station-hero__eyebrow { color: #edf9fc !important; }
- .station-hero__kicker { color: #88becb !important; }
- .station-hero__overview-foot { border-top-color: #83b7c52b !important; }
- .station-hero__identity-icon { color: #93e7e4 !important; background: #24535f !important; border: 0 !important; }
- .station-hero__wallboard-toggle, .station-hero__alert-toggle { color: #c5e1e9 !important; background: #20404f !important; border-color: #6895a44d !important; }
- .station-hero__wallboard-toggle:hover, .station-hero__alert-toggle:hover { background: #2a5362 !important; border-color: #82ced0 !important; }
- .station-hero__wallboard-toggle { border-left: 2px solid #78dcd9 !important; }
- .workspace-status > span { color: #b7ced8 !important; }
- .workspace-status--alert > span { color: #f2acb9 !important; }
- .workspace-status--warn > span { color: #edcd96 !important; }
- .workspace-status > .workspace-status__sync { color: #a5c3d0 !important; }
- .workspace-status > .workspace-status__sync--attention { color: #edcd96 !important; }
+ background:
+  linear-gradient(145deg, rgba(22, 58, 72, 0.46), rgba(8, 26, 36, 0.32)),
+  linear-gradient(180deg, rgba(126, 202, 216, 0.1), transparent 46%) !important;
+ border-color: rgba(126, 202, 216, 0.3) !important;
+ .station-hero__eyebrow { color: #edf6fa !important; }
+ .station-hero__kicker { color: #8ebfcb !important; letter-spacing: .18em; }
+ .station-hero__overview-foot {
+  border-color: rgba(126, 202, 216, 0.2) !important;
+  background: rgba(6, 22, 32, 0.48) !important;
+ }
+ .station-hero__identity-icon {
+  color: #9fe0e6 !important;
+  background: linear-gradient(145deg, rgba(56, 140, 158, 0.42), rgba(24, 72, 90, 0.28)) !important;
+  border: 1px solid rgba(143, 217, 228, 0.42) !important;
+ }
+ .station-hero__wallboard-toggle, .station-hero__alert-toggle {
+  color: #cfe6ed !important;
+  background: rgba(12, 36, 48, 0.62) !important;
+  border-color: rgba(126, 202, 216, 0.32) !important;
+ }
+ .station-hero__wallboard-toggle:hover, .station-hero__alert-toggle:hover {
+  background: rgba(28, 72, 88, 0.7) !important;
+  border-color: rgba(143, 217, 228, 0.58) !important;
+ }
+ .station-hero__wallboard-toggle { border-left: 2px solid #7ecad8 !important; }
+ .workspace-status > span { color: #b0c9d4 !important; }
+ .workspace-status--alert > span { color: #f3b0bb !important; }
+ .workspace-status--warn > span { color: #e4c48a !important; }
+ .workspace-status > .workspace-status__sync { color: #9db8c4 !important; }
+ .workspace-status > .workspace-status__sync--attention { color: #e4c48a !important; }
  .station-hero__alert-toggle[aria-pressed='true'] { color: #9fe9d5 !important; border-color: #69c9ac70 !important; }
+}
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .workspace-tabs {
+  background: linear-gradient(180deg, rgba(14, 40, 52, 0.58), rgba(8, 26, 36, 0.42)) !important;
+  border-color: rgba(126, 202, 216, 0.24) !important;
 }
 
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
- .station-hero {
-  background: radial-gradient(ellipse at 100% 0, #c9e7ed80, transparent 70%), linear-gradient(110deg, #f9fcfd, #eaf3f7) !important;
-  border-bottom-color: #cadfe7 !important;
-  &::before { background-image: linear-gradient(90deg, transparent 31px, #55899c0c 32px), linear-gradient(transparent 31px, #55899c0c 32px); }
-  &::after { background: #3f9fae; box-shadow: 68px 0 0 #3f9fae30; }
-  .station-hero__eyebrow { color: #233e49 !important; }
-  .station-hero__kicker { color: #527c8b !important; }
-  .station-hero__identity-icon { color: #287d8c !important; background: #d5eaf0 !important; border: 0 !important; }
-  .station-hero__overview-foot { border-top-color: #cadfe7 !important; }
-  .workspace-status > span { color: #536e79 !important; }
-  .workspace-status--alert > span { color: #a13d51 !important; }
-  .workspace-status--warn > span { color: #865a19 !important; }
-  .workspace-status > .workspace-status__sync { color: #536e79 !important; }
-  .workspace-status > .workspace-status__sync--attention { color: #865a19 !important; }
-  .station-hero__wallboard-toggle { border-left: 2px solid #3996a6 !important; }
-  button:focus-visible { outline-color: #287d8c; }
- }
- .workspace-tabs { border-top: 0; background: #edf5f8; box-shadow: none; }
- button { color: #365e6d !important; background: #eef5f8 !important; border-color: #c5dce5 !important; }
- button:hover:not(:disabled) { background: #deedf3 !important; }
- .alert-task-panel__filters button.is-active { background: #dceff2 !important; }
- .alert-task-panel__filters button strong { color: #306675 !important; background: #dcebf1 !important; border-color: #bfd8e2 !important; }
- .station-hero__alert-toggle[aria-pressed='true'] { color: #23665e !important; border-color: #81bbae !important; }
+  .station-hero {
+    background:
+      radial-gradient(ellipse at 100% 0, rgba(120, 196, 210, 0.22), transparent 58%),
+      linear-gradient(145deg, #f9fcfd, #eaf4f8) !important;
+    border-color: #b7d4df !important;
+    box-shadow:
+      inset 0 1px 0 #f7fbfd,
+      0 10px 24px rgba(35, 68, 84, 0.08) !important;
+    &::before {
+      background:
+        radial-gradient(ellipse at 12% 0%, rgba(63, 159, 174, 0.12), transparent 42%),
+        linear-gradient(90deg, transparent 31px, rgba(85, 137, 156, 0.06) 32px);
+      background-size: auto, 32px 100%;
+      opacity: .85;
+    }
+    &::after {
+      box-shadow:
+        inset 10px 0 0 -9px rgba(63, 159, 174, 0.55),
+        inset 0 10px 0 -9px rgba(63, 159, 174, 0.5),
+        inset -10px 0 0 -9px rgba(63, 159, 174, 0.28),
+        inset 0 -10px 0 -9px rgba(63, 159, 174, 0.22);
+    }
+    .station-hero__eyebrow {
+      color: #233e49 !important;
+      text-shadow: none;
+    }
+    .station-hero__kicker { color: #527c8b !important; }
+    .station-hero__identity-icon {
+      color: #287d8c !important;
+      background: linear-gradient(145deg, #dff2f6, #cfe8ef) !important;
+      border: 1px solid #9ec8d4 !important;
+      box-shadow: inset 0 1px 0 #f7fbfd, 0 4px 12px rgba(40, 90, 110, 0.1) !important;
+    }
+    .station-hero__overview-foot {
+      border: 1px solid #c5dce6 !important;
+      background: #edf5f8 !important;
+      box-shadow: inset 0 1px 0 #f7fbfd !important;
+    }
+    .workspace-status--alert {
+      border-color: #e5b4bd !important;
+      background: linear-gradient(90deg, #f8e8eb, #fdf6f7) !important;
+    }
+    .workspace-status--warn {
+      border-color: #e4d0a8 !important;
+      background: linear-gradient(90deg, #f8f0df, #fdfaf3) !important;
+    }
+    .workspace-status > span { color: #536e79 !important; }
+    .workspace-status--alert > span { color: #a13d51 !important; }
+    .workspace-status--warn > span { color: #865a19 !important; }
+    .workspace-status > .workspace-status__sync { color: #536e79 !important; }
+    .workspace-status > .workspace-status__sync--attention { color: #865a19 !important; }
+    .station-hero__wallboard-toggle,
+    .station-hero__alert-toggle {
+      color: #365e6d !important;
+      background: #f5fafc !important;
+      border-color: #c5dce5 !important;
+      box-shadow: inset 0 1px 0 #f7fbfd !important;
+    }
+    .station-hero__wallboard-toggle:hover,
+    .station-hero__alert-toggle:hover {
+      background: #e5f2f6 !important;
+      border-color: #96c5cf !important;
+    }
+    .station-hero__wallboard-toggle { border-left: 2px solid #3996a6 !important; }
+    .station-hero__alert-toggle[aria-pressed='true'] {
+      color: #23665e !important;
+      border-color: #81bbae !important;
+      background: #e8f6f2 !important;
+    }
+    button:focus-visible { outline-color: #287d8c; }
+  }
+
+  .workspace-tabs {
+    border: 1px solid #c5dce6 !important;
+    border-top: 1px solid #c5dce6 !important;
+    background: linear-gradient(180deg, #f4fafc, #eaf4f8) !important;
+    box-shadow: inset 0 1px 0 #f7fbfd, 0 6px 16px rgba(35, 68, 84, 0.06) !important;
+    button {
+      color: #5b7786 !important;
+      background: transparent !important;
+      border-color: transparent !important;
+    }
+    button:hover {
+      color: #294b59 !important;
+      background: rgba(52, 135, 153, 0.08) !important;
+    }
+    button[aria-selected='true'] {
+      color: #176574 !important;
+      background: linear-gradient(160deg, #f7fbfd, #e7f4f7) !important;
+      border-color: #96c5cf !important;
+      box-shadow: inset 0 1px 0 #f7fbfd, 0 2px 8px rgba(40, 100, 120, 0.08) !important;
+    }
+    button[aria-selected='true']::after {
+      background: #348799;
+      box-shadow: none;
+    }
+    .workspace-tabs__count {
+      color: #306675 !important;
+      border-color: #bfd8e2 !important;
+      background: #e4f1f5 !important;
+    }
+  }
+
+  button { color: #365e6d !important; background: #eef5f8 !important; border-color: #c5dce5 !important; }
+  button:hover:not(:disabled) { background: #deedf3 !important; }
+  .alert-task-panel__filters button.is-active { background: #dceff2 !important; }
+  .alert-task-panel__filters button strong { color: #306675 !important; background: #dcebf1 !important; border-color: #bfd8e2 !important; }
 }
 
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
@@ -550,3 +660,420 @@
   .hospital-intro__metric-value small { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--room-muted); }
   .hospital-intro__loading { color: var(--room-muted); padding: 12px 0; }
 }
+
+/* 呼叫卡片：走廊优先处理面板使用稳定蓝卡；护士站待办另走霓虹告警卡。 */
+.digital-twin[data-theme] .alert-task-panel .alert-task--swp-call {
+  --call-ink: #e8f1f5; --call-copy: #c0d0d9; --call-muted: #96afbd; --call-line: #52758955;
+  --call-surface: linear-gradient(110deg, #132c3c, #0a202f); --call-disabled: #8da6b5; --call-disabled-bg: #789bae0c; --task-accent: #8fb9cd;
+  border: 1px solid var(--call-line) !important; border-left: 3px solid var(--task-accent) !important; border-radius: 10px;
+  background: var(--call-surface) !important; box-shadow: inset 0 1px 0 #ffffff05 !important; animation: none;
+  &.alert-task--critical { --task-accent: #b63748; }
+  &.alert-task--high { --task-accent: #a4bedc; }
+  &::after, .alert-task__scan { display: none; }
+  &::before { display: block; border-color: #8fb9cd0a; box-shadow: 0 0 0 14px #8fb9cd06, 0 0 0 30px #8fb9cd04; }
+  .alert-task__head strong { color: var(--call-ink) !important; font-size: 16px; line-height: 1.5; }
+  .alert-task__main > p { color: var(--call-copy) !important; font-size: 14px; line-height: 1.6; }
+  .alert-task__meta span { color: var(--call-muted); font-size: 12px; font-weight: 400; }
+  .alert-task__signal {
+    width: 28px; height: 28px; flex-basis: 28px; color: var(--task-accent) !important; border: 1px solid currentColor;
+    border-radius: 50%; background: #8fb9cd12; box-shadow: none;
+    &::before, &::after { display: none; }
+    svg { width: 16px; height: 16px; }
+    @media (prefers-reduced-motion: no-preference) {
+      svg { transform-origin: center; animation: call-receiver-ring 3.2s ease-in-out infinite; }
+      &::after { display: block; content: ''; position: absolute; inset: -1px; width: auto; height: auto; border: 1px solid currentColor; border-radius: inherit; background: none; box-shadow: none; pointer-events: none; opacity: 0; animation: call-signal-ripple 3.2s ease-out infinite; }
+    }
+  }
+  .alert-task__severity { color: #c5dce8 !important; background: #8fb9cd18 !important; font-size: 12px; border-radius: 12px; padding: 3px 8px; }
+  &.alert-task--critical .alert-task__severity { color: #fff4f5 !important; background: #b63748 !important; }
+  .alert-task__meta .alert-task__meta-live { color: #82d8be !important; border-color: #82d8be33; background: #82d8be0c; }
+  .alert-task__meta-live::before { animation: none; box-shadow: none; }
+  .alert-task__actions { border-left-color: var(--call-line); }
+  .alert-task__unlocated { color: var(--call-disabled) !important; background: var(--call-disabled-bg); border: 1px solid var(--call-line); border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 500; white-space: nowrap; svg { color: inherit; } }
+}
+.digital-twin[data-theme='light'] .alert-task-panel .alert-task--swp-call {
+  --call-ink: #294b59; --call-copy: #496876; --call-muted: #597582; --call-line: #c5dce6;
+  --call-surface: linear-gradient(110deg, #f5fafd, #f7fbfd); --call-disabled: #637f8d; --call-disabled-bg: #edf4f8; --task-accent: #608da2;
+  &.alert-task--critical { --task-accent: #bc4a5c; }
+  &.alert-task--high { --task-accent: #6888b0; }
+  .alert-task__severity { color: #43677d !important; background: #e4eff5 !important; }
+  &.alert-task--critical .alert-task__severity { color: #f7fbfd !important; background: #ad3447 !important; }
+  .alert-task__meta span { color: var(--call-muted) !important; }
+  .alert-task__meta .alert-task__meta-live { color: #276b59 !important; background: #e5f3ec; }
+}
+
+/* 护士站待办：参考图 HUD 告警卡 - 细霓虹红边 + 同心圆 + 冷青角标。 */
+.digital-twin[data-theme='dark'] .nurse-workspace .alert-task--workspace.alert-task--swp-call {
+  --task-accent: #ff5d72;
+  border: 1px solid rgba(255, 96, 112, 0.72) !important;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 14% 20%, rgba(255, 79, 101, 0.16), transparent 38%),
+    linear-gradient(110deg, rgba(42, 16, 32, 0.72), rgba(8, 28, 42, 0.68) 48%, rgba(10, 44, 60, 0.62)) !important;
+  backdrop-filter: blur(6px) saturate(118%);
+  -webkit-backdrop-filter: blur(6px) saturate(118%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 235, 0.08),
+    0 0 0 1px rgba(255, 88, 105, 0.1),
+    0 0 18px rgba(255, 72, 96, 0.12),
+    0 10px 24px rgba(0, 8, 18, 0.34) !important;
+  &.alert-task--waiting-attention {
+    --task-accent: #ffb05c;
+    border-color: rgba(255, 176, 92, 0.78) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 236, 210, 0.08),
+      0 0 0 1px rgba(255, 176, 92, 0.1),
+      0 0 16px rgba(255, 160, 70, 0.1),
+      0 10px 24px rgba(0, 8, 18, 0.32) !important;
+  }
+  &.alert-task--waiting-urgent,
+  &.alert-task--critical {
+    --task-accent: #ff5d72;
+    border-color: rgba(255, 91, 108, 0.9) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 230, 235, 0.1),
+      0 0 0 1px rgba(255, 88, 105, 0.16),
+      0 0 20px rgba(255, 72, 96, 0.16),
+      0 10px 26px rgba(0, 8, 18, 0.36) !important;
+  }
+  .alert-task__scan { display: none !important; }
+  &::before {
+    display: block !important;
+    content: '';
+    position: absolute;
+    z-index: 0;
+    top: 50%;
+    right: 64px;
+    width: 108px;
+    height: 108px;
+    border: 1px solid rgba(96, 211, 255, 0.12);
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 14px rgba(96, 211, 255, 0.04),
+      0 0 0 30px rgba(96, 211, 255, 0.025);
+    transform: translate(50%, -50%);
+    pointer-events: none;
+  }
+  &::after {
+    display: block !important;
+    content: '';
+    position: absolute;
+    z-index: 2;
+    right: 8px;
+    bottom: 7px;
+    width: 14px;
+    height: 8px;
+    border: 0;
+    border-right: 1px solid rgba(111, 222, 255, 0.55);
+    border-bottom: 1px solid rgba(111, 222, 255, 0.55);
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    pointer-events: none;
+  }
+  .alert-task__signal {
+    width: 22px; height: 22px; flex-basis: 22px;
+    color: #ff7a8a !important;
+    border: 1px solid rgba(255, 107, 119, 0.62);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 79, 97, 0.28), rgba(255, 79, 97, 0.05) 72%);
+    box-shadow: 0 0 10px rgba(255, 69, 91, 0.28);
+    &::before,
+    &::after {
+      display: block !important;
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border: 1px solid rgba(255, 106, 120, 0.45);
+      border-radius: inherit;
+      background: none;
+      box-shadow: none;
+      pointer-events: none;
+      animation: alert-call-ring 2.4s ease-out infinite;
+    }
+    &::after { animation-delay: 1.2s; }
+    svg { width: 12px; height: 12px; color: inherit; }
+  }
+  .alert-task__severity {
+    color: #f7fbfd !important;
+    background: rgba(255, 72, 90, 0.86) !important;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-weight: 700;
+  }
+  &.alert-task--waiting-attention .alert-task__severity {
+    color: #fff8ec !important;
+    background: rgba(196, 118, 36, 0.9) !important;
+  }
+  .alert-task__head strong { color: #f6fbff !important; }
+  .alert-task__subtitle, .alert-task__main > p { color: rgba(210, 228, 238, 0.9) !important; }
+  .alert-task__meta span { color: rgba(186, 210, 222, 0.9); }
+  .alert-task__meta-live {
+    color: #8fe0c8 !important;
+    border-color: rgba(127, 212, 188, 0.34);
+    background: rgba(42, 110, 96, 0.28);
+  }
+  .alert-task__main { min-width: 0; position: relative; z-index: 1; }
+  .alert-task__subtitle {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; margin: 6px 0 8px; font-size: 13px; line-height: 1.6;
+  }
+  .alert-task__location-note { margin-left: 8px; color: rgba(157, 184, 196, 0.78); font-size: 12px; }
+  .alert-task__meta { padding-top: 7px; }
+  .alert-task__details summary {
+    padding: 5px 10px; border: 1px solid rgba(126, 202, 216, 0.28); border-radius: 6px;
+    background: rgba(126, 202, 216, 0.08); color: #9ad4e0; white-space: nowrap;
+  }
+  .alert-task__details[open] { padding-top: 8px; }
+  .alert-task__details[open] summary { margin-bottom: 8px; }
+  .alert-task__actions {
+    position: relative;
+    z-index: 1;
+    border-left: 1px solid rgba(105, 211, 244, 0.16);
+  }
+  .alert-task__unlocated {
+    position: relative;
+    color: rgba(255, 218, 180, 0.92) !important;
+    background: rgba(151, 74, 38, 0.16);
+    border: 1px dashed rgba(255, 184, 127, 0.42);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    &::after {
+      content: '';
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      width: 8px;
+      height: 6px;
+      border-right: 1px solid rgba(111, 222, 255, 0.55);
+      border-bottom: 1px solid rgba(111, 222, 255, 0.55);
+      pointer-events: none;
+    }
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .digital-twin[data-theme='dark'] .nurse-workspace .alert-task--workspace.alert-task--swp-call:hover {
+    border-color: rgba(255, 112, 125, 0.92) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 230, 235, 0.12),
+      0 0 0 1px rgba(255, 88, 105, 0.18),
+      0 0 22px rgba(255, 72, 96, 0.18),
+      0 12px 28px rgba(0, 8, 18, 0.38) !important;
+    transform: translateY(-1px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .digital-twin[data-theme='dark'] .nurse-workspace .alert-task--workspace.alert-task--swp-call .alert-task__signal::before,
+  .digital-twin[data-theme='dark'] .nurse-workspace .alert-task--workspace.alert-task--swp-call .alert-task__signal::after {
+    animation: none !important;
+  }
+}
+@keyframes alert-call-ring {
+  0% { transform: scale(1); opacity: 0.55; }
+  70%, 100% { transform: scale(1.55); opacity: 0; }
+}
+
+/* 护士站列表用真实事件摘要填充内容，收紧重复卡片的垂直节奏。 */
+.digital-twin[data-theme] .nurse-workspace .alert-task--workspace:not(.alert-task--swp-call) {
+  .alert-task__main { min-width: 0; }
+  .alert-task__subtitle {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; margin: 6px 0 8px; font-size: 13px; line-height: 1.6;
+  }
+}
+/* 待办列表容器：冷青 HUD 层，轻毛玻璃，少装饰。 */
+.digital-twin[data-theme] .nurse-panel.nurse-workspace .tasks-workspace {
+  --tasks-line: rgba(126, 202, 216, 0.24); --tasks-surface: rgba(36, 110, 128, 0.28); --tasks-inset: rgba(8, 28, 38, 0.45);
+  --tasks-ink: #e4f0f5; --tasks-muted: #9db8c4; --tasks-accent: #8fd9e4;
+  --tasks-container: transparent;
+  padding: 14px; border: 1px solid var(--tasks-line); border-radius: 12px;
+  background: linear-gradient(165deg, rgba(16, 44, 56, 0.32), rgba(8, 26, 36, 0.4));
+  backdrop-filter: blur(7px) saturate(118%);
+  -webkit-backdrop-filter: blur(7px) saturate(118%);
+  box-shadow:
+    inset 0 1px 0 rgba(180, 236, 245, 0.12),
+    0 10px 26px rgba(0, 10, 20, 0.28);
+  @container nurse-panel (max-width: 380px) { padding: 12px; }
+
+  .workspace-section-intro { align-items: center; gap: 12px; margin-bottom: 14px; }
+  .workspace-section-intro h2 { color: var(--tasks-ink); font-size: 17px; }
+  .workspace-section-intro > span { color: var(--tasks-muted); font-size: 12px; }
+  .alert-task-panel__toolbar { margin: 0 0 12px; }
+  .alert-task-panel__filters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); width: 100%; padding: 3px; gap: 3px; border: 1px solid rgba(126, 202, 216, 0.18); border-radius: 8px; background: var(--tasks-inset) !important; }
+  .alert-task-panel__filters button { display: flex; justify-content: center; align-items: center; gap: 6px; min-width: 0; padding: 6px 8px; color: var(--tasks-muted) !important; border: 1px solid transparent; border-radius: 6px; background: transparent !important; }
+  .alert-task-panel__filters button.is-active { color: #e8fbff !important; background: var(--tasks-surface) !important; border-color: rgba(126, 202, 216, 0.32) !important; box-shadow: inset 0 1px 0 rgba(180, 236, 245, 0.08); }
+  .alert-task-panel__filters button strong { margin: 0; min-width: 20px; padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+  .alert-task-panel__list { gap: 10px; }
+  .alert-task--workspace:not(.alert-task--swp-call) {
+    background: linear-gradient(115deg, rgba(16, 42, 56, 0.62), rgba(10, 30, 42, 0.56)) !important;
+    border: 1px solid rgba(126, 202, 216, 0.18) !important;
+    backdrop-filter: blur(4px) saturate(115%);
+    -webkit-backdrop-filter: blur(4px) saturate(115%);
+    box-shadow: 0 6px 18px rgba(0, 10, 20, 0.26), inset 0 1px 0 rgba(180, 236, 245, 0.06) !important;
+  }
+  .alert-task__details summary { min-height: 32px; color: var(--tasks-accent); }
+  .alert-task__details[open] { padding: 10px 12px; border: 1px solid var(--tasks-line); border-radius: 8px; background: var(--tasks-inset); }
+  .alert-task__details[open] p { color: var(--tasks-ink); font-size: 13px; }
+  .alert-task__details[open] small { display: block; color: var(--tasks-muted); line-height: 1.6; }
+  @media (hover: hover) and (pointer: fine) {
+    .alert-task--workspace:not(.alert-task--swp-call):hover { border-color: rgba(126, 202, 216, 0.36) !important; box-shadow: 0 10px 24px rgba(0, 10, 20, 0.34), inset 0 1px 0 rgba(180, 236, 245, 0.1) !important; }
+    .alert-task--workspace.alert-task--swp-call:hover {
+      border-color: rgba(255, 112, 125, 0.92) !important;
+    }
+    .alert-task__details summary:hover { background: rgba(126, 202, 216, 0.12); text-decoration: none; }
+    .alert-task-panel__filters button:hover { color: var(--tasks-ink) !important; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .alert-task-panel__filters button, .alert-task__details summary { transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease; }
+    .alert-task--workspace { transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease; }
+    .alert-task--workspace:nth-child(-n+8) { animation: task-card-reveal 280ms ease-out backwards; }
+    @for $i from 2 through 8 { .alert-task--workspace:nth-child(#{$i}) { animation-delay: ($i - 1) * 30ms; } }
+    .alert-task__details[open] > p, .alert-task__details[open] > small { animation: task-detail-reveal 180ms ease-out; }
+    .alert-task__details summary::before { transition: transform 180ms ease; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .alert-task--workspace, .alert-task__details *, .alert-task-panel__filters button { animation: none !important; transition: none !important; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(10, 28, 38, 0.94);
+    .alert-task--workspace.alert-task--swp-call,
+    .alert-task--workspace:not(.alert-task--swp-call) {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+}
+
+.digital-twin[data-theme='light'] .nurse-panel.nurse-workspace .tasks-workspace {
+  --tasks-container: #fafdff;
+  --tasks-line: #cbdfe8;
+  --tasks-surface: #f7fbfd;
+  --tasks-inset: #edf5f9;
+  --tasks-ink: #294b5b;
+  --tasks-muted: #5b7786;
+  --tasks-accent: #348799;
+  border-color: #c5dce6 !important;
+  background: linear-gradient(165deg, #f7fbfd, #eef5f8) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    inset 0 1px 0 #f7fbfd,
+    0 8px 20px rgba(35, 68, 84, 0.06) !important;
+
+  .workspace-section-intro h2 { color: #294b5b !important; }
+  .workspace-section-intro > span { color: #5b7786 !important; }
+  .alert-task-panel__filters {
+    border-color: #c5dce6 !important;
+    background: #e8f2f6 !important;
+  }
+  .alert-task-panel__filters button { color: #5b7786 !important; background: transparent !important; }
+  .alert-task-panel__filters button.is-active {
+    color: #176574 !important;
+    background: #f7fbfd !important;
+    border-color: #96c5cf !important;
+    box-shadow: inset 0 1px 0 #f7fbfd, 0 1px 4px rgba(40, 100, 120, 0.06);
+  }
+  .alert-task-panel__filters button strong {
+    color: #306675 !important;
+    background: #dcebf1 !important;
+    border-color: #bfd8e2 !important;
+  }
+  .alert-task--workspace:not(.alert-task--swp-call) {
+    background: linear-gradient(115deg, #f7fbfd, #f5fafc) !important;
+    border: 1px solid #cddfe7 !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: inset 0 1px 0 #f7fbfd, 0 2px 8px rgba(35, 68, 84, 0.05) !important;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .alert-task--workspace:not(.alert-task--swp-call):hover {
+      border-color: #96c5cf !important;
+      box-shadow: inset 0 1px 0 #f7fbfd, 0 6px 14px rgba(35, 68, 84, 0.08) !important;
+    }
+    .alert-task--workspace.alert-task--swp-call:hover {
+      border-color: rgba(188, 74, 92, 0.55) !important;
+    }
+  }
+}
+
+/* 浅色呼叫卡：保留 HUD 结构，改成浅底细红边，避免深色霓虹残留。 */
+.digital-twin[data-theme='light'] .nurse-workspace .alert-task--workspace.alert-task--swp-call {
+  --task-accent: #c94a5c;
+  border: 1px solid rgba(201, 74, 92, 0.45) !important;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(201, 74, 92, 0.08), transparent 40%),
+    linear-gradient(110deg, #f7fbfd, #f7fbfd 55%) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    inset 0 1px 0 #f7fbfd,
+    0 0 0 1px rgba(201, 74, 92, 0.06),
+    0 6px 16px rgba(35, 68, 84, 0.06) !important;
+  &.alert-task--waiting-attention {
+    --task-accent: #b8893a;
+    border-color: rgba(184, 137, 58, 0.5) !important;
+  }
+  &.alert-task--waiting-urgent,
+  &.alert-task--critical {
+    border-color: rgba(201, 74, 92, 0.58) !important;
+  }
+  &::before {
+    border-color: rgba(52, 135, 153, 0.14);
+    box-shadow:
+      0 0 0 14px rgba(52, 135, 153, 0.04),
+      0 0 0 30px rgba(52, 135, 153, 0.025);
+  }
+  &::after { border-color: rgba(52, 135, 153, 0.45); }
+  .alert-task__signal {
+    color: #c94a5c !important;
+    border-color: rgba(201, 74, 92, 0.45);
+    background: radial-gradient(circle, rgba(201, 74, 92, 0.14), rgba(201, 74, 92, 0.04) 72%);
+    box-shadow: 0 0 0 3px rgba(201, 74, 92, 0.08);
+    &::before, &::after { border-color: rgba(201, 74, 92, 0.35); }
+  }
+  .alert-task__severity {
+    color: #f7fbfd !important;
+    background: #c94a5c !important;
+  }
+  &.alert-task--waiting-attention .alert-task__severity {
+    color: #fff8ec !important;
+    background: #b8893a !important;
+  }
+  .alert-task__head strong { color: #233e49 !important; }
+  .alert-task__subtitle, .alert-task__main > p { color: #536e79 !important; }
+  .alert-task__meta span { color: #5b7786; }
+  .alert-task__meta-live {
+    color: #276b59 !important;
+    border-color: #c7e0d5;
+    background: #e5f3ec;
+  }
+  .alert-task__details summary {
+    border-color: #c5dce6;
+    background: #edf5f8;
+    color: #348799;
+  }
+  .alert-task__actions { border-left-color: #d5e5ec; }
+  .alert-task__unlocated {
+    color: #865a19 !important;
+    background: #fbf1dd;
+    border: 1px dashed #e0c48a;
+    &::after { border-color: rgba(52, 135, 153, 0.45); }
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .digital-twin[data-theme='light'] .nurse-workspace .alert-task--workspace.alert-task--swp-call:hover {
+    border-color: rgba(188, 74, 92, 0.62) !important;
+    box-shadow:
+      inset 0 1px 0 #f7fbfd,
+      0 0 0 1px rgba(201, 74, 92, 0.1),
+      0 10px 20px rgba(35, 68, 84, 0.08) !important;
+  }
+}
+@keyframes call-receiver-ring { 0%, 24%, 100% { transform: rotate(0); } 4%, 12% { transform: rotate(-12deg); } 8%, 16% { transform: rotate(12deg); } 20% { transform: rotate(-5deg); } }
+@keyframes call-signal-ripple { 0% { transform: scale(1); opacity: 0; } 6% { opacity: .4; } 38%, 100% { transform: scale(1.38); opacity: 0; } }
+@keyframes task-card-reveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes task-detail-reveal { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }

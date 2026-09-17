@@ -50,6 +50,12 @@ export function bindReferenceStationDisplays(
   screen.position.copy(position);
   model.add(screen);
   displays.push({ kind: 'clock', screen, texture });
+  // GLB 的静态演示卡片位于屏幕前方；实时屏幕就绪后隐藏，避免遮挡真实数据。
+  model.traverse(object => {
+    if (object.name.startsWith('Preview_Dashboard_') || object.name === 'Preview_Data_Footer') {
+      object.visible = false;
+    }
+  });
   return displays;
 }
 

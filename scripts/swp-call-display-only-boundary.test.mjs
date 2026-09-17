@@ -1,3 +1,4 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
@@ -7,7 +8,7 @@ const [apiExists, builderExists, store, panel, wardPanel, app, workflow] = await
   readFile(new URL('../src/stores/twin-store.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/AlertTaskPanel.vue', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/WardInfoPanel.vue', import.meta.url), 'utf8'),
-  readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+  readWorkspaceSource(),
   readFile(new URL('../src/core/alert-workflow.ts', import.meta.url), 'utf8'),
 ]);
 

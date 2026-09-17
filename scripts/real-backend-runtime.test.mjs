@@ -1,3 +1,4 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -5,7 +6,7 @@ import test from 'node:test';
 const dataSource = readFileSync(new URL('../src/core/data-source.ts', import.meta.url), 'utf8');
 const viteConfig = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
 const store = readFileSync(new URL('../src/stores/twin-store.ts', import.meta.url), 'utf8');
-const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8');
+const app = readWorkspaceSource();
 const bottomNav = readFileSync(new URL('../src/components/dashboard/DashboardBottomNav.vue', import.meta.url), 'utf8');
 const toolbar = readFileSync(new URL('../src/components/WardToolbar.vue', import.meta.url), 'utf8');
 const areaInfoPanel = readFileSync(new URL('../src/components/AreaInfoPanel.vue', import.meta.url), 'utf8');
@@ -31,7 +32,7 @@ test('simulation controls are rendered only for explicit mock mode', () => {
 });
 
 test('device totals never assume a room terminal is online', () => {
-  assert.match(app, /room\.isOnline === true/);
+  assert.match(readFileSync(new URL('../src/core/workspace-metrics.ts', import.meta.url), 'utf8'), /room\.isOnline === true/);
   assert.match(areaInfoPanel, /room\.isOnline === true/);
   assert.doesNotMatch(areaInfoPanel, /onlineDevices \+= 1/);
 });

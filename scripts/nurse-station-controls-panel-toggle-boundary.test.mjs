@@ -1,8 +1,9 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const [app, visualScene, areaScene, sceneConfig] = await Promise.all([
-  readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+  readWorkspaceSource(),
   readFile(new URL('../src/components/NurseStationVisualScene.vue', import.meta.url), 'utf8'),
   readFile(new URL('../src/core/area-scene.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/config/nurse-station-scene.ts', import.meta.url), 'utf8'),
@@ -28,7 +29,7 @@ assert.match(areaScene, /this\.controls\.screenSpacePanning = STATION_CAMERA_LIM
 assert.match(areaScene, /RIGHT: STATION_CAMERA_LIMITS_ENABLED \? THREE\.MOUSE\.ROTATE : THREE\.MOUSE\.PAN,/);
 assert.match(areaScene, /TWO: STATION_CAMERA_LIMITS_ENABLED \? THREE\.TOUCH\.DOLLY_ROTATE : THREE\.TOUCH\.DOLLY_PAN,/);
 
-assert.match(app, /const panelsVisible = ref\(true\);/);
+assert.match(app, /useWorkspacePanels\(sceneType, wardInteriorView, sceneScope\)/);
 assert.match(app, /v-if="isNurseStation \|\| isWard \|\| isWardInterior"/);
 assert.match(app, /class="digital-twin__panel-toggle"/);
 assert.match(app, /panelsVisible = !panelsVisible/);

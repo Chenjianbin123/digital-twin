@@ -1,3 +1,4 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import test from 'node:test';
@@ -9,7 +10,7 @@ test('station page exposes a safe preview link without replacing the active scen
   assert.match(link, /target="_blank"/);
   assert.match(link, /rel="noopener noreferrer"/);
   assert.match(link, /aria-label="第二版模型预览（新标签页打开）"/);
-  assert.match(read('../src/App.vue'), /<details v-if="isNurseStation" class="workspace-tools">[\s\S]*?<NurseStationPreviewLink\s*\/>[\s\S]*?<\/details>/);
+  assert.match(readWorkspaceSource(), /<details v-if="isNurseStation" class="workspace-tools">[\s\S]*?<NurseStationPreviewLink\s*\/>[\s\S]*?<\/details>/);
   assert.match(read('../src/components/dashboard/DashboardHeader.vue'), /<slot name="actions"\s*\/>/);
   assert.doesNotMatch(link, /station-preview\.ts|GLTFLoader|createStationPreview/);
 });

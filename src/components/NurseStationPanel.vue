@@ -26,8 +26,8 @@ import type {
 
 const props = defineProps<{
   viewModel: NurseStationViewModel;
-  area: TwinAreaEntity;
-  roomSummaries: RoomSummary[];
+  area?: TwinAreaEntity;
+  roomSummaries?: RoomSummary[];
   statusHistory?: StatusHistoryEntry[];
   alertTasks?: AlertTask[];
   hiddenAlertTasks?: AlertTask[];
@@ -46,8 +46,11 @@ const workspaceTab = ref<'tasks' | 'overview' | 'inspection'>('tasks');
 const workspaceId = useId();
 const workspaceTabs = [{ key: 'tasks', label: '待办' }, { key: 'overview', label: '概览' }, { key: 'inspection', label: '巡视' }] as const;
 const activeWorkspaceTab = computed(() => props.wallboard ? 'overview' : workspaceTab.value);
-const pendingTaskCount = computed(() => (props.alertTasks ?? []).filter(task => task.status === 'pending').length);
-watch(() => props.area.areaCode, () => { workspaceTab.value = 'tasks'; });
+const stationArea = computed(() => props.area ?? props.viewModel.area);
+const stationRooms = computed(() => props.roomSummaries?.length ? props.roomSummaries : props.viewModel.roomSummaries);
+const stationTasks = computed(() => props.alertTasks ?? props.viewModel.alertTasks);
+const pendingTaskCount = computed(() => stationTasks.value.filter(task => task.status === 'pending').length);
+watch(() => stationArea.value.areaCode, () => { workspaceTab.value = 'tasks'; });
 function onWorkspaceKeydown(event: KeyboardEvent, index: number) {
   let next = index;
   if (event.key === 'ArrowRight') next = (index + 1) % workspaceTabs.length;
@@ -72,7 +75,7 @@ const emit = defineEmits<{
 }>();
 
 const primaryWard = computed<TwinWardEntity | null>(
-  () => props.area.rooms[0] ?? null,
+  () => stationArea.value.rooms[0] ?? null,
 );
 
 const metrics = computed(() => props.viewModel.metrics);
@@ -152,13 +155,9 @@ const deviceAttentionDetail = computed(() => {
 });
 
 const operationRows = computed(() => {
-  const waitingTasks = props.alertTasks
-    ? props.alertTasks.filter((task) => task.type !== "infusion").length +
+  const waitingTasks = stationTasks.value.filter((task) => task.type !== "infusion").length +
       (props.hiddenAlertTasks?.filter((task) => task.type !== "infusion")
-        .length ?? 0)
-    : metrics.value.calling +
-      metrics.value.offlineBeds +
-      metrics.value.envWarnings;
+        .length ?? 0);
   const pressure = Math.min(100, waitingTasks * 18);
 
   return [
@@ -357,7 +356,7 @@ const PRIORITY_RANK: Record<RoomPriority, number> = {
 };
 
 function roomVitalWarnings(roomCode: string) {
-  return (props.alertTasks ?? []).filter(
+  return stationTasks.value.filter(
     task => task.type === "vital" && task.roomCode === roomCode,
   );
 }
@@ -367,7 +366,7 @@ function roomHasVitalWarnings(room: RoomSummary) {
 }
 
 const attentionRooms = computed(() =>
-  [...props.roomSummaries]
+  [...stationRooms.value]
     .filter((s) => (
       (s.priority !== "normal" && s.priority !== "empty")
       || roomHasVitalWarnings(s)
@@ -380,7 +379,7 @@ const attentionRooms = computed(() =>
 );
 
 const overviewRooms = computed(() =>
-  [...props.roomSummaries].sort(
+  [...stationRooms.value].sort(
     (a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority],
   ),
 );
@@ -391,7 +390,7 @@ const focusRooms = computed(() => {
 });
 
 function roomPatrolText(room: RoomSummary) {
-  const roomTasks = (props.alertTasks ?? []).filter(
+  const roomTasks = stationTasks.value.filter(
     (task) => task.roomCode === room.sickroomCode,
   );
   const vitalCount = roomTasks.filter(task => task.type === "vital").length;
@@ -410,7 +409,7 @@ const recentHistory = computed(() => (props.statusHistory ?? []).slice(0, 3));
 const envSnapshot = computed(() => {
   const temps: string[] = [];
   const humids: string[] = [];
-  for (const room of props.area.rooms) {
+  for (const room of stationArea.value.rooms) {
     const env = room.doorEnvData;
     if (env?.temp != null && String(env.temp).trim())
       temps.push(String(env.temp).replace(/℃|°C/g, "").trim());
@@ -542,10 +541,10 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       </button>
     </div>
     <div class="workspace-scroll">
-      <div v-show="activeWorkspaceTab === 'tasks'" :id="`${workspaceId}-content-tasks`" role="tabpanel" :aria-labelledby="`${workspaceId}-tasks`" tabindex="0">
+      <div class="tasks-workspace" v-show="activeWorkspaceTab === 'tasks'" :id="`${workspaceId}-content-tasks`" role="tabpanel" :aria-labelledby="`${workspaceId}-tasks`" tabindex="0">
         <div class="workspace-section-intro"><h2>待办事项</h2><span>按当前事件记录统计</span></div>
     <AlertTaskPanel
-      :tasks="alertTasks ?? []"
+      :tasks="viewModel.alertTasks"
       :ack-records="alertAckRecords"
       :hidden-tasks="hiddenAlertTasks"
       :filter="alertFilter"
@@ -562,7 +561,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
 
       </div>
-      <div v-show="activeWorkspaceTab === 'overview'" :id="`${workspaceId}-content-overview`" :role="wallboard ? 'region' : 'tabpanel'" :aria-labelledby="wallboard ? undefined : `${workspaceId}-overview`" :aria-label="wallboard ? '病区展示概览' : undefined" tabindex="0">
+      <div class="overview-workspace" v-show="activeWorkspaceTab === 'overview'" :id="`${workspaceId}-content-overview`" :role="wallboard ? 'region' : 'tabpanel'" :aria-labelledby="wallboard ? undefined : `${workspaceId}-overview`" :aria-label="wallboard ? '病区展示概览' : undefined" tabindex="0">
     <NurseStationMetricChart
       :kpis="stationKpis"
       :realtime-status="viewModel.realtime"
@@ -729,7 +728,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     </details>
 
       </div>
-      <div v-show="activeWorkspaceTab === 'inspection'" :id="`${workspaceId}-content-inspection`" role="tabpanel" :aria-labelledby="`${workspaceId}-inspection`" tabindex="0">
+      <div class="inspection-workspace" v-show="activeWorkspaceTab === 'inspection'" :id="`${workspaceId}-content-inspection`" role="tabpanel" :aria-labelledby="`${workspaceId}-inspection`" tabindex="0">
     <section class="inspection-overview">
       <div class="inspection-overview__head">
         <div>
@@ -2555,6 +2554,9 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   gap: 12px;
   background: rgba(8, 23, 35, .86);
 }
+.nurse-panel.nurse-workspace {
+  background: transparent;
+}
 .station-hero {
   padding: 16px;
   background: #102c3a;
@@ -2725,8 +2727,10 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   --station-border: #789bad30;
   --station-muted: #a7bfcd;
   gap: 12px;
-  .station-hero { border-color: var(--station-border); box-shadow: none; }
-  .station-hero::before, .station-hero::after { display: none; }
+  &:not(.nurse-workspace) {
+    .station-hero { border-color: var(--station-border); box-shadow: none; }
+    .station-hero::before, .station-hero::after { display: none; }
+  }
   .station-hero .station-state { padding: 12px 14px; }
   .station-hero .station-state__message p { color: #baceda; }
   .station-hero .station-state--alert small { color: #efb0bb; }
