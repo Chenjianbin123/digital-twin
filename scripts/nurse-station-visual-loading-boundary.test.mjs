@@ -1,8 +1,9 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const [app, visualScene] = await Promise.all([
-  readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+  readWorkspaceSource(),
   readFile(new URL('../src/components/NurseStationVisualScene.vue', import.meta.url), 'utf8'),
 ]);
 

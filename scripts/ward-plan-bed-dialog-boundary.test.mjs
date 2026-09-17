@@ -1,14 +1,15 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8');
+const app = readWorkspaceSource();
 const dialogUrl = new URL('../src/components/WardPlanBedDialog.vue', import.meta.url);
 const dialog = existsSync(dialogUrl) ? readFileSync(dialogUrl, 'utf8') : '';
 
 test('2.5D 点击床位后展示科技感床位详情浮层', () => {
   assert.ok(dialog, '应创建 WardPlanBedDialog.vue');
-  assert.match(app, /const WardPlanBedDialog = defineAsyncComponent\(\(\) => import\('@\/components\/WardPlanBedDialog\.vue'\)\);/);
+  assert.match(app, /const WardPlanBedDialog = defineRecoverableComponent\(\(\) => import\('@\/components\/WardPlanBedDialog\.vue'\)\);/);
   assert.match(app, /<WardPlanBedDialog[\s\S]*?v-if="isWardInterior && wardInteriorView === 'plan' && selectedBed && selectedBed.isOccupied && planDialogBedCode === selectedBed.bedCode"/);
   assert.match(app, /@close="closePlanBed"/);
   assert.match(app, /@bed-click="openPlanBed"/);

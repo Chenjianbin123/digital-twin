@@ -1,3 +1,4 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
@@ -6,7 +7,7 @@ const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('场景切换使用独立的全区域加载层并展示路径信息', async () => {
   const loader = await read('src/components/SceneSwitchLoader.vue');
-  const app = await read('src/App.vue');
+  const app = await readWorkspaceSource();
   const transition = await read('src/core/scene-transition.ts');
 
   assert.match(loader, /class="scene-switch-loader"/);

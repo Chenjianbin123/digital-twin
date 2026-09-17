@@ -1,8 +1,9 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const app = await readFile(new URL('../src/App.vue', import.meta.url), 'utf8');
+const app = await readWorkspaceSource();
 
 test('病房内场景不展示医院介绍，病区走廊仍可展示', () => {
   assert.match(

@@ -8,10 +8,12 @@ export interface AreaSelectionBootstrapOptions {
   getRememberedAreaId: () => number | null;
   enterRememberedArea: (areaId: number) => Promise<unknown>;
   onPhase: (progress: number, label: string) => void;
+  isCurrent?: () => boolean;
 }
 
 export async function prepareAreaSelection(options: AreaSelectionBootstrapOptions): Promise<string | null> {
   try {
+    if (options.isCurrent?.() === false) return null;
     const useAreaSelection = options.useAreaSelection ?? options.useRemoteDeviceApi;
     options.onPhase(18, '校验设备运行环境');
     if (options.useRemoteDeviceApi)
@@ -30,6 +32,8 @@ export async function prepareAreaSelection(options: AreaSelectionBootstrapOption
       filePrefixTask,
       options.loadAreaOptions(),
     ]);
+    // A stale list request must not resume a remembered area in a newer login.
+    if (options.isCurrent?.() === false) return null;
     if (areaResult.status === 'rejected')
       throw areaResult.reason;
 
@@ -37,6 +41,7 @@ export async function prepareAreaSelection(options: AreaSelectionBootstrapOption
     if (rememberedAreaId != null) {
       options.onPhase(74, '恢复上次工作病区');
       const entered = await options.enterRememberedArea(rememberedAreaId);
+      if (options.isCurrent?.() === false) return null;
       if (entered === false)
         return '恢复上次工作病区失败，请重新选择病区';
     }

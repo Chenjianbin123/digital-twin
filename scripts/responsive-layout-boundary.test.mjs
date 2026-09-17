@@ -1,8 +1,9 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8');
+const app = readWorkspaceSource();
 const header = readFileSync(new URL('../src/components/dashboard/DashboardHeader.vue', import.meta.url), 'utf8');
 const bottomNav = readFileSync(new URL('../src/components/dashboard/DashboardBottomNav.vue', import.meta.url), 'utf8');
 const areaSelection = readFileSync(new URL('../src/components/AreaSelectionView.vue', import.meta.url), 'utf8');

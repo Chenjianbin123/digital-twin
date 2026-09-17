@@ -9,8 +9,12 @@ function createEntry(key: string) {
     key,
     requested: false,
     state: 'loading' as ModelState,
+    recovery: 'retry' as 'retry' | 'reload',
     // Bind updates to this entry so late callbacks cannot complete a newer session.
-    onState: (state: ModelState): void => { entry.state = state; },
+    onState: (state: ModelState | 'component-error'): void => {
+      entry.state = state === 'component-error' ? 'fallback' : state;
+      entry.recovery = state === 'component-error' ? 'reload' : 'retry';
+    },
   });
   return entry;
 }
@@ -62,7 +66,10 @@ export function useSceneLoading(
       title: from.value === type ? `加载${transition.toLabel}` : transition.title,
       fromLabel: from.value === type ? transition.toLabel : transition.fromLabel,
       status: entry.state,
-      subtitle: entry.state === 'fallback'
+      recovery: entry.recovery,
+      subtitle: entry.recovery === 'reload'
+        ? '页面资源加载失败，请检查网络后刷新页面'
+        : entry.state === 'fallback'
         ? '场景加载失败，可重试或返回护士站'
         : '正在加载模型与准备首帧，首次进入需要稍候',
     };
@@ -70,7 +77,7 @@ export function useSceneLoading(
 
   function retry() {
     const type = target.value;
-    if (!scope.value || !type || scenes.value[type].state !== 'fallback')
+    if (!scope.value || !type || scenes.value[type].state !== 'fallback' || scenes.value[type].recovery === 'reload')
       return;
     const entry = createEntry(`${++generation}:${type}:retry`);
     entry.requested = true;

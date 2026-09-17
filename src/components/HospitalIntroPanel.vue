@@ -4,12 +4,8 @@ import type { HospitalInfo } from '@/types/hospital';
 import { htmlToPlainText } from '@/utils/html-text';
 import { resolveFileUrl } from '@/utils/file-url';
 
-export interface KeyMetric {
-  key: string;
-  label: string;
-  value: string | number;
-  unit?: string;
-}
+import type { KeyMetric } from '@/core/workspace-metrics';
+export type { KeyMetric } from '@/core/workspace-metrics';
 
 const props = defineProps<{
   info: HospitalInfo | null;

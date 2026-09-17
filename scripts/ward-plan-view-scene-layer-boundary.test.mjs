@@ -1,8 +1,9 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8');
+const app = readWorkspaceSource();
 
 test('病房内 2.5D 视图使用统一场景层渲染，避免画布空白', () => {
   assert.match(

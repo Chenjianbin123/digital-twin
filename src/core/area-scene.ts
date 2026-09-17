@@ -1832,48 +1832,61 @@ export class AreaScene {
     const wardReady = available('ward');
     const eventsReady = available('events');
     const m = vm?.metrics;
-    const ink = this.darkTheme ? '#dceaf2' : '#e0eee7';
-    const muted = this.darkTheme ? '#9fb9c9' : '#9ab3a8';
-    const accent = this.darkTheme ? '#91d5df' : '#add8c2';
-    const alert = '#e8a7b3';
+    const ink = this.darkTheme ? '#dceaf2' : '#243d42';
+    const muted = this.darkTheme ? '#9fb9c9' : '#5f7a7c';
+    const accent = this.darkTheme ? '#91d5df' : '#2f9b88';
+    const alert = this.darkTheme ? '#e8a7b3' : '#c45b6a';
+    const panelStroke = this.darkTheme ? '#638d792b' : '#7aa89a55';
+    const panelFill = this.darkTheme ? '#b4d7c508' : '#ffffffcc';
+    const metricFill = this.darkTheme ? '#a8d4bd0c' : '#f3faf7';
+    const metricStroke = this.darkTheme ? '#a8d4bd12' : '#b7d7cb88';
     const text = (value: string, x: number, y: number, size: number, color = ink, max = 1100, weight = 400) => {
       ctx.fillStyle = color;
       ctx.font = weight + ' ' + size + 'px "Microsoft YaHei", sans-serif';
       this.drawTruncatedText(ctx, value, x, y, max);
     };
     const bg = ctx.createLinearGradient(0, 0, 1600, 500);
-    bg.addColorStop(0, this.darkTheme ? '#102f40' : '#102e29'); bg.addColorStop(1, this.darkTheme ? '#091d2a' : '#081c1c');
+    if (this.darkTheme) {
+      bg.addColorStop(0, '#102f40');
+      bg.addColorStop(1, '#091d2a');
+    }
+    else {
+      // 浅色场景用浅医用屏，避免深墨绿块压住白木护士台。
+      bg.addColorStop(0, '#f4faf8');
+      bg.addColorStop(1, '#e7f2ef');
+    }
     ctx.fillStyle = bg; ctx.fillRect(0, 0, 1600, 500);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    const panel = (x: number, y: number, width: number, height: number, fill: string, stroke = '#638d792b') => {
+    const panel = (x: number, y: number, width: number, height: number, fill: string, stroke = panelStroke) => {
       this.drawBoardRoundRect(ctx, x, y, width, height, 14);
       ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke();
     };
-    panel(40, 30, 64, 64, '#a8d4bd12');
+    panel(40, 30, 64, 64, this.darkTheme ? '#a8d4bd12' : '#d8efe8');
     ctx.strokeStyle = accent; ctx.lineWidth = 3;
     ctx.strokeRect(58, 44, 28, 34);
     ctx.beginPath(); ctx.moveTo(64, 55); ctx.lineTo(80, 55); ctx.moveTo(72, 47); ctx.lineTo(72, 63); ctx.moveTo(68, 78); ctx.lineTo(68, 69); ctx.lineTo(76, 69); ctx.lineTo(76, 78); ctx.stroke();
     text(vm?.area.areaName ?? this.area?.areaName ?? '护士站', 124, 64, 42, ink, 970, 600);
     text('护士站  ·  病区运行概览', 124, 99, 24, muted);
     const syncNormal = vm?.realtime.status === 'ready';
-    const syncColor = syncNormal ? accent : '#e2bf84';
-    panel(1242, 30, 312, 46, syncNormal ? '#a8d4bd12' : '#e2bf8412');
+    const syncColor = syncNormal ? accent : (this.darkTheme ? '#e2bf84' : '#a67c2a');
+    panel(1242, 30, 312, 46, syncNormal ? (this.darkTheme ? '#a8d4bd12' : '#d9efe8') : (this.darkTheme ? '#e2bf8412' : '#f7edd8'));
     ctx.fillStyle = syncColor; ctx.beginPath(); ctx.arc(1264, 53, 5, 0, Math.PI * 2); ctx.fill();
     text(vm?.realtime.label ?? '等待数据', 1284, 63, 27, syncColor, 244, 500);
     text(syncNormal ? '病区与护理信息同步' : '已有数据请核对', 1252, 108, 23, muted, 300);
     const line = ctx.createLinearGradient(40, 0, 1560, 0);
-    line.addColorStop(0, '#a4ceb960'); line.addColorStop(1, '#a4ceb90d');
+    line.addColorStop(0, this.darkTheme ? '#a4ceb960' : '#7eb9a990');
+    line.addColorStop(1, this.darkTheme ? '#a4ceb90d' : '#7eb9a920');
     ctx.fillStyle = line; ctx.fillRect(40, 128, 1520, 1);
 
     // Two independent information groups leave the lower middle clear of the desk monitor.
-    panel(32, 151, 704, 313, '#b4d7c508');
-    panel(864, 151, 704, 313, '#b4d7c508');
+    panel(32, 151, 704, 313, panelFill);
+    panel(864, 151, 704, 313, panelFill);
     text('病区概况', 64, 193, 29, accent, 560, 600);
     text('护理动态', 888, 193, 29, accent, 560, 600);
-    ctx.fillStyle = '#acd2bc'; ctx.fillRect(32, 175, 3, 22); ctx.fillRect(864, 175, 3, 22);
-    panel(58, 210, 216, 181, '#a8d4bd0c', '#a8d4bd12');
+    ctx.fillStyle = accent; ctx.fillRect(32, 175, 3, 22); ctx.fillRect(864, 175, 3, 22);
+    panel(58, 210, 216, 181, metricFill, metricStroke);
     const calling = eventsReady && Boolean(m?.calling);
-    panel(882, 210, 216, 181, calling ? '#e8a7b310' : '#a8d4bd0c', calling ? '#e8a7b32b' : '#a8d4bd12');
+    panel(882, 210, 216, 181, calling ? (this.darkTheme ? '#e8a7b310' : '#fcecee') : metricFill, calling ? (this.darkTheme ? '#e8a7b32b' : '#e5b4bc88') : metricStroke);
     const metric = (label: string, value: string, unit: string, x: number, color = ink, primary = false) => {
       text(label, x, 247, 28, muted, 185);
       text(value, x, 335, primary ? 91 : 79, color, 185, 500);
@@ -1885,9 +1898,9 @@ export class AreaScene {
     metric('患者呼叫', eventsReady && m ? String(m.calling) : '—', '项', 900, calling ? alert : accent, true);
     metric('在线设备', wardReady && m ? String(m.deviceOnline) : '—', '台', 1134);
     metric('体征预警', eventsReady && m ? String(m.vitalWarnings) : '—', '项', 1366, eventsReady && m?.vitalWarnings ? alert : ink);
-    ctx.fillStyle = '#638d7938'; ctx.fillRect(56, 407, 656, 1); ctx.fillRect(888, 407, 656, 1);
+    ctx.fillStyle = this.darkTheme ? '#638d7938' : '#b7cfc680'; ctx.fillRect(56, 407, 656, 1); ctx.fillRect(888, 407, 656, 1);
     text(wardReady && m ? '空余床位   ' + m.empty + ' 床' : '病区数据待同步', 76, 441, 24, muted, 574);
-    text(wardReady && m ? '接入设备   ' + m.deviceTotal + ' 台' : '设备数据待同步', 900, 441, 24, muted, 588);
+    text(wardReady && m ? '接入设备   ' + m.deviceTotal + ' 台' : '设备数据待同步', 900, 441, 24, muted, 574);
     const texture = this.makeBoardTexture(canvas);
     // The wall display occupies a small portion of the full scene; mipmaps keep text stable at a distance.
     texture.generateMipmaps = true;
@@ -3311,6 +3324,8 @@ export class AreaScene {
         // this.logStationCameraView('模型就绪');
       }
       await this.warmGpu();
+      // 贴图解码完成后再套一次浅色木纹，避免首次主题应用时漫反射未就绪。
+      this.setTheme(this.darkTheme ? 'dark' : 'light');
       if (token !== this.nurseStationModelLoadToken)
         return;
       this.renderer.render(this.scene, this.camera);

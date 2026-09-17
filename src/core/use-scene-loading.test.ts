@@ -97,3 +97,23 @@ test('failure stays visible until retry; old attempt cannot complete new attempt
     assert.equal(s.feedback.value, null);
   } finally { s.effect.stop(); }
 });
+
+
+test('component download failure requires reload while model failure remains retryable', () => {
+  const s = setup();
+  try {
+    const original = s.scenes.value['nurse-station'];
+    original.onState('component-error');
+    assert.equal(s.feedback.value?.status, 'fallback');
+    assert.equal(s.feedback.value?.recovery, 'reload');
+    s.retry();
+    assert.equal(s.scenes.value['nurse-station'], original);
+    original.onState('fallback');
+    assert.equal(s.feedback.value?.recovery, 'retry');
+    s.retry();
+    assert.notEqual(s.scenes.value['nurse-station'], original);
+    original.onState('component-error');
+    assert.equal(s.feedback.value?.status, 'loading');
+    assert.equal(s.feedback.value?.recovery, 'retry');
+  } finally { s.effect.stop(); }
+});

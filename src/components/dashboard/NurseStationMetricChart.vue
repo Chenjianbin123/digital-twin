@@ -47,7 +47,7 @@ function clampedPercent(value: number | null | undefined) {
         v-for="item in kpis"
         :key="item.key"
         class="metric-item"
-        :class="`metric-item--${item.tone}`"
+        :class="[`metric-item--${item.tone}`, { 'metric-item--empty': item.value === 0 || item.value === '0' }]"
       >
         <svg class="metric-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <template v-if="item.key === 'occupied'"><circle cx="12" cy="7" r="3"/><path d="M5 21v-3a7 7 0 0 1 14 0v3"/></template>

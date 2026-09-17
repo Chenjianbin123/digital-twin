@@ -1,7 +1,8 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const app = await readFile(new URL('../src/App.vue', import.meta.url), 'utf8');
+const app = await readWorkspaceSource();
 const visualScene = await readFile(new URL('../src/components/NurseStationVisualScene.vue', import.meta.url), 'utf8');
 const stationPanel = await readFile(new URL('../src/components/NurseStationPanel.vue', import.meta.url), 'utf8');
 const bottomNav = await readFile(new URL('../src/components/dashboard/DashboardBottomNav.vue', import.meta.url), 'utf8');

@@ -1,14 +1,15 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8');
+const app = readWorkspaceSource();
 const header = readFileSync(new URL('../src/components/dashboard/DashboardHeader.vue', import.meta.url), 'utf8');
 
 test('root app gates ward bootstrap behind a confirmed authentication session', () => {
-  assert.match(app, /const SwpLoginGate = defineAsyncComponent/);
+  assert.match(app, /const SwpLoginGate = defineRecoverableComponent/);
   assert.match(app, /readAuthSession/);
-  assert.match(app, /async function bootstrapDigitalTwin\(\)/);
+  assert.match(app, /useWorkspaceBootstrap\(loadAreaSelectionContext\)/);
   assert.match(app, /if \(authSession\.value\)[\s\S]*?bootstrapDigitalTwin\(\)/);
   assert.match(app, /<SwpLoginGate[\s\S]*?v-if="!authSession"[\s\S]*?@authenticated="handleAuthenticated"/);
 });

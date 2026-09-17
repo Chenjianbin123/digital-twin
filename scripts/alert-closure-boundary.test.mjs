@@ -1,3 +1,4 @@
+import { readWorkspaceSource } from './helpers/read-workspace-source.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
@@ -5,7 +6,7 @@ const [ack, store, panel, app] = await Promise.all([
   readFile(new URL('../src/core/alert-ack.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/stores/twin-store.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/AlertTaskPanel.vue', import.meta.url), 'utf8'),
-  readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+  readWorkspaceSource(),
 ]);
 
 assert.match(ack, /syncState: 'pending'/);
