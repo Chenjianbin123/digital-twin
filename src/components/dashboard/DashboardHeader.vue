@@ -754,8 +754,15 @@ const dataStatusLabel = computed(() => ({
 /* 保持桌面头部 56px，与场景的顶部预留空间一致。 */
 .dash-header.dash-header {
   height: 56px; box-sizing: border-box; padding: 8px 20px; align-items: center;
-  background: #0a1f2ded; border-bottom: 1px solid #7299ad38;
-  box-shadow: 0 4px 16px #03111b22;
+  background: linear-gradient(180deg, rgba(10, 31, 45, .66), rgba(8, 27, 40, .56));
+  border-bottom: 1px solid #7299ad38;
+  box-shadow:
+    inset 0 1px 0 rgba(173, 226, 238, .08),
+    0 1px 0 rgba(112, 207, 220, .06),
+    0 7px 16px rgba(3, 17, 27, .24),
+    0 16px 34px rgba(1, 10, 18, .3);
+  backdrop-filter: blur(20px) saturate(128%);
+  -webkit-backdrop-filter: blur(20px) saturate(128%);
   .dash-header__side--left, .dash-header__side--right, .dash-header__center { padding-top: 0; }
   .dash-header__area-cluster { display: flex; flex-direction: row; align-items: center; gap: 12px; max-width: 100%; padding: 0; border: 0; background: none; box-shadow: none; backdrop-filter: none; }
   .dash-header__area-trigger { min-height: 36px; max-width: 220px; padding: 6px 10px; border: 1px solid #7ba4b343; border-radius: 6px; background: #153441; box-shadow: none; }
@@ -794,4 +801,11 @@ const dataStatusLabel = computed(() => ({
 .dash-header__theme { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0; height: 36px; padding: 0 10px; border: 1px solid #729aab38; border-radius: 6px; background: #15313f; color: #b8dcdf; font: inherit; font-size: 12px; cursor: pointer; }
 .dash-header__theme svg { width: 16px; height: 16px; }
 @media(max-width: 1200px) { .dash-header__theme span { display: none; } }
+@media (prefers-reduced-transparency: reduce) {
+  .dash-header.dash-header {
+    background: #0a1f2d;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
 </style>

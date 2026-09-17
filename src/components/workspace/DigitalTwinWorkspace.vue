@@ -105,7 +105,6 @@ const {
   bedDetailsLoading,
   bedDetailsError,
   alertTasks,
-  hiddenAlertTasks,
   activeAlertTask,
   alertAckRecords,
   alertLocateNotice,
@@ -535,14 +534,14 @@ onBeforeUnmount(() => {
             v-if="nurseStationViewModel"
             :view-model="nurseStationViewModel"
             :status-history="statusHistory"
-            :hidden-alert-tasks="hiddenAlertTasks"
             :alert-ack-records="alertAckRecords"
             :call-alerts-enabled="callAlertsEnabled"
+            :data-source="dataSource"
             :wallboard="nurseStationWallboard"
             @focus-room="store.focusRoom"
             @locate-alert="store.openAlertTask"
             @mark-alert-handling="store.markAlertHandling"
-            @restore-alert="store.restoreAlertTask"
+            @acknowledge-alert="store.acknowledgeSourceAlert"
             @set-call-alerts-enabled="store.setCallAlertsEnabled"
             @set-wallboard="setNurseStationWallboard"
           />
@@ -572,6 +571,7 @@ onBeforeUnmount(() => {
               @back-to-station="handleSceneTypeChange('nurse-station')"
               @locate-alert="store.openAlertTask"
               @mark-alert-handling="store.markAlertHandling"
+              @acknowledge-alert="store.acknowledgeSourceAlert"
             />
 
             <WardInfoPanel

@@ -337,9 +337,13 @@ export function collectSwpAlertTasks(
     const equivalentLocalId = event.taskType === 'call' && location?.bedCode
       ? scopedTaskId(`call:${location.roomCode}:${location.bedCode}`, areaScope)
       : '';
+    const sourceAck = ackState[event.id];
+    const sourceAcknowledged = typeof sourceAck !== 'string'
+      && sourceAck?.status === 'handling'
+      && (!sourceAck.eventStartedAt || !event.startedAt || sourceAck.eventStartedAt === event.startedAt);
     const explicitStatus = getTaskStatus(event.id, ackState, event.startedAt);
     const status = isSourceManagedSwpTask
-      ? 'pending'
+      ? sourceAcknowledged ? 'handling' : 'pending'
       : ackState[event.id]
         ? explicitStatus
         : equivalentLocalId && getTaskStatus(equivalentLocalId, ackState, event.startedAt) === 'handling'

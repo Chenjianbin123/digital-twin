@@ -7,38 +7,19 @@ import NurseStationMetricChart from "@/components/dashboard/NurseStationMetricCh
 import type { AlertAckRecordMap } from "@/core/alert-ack";
 import type { NurseStationViewModel } from "@/core/nurse-station-view-model";
 import type { RoomPriority, RoomSummary } from "@/core/area-summary";
-import type { AlertTask } from "@/core/alert-workflow";
 import type { DataStatus } from "@/core/data-status";
-import type {
-  NormalizedSwpEvent,
-  SwpEventSyncState,
-  SwpResponseMetrics,
-} from "@/types/swp-events";
-import type {
-  InspectionRoomSummary,
-  InspectionSyncState,
-} from "@/types/inspection";
+import type { DataSource } from "@/core/data-source";
 import type {
   StatusHistoryEntry,
-  TwinAreaEntity,
   TwinWardEntity,
 } from "@/types/twin";
 
 const props = defineProps<{
   viewModel: NurseStationViewModel;
-  area?: TwinAreaEntity;
-  roomSummaries?: RoomSummary[];
   statusHistory?: StatusHistoryEntry[];
-  alertTasks?: AlertTask[];
-  hiddenAlertTasks?: AlertTask[];
   alertAckRecords?: AlertAckRecordMap;
   callAlertsEnabled?: boolean;
-  swpEvents?: NormalizedSwpEvent[];
-  swpResponseMetrics?: SwpResponseMetrics;
-  swpEventSync?: SwpEventSyncState;
-  swpResponseSync?: SwpEventSyncState;
-  inspectionRoomSummaries?: InspectionRoomSummary[];
-  inspectionSync?: InspectionSyncState;
+  dataSource?: DataSource;
   wallboard?: boolean;
 }>();
 
@@ -46,9 +27,15 @@ const workspaceTab = ref<'tasks' | 'overview' | 'inspection'>('tasks');
 const workspaceId = useId();
 const workspaceTabs = [{ key: 'tasks', label: '待办' }, { key: 'overview', label: '概览' }, { key: 'inspection', label: '巡视' }] as const;
 const activeWorkspaceTab = computed(() => props.wallboard ? 'overview' : workspaceTab.value);
-const stationArea = computed(() => props.area ?? props.viewModel.area);
-const stationRooms = computed(() => props.roomSummaries?.length ? props.roomSummaries : props.viewModel.roomSummaries);
-const stationTasks = computed(() => props.alertTasks ?? props.viewModel.alertTasks);
+const stationArea = computed(() => props.viewModel.area);
+const stationRooms = computed(() => props.viewModel.roomSummaries);
+const stationTasks = computed(() => props.viewModel.alertTasks);
+const responseMetrics = computed(() => props.viewModel.swpResponseMetrics);
+const eventSync = computed(() => props.viewModel.swpEventSync);
+const responseSync = computed(() => props.viewModel.swpResponseSync);
+const stationInspectionRooms = computed(() => props.viewModel.inspectionRoomSummaries);
+const inspectionSync = computed(() => props.viewModel.inspectionSync);
+const supportsRealtimeNursingData = computed(() => props.dataSource == null || props.dataSource === "remote");
 const pendingTaskCount = computed(() => stationTasks.value.filter(task => task.status === 'pending').length);
 watch(() => stationArea.value.areaCode, () => { workspaceTab.value = 'tasks'; });
 function onWorkspaceKeydown(event: KeyboardEvent, index: number) {
@@ -68,8 +55,7 @@ const emit = defineEmits<{
   focusRoom: [index: number];
   locateAlert: [taskId: string];
   markAlertHandling: [taskId: string];
-  resolveAlert: [taskId: string];
-  restoreAlert: [taskId: string];
+  acknowledgeAlert: [taskId: string];
   setCallAlertsEnabled: [enabled: boolean];
   setWallboard: [enabled: boolean];
 }>();
@@ -155,9 +141,7 @@ const deviceAttentionDetail = computed(() => {
 });
 
 const operationRows = computed(() => {
-  const waitingTasks = stationTasks.value.filter((task) => task.type !== "infusion").length +
-      (props.hiddenAlertTasks?.filter((task) => task.type !== "infusion")
-        .length ?? 0);
+  const waitingTasks = stationTasks.value.filter((task) => task.type !== "infusion").length;
   const pressure = Math.min(100, waitingTasks * 18);
 
   return [
@@ -197,18 +181,6 @@ const operationRows = computed(() => {
   ];
 });
 
-const responseMetrics = computed<SwpResponseMetrics>(
-  () =>
-    props.swpResponseMetrics ?? {
-      callCount: 0,
-      arrivedCallCount: 0,
-      unattendedCallCount: 0,
-      arrivalCount: 0,
-      averageResponseSeconds: null,
-      latestCallAt: null,
-    },
-);
-
 function formatResponseDuration(seconds: number | null) {
   if (seconds == null) return "--";
   if (seconds < 60) return `${seconds}秒`;
@@ -236,26 +208,28 @@ const responseCards = computed(() => [
 ]);
 
 const eventSourceLabel = computed(() => {
-  if (props.swpEventSync?.phase === "error") return "呼叫数据异常";
-  if (props.swpEventSync?.phase === "partial") return "呼叫数据部分同步";
-  if (props.swpEventSync?.phase === "loading")
-    return props.swpEventSync.lastSyncedAt
+  if (!supportsRealtimeNursingData.value) return "当前数据源不支持";
+  if (eventSync.value.phase === "error") return "呼叫数据异常";
+  if (eventSync.value.phase === "partial") return "呼叫数据部分同步";
+  if (eventSync.value.phase === "loading")
+    return eventSync.value.lastSyncedAt
       ? "呼叫数据刷新中"
       : "呼叫数据同步中";
-  if (props.swpEventSync?.phase === "ready") return "呼叫数据已同步";
+  if (eventSync.value.phase === "ready") return "呼叫数据已同步";
   return "等待呼叫数据";
 });
 
 const eventSourceDetail = computed(() => {
-  if (props.swpEventSync?.phase === "error")
-    return props.swpEventSync.lastSyncedAt
+  if (!supportsRealtimeNursingData.value) return "仅实时数据源提供护士站呼叫事件";
+  if (eventSync.value.phase === "error")
+    return eventSync.value.lastSyncedAt
       ? "当前显示最近一次数据"
       : "暂未获取到呼叫数据";
-  if (props.swpEventSync?.phase === "partial")
+  if (eventSync.value.phase === "partial")
     return "部分呼叫数据可能延迟，请关注管理机或话机";
-  if (props.swpEventSync?.phase === "loading") return "正在更新呼叫列表";
-  if (!props.swpEventSync?.lastSyncedAt) return "等待护士站呼叫数据";
-  return `最近同步 ${new Date(props.swpEventSync.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
+  if (eventSync.value.phase === "loading") return "正在更新呼叫列表";
+  if (!eventSync.value.lastSyncedAt) return "等待护士站呼叫数据";
+  return `最近同步 ${new Date(eventSync.value.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
 });
 
 
@@ -293,21 +267,23 @@ function freshnessTimeLabel(value: string | null) {
 }
 
 const responseSourceLabel = computed(() => {
-  if (props.swpResponseSync?.phase === "error") return "指标同步异常";
-  if (props.swpResponseSync?.phase === "loading")
-    return props.swpResponseSync.lastSyncedAt ? "指标刷新中" : "指标同步中";
-  if (props.swpResponseSync?.phase === "ready") return "指标已同步";
+  if (!supportsRealtimeNursingData.value) return "当前数据源不支持";
+  if (responseSync.value.phase === "error") return "指标同步异常";
+  if (responseSync.value.phase === "loading")
+    return responseSync.value.lastSyncedAt ? "指标刷新中" : "指标同步中";
+  if (responseSync.value.phase === "ready") return "指标已同步";
   return "指标待同步";
 });
 
 const responseSourceDetail = computed(() => {
-  if (props.swpResponseSync?.error) return props.swpResponseSync.error;
-  if (!props.swpResponseSync?.lastSyncedAt) return "等待响应时效数据";
-  return `最近同步 ${new Date(props.swpResponseSync.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
+  if (!supportsRealtimeNursingData.value) return "仅实时数据源提供呼叫响应时效";
+  if (responseSync.value.error) return responseSync.value.error;
+  if (!responseSync.value.lastSyncedAt) return "等待响应时效数据";
+  return `最近同步 ${new Date(responseSync.value.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
 });
 
 const inspectionOverview = computed(() => {
-  const summaries = props.inspectionRoomSummaries ?? [];
+  const summaries = stationInspectionRooms.value;
   return {
     normal: summaries.filter(item => item.state === "normal").length,
     due: summaries.filter(item => item.state === "due").length,
@@ -317,7 +293,7 @@ const inspectionOverview = computed(() => {
 });
 
 const inspectionAttentionRooms = computed(() =>
-  (props.inspectionRoomSummaries ?? [])
+  stationInspectionRooms.value
     .filter(item => item.state === "overdue" || item.state === "due")
     .sort((a, b) => {
       const rank = { overdue: 0, due: 1 };
@@ -327,13 +303,15 @@ const inspectionAttentionRooms = computed(() =>
 );
 
 const inspectionSyncLabel = computed(() => {
-  if (props.inspectionSync?.phase === "error")
+  if (!supportsRealtimeNursingData.value)
+    return "当前数据源不支持巡视记录";
+  if (inspectionSync.value.phase === "error")
     return "巡视数据同步异常";
-  if (props.inspectionSync?.phase === "loading")
-    return props.inspectionSync.lastSyncedAt ? "巡视数据刷新中" : "巡视数据同步中";
-  if (props.inspectionSync?.phase === "ready")
-    return props.inspectionSync.lastSyncedAt
-      ? `数据同步 ${new Date(props.inspectionSync.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`
+  if (inspectionSync.value.phase === "loading")
+    return inspectionSync.value.lastSyncedAt ? "巡视数据刷新中" : "巡视数据同步中";
+  if (inspectionSync.value.phase === "ready")
+    return inspectionSync.value.lastSyncedAt
+      ? `数据同步 ${new Date(inspectionSync.value.lastSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })}`
       : "巡视数据已同步";
   return "巡视数据待同步";
 });
@@ -520,6 +498,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
           type="button"
           class="station-hero__alert-toggle"
           :aria-pressed="callAlertsEnabled"
+          :aria-label="`呼叫提醒，当前${callAlertsEnabled ? '已开启' : '未开启'}`"
           @click="emit('setCallAlertsEnabled', !callAlertsEnabled)"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 6 3 6 3 9H3c0-3 3-3 3-9m4 13h4" /></svg>
@@ -542,11 +521,9 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     </div>
     <div class="workspace-scroll">
       <div class="tasks-workspace" v-show="activeWorkspaceTab === 'tasks'" :id="`${workspaceId}-content-tasks`" role="tabpanel" :aria-labelledby="`${workspaceId}-tasks`" tabindex="0">
-        <div class="workspace-section-intro"><h2>待办事项</h2><span>按当前事件记录统计</span></div>
     <AlertTaskPanel
-      :tasks="viewModel.alertTasks"
+      :tasks="stationTasks"
       :ack-records="alertAckRecords"
-      :hidden-tasks="hiddenAlertTasks"
       :filter="alertFilter"
       title="待办事项"
       :max-items="8"
@@ -554,8 +531,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       compact
       @locate="emit('locateAlert', $event)"
       @mark-handling="emit('markAlertHandling', $event)"
-      @resolve="emit('resolveAlert', $event)"
-      @restore="emit('restoreAlert', $event)"
+      @acknowledge="emit('acknowledgeAlert', $event)"
       @update:filter="setAlertFilter"
     />
 
@@ -663,7 +639,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
         <section class="surface-panel surface-panel--response">
           <DashSectionHeader title="呼叫响应（近24小时）" />
-          <div class="env-grid">
+          <div v-if="supportsRealtimeNursingData" class="env-grid">
             <article
               v-for="item in responseCards"
               :key="item.key"
@@ -683,6 +659,9 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
             <strong>{{ eventSourceLabel }}</strong>
             <em>{{ eventSourceDetail }}</em>
           </div>
+          <p v-if="!supportsRealtimeNursingData" class="source-capability-note">
+            当前数据源不提供护士站呼叫事件与响应时效，未用零值代替真实数据。
+          </p>
         </section>
 
         <section
@@ -737,7 +716,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
         </div>
         <small>{{ inspectionSyncLabel }}</small>
       </div>
-      <div class="inspection-overview__metrics">
+      <div v-if="supportsRealtimeNursingData" class="inspection-overview__metrics">
         <article class="inspection-metric inspection-metric--normal">
           <span>已巡视</span>
           <strong>{{ inspectionOverview.normal }}</strong>
@@ -754,7 +733,10 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
           <small>间病房</small>
         </article>
       </div>
-      <ul v-if="inspectionAttentionRooms.length" class="inspection-overview__rooms">
+      <p v-if="!supportsRealtimeNursingData" class="source-capability-note">
+        当前数据源不提供真实巡视记录，因此不显示“0 间”作为业务结果。
+      </p>
+      <ul v-else-if="inspectionAttentionRooms.length" class="inspection-overview__rooms">
         <li v-for="room in inspectionAttentionRooms" :key="room.roomCode">
           <button type="button" @click="handleRoomClick(room.roomIndex)">
             <span>

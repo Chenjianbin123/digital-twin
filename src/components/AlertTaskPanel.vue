@@ -20,21 +20,18 @@ const props = withDefaults(defineProps<{
   workspace?: boolean;
   filter?: AlertTaskFilter;
   ackRecords?: AlertAckRecordMap;
-  hiddenTasks?: AlertTask[];
 }>(), {
   title: '待处理告警',
   maxItems: 5,
   compact: false,
   filter: 'active',
   ackRecords: () => ({}),
-  hiddenTasks: () => [],
 });
 
 const emit = defineEmits<{
   locate: [taskId: string];
   markHandling: [taskId: string];
-  resolve: [taskId: string];
-  restore: [taskId: string];
+  acknowledge: [taskId: string];
   'update:filter': [filter: AlertTaskFilter];
 }>();
 
@@ -160,6 +157,18 @@ function canMarkHandling(task: AlertTask) {
   return !isSourceManagedTask(task) && task.status !== 'handling';
 }
 
+function canAcknowledge(task: AlertTask) {
+  return isSourceManagedTask(task) && task.status !== 'handling';
+}
+
+function acknowledgeActionText(task: AlertTask) {
+  if (task.type === 'call')
+    return '确认响应';
+  if (task.type === 'vital')
+    return '确认关注';
+  return '确认知悉';
+}
+
 function filterTabId(filter: AlertTaskFilter) {
   return `${filterTabsId}-${filter}-tab`;
 }
@@ -187,6 +196,13 @@ function handleFilterKeydown(event: KeyboardEvent, currentIndex: number) {
 }
 
 function taskStatusText(task: AlertTask) {
+  if (task.status === 'handling' && isSourceManagedTask(task)) {
+    if (task.type === 'call')
+      return '已响应';
+    if (task.type === 'vital')
+      return '已关注';
+    return '已知悉';
+  }
   if (isDisplayOnlySwpCall(task))
     return '呼叫中';
   if (isVitalWarning(task))
@@ -297,7 +313,7 @@ function taskStatusText(task: AlertTask) {
               {{ taskStatusText(task) }}
             </span>
           </div>
-          <div v-if="ackRecords[task.id] && !isSourceManagedTask(task)" class="alert-task__ack">
+          <div v-if="ackRecords[task.id]" class="alert-task__ack">
             <span>{{ ackRecords[task.id].operator }}</span>
             <span>{{ formatAckTime(task.id) }}</span>
             <span v-if="syncLabel(task.id)" :class="`alert-task__sync--${ackRecords[task.id].syncState}`">
@@ -329,6 +345,14 @@ function taskStatusText(task: AlertTask) {
           >
             {{ handlingActionText() }}
           </button>
+          <button
+            v-if="canAcknowledge(task)"
+            type="button"
+            class="alert-task__ghost alert-task__ghost--handling"
+            @click="emit('acknowledge', task.id)"
+          >
+            {{ acknowledgeActionText(task) }}
+          </button>
           <span
             v-if="(isDisplayOnlySwpCall(task) || isVitalWarning(task)) && task.canLocate === false"
             class="alert-task__unlocated"
@@ -336,7 +360,7 @@ function taskStatusText(task: AlertTask) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 4a7 7 0 0 1 11 6c0 2-1 4-2 6M5 7a7 7 0 0 0 0 5c1 4 7 9 7 9l3-3M3 3l18 18" /></svg>
             暂无法定位
           </span>
-          <span v-if="isVitalWarning(task)" class="alert-task__recovery-tip">
+          <span v-if="isSourceManagedTask(task)" class="alert-task__recovery-tip">
             后端状态恢复后自动结束
           </span>
           <span v-if="!isSourceManagedTask(task) && task.status === 'handling'" class="alert-task__recovery-tip">

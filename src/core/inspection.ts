@@ -1,4 +1,4 @@
-import type { AlertTask } from './alert-workflow.ts';
+import type { AlertAckState, AlertTask } from './alert-workflow.ts';
 import type {
   InspectionRoomState,
   InspectionRoomSummary,
@@ -181,36 +181,45 @@ function scopedTaskId(id: string, areaId?: string | number): string {
 export function collectInspectionAlertTasks(
   summaries: InspectionRoomSummary[],
   areaId?: string | number,
+  ackState: AlertAckState = {},
 ): AlertTask[] {
   return summaries.flatMap(summary =>
     summary.records
       .filter(record => record.state === 'overdue')
-      .map(record => ({
-        id: scopedTaskId(
+      .map(record => {
+        const id = scopedTaskId(
           `inspection:${summary.roomCode}:${record.bedCode || 'room'}`,
           areaId,
-        ),
-        type: 'inspection' as const,
-        severity: 'high' as const,
-        status: 'pending' as const,
-        roomIndex: summary.roomIndex,
-        roomName: summary.roomName,
-        roomCode: summary.roomCode,
-        ...(record.bedCode ? { bedCode: record.bedCode } : {}),
-        ...(record.bedName ? { bedName: record.bedName } : {}),
-        ...(record.patientName ? { patientName: record.patientName } : {}),
-        title: '巡视超时',
-        description: [
-          `${summary.roomName}${record.bedName
-            ? ` ${record.bedName.endsWith('床') ? record.bedName : `${record.bedName}床`}`
-            : ''}`,
-          record.nurseName ? `最近巡视：${record.nurseName}` : '',
-          record.intervalLabel ? `间隔${record.intervalLabel}` : '',
-        ].filter(Boolean).join(' · '),
-        actionText: record.bedCode ? '定位床位' : '定位病房',
-        canLocate: true,
-        source: 'swp-inspection' as const,
-        startedAt: record.occurredAt || undefined,
-      })),
+        );
+        const ack = ackState[id];
+        const acknowledged = typeof ack === 'string'
+          ? ack === 'handling'
+          : ack?.status === 'handling'
+            && (!ack.eventStartedAt || !record.occurredAt || ack.eventStartedAt === record.occurredAt);
+        return {
+          id,
+          type: 'inspection' as const,
+          severity: 'high' as const,
+          status: acknowledged ? 'handling' as const : 'pending' as const,
+          roomIndex: summary.roomIndex,
+          roomName: summary.roomName,
+          roomCode: summary.roomCode,
+          ...(record.bedCode ? { bedCode: record.bedCode } : {}),
+          ...(record.bedName ? { bedName: record.bedName } : {}),
+          ...(record.patientName ? { patientName: record.patientName } : {}),
+          title: '巡视超时',
+          description: [
+            `${summary.roomName}${record.bedName
+              ? ` ${record.bedName.endsWith('床') ? record.bedName : `${record.bedName}床`}`
+              : ''}`,
+            record.nurseName ? `最近巡视：${record.nurseName}` : '',
+            record.intervalLabel ? `间隔${record.intervalLabel}` : '',
+          ].filter(Boolean).join(' · '),
+          actionText: record.bedCode ? '定位床位' : '定位病房',
+          canLocate: true,
+          source: 'swp-inspection' as const,
+          startedAt: record.occurredAt || undefined,
+        };
+      }),
   );
 }

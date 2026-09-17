@@ -34,7 +34,6 @@ import { reconcileRealAreaSnapshot } from '@/core/real-area-reconcile';
 import {
   createAlertFocus,
   collectAlertTasks,
-  collectLocallyHiddenSwpAlertTasks,
   collectSwpAlertTasks,
   findAlertTaskForTarget,
   isAlertFocusExpired,
@@ -52,7 +51,6 @@ import {
   clearRecoveredAlertAckRecords,
   loadAlertAckRecords,
   getDefaultAlertOperator,
-  removeAlertAckRecord,
   updateAlertAckSyncState,
   upsertAlertAckRecord,
   type AlertAckRecordMap,
@@ -348,17 +346,10 @@ export const useTwinStore = defineStore('twin', () => {
         collectInspectionAlertTasks(
           inspectionRoomSummaries.value,
           selectedAreaId.value ?? undefined,
+          alertAckState.value,
         ),
       )
     : []);
-
-  const hiddenAlertTasks = computed(() =>
-    collectLocallyHiddenSwpAlertTasks(
-      swpEvents.value,
-      alertAckState.value,
-      selectedAreaId.value ?? undefined,
-    ),
-  );
 
   watch(
     [selectedAreaId, alertTasks],
@@ -367,13 +358,20 @@ export const useTwinStore = defineStore('twin', () => {
         return;
       const currentTaskIds = tasks.map(task => task.id);
       const currentTaskIdSet = new Set(currentTaskIds);
-      const recoveredTaskIds = previousTasks
-        .map(task => task.id)
-        .filter(taskId => !currentTaskIdSet.has(taskId));
-      for (const taskId of recoveredTaskIds) {
+      const recoveredTasks = previousTasks.filter(task => !currentTaskIdSet.has(task.id));
+      for (const task of recoveredTasks) {
+        const taskId = task.id;
         if (isAlertFocusForTask(alertFocus.value, taskId)) {
           clearAlertFocusSelection();
-          break;
+        }
+        if (alertAckRecords.value[taskId]?.status === 'handling') {
+          pushHistory({
+            category: categoryForAlert(task),
+            bedCode: task.bedCode ?? '',
+            bedName: task.bedName ?? '-',
+            label: `状态已恢复：${task.title}`,
+            roomName: task.roomName,
+          });
         }
       }
       alertAckRecords.value = clearRecoveredAlertAckRecords(
@@ -869,8 +867,13 @@ export const useTwinStore = defineStore('twin', () => {
     if (!task)
       return;
 
+    const sourceManagedHandlingLabel = task.type === 'call'
+      ? `确认响应：${task.title}`
+      : task.type === 'vital'
+        ? `确认关注：${task.title}`
+        : `确认知悉：${task.title}`;
     const label = status === 'handling'
-      ? `开始处理：${task.title}`
+      ? isSourceManagedTask(task) ? sourceManagedHandlingLabel : `开始处理：${task.title}`
       : status === 'resolved'
         ? `${task.resolveText ?? '处理完成'}：${task.title}`
         : `重新待处理：${task.title}`;
@@ -938,25 +941,12 @@ export const useTwinStore = defineStore('twin', () => {
     void setAlertTaskStatus(taskId, 'handling');
   }
 
-  function resolveAlertTask(taskId: string) {
+  function acknowledgeSourceAlert(taskId: string) {
     const task = alertTasks.value.find(item => item.id === taskId);
-    if (!task)
+    if (!task || !isSourceManagedTask(task) || task.status === 'handling')
       return;
-    // 活动任务只能由真实来源状态恢复后自动结束，前端不再手动隐藏。
-  }
-
-  function restoreAlertTask(taskId: string) {
-    const task = hiddenAlertTasks.value.find(item => item.id === taskId);
-    alertAckRecords.value = removeAlertAckRecord(alertAckRecords.value, taskId);
-    if (!task)
-      return;
-    pushHistory({
-      category: categoryForAlert(task),
-      bedCode: task.bedCode ?? '',
-      bedName: task.bedName ?? '-',
-      label: `恢复显示：${task.title}`,
-      roomName: task.roomName,
-    });
+    // 仅记录护士已响应/知悉；活动任务只能由真实来源状态恢复后自动结束。
+    void setAlertTaskStatus(taskId, 'handling');
   }
 
   function reloadAlertAckRecords() {
@@ -1437,7 +1427,6 @@ export const useTwinStore = defineStore('twin', () => {
     bedDetailsLoading,
     bedDetailsError,
     alertTasks,
-    hiddenAlertTasks,
     alertStats,
     activeAlertTask,
     alertAckRecords,
@@ -1484,8 +1473,7 @@ export const useTwinStore = defineStore('twin', () => {
     applyInspectionSnapshot,
     failInspectionSync,
     markAlertHandling,
-    resolveAlertTask,
-    restoreAlertTask,
+    acknowledgeSourceAlert,
     reloadAlertAckRecords,
     setCallAlertsEnabled,
     reloadCallAlertsEnabled,

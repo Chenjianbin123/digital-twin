@@ -14,6 +14,10 @@ const [app, panel, metrics, liveData, viewModel, areaScene] = await Promise.all(
 assert.match(app, /buildNurseStationViewModel/);
 assert.match(panel, /viewModel: NurseStationViewModel/);
 assert.match(panel, /props\.viewModel\.metrics/);
+assert.match(panel, /props\.viewModel\.swpResponseMetrics/);
+assert.match(panel, /props\.viewModel\.inspectionRoomSummaries/);
+assert.match(panel, /当前数据源不提供护士站呼叫事件与响应时效/);
+assert.match(app, /:data-source="dataSource"/);
 assert.doesNotMatch(panel, /buildNurseStationMetrics/);
 assert.match(metrics, /buildNurseStationLiveData/);
 assert.doesNotMatch(metrics, /resolveBedStatus/);

@@ -161,3 +161,32 @@ test('creates location-only overdue tasks and removes them after a newer normal 
   );
   assert.deepEqual(collectInspectionAlertTasks(recovered, 8), []);
 });
+
+test('keeps an acknowledged inspection visible until the source record recovers', () => {
+  const overdue = summarizeInspectionRooms(
+    normalizeInspectionRecords([record()], area),
+    area,
+  );
+  const taskId = 'area:8:inspection:18_03:bed-1';
+  const [acknowledged] = collectInspectionAlertTasks(overdue, 8, {
+    [taskId]: {
+      status: 'handling',
+      eventStartedAt: '2026-09-03 09:10:00',
+    },
+  });
+  assert.equal(acknowledged.status, 'handling');
+
+  const newerOccurrence = summarizeInspectionRooms(
+    normalizeInspectionRecords([
+      record({ id: 12, swipeTime: '2026-09-03 10:10:00' }),
+    ], area),
+    area,
+  );
+  const [pending] = collectInspectionAlertTasks(newerOccurrence, 8, {
+    [taskId]: {
+      status: 'handling',
+      eventStartedAt: '2026-09-03 09:10:00',
+    },
+  });
+  assert.equal(pending.status, 'pending');
+});

@@ -13,22 +13,21 @@ const darkPalette: Record<string, string> = {
   Brushed_Stainless: '#8a969c',
 };
 
-/** 浅色：对齐参考图 — 白台面 + 浅沙色橡木。 */
+/** 浅色：对齐参考图 — 中性白台面 + 低饱和浅橡木。 */
 const lightPalette: Record<string, string> = {
-  Warm_White_Solid_Surface: '#f8f9f8',
-  Warm_White_Paint: '#f3f4f1',
-  Warm_Grey_Vinyl: '#d8dcd9',
+  Warm_White_Solid_Surface: '#f7f8f6',
+  Warm_White_Paint: '#f1f2ef',
+  Warm_Grey_Vinyl: '#d9dcda',
   Floor_Border: '#9ea6a2',
-  Natural_Oak: '#e0ccb0',
+  Natural_Oak: '#d8bea0',
   Sign_Teal: '#44515b',
   V2_Exterior_Daylight: '#e6eef2',
   Warm_LED: '#f7f9fa',
-  Brushed_Stainless: '#c9b286',
+  Brushed_Stainless: '#b9a68b',
 };
 
-const LIGHT_OAK_TINT = '#e0ccb0';
-const LIGHT_OAK_COUNTER = '#dcc6a8';
-const LIGHT_OAK_DOOR = '#b08968';
+const LIGHT_OAK_TINT = '#d8bea0';
+const LIGHT_OAK_DOOR = '#806047';
 
 const themedMaterialNames = new Set([
   ...Object.keys(darkPalette),
@@ -74,8 +73,8 @@ function createWarmOakAlbedo(source: THREE.Texture, tintHex: string): THREE.Canv
     // 偏青贴图用 G/B 权重提取木纹明暗。
     const lum = (0.18 * data[i] + 0.52 * data[i + 1] + 0.3 * data[i + 2]) / 255;
     const contrast = Math.pow(Math.min(1, Math.max(0.08, lum)), 0.82);
-    // 浅色场景提亮整体，暗部仍保留木纹层次。
-    const shade = 0.48 + 0.52 * contrast;
+    // 提高暗部下限，保留木纹但避免大面积木墙显得脏、沉。
+    const shade = 0.68 + 0.32 * contrast;
     data[i] = Math.round(tint.r * 255 * shade);
     data[i + 1] = Math.round(tint.g * 255 * shade);
     data[i + 2] = Math.round(tint.b * 255 * shade);
@@ -210,7 +209,7 @@ export function createStationTheme() {
           if (material.name === 'V2_Exterior_Daylight') material.emissiveIntensity = .08;
         }
         else {
-          // 浅色对齐参考图：沙色浅橡木 + 木纹；白台面保持干净。
+          // 浅色对齐参考图：低饱和浅橡木 + 中性白台面。
           if (material.name === 'Warm_White_Solid_Surface') {
             clearSurfaceMaps(material);
           }
@@ -229,23 +228,23 @@ export function createStationTheme() {
               material.color.set(LIGHT_OAK_TINT);
             }
           }
-          if (mesh.name === 'Nurse_Counter') material.color.set('#f8f9f8');
+          if (mesh.name === 'Nurse_Counter') material.color.set('#f7f8f6');
           if (mesh.name === 'Nurse_Counter_Oak') {
-            material.color.set(material.map ? '#f4ede6' : LIGHT_OAK_COUNTER);
+            material.color.set(material.map ? '#f7f1e8' : LIGHT_OAK_TINT);
           }
           if (mesh.name.startsWith('Oak_Wall_Panel') || mesh.name === 'Back_Cabinet' || mesh.name.startsWith('Cabinet_Door_') || mesh.name.startsWith('Upper_Cabinet_')) {
             material.color.set(material.map ? '#f7f1e8' : LIGHT_OAK_TINT);
           }
-          if (mesh.name === 'Back_Wall') material.color.set('#ece4d8');
+          if (mesh.name === 'Back_Wall') material.color.set('#eeeae3');
           if (mesh.name === 'Station_Canopy') material.color.set('#f7f8f7');
           if (mesh.name === 'Ceiling') material.color.set('#f9f9f7');
           if (['墙壁', '墙壁2'].includes(mesh.name) || mesh.name.startsWith('Corridor_Inner_Wall')) material.color.set('#f4f5f2');
           if (mesh.name.startsWith('Ward_Door_')) {
-            material.color.set(material.map ? '#e8d7c0' : LIGHT_OAK_DOOR);
+            material.color.set(material.map ? '#bda58f' : LIGHT_OAK_DOOR);
           }
           if (['Nurse_Counter_Top', 'Staff_Worktop', 'Back_Cabinet_Top'].includes(mesh.name)) material.color.set('#f9faf9');
           if (mesh.name === 'Counter_Steel_Plinth') {
-            material.color.set('#c9b286');
+            material.color.set('#b9a68b');
             material.roughness = .42;
             material.metalness = .58;
           }
@@ -265,9 +264,9 @@ export function createStationTheme() {
           }
           if (mesh.name === 'Counter_Reveal_LED') {
             // 参考图白/木交界的细金线。
-            material.color.set('#d4b06f');
-            material.emissive.set('#c49a58');
-            material.emissiveIntensity = 0.28;
+            material.color.set('#b99b6d');
+            material.emissive.set('#ad8c5c');
+            material.emissiveIntensity = 0.18;
             material.roughness = .36;
             material.metalness = .42;
           }

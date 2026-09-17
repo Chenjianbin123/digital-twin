@@ -527,24 +527,47 @@
 }
 @media (prefers-reduced-transparency: reduce) {
  .digital-twin[data-theme='light'] .scene-switch-loader { background: #eaf2f6; backdrop-filter: none; }
+ .digital-twin[data-theme='light'] .dash-header.dash-header {
+  background: #f4f7f5;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+ }
 }
 
 /* 走廊与病房侧栏共享语义色阶，避免透明深色卡片叠在浅色外壳上。 */
 .digital-twin .digital-twin__panel--overlay {
- --room-surface: #102735; --room-inset: #153443; --room-line: #6f9cac38;
+ --room-surface: rgba(10, 39, 54, 0.62); --room-inset: rgba(12, 48, 63, 0.56); --room-line: rgba(111, 174, 194, 0.28);
  --room-ink: #dcebf2; --room-muted: #a6c0cd; --room-accent: #81dce0;
  --room-alert: #ef9aae; --room-ok: #8cdbbb; --room-warn: #e4c28c;
- background: #0c202d; color: var(--room-ink) !important;
+ background:
+   linear-gradient(165deg, rgba(10, 39, 54, 0.62), rgba(7, 27, 41, 0.54)),
+   radial-gradient(circle at 8% 12%, rgba(126, 202, 216, 0.08), transparent 34%) !important;
+ color: var(--room-ink) !important;
+ border-left-color: rgba(126, 202, 216, 0.42) !important;
+ box-shadow:
+   -3px 0 14px rgba(0, 10, 20, 0.24),
+   -22px 0 52px rgba(0, 8, 18, 0.4),
+   inset 2px 0 0 rgba(180, 236, 245, 0.16),
+   inset 0 1px 0 rgba(180, 236, 245, 0.07) !important;
+ backdrop-filter: blur(24px) saturate(112%) brightness(1.03);
+ -webkit-backdrop-filter: blur(24px) saturate(112%) brightness(1.03);
  font-family: "Microsoft YaHei UI", "PingFang SC", "Microsoft YaHei", sans-serif;
  scrollbar-width: thin; scrollbar-color: #648c9e transparent;
  .digital-twin__panel-body { background: transparent !important; }
  :is(.hospital-intro, .area-dashboard, .ward-info-panel) { color: var(--room-ink) !important; background: transparent; font-size: 14px; }
- :is(.hospital-intro, .dash-section, .area-dashboard__intro, .ward-info-panel > section, .door-staff-cards, .status-history, .alert-task-panel) { background: var(--room-surface) !important; border: 1px solid var(--room-line) !important; border-radius: 10px; box-shadow: none !important; }
+ :is(.hospital-intro, .dash-section, .area-dashboard__intro, .ward-info-panel > section, .door-staff-cards, .status-history, .alert-task-panel) {
+  background: var(--room-surface) !important; border: 1px solid var(--room-line) !important; border-radius: 10px;
+  backdrop-filter: blur(18px) saturate(112%); -webkit-backdrop-filter: blur(18px) saturate(112%);
+  box-shadow: inset 0 1px 0 rgba(190, 239, 247, 0.07), 0 8px 18px rgba(0, 10, 20, 0.2), 0 18px 34px rgba(0, 8, 18, 0.18) !important;
+ }
  :is(.hospital-intro, .dash-section, .ward-info-panel > section, .door-staff-cards, .status-history) { padding: 16px; }
  :is(.hospital-intro__title, .dash-head__title, .ward-info-panel h2, .ward-info-panel h3, .door-staff-cards__title, .status-history h3) { color: var(--room-ink) !important; text-shadow: none; font-weight: 600; }
  :is(.hospital-intro__note, .hospital-intro__name, .hospital-intro__metric-label, .ward-info-panel__subtitle, .stat-chip__label, .inspection-card__foot, .bed-status, .room-card__status, .person-card__label, .person-card__sub, .env-label, .status-history .time, .status-history .room, .status-history .bed, .status-history .category) { color: var(--room-muted) !important; }
  :is(.hospital-intro__note, .inspection-card__foot) { line-height: 1.7; font-size: 13px; }
- :is(.hospital-intro__metric, .monitor-row, .person-card, .stat-chip, .staff-role-card, .room-card, .bed-chip, .env-item, .patient-info, .vitals-card, .bed-detail-section) { color: var(--room-ink) !important; background: var(--room-inset) !important; border: 1px solid var(--room-line); border-radius: 8px; box-shadow: none !important; }
+ :is(.hospital-intro__metric, .monitor-row, .person-card, .stat-chip, .staff-role-card, .room-card, .bed-chip, .env-item, .patient-info, .vitals-card, .bed-detail-section) {
+  color: var(--room-ink) !important; background: var(--room-inset) !important; border: 1px solid var(--room-line); border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(190, 239, 247, 0.05), 0 6px 14px rgba(0, 10, 20, 0.16) !important;
+ }
  :is(.staff-role-card__name, .staff-role-card__badge, .bed-patient, .bed-name, .room-card__name, .feed__text) { color: var(--room-ink) !important; text-shadow: none; }
  :is(.staff-role-card__hint, .door-staff-cards__subhead) { color: var(--room-muted) !important; }
  :is(.stat-chip__val, .person-card__value, .hospital-intro__metric-value, .monitor-row__percent) { color: var(--room-accent) !important; font-family: "Bahnschrift", "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
@@ -566,7 +589,7 @@
  .status-history__item--call .label { color: var(--room-alert) !important; }
  .status-history__item--env .label { color: var(--room-warn) !important; }
  .alert-task-panel { padding: 14px; }
- .alert-task { background: var(--room-inset) !important; border: 1px solid var(--room-line); border-left: 3px solid var(--task-accent); border-radius: 8px; box-shadow: none; }
+ .alert-task { background: var(--room-inset) !important; border: 1px solid var(--room-line); border-left: 3px solid var(--task-accent); border-radius: 8px; box-shadow: inset 0 1px 0 rgba(190, 239, 247, 0.05), 0 7px 16px rgba(0, 10, 20, 0.18); }
  .alert-task::before, .alert-task::after { display: none; }
  .alert-task__head strong { color: var(--room-ink) !important; }
  :is(.alert-task__subtitle, .alert-task__meta, .alert-task-panel__summary, .alert-task-panel__remaining) { color: var(--room-muted) !important; }
@@ -609,6 +632,19 @@
  :is(.stat-chip__val, .person-card__value, .hospital-intro__metric-value, .monitor-row__percent) {
    font-family: "Bahnschrift", "Segoe UI", sans-serif !important;
    font-variant-numeric: tabular-nums;
+ }
+}
+.digital-twin[data-theme='dark'] .digital-twin__panel--overlay.digital-twin__panel--interior {
+ --room-surface: rgba(6, 30, 43, 0.78);
+ --room-inset: rgba(7, 36, 50, 0.68);
+ background:
+   linear-gradient(165deg, rgba(8, 35, 49, 0.78), rgba(5, 24, 37, 0.7)),
+   radial-gradient(circle at 8% 12%, rgba(126, 202, 216, 0.06), transparent 34%) !important;
+ .ward-info-panel > section {
+  box-shadow:
+    inset 0 1px 0 rgba(190, 239, 247, 0.07),
+    0 8px 18px rgba(0, 10, 20, 0.24),
+    0 18px 34px rgba(0, 8, 18, 0.2) !important;
  }
 }
 @media(max-width: 600px) {
@@ -724,6 +760,55 @@
 .digital-twin .digital-twin__panel--overlay .room-card .bed-chip__state { width: fit-content; justify-self: start; flex: 0 0 auto; }
 .digital-twin .digital-twin__panel--overlay .room-card .staff-role-card__badge { font-size: 14px !important; }
 .digital-twin .digital-twin__panel--overlay .room-card .staff-role-card__name { font-size: 16px !important; }
+
+/* 病房内“其他医护”：紧凑双列名片，角色色只用于头像与标签。 */
+.digital-twin .digital-twin__panel--interior {
+ .door-staff-cards__subhead {
+  display: flex; align-items: center; gap: 9px; margin: 14px 0 10px;
+  color: var(--room-muted) !important; font-size: 12px; letter-spacing: .08em;
+ }
+ .door-staff-cards__subhead::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--room-line), transparent); }
+ .door-staff-cards__other { gap: 10px !important; }
+ .other-care-card {
+  --other-care-accent: #69dbe3;
+  position: relative; display: grid !important; grid-template-columns: 44px minmax(0, 1fr) !important;
+  align-items: center !important; min-height: 76px !important; padding: 11px 12px !important; gap: 11px !important;
+  overflow: hidden; border-radius: 10px !important; border-color: color-mix(in srgb, var(--other-care-accent) 28%, transparent) !important;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--other-care-accent) 10%, transparent), transparent 46%),
+    var(--room-inset) !important;
+  box-shadow: inset 0 1px 0 rgba(190, 239, 247, 0.06), 0 7px 16px rgba(0, 10, 20, 0.18) !important;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+ }
+ .other-care-card.staff-role-card--nurse { --other-care-accent: #e79ab2; }
+ .other-care-card::before {
+  content: ""; display: block !important; position: absolute; inset: 0 auto 0 0; width: 2px;
+  background: linear-gradient(180deg, transparent, var(--other-care-accent), transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--other-care-accent) 48%, transparent);
+ }
+ .other-care-card::after { display: none !important; }
+ .other-care-card > .staff-avatar { width: 42px !important; height: 42px !important; filter: drop-shadow(0 4px 8px rgba(0, 10, 20, 0.28)); }
+ .other-care-card .staff-role-card__inline-info { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: 4px; }
+ .other-care-card .staff-role-card__badge {
+  margin: 0 !important; padding: 2px 8px !important; border: 1px solid color-mix(in srgb, var(--other-care-accent) 24%, transparent);
+  border-radius: 999px; color: color-mix(in srgb, var(--other-care-accent) 82%, white) !important;
+  background: color-mix(in srgb, var(--other-care-accent) 14%, transparent) !important; font-size: 11px !important; line-height: 1.3;
+ }
+ .other-care-card .staff-role-card__name { margin: 0; color: var(--room-ink) !important; font-size: 15px !important; font-weight: 600; line-height: 1.35; }
+ @media (hover: hover) and (pointer: fine) {
+  .other-care-card:hover {
+   border-color: color-mix(in srgb, var(--other-care-accent) 50%, transparent) !important;
+   box-shadow: inset 0 1px 0 rgba(190, 239, 247, 0.1), 0 10px 22px rgba(0, 10, 20, 0.24), 0 0 16px color-mix(in srgb, var(--other-care-accent) 12%, transparent) !important;
+   transform: translateY(-1px);
+  }
+ }
+}
+.digital-twin[data-theme='light'] .digital-twin__panel--interior .other-care-card {
+ box-shadow: inset 0 1px 0 rgba(255, 255, 255, .86), 0 6px 14px rgba(35, 68, 84, .1) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+ .digital-twin .digital-twin__panel--interior .other-care-card { transition: none; transform: none; }
+}
 
 /* 病房视角工具、数据同步浮层和图例随浅色主题联动。 */
 .digital-twin[data-theme='light'] {
@@ -848,15 +933,16 @@
   border: 1px solid rgba(255, 96, 112, 0.72) !important;
   border-radius: 10px;
   background:
-    radial-gradient(circle at 14% 20%, rgba(255, 79, 101, 0.16), transparent 38%),
-    linear-gradient(110deg, rgba(42, 16, 32, 0.72), rgba(8, 28, 42, 0.68) 48%, rgba(10, 44, 60, 0.62)) !important;
-  backdrop-filter: blur(6px) saturate(118%);
-  -webkit-backdrop-filter: blur(6px) saturate(118%);
+    radial-gradient(circle at 14% 20%, rgba(255, 79, 101, 0.14), transparent 38%),
+    linear-gradient(110deg, rgba(42, 16, 32, 0.62), rgba(7, 27, 41, 0.58) 48%, rgba(9, 43, 59, 0.52)) !important;
+  backdrop-filter: blur(16px) saturate(112%) brightness(1.03);
+  -webkit-backdrop-filter: blur(16px) saturate(112%) brightness(1.03);
   box-shadow:
     inset 0 1px 0 rgba(255, 230, 235, 0.08),
     0 0 0 1px rgba(255, 88, 105, 0.1),
     0 0 18px rgba(255, 72, 96, 0.12),
-    0 10px 24px rgba(0, 8, 18, 0.34) !important;
+    0 9px 18px rgba(0, 8, 18, 0.3),
+    0 18px 34px rgba(0, 8, 18, 0.28) !important;
   &.alert-task--waiting-attention {
     --task-accent: #ffb05c;
     border-color: rgba(255, 176, 92, 0.78) !important;
@@ -864,7 +950,8 @@
       inset 0 1px 0 rgba(255, 236, 210, 0.08),
       0 0 0 1px rgba(255, 176, 92, 0.1),
       0 0 16px rgba(255, 160, 70, 0.1),
-      0 10px 24px rgba(0, 8, 18, 0.32) !important;
+      0 9px 18px rgba(0, 8, 18, 0.28),
+      0 18px 34px rgba(0, 8, 18, 0.26) !important;
   }
   &.alert-task--waiting-urgent,
   &.alert-task--critical {
@@ -874,7 +961,8 @@
       inset 0 1px 0 rgba(255, 230, 235, 0.1),
       0 0 0 1px rgba(255, 88, 105, 0.16),
       0 0 20px rgba(255, 72, 96, 0.16),
-      0 10px 26px rgba(0, 8, 18, 0.36) !important;
+      0 9px 18px rgba(0, 8, 18, 0.32),
+      0 18px 36px rgba(0, 8, 18, 0.3) !important;
   }
   .alert-task__scan { display: none !important; }
   &::before {
@@ -1014,6 +1102,16 @@
   0% { transform: scale(1); opacity: 0.55; }
   70%, 100% { transform: scale(1.55); opacity: 0; }
 }
+@keyframes tasks-panel-border-breathe {
+  0%, 100% { border-color: rgba(126, 202, 216, 0.24); }
+  50% { border-color: rgba(137, 232, 234, 0.48); }
+}
+@keyframes tasks-panel-border-scan {
+  0%, 12% { left: -38%; opacity: 0; }
+  22% { opacity: 1; }
+  70% { left: 100%; opacity: 0.8; }
+  71%, 100% { left: 100%; opacity: 0; }
+}
 
 /* 护士站列表用真实事件摘要填充内容，收紧重复卡片的垂直节奏。 */
 .digital-twin[data-theme] .nurse-workspace .alert-task--workspace:not(.alert-task--swp-call) {
@@ -1028,13 +1126,31 @@
   --tasks-line: rgba(126, 202, 216, 0.24); --tasks-surface: rgba(36, 110, 128, 0.28); --tasks-inset: rgba(8, 28, 38, 0.45);
   --tasks-ink: #e4f0f5; --tasks-muted: #9db8c4; --tasks-accent: #8fd9e4;
   --tasks-container: transparent;
+  position: relative; isolation: isolate; overflow: hidden;
   padding: 14px; border: 1px solid var(--tasks-line); border-radius: 12px;
-  background: linear-gradient(165deg, rgba(16, 44, 56, 0.32), rgba(8, 26, 36, 0.4));
-  backdrop-filter: blur(7px) saturate(118%);
-  -webkit-backdrop-filter: blur(7px) saturate(118%);
+  background: linear-gradient(165deg, rgba(10, 39, 54, 0.62), rgba(7, 27, 41, 0.54));
+  backdrop-filter: blur(24px) saturate(112%) brightness(1.03);
+  -webkit-backdrop-filter: blur(24px) saturate(112%) brightness(1.03);
   box-shadow:
-    inset 0 1px 0 rgba(180, 236, 245, 0.12),
-    0 10px 26px rgba(0, 10, 20, 0.28);
+    inset 0 1px 0 rgba(180, 236, 245, 0.1),
+    0 0 0 1px rgba(118, 216, 226, 0.05),
+    0 10px 20px rgba(0, 12, 22, 0.26),
+    0 24px 48px rgba(0, 8, 18, 0.36);
+  animation: tasks-panel-border-breathe 4.2s ease-in-out infinite;
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -38%;
+    z-index: 2;
+    width: 38%;
+    height: 2px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(150, 244, 245, 0.94), transparent);
+    box-shadow: 0 0 13px rgba(122, 225, 231, 0.62);
+    animation: tasks-panel-border-scan 4.4s ease-in-out infinite;
+  }
+  > * { position: relative; z-index: 1; }
   @container nurse-panel (max-width: 380px) { padding: 12px; }
 
   .workspace-section-intro { align-items: center; gap: 12px; margin-bottom: 14px; }
@@ -1047,11 +1163,14 @@
   .alert-task-panel__filters button strong { margin: 0; min-width: 20px; padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
   .alert-task-panel__list { gap: 10px; }
   .alert-task--workspace:not(.alert-task--swp-call) {
-    background: linear-gradient(115deg, rgba(16, 42, 56, 0.62), rgba(10, 30, 42, 0.56)) !important;
+    background: linear-gradient(115deg, rgba(16, 42, 56, 0.58), rgba(10, 30, 42, 0.5)) !important;
     border: 1px solid rgba(126, 202, 216, 0.18) !important;
-    backdrop-filter: blur(4px) saturate(115%);
-    -webkit-backdrop-filter: blur(4px) saturate(115%);
-    box-shadow: 0 6px 18px rgba(0, 10, 20, 0.26), inset 0 1px 0 rgba(180, 236, 245, 0.06) !important;
+    backdrop-filter: blur(14px) saturate(112%);
+    -webkit-backdrop-filter: blur(14px) saturate(112%);
+    box-shadow:
+      inset 0 1px 0 rgba(180, 236, 245, 0.06),
+      0 7px 16px rgba(0, 10, 20, 0.24),
+      0 16px 30px rgba(0, 8, 18, 0.22) !important;
   }
   .alert-task__details summary { min-height: 32px; color: var(--tasks-accent); }
   .alert-task__details[open] { padding: 10px 12px; border: 1px solid var(--tasks-line); border-radius: 8px; background: var(--tasks-inset); }
@@ -1074,6 +1193,8 @@
     .alert-task__details summary::before { transition: transform 180ms ease; }
   }
   @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    &::before { display: none; }
     .alert-task--workspace, .alert-task__details *, .alert-task-panel__filters button { animation: none !important; transition: none !important; }
   }
   @media (prefers-reduced-transparency: reduce) {
@@ -1097,9 +1218,9 @@
   --tasks-muted: #5b7786;
   --tasks-accent: #348799;
   border-color: #c5dce6 !important;
-  background: linear-gradient(165deg, #f7fbfd, #eef5f8) !important;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: linear-gradient(165deg, rgba(247, 251, 253, 0.76), rgba(238, 245, 248, 0.7)) !important;
+  backdrop-filter: blur(22px) saturate(108%) brightness(1.02);
+  -webkit-backdrop-filter: blur(22px) saturate(108%) brightness(1.02);
   box-shadow:
     inset 0 1px 0 #f7fbfd,
     0 8px 20px rgba(35, 68, 84, 0.06) !important;

@@ -1832,14 +1832,14 @@ export class AreaScene {
     const wardReady = available('ward');
     const eventsReady = available('events');
     const m = vm?.metrics;
-    const ink = this.darkTheme ? '#dceaf2' : '#243d42';
-    const muted = this.darkTheme ? '#9fb9c9' : '#5f7a7c';
-    const accent = this.darkTheme ? '#91d5df' : '#2f9b88';
+    const ink = this.darkTheme ? '#dceaf2' : '#e6f1ed';
+    const muted = this.darkTheme ? '#9fb9c9' : '#9fb8b0';
+    const accent = this.darkTheme ? '#91d5df' : '#82c9b1';
     const alert = this.darkTheme ? '#e8a7b3' : '#c45b6a';
-    const panelStroke = this.darkTheme ? '#638d792b' : '#7aa89a55';
-    const panelFill = this.darkTheme ? '#b4d7c508' : '#ffffffcc';
-    const metricFill = this.darkTheme ? '#a8d4bd0c' : '#f3faf7';
-    const metricStroke = this.darkTheme ? '#a8d4bd12' : '#b7d7cb88';
+    const panelStroke = this.darkTheme ? '#638d792b' : '#9cc9b52b';
+    const panelFill = this.darkTheme ? '#b4d7c508' : '#d8eee50a';
+    const metricFill = this.darkTheme ? '#a8d4bd0c' : '#d8eee50d';
+    const metricStroke = this.darkTheme ? '#a8d4bd12' : '#b7d7cb24';
     const text = (value: string, x: number, y: number, size: number, color = ink, max = 1100, weight = 400) => {
       ctx.fillStyle = color;
       ctx.font = weight + ' ' + size + 'px "Microsoft YaHei", sans-serif';
@@ -1851,9 +1851,9 @@ export class AreaScene {
       bg.addColorStop(1, '#091d2a');
     }
     else {
-      // 浅色场景用浅医用屏，避免深墨绿块压住白木护士台。
-      bg.addColorStop(0, '#f4faf8');
-      bg.addColorStop(1, '#e7f2ef');
+      // 参考图以低饱和墨绿屏作为白墙和浅木之间唯一的深色视觉锚点。
+      bg.addColorStop(0, '#183c36');
+      bg.addColorStop(1, '#0d2926');
     }
     ctx.fillStyle = bg; ctx.fillRect(0, 0, 1600, 500);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
@@ -1861,21 +1861,21 @@ export class AreaScene {
       this.drawBoardRoundRect(ctx, x, y, width, height, 14);
       ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke();
     };
-    panel(40, 30, 64, 64, this.darkTheme ? '#a8d4bd12' : '#d8efe8');
+    panel(40, 30, 64, 64, this.darkTheme ? '#a8d4bd12' : '#d8efe80f');
     ctx.strokeStyle = accent; ctx.lineWidth = 3;
     ctx.strokeRect(58, 44, 28, 34);
     ctx.beginPath(); ctx.moveTo(64, 55); ctx.lineTo(80, 55); ctx.moveTo(72, 47); ctx.lineTo(72, 63); ctx.moveTo(68, 78); ctx.lineTo(68, 69); ctx.lineTo(76, 69); ctx.lineTo(76, 78); ctx.stroke();
     text(vm?.area.areaName ?? this.area?.areaName ?? '护士站', 124, 64, 42, ink, 970, 600);
     text('护士站  ·  病区运行概览', 124, 99, 24, muted);
     const syncNormal = vm?.realtime.status === 'ready';
-    const syncColor = syncNormal ? accent : (this.darkTheme ? '#e2bf84' : '#a67c2a');
-    panel(1242, 30, 312, 46, syncNormal ? (this.darkTheme ? '#a8d4bd12' : '#d9efe8') : (this.darkTheme ? '#e2bf8412' : '#f7edd8'));
+    const syncColor = syncNormal ? accent : (this.darkTheme ? '#e2bf84' : '#d4b982');
+    panel(1242, 30, 312, 46, syncNormal ? '#a8d4bd12' : (this.darkTheme ? '#e2bf8412' : '#d4b98212'));
     ctx.fillStyle = syncColor; ctx.beginPath(); ctx.arc(1264, 53, 5, 0, Math.PI * 2); ctx.fill();
     text(vm?.realtime.label ?? '等待数据', 1284, 63, 27, syncColor, 244, 500);
     text(syncNormal ? '病区与护理信息同步' : '已有数据请核对', 1252, 108, 23, muted, 300);
     const line = ctx.createLinearGradient(40, 0, 1560, 0);
-    line.addColorStop(0, this.darkTheme ? '#a4ceb960' : '#7eb9a990');
-    line.addColorStop(1, this.darkTheme ? '#a4ceb90d' : '#7eb9a920');
+    line.addColorStop(0, this.darkTheme ? '#a4ceb960' : '#82c9b15c');
+    line.addColorStop(1, this.darkTheme ? '#a4ceb90d' : '#82c9b10d');
     ctx.fillStyle = line; ctx.fillRect(40, 128, 1520, 1);
 
     // Two independent information groups leave the lower middle clear of the desk monitor.
@@ -1898,7 +1898,7 @@ export class AreaScene {
     metric('患者呼叫', eventsReady && m ? String(m.calling) : '—', '项', 900, calling ? alert : accent, true);
     metric('在线设备', wardReady && m ? String(m.deviceOnline) : '—', '台', 1134);
     metric('体征预警', eventsReady && m ? String(m.vitalWarnings) : '—', '项', 1366, eventsReady && m?.vitalWarnings ? alert : ink);
-    ctx.fillStyle = this.darkTheme ? '#638d7938' : '#b7cfc680'; ctx.fillRect(56, 407, 656, 1); ctx.fillRect(888, 407, 656, 1);
+    ctx.fillStyle = this.darkTheme ? '#638d7938' : '#9cc9b52b'; ctx.fillRect(56, 407, 656, 1); ctx.fillRect(888, 407, 656, 1);
     text(wardReady && m ? '空余床位   ' + m.empty + ' 床' : '病区数据待同步', 76, 441, 24, muted, 574);
     text(wardReady && m ? '接入设备   ' + m.deviceTotal + ' 台' : '设备数据待同步', 900, 441, 24, muted, 574);
     const texture = this.makeBoardTexture(canvas);

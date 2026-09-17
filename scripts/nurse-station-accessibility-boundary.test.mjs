@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const nurseStation = readFileSync(new URL('../src/components/NurseStationPanel.vue', import.meta.url), 'utf8');
 const alertPanel = readFileSync(new URL('../src/components/AlertTaskPanel.vue', import.meta.url), 'utf8');
+const workspaceStyles = readFileSync(new URL('../src/styles/nurse-workspace.scss', import.meta.url), 'utf8');
 
 test('nurse-station text does not use unreadable sub-12px sizes', () => {
   const undersizedText = /font-size:\s*(?:[0-9]|1[01])px/;
@@ -30,4 +31,11 @@ test('alert filters implement complete keyboard tab semantics', () => {
   assert.match(alertPanel, /ArrowRight/);
   assert.match(alertPanel, /ArrowLeft/);
   assert.match(alertPanel, /event\.preventDefault\(\)/);
+});
+
+test('overview and inspection keep their original card boundaries', () => {
+  assert.match(workspaceStyles, /padding:\s*10px 12px 14px/);
+  assert.match(workspaceStyles, /\.overview-workspace, \.inspection-workspace \{ display: flex; flex-direction: column; gap: 10px; \}/);
+  assert.doesNotMatch(workspaceStyles, /\.inspection-overview,[^\n]*border-radius:\s*0/);
+  assert.doesNotMatch(workspaceStyles, /:deep\(\.nurse-metric-chart\)[^\n]*border:\s*0/);
 });

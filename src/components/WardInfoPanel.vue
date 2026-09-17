@@ -549,11 +549,6 @@ function alertTime(value?: string) {
 
 
     </section>
-
-
-
-
-    <p v-if="ward && !selectedBed" class="empty-bed-tip">选择床位查看患者摘要；模型未加载时仍可使用床位切换。</p>
     <section v-if="ward && bedStats" class="ward-info-panel__stats">
 
       <div class="stat-chip">
@@ -1700,8 +1695,6 @@ function alertTime(value?: string) {
   }
 
 
-
-  .empty-bed-tip { color: rgba(174, 204, 229, 0.82); font-size: dash-font(14); }
 
   .vitals-card {
     margin-top: 12px;

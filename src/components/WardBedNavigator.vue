@@ -29,7 +29,7 @@ function choose(event: Event) {
     <div class="ward-bed-nav__controls">
       <button type="button" :disabled="index <= 0" @click="move(-1)">上一床</button>
       <select id="ward-bed-picker" :value="selectedBed?.bedCode ?? ''" @change="choose">
-        <option value="" disabled>选择床位查看</option>
+        <option value="" disabled>选择床位</option>
         <optgroup v-if="groups.occupied.length" label="已入住">
           <option v-for="bed in groups.occupied" :key="bed.bedCode" :value="bed.bedCode">{{ bed.bedName || bed.bedCode }} · 已入住{{ bed.isCalling ? ' · 呼叫中' : '' }}</option>
         </optgroup>
@@ -46,17 +46,96 @@ function choose(event: Event) {
 </template>
 <style scoped lang="scss">
 .ward-bed-nav {
-  position: sticky; top: 0; z-index: 3; padding: 12px; margin-bottom: 14px;
-  background: var(--ward-nav-bg, #173343); color: var(--ward-nav-ink, #e5f2f5);
-  border: 1px solid var(--ward-nav-border, #456271); border-radius: 8px;
-  label { display: block; font-size: 13px; margin-bottom: 8px; }
-  &__controls { display: flex; gap: 6px; }
-  button, select { min-height: 40px; border: 1px solid var(--ward-nav-border, #456271); border-radius: 5px; color: inherit; background: var(--ward-nav-bg, #173343); font: inherit; font-size: 13px; }
-  button { flex-shrink: 0; padding: 4px 8px; cursor: pointer; }
-  button:disabled { opacity: .45; cursor: default; }
-  select { flex: 1; min-width: 0; width: 0; padding: 4px; }
-  :focus-visible { outline: 2px solid #409eb4; outline-offset: 2px; }
-  p { font-size: 12px; line-height: 1.5; margin: 8px 0 0; }
+  --ward-nav-bg: rgba(7, 34, 48, 0.76);
+  --ward-nav-control: rgba(8, 43, 58, 0.72);
+  --ward-nav-control-hover: rgba(18, 68, 82, 0.78);
+  --ward-nav-ink: #e5f2f5;
+  --ward-nav-muted: #a5bec8;
+  --ward-nav-border: rgba(112, 192, 207, 0.32);
+  --ward-nav-accent: #8be0e5;
+  position: sticky; top: 0; z-index: 3; overflow: hidden;
+  padding: 14px; margin-bottom: 14px;
+  color: var(--ward-nav-ink);
+  background:
+    linear-gradient(145deg, rgba(14, 54, 68, 0.72), var(--ward-nav-bg)),
+    radial-gradient(circle at 10% 0, rgba(139, 224, 229, 0.09), transparent 44%);
+  border: 1px solid var(--ward-nav-border); border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(196, 242, 247, 0.08), 0 8px 18px rgba(0, 10, 20, 0.2);
+  backdrop-filter: blur(16px) saturate(112%);
+  -webkit-backdrop-filter: blur(16px) saturate(112%);
+
+  &::before {
+    content: "";
+    position: absolute; top: 0; left: 10%; right: 36%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(145, 236, 238, 0.72), transparent);
+    box-shadow: 0 0 10px rgba(111, 221, 226, 0.28);
+    pointer-events: none;
+  }
+
+  label {
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: 10px; color: var(--ward-nav-muted);
+    font-size: 12px; font-weight: 600; letter-spacing: .025em;
+  }
+  label::before {
+    content: ""; width: 4px; height: 4px; flex: 0 0 4px;
+    border-radius: 50%; background: var(--ward-nav-accent);
+    box-shadow: 0 0 8px var(--ward-nav-accent);
+  }
+
+  &__controls { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; }
+  button, select {
+    min-height: 42px;
+    border: 1px solid var(--ward-nav-border); border-radius: 7px;
+    color: inherit; background-color: var(--ward-nav-control);
+    font: inherit; font-size: 13px;
+    transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+  }
+  button {
+    min-width: 54px; padding: 5px 10px; cursor: pointer;
+    color: #c7e7ec; white-space: nowrap;
+  }
+  button:not(:disabled):hover {
+    color: #f1feff; border-color: rgba(139, 224, 229, 0.58);
+    background-color: var(--ward-nav-control-hover);
+    box-shadow: inset 0 1px 0 rgba(206, 249, 251, 0.08), 0 0 12px rgba(111, 221, 226, 0.1);
+  }
+  button:disabled {
+    color: #76909a; border-color: rgba(112, 192, 207, 0.14);
+    background-color: rgba(7, 28, 40, 0.42); cursor: default;
+  }
+  select {
+    min-width: 0; width: 100%; padding: 5px 36px 5px 12px;
+    appearance: none; cursor: pointer; color-scheme: light;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--ward-nav-accent) 50%),
+      linear-gradient(135deg, var(--ward-nav-accent) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 18px, calc(100% - 11px) 18px;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+  }
+  select:hover { border-color: rgba(139, 224, 229, 0.52); background-color: var(--ward-nav-control-hover); }
+  select option, select optgroup { color: #173744; background: #f7fbfd; }
+  :focus-visible {
+    outline: 2px solid var(--ward-nav-accent); outline-offset: 2px;
+    border-color: var(--ward-nav-accent);
+    box-shadow: 0 0 0 3px rgba(139, 224, 229, 0.12);
+  }
+  p { font-size: 12px; line-height: 1.55; margin: 9px 0 0; color: var(--ward-nav-muted); }
 }
-:global(.digital-twin[data-theme='light']) .ward-bed-nav { --ward-nav-bg: #f4f9fc; --ward-nav-ink: #294b59; --ward-nav-border: #bdd5df; }
+:global(.digital-twin[data-theme='light']) .ward-bed-nav {
+  --ward-nav-bg: rgba(244, 249, 252, 0.78);
+  --ward-nav-control: rgba(255, 255, 255, 0.74);
+  --ward-nav-control-hover: rgba(237, 247, 250, 0.92);
+  --ward-nav-ink: #294b59;
+  --ward-nav-muted: #597582;
+  --ward-nav-border: #bdd5df;
+  --ward-nav-accent: #2f899a;
+  color-scheme: light;
+  select { color-scheme: light; }
+  select option, select optgroup { color: #294b59; background: #f7fbfd; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ward-bed-nav button, .ward-bed-nav select { transition: none; }
+}
 </style>

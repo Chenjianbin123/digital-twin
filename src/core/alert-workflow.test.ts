@@ -283,7 +283,7 @@ test('orders same-severity tasks by the longest waiting call first', () => {
   ]);
 });
 
-test('keeps SWP calls pending and orders them by waiting time despite legacy handling state', () => {
+test('keeps acknowledged SWP calls visible behind unacknowledged calls', () => {
   const olderHandling = event({
     id: 'swp:call:8:older-handling',
     startedAt: '2026-08-24 10:00:00',
@@ -296,14 +296,28 @@ test('keeps SWP calls pending and orders them by waiting time despite legacy han
   });
 
   const tasks = collectSwpAlertTasks([olderHandling, newerPending], {
-    [olderHandling.id]: 'handling',
+    [olderHandling.id]: {
+      status: 'handling',
+      eventStartedAt: olderHandling.startedAt,
+    },
   });
 
   assert.deepEqual(tasks.map(task => task.id), [
-    'swp:call:8:older-handling',
     'swp:call:8:newer-pending',
+    'swp:call:8:older-handling',
   ]);
-  assert.deepEqual(tasks.map(task => task.status), ['pending', 'pending']);
+  assert.deepEqual(tasks.map(task => task.status), ['pending', 'handling']);
+
+  const [nextOccurrence] = collectSwpAlertTasks([{
+    ...olderHandling,
+    startedAt: '2026-08-24 11:00:00',
+  }], {
+    [olderHandling.id]: {
+      status: 'handling',
+      eventStartedAt: olderHandling.startedAt,
+    },
+  });
+  assert.equal(nextOccurrence.status, 'pending');
 });
 
 test('resolves waiting escalation levels from centralized thresholds', () => {

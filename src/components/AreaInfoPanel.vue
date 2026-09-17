@@ -29,6 +29,7 @@ const emit = defineEmits<{
   backToStation: [];
   locateAlert: [taskId: string];
   markAlertHandling: [taskId: string];
+  acknowledgeAlert: [taskId: string];
   resolveAlert: [taskId: string];
 }>();
 
@@ -225,12 +226,15 @@ function inspectionTime(value: string | null | undefined) {
     <p v-if="areaIntro" class="area-dashboard__intro">{{ areaIntro }}</p>
 
     <AlertTaskPanel
+      class="corridor-alerts"
       :tasks="alertTasks ?? []"
       :ack-records="alertAckRecords"
       title="异常闭环"
       :max-items="4"
+      compact
       @locate="emit('locateAlert', $event)"
       @mark-handling="emit('markAlertHandling', $event)"
+      @acknowledge="emit('acknowledgeAlert', $event)"
       @resolve="emit('resolveAlert', $event)"
     />
 
@@ -447,6 +451,88 @@ function inspectionTime(value: string | null | undefined) {
     color: rgba(190, 220, 245, 0.82);
     padding-left: 10px;
     border-left: 1px solid rgba(77, 208, 255, 0.28);
+  }
+}
+
+:deep(.corridor-alerts) {
+  margin-bottom: 16px;
+  padding: 14px;
+  border-color: rgba(104, 181, 205, 0.26);
+  border-radius: 10px;
+  background:
+    linear-gradient(145deg, rgba(15, 43, 57, 0.88), rgba(8, 29, 42, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(180, 236, 245, 0.07),
+    0 8px 22px rgba(1, 14, 24, 0.16);
+
+  .alert-task-panel__heading-icon {
+    width: 28px;
+    height: 28px;
+    color: #8cd9d1;
+    background: rgba(56, 132, 143, 0.14);
+  }
+
+  .alert-task-panel__toolbar {
+    margin: 12px 0 10px;
+  }
+
+  .alert-task-panel__filters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .alert-task-panel__filters button {
+    justify-content: center;
+    min-width: 0;
+    min-height: 36px;
+    padding-inline: 8px;
+  }
+
+  .alert-task-panel__summary {
+    display: none;
+  }
+
+  .alert-task-panel__list {
+    gap: 8px;
+  }
+
+  .alert-task {
+    min-height: 92px;
+    gap: 12px;
+    padding: 10px 12px;
+    border-color: rgba(101, 151, 169, 0.3);
+    background: rgba(8, 31, 44, 0.78);
+  }
+
+  .alert-task__head strong {
+    font-size: dash-font(14);
+  }
+
+  .alert-task p {
+    margin: 6px 0;
+    color: #bfd2db;
+  }
+
+  .alert-task__actions {
+    min-width: 112px;
+    max-width: 128px;
+    padding-left: 12px;
+  }
+
+  .alert-task__actions button {
+    width: 100%;
+  }
+
+  .alert-task__recovery-tip {
+    max-width: 128px;
+    line-height: 1.45;
+    text-align: center;
+  }
+
+  .alert-task-panel__more {
+    margin-top: 10px;
+    background: rgba(7, 27, 39, 0.72);
   }
 }
 
