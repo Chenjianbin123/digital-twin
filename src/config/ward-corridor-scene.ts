@@ -58,7 +58,10 @@ export interface WardCorridorSceneConfig {
     rotateSpeed: number;
   };
   appearance: {
+    /** 深色主题场景背景。 */
     background: number;
+    /** 浅色主题场景背景（对齐护士站）。 */
+    lightBackground: number;
     fov: number;
     /** 走廊 ACES 曝光；低于护士站，避免长通道墙面发亮。 */
     exposure: number;
@@ -68,8 +71,16 @@ export interface WardCorridorSceneConfig {
     environmentIntensity: number;
     /** 走廊地板网格名（含红/绿/橙导向带）。 */
     floorMeshName: string;
-    /** 仅压暗地板上高饱和色带，白地砖不改。 */
+    /** 仅压暗地板上高饱和色带，白地砖不改（主题色带未命中时兜底）。 */
     floorStripeColorScale: number;
+    /**
+     * 与护士站浅色主题对齐的走廊材质色：门板/座椅青灰、墙面去蓝、导向带降饱和。
+     * key = GLB 材质名。
+     */
+    themeMaterials: {
+      light: Record<string, number>;
+      dark: Record<string, number>;
+    };
   };
   fallbackGeometry: {
     ceilingHeight: number;
@@ -158,12 +169,35 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
   },
   appearance: {
     background: 0x0a1218,
+    lightBackground: 0xf4f7f8,
     fov: 52,
-    exposure: 1.02,
-    envMapIntensity: 0.22,
-    environmentIntensity: 0.26,
+    exposure: 1.22,
+    envMapIntensity: 0.55,
+    environmentIntensity: 0.4,
     floorMeshName: "地板",
-    floorStripeColorScale: 0.5,
+    floorStripeColorScale: 0.36,
+    themeMaterials: {
+      light: {
+        "灰白": 0xf8fafb,
+        "椅子.003": 0x4f86b0,
+        "椅子.001": 0x4f86b0,
+        "门周": 0x457aa0,
+        "窗": 0x6a9ec0,
+        "材质.008": 0xd09c48,
+        "材质.020": 0xc46a6a,
+        "材质.018": 0x48a56c,
+      },
+      dark: {
+        "灰白": 0x8ab4c4,
+        "椅子.003": 0x4a7290,
+        "椅子.001": 0x4a7290,
+        "门周": 0x3d6480,
+        "窗": 0x457890,
+        "材质.008": 0xb08038,
+        "材质.020": 0xa05050,
+        "材质.018": 0x388858,
+      },
+    },
   },
   fallbackGeometry: {
     ceilingHeight: 2.85,

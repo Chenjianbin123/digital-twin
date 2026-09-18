@@ -65,6 +65,8 @@ import {
   getWardCorridorScreenPresentation,
   normalizeHospitalCorridorModelTransform,
   dimHospitalCorridorFloorStripes,
+  createCorridorTheme,
+  polishHospitalCorridorMaterials,
   shouldUseWardCorridorModel,
   WARD_CORRIDOR_MODEL_URL,
 } from '@/core/ward-corridor-model';
@@ -269,14 +271,13 @@ const STATION_PAN_Y_MIN = nurseStationSceneConfig.camera.pan.yMin;
 const STATION_PAN_Y_MAX = nurseStationSceneConfig.camera.pan.yMax;
 const STATION_MIN_DISTANCE = nurseStationSceneConfig.camera.distance.min;
 const STATION_MAX_DISTANCE = nurseStationSceneConfig.camera.distance.max;
-/** 折中后退：可比房间盒边界再退 30%，并额外 +1.5m，但仍不超过 distance.max。 */
-const STATION_ZOOM_OUT_BOX_FACTOR = 1.3;
-const STATION_ZOOM_OUT_EXTRA_METERS = 1.5;
+/** 后退不超过房间盒到远墙的可达距离，避免穿出大厅端墙。 */
+const STATION_ZOOM_OUT_BOX_FACTOR = 1;
+const STATION_ZOOM_OUT_EXTRA_METERS = 0;
 const STATION_AZIMUTH_LIMIT = nurseStationSceneConfig.camera.azimuthLimit;
 const STATION_MIN_POLAR_ANGLE = nurseStationSceneConfig.camera.polar.min;
 const STATION_MAX_POLAR_ANGLE = nurseStationSceneConfig.camera.polar.max;
 const STATION_VIEW_BOUNDS = nurseStationSceneConfig.camera.viewBounds;
-// 视角调整阶段暂时放开护士站全部相机限制；调好视角后改回 true。
 const STATION_CAMERA_LIMITS_ENABLED = nurseStationSceneConfig.camera.limitsEnabled;
 
 // --- B. 相机初始视角（走廊总览，expand 后使用）---
@@ -349,6 +350,7 @@ export class AreaScene {
   private gridHelper: THREE.GridHelper | null = null;
   private nurseGroup: THREE.Group | null = null;
   private stationTheme = createStationTheme();
+  private corridorTheme = createCorridorTheme();
   private darkTheme = false;
   private nurseStationModel: THREE.Object3D | null = null;
   private nurseStationModelLoadToken = 0;
@@ -374,6 +376,8 @@ export class AreaScene {
   private wardCorridorModelLoaded = false;
   private wardCorridorModelFailed = false;
   private wardCorridorModelLoadToken = 0;
+  /** 走廊主光：加载后按包围盒收紧 shadow camera，避免大视锥把接触影冲淡。 */
+  private corridorKeyLight: THREE.DirectionalLight | null = null;
   /** 走廊边界网格原始包围（未加 margins）；约束时每帧套用配置边距。 */
   private wardCorridorBoundMeshes: WardCorridorRawBoundMeshes | null = null;
   private wardCorridorBindings: WardCorridorModelBinding[] = [];
@@ -433,7 +437,7 @@ export class AreaScene {
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = STATION_EXPOSURE;
     this.styleRendererLayers();
@@ -647,26 +651,30 @@ export class AreaScene {
       return;
     }
 
-    // 低环境光 + 强主光：提亮靠 key/exposure，对比靠压低 fill
-    this.scene.add(new THREE.AmbientLight(0xf4faf6, 0.48));
-    this.scene.add(new THREE.HemisphereLight(0xeef6f2, 0x6f8278, 0.38));
+    // 走廊：保留接触影，但抬环境光、压阴影深度，避免整体发闷
+    this.scene.add(new THREE.AmbientLight(0xf7fbf9, 0.24));
+    this.scene.add(new THREE.HemisphereLight(0xf6faf8, 0x7a8c86, 0.32));
 
-    const key = new THREE.DirectionalLight(0xfffef8, 1.28);
-    key.position.set(8, 26, 16);
+    const key = new THREE.DirectionalLight(0xfffef9, 1.28);
+    key.name = 'corridor-key-shadow';
+    key.position.set(6, 14, 10);
     key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.mapSize.set(4096, 4096);
     key.shadow.bias = -0.00012;
-    key.shadow.normalBias = 0.03;
-    key.shadow.intensity = 1.15;
-    key.shadow.camera.near = 1;
-    key.shadow.camera.far = 120;
-    key.shadow.camera.left = -50;
-    key.shadow.camera.right = 50;
-    key.shadow.camera.top = 50;
-    key.shadow.camera.bottom = -50;
+    key.shadow.normalBias = 0.02;
+    key.shadow.radius = 2.4;
+    key.shadow.intensity = 0.92;
+    key.shadow.camera.near = 0.5;
+    key.shadow.camera.far = 80;
+    key.shadow.camera.left = -24;
+    key.shadow.camera.right = 24;
+    key.shadow.camera.top = 24;
+    key.shadow.camera.bottom = -24;
+    this.corridorKeyLight = key;
     this.scene.add(key);
+    this.scene.add(key.target);
 
-    const fill = new THREE.DirectionalLight(0xdceee3, 0.18);
+    const fill = new THREE.DirectionalLight(0xf2f7f4, 0.2);
     fill.position.set(-14, 14, 6);
     this.scene.add(fill);
 
@@ -678,6 +686,66 @@ export class AreaScene {
       this.setupNurseStationAtmosphereLights();
   }
 
+  /** 天花/地板/吊牌不投影，避免顶面脏影；家具仍保留接触影。 */
+  private configureCorridorShadowCasters(model: THREE.Object3D) {
+    model.traverse((object) => {
+      if (!(object instanceof THREE.Mesh))
+        return;
+      const name = object.name;
+      const matName = Array.isArray(object.material)
+        ? object.material.map(m => m.name).join(' ')
+        : (object.material?.name ?? '');
+      const isFloor = name === '地板' || /floor|地板/i.test(name) || /floor|地板/i.test(matName);
+      const isCeiling = name === '天花板' || /ceiling|天花板|顶棚|顶面/i.test(name)
+        || /ceiling|天花板/i.test(matName);
+      const isHangingSign = /牌|吊|sign|banner|letter|text|motto|导向/i.test(name)
+        || /牌|导向/i.test(matName);
+      if (isFloor || isCeiling || isHangingSign) {
+        object.castShadow = false;
+        object.receiveShadow = true;
+      }
+    });
+  }
+
+  /** 按走廊包围盒收紧主光与 shadow camera，抬高接触影分辨率。 */
+  private fitCorridorKeyShadow(model: THREE.Object3D) {
+    const light = this.corridorKeyLight;
+    if (!light)
+      return;
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model);
+    if (box.isEmpty())
+      return;
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    // 略偏侧上方，保证椅脚/门框有侧向投影，而不是正顶死黑。
+    light.target.position.set(center.x, box.min.y, center.z);
+    light.position.set(
+      center.x + Math.max(4, size.x * 0.18),
+      box.max.y + Math.max(6, size.y * 1.8),
+      center.z + Math.max(5, size.z * 0.12),
+    );
+    light.target.updateMatrixWorld();
+    light.updateMatrixWorld();
+
+    const camera = light.shadow.camera;
+    camera.near = 0.5;
+    camera.far = light.position.distanceTo(light.target.position) + size.length() + 8;
+    light.shadow.updateMatrices(light);
+    const local = box.clone().applyMatrix4(camera.matrixWorldInverse);
+    const pad = 0.8;
+    camera.left = local.min.x - pad;
+    camera.right = local.max.x + pad;
+    camera.bottom = local.min.y - pad;
+    camera.top = local.max.y + pad;
+    camera.updateProjectionMatrix();
+    light.shadow.bias = -0.0001;
+    light.shadow.normalBias = 0.018;
+    light.shadow.radius = 2.2;
+    light.shadow.intensity = 0.88;
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
   private setupEnvironment() {
     this.pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     this.pmremGenerator.compileEquirectangularShader();
@@ -687,7 +755,7 @@ export class AreaScene {
       ? CORRIDOR_ENVIRONMENT_INTENSITY
       : STATION_ENVIRONMENT_INTENSITY;
     if (this.modelKind === 'corridor') {
-      this.scene.background = new THREE.Color(SCENE_BG);
+      this.updateThemeBackground();
       this.renderer.toneMappingExposure = CORRIDOR_EXPOSURE;
     }
   }
@@ -3312,7 +3380,7 @@ export class AreaScene {
       if (IS_REFERENCE_STATION) {
         // Geometry and lights are static; camera and board texture changes do not invalidate shadows.
         this.scene.getObjectByName('reference-nurse-station-lights')?.traverse(object => {
-          if (object instanceof THREE.SpotLight)
+          if (object instanceof THREE.SpotLight || object instanceof THREE.DirectionalLight)
             object.shadow.needsUpdate = true;
         });
       }
@@ -3376,7 +3444,10 @@ export class AreaScene {
 
       model.name = 'blender-ward-corridor';
       this.prepareLoadedModel(model, { envMapIntensity: CORRIDOR_ENV_MAP_INTENSITY });
+      this.configureCorridorShadowCasters(model);
       dimHospitalCorridorFloorStripes(model);
+      this.corridorTheme(model, this.darkTheme);
+      polishHospitalCorridorMaterials(model);
       normalizeHospitalCorridorModelTransform(model);
       // Keep the corridor's long axis aligned with the existing scene Z axis.
       model.rotation.y = Math.PI / 2;
@@ -3388,6 +3459,7 @@ export class AreaScene {
       this.wardCorridorModel = model;
       this.wardCorridorModelLoaded = true;
       this.scene.add(model);
+      this.fitCorridorKeyShadow(model);
       this.bindWardCorridorSlots();
       this.updateCorridorImplementationVisibility();
       if (this.viewPhase === 'corridor') {
@@ -4212,6 +4284,8 @@ export class AreaScene {
     const ceiling = model.getObjectByName(STATION_VIEW_BOUNDS.ceilingMesh);
     const wallA = model.getObjectByName(STATION_VIEW_BOUNDS.wallMeshes[0]);
     const wallB = model.getObjectByName(STATION_VIEW_BOUNDS.wallMeshes[1]);
+    const farWallName = STATION_VIEW_BOUNDS.farWallMesh;
+    const farWall = farWallName ? model.getObjectByName(farWallName) : null;
     const modelBox = new THREE.Box3().setFromObject(model);
     const floorBox = floor ? new THREE.Box3().setFromObject(floor) : null;
     const ceilingBox = ceiling ? new THREE.Box3().setFromObject(ceiling) : null;
@@ -4220,8 +4294,8 @@ export class AreaScene {
     const ceilingMinY = ceilingBox ? ceilingBox.min.y : modelBox.max.y - 0.05;
     let wallMinX = (floorBox ?? modelBox).min.x;
     let wallMaxX = (floorBox ?? modelBox).max.x;
-    const floorMinZ = (floorBox ?? modelBox).min.z;
-    const floorMaxZ = (floorBox ?? modelBox).max.z;
+    let floorMinZ = (floorBox ?? modelBox).min.z;
+    let floorMaxZ = (floorBox ?? modelBox).max.z;
 
     if (wallA && wallB) {
       const boxA = new THREE.Box3().setFromObject(wallA);
@@ -4236,6 +4310,17 @@ export class AreaScene {
       }
     }
 
+    // 大厅端墙（远离柜台）：取靠站内一侧的内表面，作为后退硬边界。
+    if (farWall) {
+      const farBox = new THREE.Box3().setFromObject(farWall);
+      const deskZ = this.worldFromNurseLocal(STATION_TARGET_LOCAL.clone()).z;
+      const innerFarZ = Math.abs(farBox.min.z - deskZ) <= Math.abs(farBox.max.z - deskZ)
+        ? farBox.min.z
+        : farBox.max.z;
+      if (innerFarZ > floorMinZ)
+        floorMaxZ = Math.min(floorMaxZ, innerFarZ);
+    }
+
     if (!(wallMinX < wallMaxX)) {
       wallMinX = (floorBox ?? modelBox).min.x;
       wallMaxX = (floorBox ?? modelBox).max.x;
@@ -4247,6 +4332,7 @@ export class AreaScene {
         ceiling: Boolean(ceiling),
         wallA: Boolean(wallA),
         wallB: Boolean(wallB),
+        farWall: Boolean(farWall),
         floorMaxY,
         ceilingMinY,
         wallMinX,
@@ -4344,16 +4430,10 @@ export class AreaScene {
 
     const bounds = this.getNurseStationPaddedBounds();
     if (bounds) {
-      // 左右、上下恢复硬边界（折中只放宽滚轮后退距离，不再放宽墙/顶）
       this.camera.position.x = THREE.MathUtils.clamp(this.camera.position.x, bounds.minX, bounds.maxX);
       this.camera.position.y = THREE.MathUtils.clamp(this.camera.position.y, bounds.minY, bounds.maxY);
-      // 纵深仅少量外放，方便后退，但不放开左右墙
-      const depthPad = 0.4;
-      this.camera.position.z = THREE.MathUtils.clamp(
-        this.camera.position.z,
-        bounds.minZ - depthPad,
-        bounds.maxZ + depthPad,
-      );
+      // 远墙（大厅端）硬钳，不再外放，避免滚轮后退穿墙。
+      this.camera.position.z = THREE.MathUtils.clamp(this.camera.position.z, bounds.minZ, bounds.maxZ);
     }
 
     this.controls.minDistance = STATION_MIN_DISTANCE;
@@ -5425,7 +5505,8 @@ export class AreaScene {
   }
 
   private updateThemeBackground() {
-    const lightBackground = this.viewPhase === 'corridor' ? SCENE_BG : NURSE_STATION_BG;
+    const corridorLightBg = wardCorridorSceneConfig.appearance.lightBackground;
+    const lightBackground = this.viewPhase === 'corridor' ? corridorLightBg : NURSE_STATION_BG;
     this.scene.background = new THREE.Color(this.darkTheme ? '#0b1824' : lightBackground);
   }
 
@@ -5434,6 +5515,9 @@ export class AreaScene {
     this.updateThemeBackground();
     this.updateCorridorMarkers();
     this.refreshCorridorDisplays();
+    this.corridorTheme(this.wardCorridorModel, this.darkTheme);
+    if (this.wardCorridorModel)
+      polishHospitalCorridorMaterials(this.wardCorridorModel);
     if (this.modelKind !== 'station' || !IS_REFERENCE_STATION) return;
     this.stationTheme(this.nurseStationModel, this.scene.getObjectByName('reference-nurse-station-lights'), this.darkTheme);
 

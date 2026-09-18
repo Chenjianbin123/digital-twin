@@ -20,8 +20,8 @@
   }
   &__scene { object-fit: cover; object-position: center; }
   &__shade {
-    background: linear-gradient(90deg, rgba(2, 16, 26, .12) 35%, rgba(2, 17, 29, .5)),
-      linear-gradient(0deg, rgba(2, 14, 23, .92), transparent 48%, rgba(2, 14, 23, .48));
+    background: linear-gradient(90deg, rgba(2, 16, 26, .06) 35%, rgba(2, 17, 29, .22)),
+      linear-gradient(0deg, rgba(2, 14, 23, .42), transparent 52%, rgba(2, 14, 23, .18));
   }
   &__tech-grid {
     inset: 24px;

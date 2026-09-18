@@ -47,7 +47,7 @@ const displayProgress = computed(() => Number.isFinite(props.progress) ? Math.mi
   font-family: inherit;
   &__background, &__shade { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
   &__background { object-fit: cover; object-position: 42% center; }
-  &__shade { background: linear-gradient(90deg,#04192526 10%,#05192377 48%,#041520eb 100%),linear-gradient(0deg,#03111cf5,transparent 45%,#051421a6); }
+  &__shade { background: linear-gradient(90deg,#04192518 10%,#05192340 48%,#04152066 100%),linear-gradient(0deg,#03111c6b,transparent 50%,#0514213d); }
   &__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   &__brand { display: flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 600; }
   &__brand i { display: grid; place-items: center; width: 36px; height: 40px; border: 1px solid #80dacf75; border-radius: 4px 12px 4px 4px; color: #acebe4; background: #24596477; font-style: normal; }

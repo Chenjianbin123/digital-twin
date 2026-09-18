@@ -23,41 +23,87 @@ export function validateWardBedUnit(root: THREE.Object3D) {
     throw new Error('BedTerminalSurface must be a mesh');
 }
 
-/** Original local YZ screen UVs are rotated; normalize using the actual plane. */
+/** Original local screen UVs are rotated; normalize using the actual plane (any axis pair). */
 export function createWardBedUnit(prototype: THREE.Object3D, bedCode: string): WardBedUnit {
-  validateWardBedUnit(prototype);
-  const group = prototype.clone(true) as THREE.Group;
+  const source = prototype.getObjectByName('BedUnit') ?? prototype;
+  validateWardBedUnit(source);
+  const group = source.clone(true) as THREE.Group;
   group.visible = true;
   group.userData = { ...group.userData, bedCode, wardBedUnit: true };
   const body = requireNode(group, 'BedBody');
   const screen = requireNode(group, 'BedTerminalSurface') as WardBedUnit['screen'];
   screen.geometry = screen.geometry.clone();
   const position = screen.geometry.getAttribute('position');
+  if (!position)
+    throw new Error('BedTerminalSurface must be a mesh');
   const box = new THREE.Box3().setFromBufferAttribute(position as THREE.BufferAttribute);
-  const height = box.max.y - box.min.y;
-  const width = box.max.z - box.min.z;
-  if (height < 1e-6 || width < 1e-6) {
-    screen.geometry.dispose();
-    throw new Error('Bed terminal plane has invalid dimensions');
+  const size = box.getSize(new THREE.Vector3());
+  // Prefer authored YZ terminal faces; otherwise use the two largest axes (new exports vary).
+  let uAxis: 'x' | 'y' | 'z' = 'z';
+  let vAxis: 'x' | 'y' | 'z' = 'y';
+  let uMin = box.min.z;
+  let uSpan = size.z;
+  let vMin = box.min.y;
+  let vSpan = size.y;
+  let flipU = true;
+  let flipV = true;
+  if (uSpan < 1e-6 || vSpan < 1e-6) {
+    const axes = (
+      [
+        { axis: 'x' as const, extent: size.x },
+        { axis: 'y' as const, extent: size.y },
+        { axis: 'z' as const, extent: size.z },
+      ]
+    ).sort((a, b) => b.extent - a.extent);
+    if (axes[0]!.extent < 1e-6 || axes[1]!.extent < 1e-6) {
+      screen.geometry.dispose();
+      throw new Error('Bed terminal plane has invalid dimensions');
+    }
+    uAxis = axes[0]!.axis;
+    vAxis = axes[1]!.axis;
+    uMin = box.min[uAxis];
+    uSpan = box.max[uAxis] - uMin;
+    vMin = box.min[vAxis];
+    vSpan = box.max[vAxis] - vMin;
+    flipU = false;
+    flipV = false;
   }
+  const read = (index: number, axis: 'x' | 'y' | 'z') => (
+    axis === 'x' ? position.getX(index) : axis === 'y' ? position.getY(index) : position.getZ(index)
+  );
   const uv = new THREE.BufferAttribute(new Float32Array(position.count * 2), 2);
-  for (let i = 0; i < position.count; i++)
-    uv.setXY(i, (box.max.z - position.getZ(i)) / width, (box.max.y - position.getY(i)) / height);
+  for (let i = 0; i < position.count; i++) {
+    const u = (read(i, uAxis) - uMin) / uSpan;
+    const v = (read(i, vAxis) - vMin) / vSpan;
+    uv.setXY(i, flipU ? 1 - u : u, flipV ? 1 - v : v);
+  }
   screen.geometry.setAttribute('uv', uv);
   screen.material = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, toneMapped: false });
   group.traverse(node => {
     if (node instanceof THREE.Mesh) { node.castShadow = false; node.receiveShadow = true; }
   });
   // Floor-level furnishings cast the indoor key shadow; overhead rails must not draw hard rings across the floor.
-  for (const name of ['BedBody', 'BedChair', 'BedsideCabinet', 'IVStand', 'InfusionEquipment']) {
+  for (const name of ['BedBody', 'BedChair', 'BedsideCabinet', 'IVStand', 'InfusionEquipment', '球体']) {
     group.getObjectByName(name)?.traverse(node => {
       if (node instanceof THREE.Mesh) node.castShadow = true;
     });
   }
   const infusion = requireNode(group, 'InfusionEquipment');
   infusion.visible = false;
-  // Bedhead status orb is not shown in the twin; keep geometry for asset compatibility.
-  group.getObjectByName('球体')?.traverse(node => { node.visible = false; });
+  // 旧资产里「球体」是床头状态球；新资产同名节点常是花瓶绿植（材质含花瓶），保留可见。
+  const orb = group.getObjectByName('球体');
+  if (orb) {
+    let isPlant = false;
+    orb.traverse((node) => {
+      if (!(node instanceof THREE.Mesh))
+        return;
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      if (materials.some(material => /花瓶|plant|叶|绿植/i.test(material?.name ?? '')))
+        isPlant = true;
+    });
+    if (!isPlant)
+      orb.traverse((node) => { node.visible = false; });
+  }
   return { group, body, screen, infusion };
 }
 

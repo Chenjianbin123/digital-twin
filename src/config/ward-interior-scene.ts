@@ -84,7 +84,7 @@ export interface WardInteriorSceneConfig {
 /** 病房内部模型、镜头、交互和床位排布参数。业务数据与模型节点校验不在此配置。 */
 export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
   modular: {
-    unitUrl: '/models/smart-ward-interior/bed-refined-v1.glb?v=20260915',
+    unitUrl: '/models/smart-ward-interior/bed-refined-v1.glb?v=20260918',
     // Validated native double-room slots. Additional occupants extend the room while keeping these native bed proportions.
     slots: [
       { position: [-1.670222, 0.903284, -0.070125], rotationY: Math.PI / 2 },
@@ -100,11 +100,11 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
   },
   room: { height: 4.2 },
   camera: {
-    perspective: { fov: 67, near: 0.1, far: 100 },
-    initial: { position: [0.5, 2.4, 3.95], target: [-1.3, 1.4, 0.25] },
+    perspective: { fov: 60, near: 0.1, far: 100 },
+    initial: { position: [-0.79, 2.152, 3.834], target: [-1.576, 1.448, 2.169] },
     presets: [
-      { id: 'free', label: '自由视角', position: [0.5, 2.4, 3.95], target: [-1.3, 1.4, 0.25] },
-      { id: 'door', label: '门口视角', position: [0.5, 2.4, 3.95], target: [-1.3, 1.4, 0.25] },
+      { id: 'free', label: '自由视角', position: [-0.79, 2.152, 3.834], target: [-1.576, 1.448, 2.169] },
+      { id: 'door', label: '门口视角', position: [-0.79, 2.152, 3.834], target: [-1.576, 1.448, 2.169] },
       { id: 'nurse', label: '巡视视角', position: [0.5, 2.3, 2.8], target: [-1.75, 1.3, 1] },
       { id: 'top', label: '俯视视角', position: [-0.8, 2.7, 1.05], target: [-1, 1, 1] },
     ],
@@ -133,18 +133,18 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
     minAzimuthAngle: 0,
     maxAzimuthAngle: 0.5,
 
-    minDistance: 3.6,
+    minDistance: 1.8,
     maxDistanceBase: 20,
     maxDistanceSpanFactor: 0.48,
     pan: { xSpanFactor: 0.32, zSpanFactor: 0.3, yMin: 0.35, yMax: 1.65 },
   },
   appearance: {
-    background: 0xd8d2c8,
-    exposure: 1.12,
+    background: 0xe6e2da,
+    exposure: 1.28,
     baseFogDensity: 0,
     fogSpanFactor: 0,
-    envMapIntensity: 0.18,
-    environmentIntensity: 0.36,
+    envMapIntensity: 0.32,
+    environmentIntensity: 0.38,
     /** Cap chrome/plastic metalness so beds and fixtures stay matte under indoor fill. */
     maxMetalness: 0.32,
   },

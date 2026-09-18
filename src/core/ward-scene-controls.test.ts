@@ -13,7 +13,7 @@ test('keeps ward interior zoom and rotation inside presentation-safe bounds', ()
   assert.ok(limits.maxPolarAngle <= Math.PI / 2 + 0.08);
   assert.ok(limits.minAzimuthAngle >= -0.6);
   assert.ok(limits.maxAzimuthAngle <= 0.6);
-  assert.ok(limits.minDistance >= 3);
+  assert.ok(limits.minDistance >= 1.5);
   assert.ok(limits.maxDistance <= 20);
 });
 

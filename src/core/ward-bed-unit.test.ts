@@ -29,3 +29,16 @@ test('unbedded room accepts modular asset and hides only configured leftover pro
   const parts = prepareModularWardRoom(room, asset()); assert.equal(parts.mode, 'modular');
   assert.equal(room.getObjectByName('Medicinal_Props.020_Medical_Props_0.005')!.visible, false); assert.equal(room.getObjectByName('keep')!.visible, true);
 });
+test('keeps plant 球体 with 花瓶 material and hides legacy status orb', () => {
+  const plantSource = asset();
+  const plant = new THREE.Mesh(new THREE.SphereGeometry(.1), new THREE.MeshStandardMaterial({ name: '花瓶' }));
+  plant.name = '球体';
+  plantSource.add(plant);
+  assert.equal(createWardBedUnit(plantSource, 'P').group.getObjectByName('球体')!.visible, true);
+
+  const orbSource = asset();
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(.1), new THREE.MeshStandardMaterial({ name: 'StatusOrb' }));
+  orb.name = '球体';
+  orbSource.add(orb);
+  assert.equal(createWardBedUnit(orbSource, 'O').group.getObjectByName('球体')!.visible, false);
+});

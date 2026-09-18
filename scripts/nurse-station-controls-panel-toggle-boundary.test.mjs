@@ -9,7 +9,7 @@ const [app, visualScene, areaScene, sceneConfig] = await Promise.all([
   readFile(new URL('../src/config/nurse-station-scene.ts', import.meta.url), 'utf8'),
 ]);
 
-assert.match(sceneConfig, /distance: \{ min: 0\.6, max: 18 \}/);
+assert.match(sceneConfig, /distance: \{ min: 0\.6, max: 12 \}/);
 assert.match(sceneConfig, /azimuthLimit: Math\.PI \/ 12/);
 // Both constrained presentation and unrestricted camera calibration are supported.
 assert.match(sceneConfig, /limitsEnabled:\s*(?:true|false)/);

@@ -141,6 +141,8 @@ export class WardScene {
   /** 外壳/灯网格原始包围；约束时每帧套用配置边距。 */
   private wardInteriorBoundMeshes: WardInteriorRawBoundMeshes | null = null;
   private wardInteriorPlacementDiagnosticsLogged = false;
+  private cameraViewLogTimer: number | undefined;
+  private cameraViewLogStep = 0;
   private environmentTexture: THREE.Texture | null = null;
   private quiltTexture: THREE.CanvasTexture | null = null;
   private pillowcaseTexture: THREE.CanvasTexture | null = null;
@@ -178,7 +180,7 @@ export class WardScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    // Native ward furniture is static between data updates; camera motion does not change its shadows.
+    // Modular beds are static between data updates; rebuild shadow map when layout/beds change.
     this.renderer.shadowMap.autoUpdate = !wardInteriorSceneConfig.modular.unitUrl;
     this.renderer.shadowMap.needsUpdate = true;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -269,17 +271,59 @@ export class WardScene {
       return;
     this.suppressBedClick = true;
     this.enforceWardInteriorControlBounds();
-    // window.clearTimeout(this.cameraViewLogTimer);
-    // this.cameraViewLogTimer = window.setTimeout(() => this.logCameraView('拖动中'), 160);
+    window.clearTimeout(this.cameraViewLogTimer);
+    this.cameraViewLogTimer = window.setTimeout(() => this.logCameraView('拖动中'), 160);
     window.requestAnimationFrame(() => {
       this.enforceWardInteriorControlBounds();
     });
   };
 
   private onControlsEnd = () => {
-    // window.clearTimeout(this.cameraViewLogTimer);
-    // this.logCameraView('操作结束');
+    window.clearTimeout(this.cameraViewLogTimer);
+    this.logCameraView('操作结束');
   };
+
+  /** 输出可直接回填 ward-interior-scene.ts 的 position / target（拖视角时看控制台）。 */
+  private logCameraView(reason: string) {
+    const position = this.camera.position.clone();
+    const target = this.controls.target.clone();
+    const expansionOffset = this.roomExpansion?.extraDepth ?? 0;
+    const configPosition = position.clone();
+    const configTarget = target.clone();
+    if (expansionOffset) {
+      configPosition.z -= expansionOffset;
+      configTarget.z -= expansionOffset;
+    }
+    const direction = position.clone().sub(target);
+    const horizontalDistance = Math.hypot(direction.x, direction.z);
+    this.cameraViewLogStep += 1;
+    const snapshot = {
+      position: [
+        Number(configPosition.x.toFixed(3)),
+        Number(configPosition.y.toFixed(3)),
+        Number(configPosition.z.toFixed(3)),
+      ] as const,
+      target: [
+        Number(configTarget.x.toFixed(3)),
+        Number(configTarget.y.toFixed(3)),
+        Number(configTarget.z.toFixed(3)),
+      ] as const,
+      worldPosition: position.toArray().map(value => Number(value.toFixed(3))),
+      worldTarget: target.toArray().map(value => Number(value.toFixed(3))),
+      expansionOffset: Number(expansionOffset.toFixed(3)),
+      distance: Number(direction.length().toFixed(3)),
+      azimuthDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.x, direction.z)).toFixed(2)),
+      elevationDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.y, horizontalDistance)).toFixed(2)),
+      fov: Number(this.camera.fov.toFixed(2)),
+    };
+    console.info(
+      `[WardInterior] 视角 #${this.cameraViewLogStep} ${reason}\n`
+      + `  position: [${snapshot.position.join(', ')}],\n`
+      + `  target: [${snapshot.target.join(', ')}],\n`
+      + `  // distance=${snapshot.distance} azimuthDeg=${snapshot.azimuthDeg} elevationDeg=${snapshot.elevationDeg} fov=${snapshot.fov}`,
+      snapshot,
+    );
+  }
 
   private isWardInteriorPlacementDiagnosticsEnabled() {
     if (import.meta.env.DEV)
@@ -1664,23 +1708,30 @@ export class WardScene {
   private wardKeyLight: THREE.DirectionalLight | null = null;
 
   private setupLights() {
-    this.scene.add(new THREE.AmbientLight(0xf4faf6, 0.38));
-    this.scene.add(new THREE.HemisphereLight(0xf7f3ee, 0x8a847c, 0.28));
+    // 压低环境填充，让床体/柜脚接触影能落下来（整体亮度仍靠 exposure）。
+    this.scene.add(new THREE.AmbientLight(0xf6faf7, 0.22));
+    this.scene.add(new THREE.HemisphereLight(0xfaf7f2, 0x948e86, 0.26));
 
-    const key = new THREE.DirectionalLight(0xfff8f0, 0.72);
-    key.position.set(5, 12, 8);
+    const key = new THREE.DirectionalLight(0xfff8f0, 1.15);
+    key.name = 'ward-interior-key-shadow';
+    key.position.set(4, 10, 6);
     this.wardKeyLight = key;
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
-    key.shadow.camera.near = 1;
+    key.shadow.bias = -0.0001;
+    key.shadow.normalBias = 0.012;
+    key.shadow.radius = 1.8;
+    key.shadow.intensity = 1.15;
+    key.shadow.camera.near = 0.5;
     key.shadow.camera.far = 40;
     key.shadow.camera.left = -12;
     key.shadow.camera.right = 12;
     key.shadow.camera.top = 12;
     key.shadow.camera.bottom = -12;
     this.scene.add(key);
+    this.scene.add(key.target);
 
-    const rim = new THREE.DirectionalLight(0xe8e4dc, 0.18);
+    const rim = new THREE.DirectionalLight(0xeeeae2, 0.18);
     rim.position.set(-6, 5, -8);
     this.scene.add(rim);
   }
@@ -1730,9 +1781,15 @@ export class WardScene {
         parts.bedPrototype.visible = false;
       hideWardInteriorCeiling(parts.architecture);
       if (parts.mode === 'modular') {
-        // The key represents indoor fill: the closed source shell must not block it before it reaches the beds.
-        for (const name of ['外壳', '灯']) model.getObjectByName(name)?.traverse(node => {
+        // 外壳/天花不投影，否则室内主光被顶板挡住，床脚接触影看不见。
+        for (const name of ['外壳', '灯', '天花板', 'Ceiling']) model.getObjectByName(name)?.traverse(node => {
           if (node instanceof THREE.Mesh) node.castShadow = false;
+        });
+        model.getObjectByName('地板')?.traverse(node => {
+          if (node instanceof THREE.Mesh) {
+            node.castShadow = false;
+            node.receiveShadow = true;
+          }
         });
       }
       fitWardInteriorEnvironment(parts, this.roomW, this.roomD, ROOM_H);
@@ -1752,21 +1809,30 @@ export class WardScene {
       this.fitControlsToRoom();
       this.wardInteriorPlacementDiagnosticsLogged = false;
       this.scene.add(model);
+      this.fitModularRoomShadow();
+      this.renderer.shadowMap.needsUpdate = true;
       this.roomGroup.visible = false;
       this.clearBedMeshes();
 
-      if (this.ward) {
-        this.updateWard(this.ward);
-        void this.syncWardBedTemplates(this.ward);
+      // 房间外壳先就绪；床位装配失败不应把整场景打成 fallback。
+      this.onModelState?.('ready');
+      try {
+        if (this.ward) {
+          this.updateWard(this.ward);
+          void this.syncWardBedTemplates(this.ward);
+        }
+      }
+      catch (bedError) {
+        console.warn('[WardScene] ward model ready but bed placement failed', bedError);
       }
       this.setCameraPreset('door');
       if (this.selectedBedCode) this.focusSelectedBed(this.selectedBedCode);
       await this.warmGpu();
       if (token !== this.wardInteriorModelLoadToken)
         return;
+      this.renderer.shadowMap.needsUpdate = true;
       this.renderer.render(this.scene, this.camera);
-      this.onModelState?.('ready');
-      // this.logCameraView('模型就绪');
+      this.logCameraView('模型就绪');
     }
     catch (error) {
       if (unitAsset && unitAsset !== this.bedUnitAsset)
@@ -2393,9 +2459,16 @@ export class WardScene {
     };
   }
 
-  private createModularBedMesh(bed: TwinBedEntity, index: number): BedMeshGroup {
-    if (!this.bedUnitAsset) throw new Error('Bed unit asset is not ready');
-    const unit = createWardBedUnit(this.bedUnitAsset, bed.bedCode);
+  private createModularBedMesh(bed: TwinBedEntity, index: number): BedMeshGroup | null {
+    if (!this.bedUnitAsset) return null;
+    let unit: WardBedUnit;
+    try {
+      unit = createWardBedUnit(this.bedUnitAsset, bed.bedCode);
+    }
+    catch (error) {
+      console.warn('[WardScene] failed to create modular bed unit', bed.bedCode, error);
+      return null;
+    }
     const group = unit.group;
     placeWardBedUnit(group, index, this.roomExpansion?.slots);
     const selection = this.createSelectionMeshes(resolveBedStatus(bed));
@@ -2683,10 +2756,11 @@ export class WardScene {
     camera.bottom = local.min.y - 0.3;
     camera.top = local.max.y + 0.3;
     camera.updateProjectionMatrix();
-    light.shadow.bias = -0.00008;
-    light.shadow.normalBias = 0.006;
-    light.shadow.radius = 2;
-    light.shadow.intensity = 0.8;
+    light.shadow.bias = -0.0001;
+    light.shadow.normalBias = 0.012;
+    light.shadow.radius = 1.8;
+    light.shadow.intensity = 1.15;
+    this.renderer.shadowMap.needsUpdate = true;
   }
 
   private updateModularLayout(count: number): boolean {
@@ -2843,7 +2917,7 @@ export class WardScene {
 
   setCameraPreset(presetId: CameraPresetId) {
     this.cameraIntent = presetId === 'door' ? 'overview' : 'manual';
-    if (presetId === 'door' && this.frameNativeSubjects()) return;
+    // 门口/自由视角以配置机位为准，不再被床位自动框选覆盖。
     const preset = getCameraPreset(presetId);
     const toPos = new THREE.Vector3(...preset.position);
     const toTarget = new THREE.Vector3(...preset.target);
@@ -2869,6 +2943,8 @@ export class WardScene {
         preset.target[2] * (presetId === 'door' ? 1 : scale > 1 ? 0.85 : 1),
       );
     }
+    this.camera.fov = wardInteriorSceneConfig.camera.perspective.fov;
+    this.camera.updateProjectionMatrix();
     this.cameraTransition = {
       elapsed: 0,
       duration: wardInteriorSceneConfig.camera.presetTransitionDuration,
@@ -3154,6 +3230,8 @@ export class WardScene {
   };
 
   dispose() {
+    window.clearTimeout(this.cameraViewLogTimer);
+    this.cameraViewLogTimer = undefined;
     ++this.wardInteriorModelLoadToken;
     this.clearRoomExpansion();
     this.clearBedMeshes();

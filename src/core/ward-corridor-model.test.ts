@@ -28,6 +28,8 @@ import {
   HOSPITAL_CORRIDOR_DOOR_NAMES,
   HOSPITAL_CORRIDOR_ENTRANCE_DEVICE_NAMES,
   dimHospitalCorridorFloorStripes,
+  createCorridorTheme,
+  polishHospitalCorridorMaterials,
 } from './ward-corridor-model.ts';
 
 test('keeps named door group identity when glTF expands multiple material primitives', () => {
@@ -385,9 +387,9 @@ test('configures corridor canvas textures for glTF UV orientation', () => {
 
 test('dims only the high-chroma guide stripes on the corridor floor mesh', () => {
   const white = new THREE.MeshStandardMaterial({ name: '地板2', color: 0xefefef });
-  const orange = new THREE.MeshStandardMaterial({ name: '材质.008', color: 0xff3800 });
-  const red = new THREE.MeshStandardMaterial({ name: '材质.020', color: 0xcf0909 });
-  const green = new THREE.MeshStandardMaterial({ name: '材质.018', color: 0x01580e });
+  const orange = new THREE.MeshStandardMaterial({ name: '未映射色带.橙', color: 0xff3800 });
+  const red = new THREE.MeshStandardMaterial({ name: '未映射色带.红', color: 0xcf0909 });
+  const green = new THREE.MeshStandardMaterial({ name: '未映射色带.绿', color: 0x01580e });
   const floor = new THREE.Mesh(new THREE.BoxGeometry(1, 0.02, 1), [white, orange, red, green]);
   floor.name = '地板';
   const wall = new THREE.Mesh(
@@ -407,4 +409,39 @@ test('dims only the high-chroma guide stripes on the corridor floor mesh', () =>
   assert.ok(floorMats[2].color.r < red.color.r);
   assert.ok(floorMats[3].color.g < green.color.g);
   assert.equal((wall.material as THREE.MeshStandardMaterial).color.getHex(), 0xff3800);
+});
+
+test('unifies corridor door and chair blues with the nurse-station light theme', () => {
+  const doorPanel = new THREE.MeshStandardMaterial({ name: '椅子.003', color: 0x092875 });
+  const wall = new THREE.MeshStandardMaterial({ name: '灰白', color: 0xd0e5ff });
+  const stripe = new THREE.MeshStandardMaterial({ name: '材质.008', color: 0xff5701 });
+  const door = new THREE.Mesh(new THREE.BoxGeometry(), [doorPanel, wall]);
+  door.name = '门1';
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(), stripe);
+  floor.name = '地板';
+  const root = new THREE.Group();
+  root.add(door, floor);
+
+  const apply = createCorridorTheme();
+  apply(root, false);
+  const doorMats = door.material as THREE.MeshStandardMaterial[];
+  assert.equal(doorMats[0].color.getHex(), 0x4f86b0);
+  assert.equal(doorMats[1].color.getHex(), 0xf8fafb);
+  assert.equal((floor.material as THREE.MeshStandardMaterial).color.getHex(), 0xd09c48);
+
+  apply(root, true);
+  assert.equal(doorMats[0].color.getHex(), 0x4a7290);
+  apply(root, false);
+  assert.equal(doorMats[0].color.getHex(), 0x4f86b0);
+});
+
+test('polishes corridor floor materials for subtle reflection', () => {
+  const tile = new THREE.MeshStandardMaterial({ name: '地板2', color: 0xc6c0b7, roughness: 0.9, envMapIntensity: 0.1 });
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(), tile);
+  floor.name = '地板';
+  const root = new THREE.Group();
+  root.add(floor);
+  polishHospitalCorridorMaterials(root);
+  assert.ok((floor.material as THREE.MeshStandardMaterial).roughness <= 0.55);
+  assert.ok((floor.material as THREE.MeshStandardMaterial).envMapIntensity >= 0.58);
 });

@@ -85,10 +85,37 @@ test('runtime glass avoids refraction pass and only fixed lights cache shadows',
   assert.equal(material.opacity,.16);
   assert.equal(material.depthWrite,false);
   assert.equal(glass.castShadow,false);
+  const lettering = new THREE.Mesh(new THREE.BoxGeometry(.2,.05,.02), new THREE.MeshStandardMaterial());
+  lettering.name = 'Counter_Lettering';
+  model.add(lettering);
+  const header = new THREE.Group();
+  header.name = 'Station_Header';
+  const headerGlyph = new THREE.Mesh(new THREE.BoxGeometry(.3,.2,.04), new THREE.MeshStandardMaterial());
+  headerGlyph.name = 'GN Instance';
+  header.add(headerGlyph);
+  model.add(header);
+  const motto = new THREE.Group();
+  motto.name = 'Station_Header_Motto';
+  const mottoGlyph = new THREE.Mesh(new THREE.BoxGeometry(.4,.08,.03), new THREE.MeshStandardMaterial());
+  mottoGlyph.name = 'GN Instance';
+  motto.add(mottoGlyph);
+  model.add(motto);
+  const clockFrame = new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.04,24), new THREE.MeshStandardMaterial());
+  clockFrame.name = 'Clock_Frame';
+  model.add(clockFrame);
+  prepareReferenceStation(model);
+  assert.equal(lettering.castShadow, false);
+  assert.equal(headerGlyph.castShadow, false);
+  assert.equal(mottoGlyph.castShadow, false);
+  assert.equal(clockFrame.castShadow, false);
   const lights=createReferenceStationLights();
   const key=lights.children.find(child=>child instanceof THREE.SpotLight) as THREE.SpotLight;
   assert.equal(key.shadow.autoUpdate,false);
   assert.equal(key.shadow.needsUpdate,true);
+  const contact=lights.children.find(child=>child instanceof THREE.DirectionalLight) as THREE.DirectionalLight;
+  assert.ok(contact);
+  assert.equal(contact.shadow.autoUpdate,false);
+  assert.equal(contact.castShadow,true);
 });
 
 test('wide wall display preserves face-frame alignment and does not accumulate on repeated preparation', () => {

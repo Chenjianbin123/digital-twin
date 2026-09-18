@@ -10,9 +10,16 @@ export const HOSPITAL_CORRIDOR_ENTRANCE_DEVICE_NAMES =
 
 const FLOOR_STRIPE_CHROMA_MIN = 0.35;
 
+function corridorThemeMaterialNames() {
+  const { light, dark } = wardCorridorSceneConfig.appearance.themeMaterials;
+  return new Set([...Object.keys(light), ...Object.keys(dark)]);
+}
+
+/** 仅压暗未纳入主题映射的高饱和色带；主题色带由 createCorridorTheme 统一上色。 */
 export function dimHospitalCorridorFloorStripes(root: THREE.Object3D) {
   const meshName = wardCorridorSceneConfig.appearance.floorMeshName;
   const scale = wardCorridorSceneConfig.appearance.floorStripeColorScale;
+  const themed = corridorThemeMaterialNames();
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh) || object.name !== meshName)
       return;
@@ -21,6 +28,8 @@ export function dimHospitalCorridorFloorStripes(root: THREE.Object3D) {
       if (!('color' in material))
         return material;
       const std = material as THREE.MeshStandardMaterial;
+      if (themed.has(std.name))
+        return material;
       const max = Math.max(std.color.r, std.color.g, std.color.b);
       const min = Math.min(std.color.r, std.color.g, std.color.b);
       const chroma = max === 0 ? 0 : (max - min) / max;
@@ -33,6 +42,94 @@ export function dimHospitalCorridorFloorStripes(root: THREE.Object3D) {
       return cloned;
     });
     object.material = Array.isArray(object.material) ? next : next[0];
+  });
+}
+
+/** 走廊门板/座椅/墙面/导向带与护士站浅色主题对齐；可重复切换不叠加。 */
+export function createCorridorTheme() {
+  const prepared = new WeakSet<THREE.Mesh>();
+  const originals = new WeakMap<THREE.MeshStandardMaterial, THREE.Color>();
+
+  return (root: THREE.Object3D | null, dark: boolean) => {
+    if (!root)
+      return;
+
+    const palette = dark
+      ? wardCorridorSceneConfig.appearance.themeMaterials.dark
+      : wardCorridorSceneConfig.appearance.themeMaterials.light;
+    const themedNames = corridorThemeMaterialNames();
+
+    root.traverse((object) => {
+      if (!(object instanceof THREE.Mesh))
+        return;
+
+      if (!prepared.has(object)) {
+        const clone = (material: THREE.Material) => {
+          const std = material as THREE.MeshStandardMaterial;
+          return std.isMeshStandardMaterial && themedNames.has(std.name)
+            ? std.clone()
+            : material;
+        };
+        object.material = Array.isArray(object.material)
+          ? object.material.map(clone)
+          : clone(object.material);
+        prepared.add(object);
+      }
+
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) {
+        const std = material as THREE.MeshStandardMaterial;
+        if (!std.isMeshStandardMaterial || palette[std.name] === undefined)
+          continue;
+        if (!originals.has(std))
+          originals.set(std, std.color.clone());
+        std.color.setHex(palette[std.name]!);
+        // 门/椅保留一点反光层次，避免塑料哑光发灰。
+        if (std.name.startsWith('椅子.')) {
+          std.metalness = 0.04;
+          std.roughness = 0.66;
+          std.envMapIntensity = 0.52;
+        }
+        else if (std.name === '灰白') {
+          std.roughness = 0.76;
+          std.envMapIntensity = 0.4;
+        }
+        else if (std.name === '门周') {
+          std.roughness = 0.52;
+          std.envMapIntensity = 0.46;
+          std.metalness = 0.08;
+        }
+        std.needsUpdate = true;
+      }
+    });
+  };
+}
+
+/** 地砖/墙面补一点环境反射，拉开灰白哑光与高级感。 */
+export function polishHospitalCorridorMaterials(root: THREE.Object3D) {
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh))
+      return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      const std = material as THREE.MeshStandardMaterial;
+      if (!std.isMeshStandardMaterial)
+        continue;
+      const max = Math.max(std.color.r, std.color.g, std.color.b);
+      const min = Math.min(std.color.r, std.color.g, std.color.b);
+      const chroma = max === 0 ? 0 : (max - min) / max;
+      if (object.name === '地板' && chroma < 0.35) {
+        std.roughness = Math.min(std.roughness || 1, 0.48);
+        std.envMapIntensity = Math.max(std.envMapIntensity || 0, 0.68);
+        std.metalness = Math.min(std.metalness || 0, 0.08);
+        std.needsUpdate = true;
+      }
+      else if (object.name === '天花板' || std.name.includes('天花板')) {
+        std.roughness = Math.min(std.roughness || 1, 0.82);
+        std.envMapIntensity = Math.max(std.envMapIntensity || 0, 0.28);
+        std.needsUpdate = true;
+      }
+    }
   });
 }
 

@@ -45,6 +45,8 @@ export interface NurseStationSceneConfig {
       floorMesh: string;
       ceilingMesh: string;
       wallMeshes: [string, string];
+      /** 远离柜台的大厅端墙；用于限制滚轮后退，避免穿出房间。 */
+      farWallMesh?: string;
       margins: {
         floor: number;
         ceiling: number;
@@ -69,18 +71,18 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
   },
   position: { x: 0, z: 14 },
   appearance: {
-    background: 0xdfe7e9,
+    background: 0xe8eef0,
     /** 首屏视野角：数值越小，模型越大；数值越大，看到的环境越多。 */
     deskFov: 38,
-    /** 贴近原型：避免 ACES 再额外提亮。 */
-    exposure: 1,
+    /** 轻提曝光，台面区更干净。 */
+    exposure: 1.14,
     /**
      * 仅 legacy 布局会覆盖材质 envMapIntensity。
      * reference-v2/v3 保留 glTF 作者值，避免整体发灰发亮。
      */
     envMapIntensity: 0.42,
     /** RoomEnvironment 强度；过高会洗白墙面与台面。 */
-    environmentIntensity: 0.32,
+    environmentIntensity: 0.34,
   },
   camera: {
     /**
@@ -92,9 +94,9 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
     target: { x: 0, y: 1.35, z: -1.2 },
     initialDistance: 10.5,
     initialAngle: { azimuthDeg: -13.15, elevationDeg: 0.78 },
-    limitsEnabled: false,
+    limitsEnabled: true,
     pan: { xLimit: 0.42, yMin: 0.42, yMax: 1.35 },
-    distance: { min: 0.6, max: 18 },
+    distance: { min: 0.6, max: 12 },
     azimuthLimit: Math.PI / 12,
     polar: { min: Math.PI / 6, max: Math.PI / 1.8 },
     ceilingY: 3.34,
@@ -105,11 +107,12 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
       floorMesh: "地板",
       ceilingMesh: "Ceiling",
       wallMeshes: ["墙壁", "墙壁2"],
+      farWallMesh: "Lobby_Back_Wall",
       margins: {
         floor: 0.28,
         ceiling: 0.7,
         wall: 0.28,
-        depth: 0.25,
+        depth: 0.45,
       },
     },
   },

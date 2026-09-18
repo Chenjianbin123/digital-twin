@@ -21,9 +21,9 @@ test('station theme applies both themes and leaves screens untouched', () => {
     assert.equal(screen.color.getHex(), 0xffffff);
     apply(root, lights, false);
     wall = (root.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-    assert.equal(wall.color.getHexString(), 'e3ecee');
+    assert.equal(wall.color.getHexString(), 'e8eef0');
     assert.equal(screen.color.getHex(), 0xffffff);
-    assert.ok(light.intensity < .6);
+    assert.ok(light.intensity <= .6);
   }
 });
 
@@ -45,10 +45,10 @@ test('dark materials soften reflections and light mode keeps stable physical pro
     apply(root, undefined, false);
     surface = (root.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
     led = (root.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-    assert.equal(surface.roughness, .86);
+    assert.equal(surface.roughness, .72);
     assert.ok(surface.envMapIntensity < 1.2);
-    assert.equal(surface.color.getHexString(), 'eef3f2');
-    assert.equal(led.emissive.getHexString(), 'edf3f3');
+    assert.equal(surface.color.getHexString(), 'f7fafa');
+    assert.equal(led.emissive.getHexString(), 'dcebef');
     assert.ok(led.emissiveIntensity >= .35);
   }
 });
@@ -70,7 +70,7 @@ test('approved palette separates shared wood surfaces in dark and light themes',
   const darkCounter = counter.material as THREE.MeshStandardMaterial;
   assert.notEqual(darkWall, darkCounter);
   assert.equal(darkWall.color.getHexString(), 'd8e1df');
-  assert.equal(darkCounter.color.getHexString(), '7ca0ae');
+  assert.equal(darkCounter.color.getHexString(), '5a92a8');
   assert.equal(darkWall.map, null);
   assert.equal(darkWall.normalMap, null);
   assert.equal(wood.map, map);
@@ -81,7 +81,7 @@ test('approved palette separates shared wood surfaces in dark and light themes',
     assert.equal(lightWall.map, null);
     assert.equal(lightWall.normalMap, normalMap);
     assert.equal(lightWall.color.getHexString(), 'ced8d5');
-    assert.equal(lightCounter.color.getHexString(), 'b8cdd1');
+    assert.equal(lightCounter.color.getHexString(), '7aafbc');
     assert.equal(lightCounter.map, null);
     apply(root, undefined, true);
     assert.equal(wall.material, darkWall);
@@ -99,25 +99,25 @@ test('approved architecture colors keep shared paint and counter surfaces indepe
   const wood = new THREE.MeshStandardMaterial({ color: '#aa8866' });
   wood.name = 'Natural_Oak';
   const darkCases = [
-    ['Ceiling', paint, 'eceee6'],
-    ['墙壁', paint, '83aabb'],
-    ['Corridor_Inner_Wall_1', paint, '83aabb'],
+    ['Ceiling', paint, 'e8ece8'],
+    ['墙壁', paint, '6aa0b4'],
+    ['Corridor_Inner_Wall_1', paint, '6aa0b4'],
     ['Back_Wall', paint, 'd8e1df'],
-    ['Nurse_Counter', surface, '7ca0ae'],
-    ['Nurse_Counter_Top', surface, 'e1e8ea'],
-    ['Station_Canopy', surface, '7da2b0'],
-    ['Ward_Door_1_0', wood, '527d8d'],
+    ['Nurse_Counter', surface, '5a92a8'],
+    ['Nurse_Counter_Top', surface, 'e6eef0'],
+    ['Station_Canopy', surface, '5c96ac'],
+    ['Ward_Door_1_0', wood, '3d6f88'],
     ['Oak_Wall_Panel_00', wood, 'd8e1df'],
   ] as const;
   const lightCases = [
-    ['Ceiling', 'eef2f1'],
-    ['墙壁', 'e3ecee'],
-    ['Corridor_Inner_Wall_1', 'e3ecee'],
-    ['Back_Wall', 'e5edec'],
-    ['Nurse_Counter', 'eef3f2'],
-    ['Nurse_Counter_Top', 'f4f6f4'],
-    ['Station_Canopy', 'f0f4f3'],
-    ['Ward_Door_1_0', '78969d'],
+    ['Ceiling', 'f4f7f6'],
+    ['墙壁', 'eef3f4'],
+    ['Corridor_Inner_Wall_1', 'eef3f4'],
+    ['Back_Wall', 'eef3f2'],
+    ['Nurse_Counter', 'f7fafa'],
+    ['Nurse_Counter_Top', 'f7f9f8'],
+    ['Station_Canopy', 'eef3f4'],
+    ['Ward_Door_1_0', '4f7f9a'],
     ['Oak_Wall_Panel_00', 'ced8d5'],
   ] as const;
   for (const [name, material] of darkCases) {

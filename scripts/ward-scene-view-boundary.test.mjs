@@ -10,14 +10,16 @@ const wardConfig = readFileSync(new URL('../src/config/ward-interior-scene.ts', 
 test('病房内视角使用安全范围内的缩放与旋转控制', () => {
   assert.match(wardScene, /resolveWardSceneControlLimits\(this\.roomW, this\.roomD\)/);
   assert.match(wardControls, /wardInteriorSceneConfig\.controls/);
-  assert.match(wardConfig, /minDistance: 3\.6/);
+  assert.match(wardConfig, /minDistance: 1\.8/);
   assert.match(wardConfig, /minAzimuthAngle: 0,/);
   assert.match(wardConfig, /maxAzimuthAngle: 0\.5/);
 });
 
 test('病房默认视角使用当前原生模型近景镜头', () => {
   assert.match(cameraPresets, /wardInteriorSceneConfig\.camera\.presets/);
-  assert.match(wardConfig, /position: \[0\.5, 2\.4, 3\.95\], target: \[-1\.3, 1\.4, 0\.25\]/);
+  assert.match(wardConfig, /position: \[-0\.79, 2\.152, 3\.834\], target: \[-1\.576, 1\.448, 2\.169\]/);
+  assert.match(wardScene, /门口\/自由视角以配置机位为准/);
+  assert.doesNotMatch(wardScene, /if \(presetId === 'door' && this\.frameNativeSubjects\(\)\) return;/);
 });
 
 test('窄屏按视口倍率后退并同步选床聚焦距离', () => {
