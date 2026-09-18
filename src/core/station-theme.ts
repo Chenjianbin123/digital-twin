@@ -15,7 +15,7 @@ const darkPalette: Record<string, string> = {
 
 /** 浅色：台面更干净、墙去青灰；门硬朗，橡木后墙保持淡色。 */
 const lightPalette: Record<string, string> = {
-  Warm_White_Solid_Surface: "#f7fafa",
+  Warm_White_Solid_Surface: "#e8eef0",
   Warm_White_Paint: "#e8eef0",
   Warm_Grey_Vinyl: "#c2cecc",
   Floor_Border: "#6a8288",
@@ -31,7 +31,7 @@ const LIGHT_OAK_TINT = "#ced8d5";
 const LIGHT_OAK_MAP_COLOR = "#edf2f0";
 /** 房门：偏蓝青、对比清楚。 */
 const LIGHT_WARD_DOOR = "#4f7f9a";
-const LIGHT_NURSE_COUNTER_ACCENT = "#7aafbc";
+const LIGHT_NURSE_COUNTER_ACCENT = "#6ea5b4";
 
 const themedMaterialNames = new Set([
   ...Object.keys(darkPalette),
@@ -302,7 +302,7 @@ export function createStationTheme() {
               material.color.set(LIGHT_OAK_TINT);
             }
           }
-          if (mesh.name === "Nurse_Counter") material.color.set("#f7fafa");
+          if (mesh.name === "Nurse_Counter") material.color.set("#e8eef0");
           if (mesh.name === "Nurse_Counter_Oak") {
             material.map = null;
             material.normalMap = null;
@@ -350,7 +350,7 @@ export function createStationTheme() {
               mesh.name,
             )
           )
-            material.color.set("#f7f9f8");
+            material.color.set("#e3eae8");
           if (mesh.name === "Counter_Steel_Plinth") {
             material.color.set("#6e848a");
             material.roughness = 0.38;

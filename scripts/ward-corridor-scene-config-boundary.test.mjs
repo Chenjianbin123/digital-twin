@@ -18,9 +18,9 @@ test('病房走廊场景参数集中在独立配置文件中', async () => {
   assert.match(config, /lightBackground: 0xf4f7f8/);
   assert.match(config, /themeMaterials:/);
   assert.match(config, /"椅子\.003": 0x4f86b0/);
-  assert.match(config, /exposure: 1\.22/);
-  assert.match(config, /envMapIntensity: 0\.55/);
-  assert.match(config, /environmentIntensity: 0\.4/);
+  assert.match(config, /exposure: 1\.27/);
+  assert.match(config, /envMapIntensity: 0\.58/);
+  assert.match(config, /environmentIntensity: 0\.44/);
   assert.match(config, /floorMeshName: "地板"/);
   assert.match(config, /floorStripeColorScale: 0\.36/);
   assert.match(config, /viewBounds:/);

@@ -1713,10 +1713,10 @@ export class WardScene {
 
   private setupLights() {
     // 压低环境填充，让床体/柜脚接触影能落下来（整体亮度仍靠 exposure）。
-    this.scene.add(new THREE.AmbientLight(0xf6faf7, 0.22));
-    this.scene.add(new THREE.HemisphereLight(0xfaf7f2, 0x948e86, 0.26));
+    this.scene.add(new THREE.AmbientLight(0xf6faf7, 0.18));
+    this.scene.add(new THREE.HemisphereLight(0xfaf7f2, 0x948e86, 0.22));
 
-    const key = new THREE.DirectionalLight(0xfff8f0, 1.15);
+    const key = new THREE.DirectionalLight(0xfff4e6, 1.26);
     key.name = 'ward-interior-key-shadow';
     key.position.set(4, 10, 6);
     this.wardKeyLight = key;
@@ -1724,8 +1724,8 @@ export class WardScene {
     key.shadow.mapSize.set(2048, 2048);
     key.shadow.bias = -0.0001;
     key.shadow.normalBias = 0.012;
-    key.shadow.radius = 1.8;
-    key.shadow.intensity = 1.15;
+    key.shadow.radius = 1.05;
+    key.shadow.intensity = 1.38;
     key.shadow.camera.near = 0.5;
     key.shadow.camera.far = 40;
     key.shadow.camera.left = -12;
@@ -2762,8 +2762,8 @@ export class WardScene {
     camera.updateProjectionMatrix();
     light.shadow.bias = -0.0001;
     light.shadow.normalBias = 0.012;
-    light.shadow.radius = 1.8;
-    light.shadow.intensity = 1.15;
+    light.shadow.radius = 1.05;
+    light.shadow.intensity = 1.38;
     this.renderer.shadowMap.needsUpdate = true;
   }
 

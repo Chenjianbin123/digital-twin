@@ -123,14 +123,14 @@ export function createReferenceStationLights() {
   const group = new THREE.Group();
   group.name = 'reference-nurse-station-lights';
   // 压低环境/面光填充，让 Spot 投影真正落在台面与地面上。
-  group.add(new THREE.HemisphereLight(0xeef5f8, 0xb8a890, .36));
+  group.add(new THREE.HemisphereLight(0xf4f0e8, 0x8a9498, .3));
   for (const [x, y, z, width, height] of [[-3.7, 2.9, 4, 4.8, 2], [5.8, 2.6, 0, 2, 2.5], [0, 2.85, -2.9, 6.5, .8]]) {
-    const light = new THREE.RectAreaLight(0xfff4e4, 1.55, width, height);
+    const light = new THREE.RectAreaLight(0xfff4e4, 1.62, width, height);
     light.position.set(x, y, z);
     light.lookAt(0, 1, -2);
     group.add(light);
   }
-  const key = new THREE.SpotLight(0xfff7eb, 62, 25, Math.PI / 2.55, .62, 1.85);
+  const key = new THREE.SpotLight(0xfff4e4, 72, 25, Math.PI / 2.55, .48, 1.85);
   key.position.set(-2.4, 3.35, 3.2);
   key.target.position.set(0.2, 0.05, -0.4);
   key.castShadow = true;
@@ -139,14 +139,14 @@ export function createReferenceStationLights() {
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.bias = -.0001;
   key.shadow.normalBias = .012;
-  key.shadow.radius = 1.85;
-  key.shadow.intensity = 1.25;
+  key.shadow.radius = 1.05;
+  key.shadow.intensity = 1.48;
   key.shadow.camera.near = 0.6;
   key.shadow.camera.far = 18;
   group.add(key, key.target);
 
   // 接触影略收敛，避免地面大片发闷。
-  const contact = new THREE.DirectionalLight(0xfff8f0, 0.42);
+  const contact = new THREE.DirectionalLight(0xfff4e8, 0.55);
   contact.name = 'reference-station-contact-shadow';
   contact.position.set(2.5, 5.5, 3.2);
   contact.target.position.set(0, 0, -0.5);
@@ -156,8 +156,8 @@ export function createReferenceStationLights() {
   contact.shadow.mapSize.set(2048, 2048);
   contact.shadow.bias = -0.00008;
   contact.shadow.normalBias = 0.01;
-  contact.shadow.radius = 1.8;
-  contact.shadow.intensity = 1.05;
+  contact.shadow.radius = 0.95;
+  contact.shadow.intensity = 1.3;
   contact.shadow.camera.near = 0.5;
   contact.shadow.camera.far = 22;
   contact.shadow.camera.left = -7;

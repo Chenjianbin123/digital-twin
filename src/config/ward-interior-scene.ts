@@ -140,11 +140,11 @@ export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
   },
   appearance: {
     background: 0xe6e2da,
-    exposure: 1.28,
+    exposure: 1.33,
     baseFogDensity: 0,
     fogSpanFactor: 0,
-    envMapIntensity: 0.32,
-    environmentIntensity: 0.38,
+    envMapIntensity: 0.36,
+    environmentIntensity: 0.42,
     /** Cap chrome/plastic metalness so beds and fixtures stay matte under indoor fill. */
     maxMetalness: 0.32,
   },

@@ -171,9 +171,9 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
     background: 0x0a1218,
     lightBackground: 0xf4f7f8,
     fov: 52,
-    exposure: 1.22,
-    envMapIntensity: 0.55,
-    environmentIntensity: 0.4,
+    exposure: 1.27,
+    envMapIntensity: 0.58,
+    environmentIntensity: 0.44,
     floorMeshName: "地板",
     floorStripeColorScale: 0.36,
     themeMaterials: {

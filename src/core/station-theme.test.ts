@@ -47,7 +47,7 @@ test('dark materials soften reflections and light mode keeps stable physical pro
     led = (root.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial;
     assert.equal(surface.roughness, .72);
     assert.ok(surface.envMapIntensity < 1.2);
-    assert.equal(surface.color.getHexString(), 'f7fafa');
+    assert.equal(surface.color.getHexString(), 'e8eef0');
     assert.equal(led.emissive.getHexString(), 'dcebef');
     assert.ok(led.emissiveIntensity >= .35);
   }
@@ -81,7 +81,7 @@ test('approved palette separates shared wood surfaces in dark and light themes',
     assert.equal(lightWall.map, null);
     assert.equal(lightWall.normalMap, normalMap);
     assert.equal(lightWall.color.getHexString(), 'ced8d5');
-    assert.equal(lightCounter.color.getHexString(), '7aafbc');
+    assert.equal(lightCounter.color.getHexString(), '6ea5b4');
     assert.equal(lightCounter.map, null);
     apply(root, undefined, true);
     assert.equal(wall.material, darkWall);
@@ -114,8 +114,8 @@ test('approved architecture colors keep shared paint and counter surfaces indepe
     ['墙壁', 'eef3f4'],
     ['Corridor_Inner_Wall_1', 'eef3f4'],
     ['Back_Wall', 'eef3f2'],
-    ['Nurse_Counter', 'f7fafa'],
-    ['Nurse_Counter_Top', 'f7f9f8'],
+    ['Nurse_Counter', 'e8eef0'],
+    ['Nurse_Counter_Top', 'e3eae8'],
     ['Station_Canopy', 'eef3f4'],
     ['Ward_Door_1_0', '4f7f9a'],
     ['Oak_Wall_Panel_00', 'ced8d5'],

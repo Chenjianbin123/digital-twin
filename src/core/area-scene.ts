@@ -652,18 +652,18 @@ export class AreaScene {
     }
 
     // 走廊：保留接触影，但抬环境光、压阴影深度，避免整体发闷
-    this.scene.add(new THREE.AmbientLight(0xf7fbf9, 0.24));
-    this.scene.add(new THREE.HemisphereLight(0xf6faf8, 0x7a8c86, 0.32));
+    this.scene.add(new THREE.AmbientLight(0xf7fbf9, 0.2));
+    this.scene.add(new THREE.HemisphereLight(0xf6faf8, 0x7a8c86, 0.26));
 
-    const key = new THREE.DirectionalLight(0xfffef9, 1.28);
+    const key = new THREE.DirectionalLight(0xfff8f0, 1.38);
     key.name = 'corridor-key-shadow';
     key.position.set(6, 14, 10);
     key.castShadow = true;
     key.shadow.mapSize.set(4096, 4096);
     key.shadow.bias = -0.00012;
-    key.shadow.normalBias = 0.02;
-    key.shadow.radius = 2.4;
-    key.shadow.intensity = 0.92;
+    key.shadow.normalBias = 0.018;
+    key.shadow.radius = 1.15;
+    key.shadow.intensity = 1.22;
     key.shadow.camera.near = 0.5;
     key.shadow.camera.far = 80;
     key.shadow.camera.left = -24;
@@ -740,9 +740,9 @@ export class AreaScene {
     camera.top = local.max.y + pad;
     camera.updateProjectionMatrix();
     light.shadow.bias = -0.0001;
-    light.shadow.normalBias = 0.018;
-    light.shadow.radius = 2.2;
-    light.shadow.intensity = 0.88;
+    light.shadow.normalBias = 0.016;
+    light.shadow.radius = 1.15;
+    light.shadow.intensity = 1.22;
     this.renderer.shadowMap.needsUpdate = true;
   }
 

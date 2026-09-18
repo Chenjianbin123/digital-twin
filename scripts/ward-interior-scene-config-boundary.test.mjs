@@ -16,10 +16,10 @@ test('病房内部场景参数集中在独立配置文件中', async () => {
   assert.match(config, /minDistance: 1\.8/);
   assert.match(config, /referenceAspect: 0\.92/);
   assert.match(config, /background: 0xe6e2da/);
-  assert.match(config, /exposure: 1\.28/);
+  assert.match(config, /exposure: 1\.33/);
   assert.match(config, /baseFogDensity: 0/);
-  assert.match(config, /envMapIntensity: 0\.32/);
-  assert.match(config, /environmentIntensity: 0\.38/);
+  assert.match(config, /envMapIntensity: 0\.36/);
+  assert.match(config, /environmentIntensity: 0\.42/);
   assert.match(config, /maxMetalness: 0\.32/);
   assert.match(config, /shellMesh: '外壳'/);
   assert.match(config, /lightMesh: '灯'/);

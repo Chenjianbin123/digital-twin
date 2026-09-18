@@ -75,14 +75,14 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
     /** 首屏视野角：数值越小，模型越大；数值越大，看到的环境越多。 */
     deskFov: 38,
     /** 轻提曝光，台面区更干净。 */
-    exposure: 1.14,
+    exposure: 1.19,
     /**
      * 仅 legacy 布局会覆盖材质 envMapIntensity。
      * reference-v2/v3 保留 glTF 作者值，避免整体发灰发亮。
      */
     envMapIntensity: 0.42,
     /** RoomEnvironment 强度；过高会洗白墙面与台面。 */
-    environmentIntensity: 0.34,
+    environmentIntensity: 0.38,
   },
   camera: {
     /**
