@@ -77,18 +77,23 @@ function stopTerminalPreview() {
   lastTerminalSource = null;
 }
 function closeTerminal() { terminalDialog.value?.close(); stopTerminalPreview(); }
-async function openTerminal() {
-  if (props.selectedBedCode && !occupied.value.beds.some(b => b.bedCode === props.selectedBedCode)) return;
-  terminalBedCode.value = occupied.value.beds.some(b => b.bedCode === props.selectedBedCode)
-    ? props.selectedBedCode! : occupied.value.beds[0]?.bedCode ?? '';
-  if (!terminalBedCode.value) return;
-  const selected = occupied.value.beds.find(b => b.bedCode === terminalBedCode.value);
+async function openTerminalForBed(bedCode: string) {
+  if (!occupied.value.beds.some(b => b.bedCode === bedCode)) return;
+  terminalBedCode.value = bedCode;
+  const selected = occupied.value.beds.find(b => b.bedCode === bedCode);
   if (selected) emit('bedClick', selected);
   await nextTick();
   terminalDialog.value?.showModal();
   stopTerminalPreview();
   drawTerminal();
   terminalTimer = setInterval(drawTerminal, 400);
+}
+async function openTerminal() {
+  if (props.selectedBedCode && !occupied.value.beds.some(b => b.bedCode === props.selectedBedCode)) return;
+  const bedCode = occupied.value.beds.some(b => b.bedCode === props.selectedBedCode)
+    ? props.selectedBedCode! : occupied.value.beds[0]?.bedCode ?? '';
+  if (!bedCode) return;
+  await openTerminalForBed(bedCode);
 }
 function inspectTerminalBed() {
   lastTerminalSource = null;
@@ -125,6 +130,7 @@ onMounted(() => {
       theme: props.theme,
 
       onBedClick: bed => emit('bedClick', bed),
+      onBedTerminalClick: bed => { void openTerminalForBed(bed.bedCode); },
       onModelState: state => emit('modelState', state),
 
     });

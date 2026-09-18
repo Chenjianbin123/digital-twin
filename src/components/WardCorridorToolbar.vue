@@ -37,7 +37,7 @@ function navigate(event: KeyboardEvent) {
 </script>
 
 <template>
-  <section class="corridor-tools" :class="{ 'corridor-tools--full': !panelsVisible }" aria-label="病房走廊导航" @keydown.esc.stop="emit('reset')">
+  <section class="corridor-tools" aria-label="病房走廊导航" @keydown.esc.stop="emit('reset')">
     <header>
       <span class="corridor-tools__title">{{ area.rooms.length === 1 ? area.rooms[0]?.sickroomName : '病房走廊' }}<small>已接入 {{ area.rooms.length }} 间病房 · {{ layout.mode === 'physical' ? '已配置门位' : '分组示意，非实际位置' }}</small></span>
       <div class="corridor-tools__actions">
@@ -88,23 +88,26 @@ function navigate(event: KeyboardEvent) {
 
 <style scoped>
 .corridor-tools {
+  box-sizing: border-box;
   position: absolute; top: 76px; left: 16px;
-  right: calc(var(--scene-panel-width, 420px) + 16px); z-index: 12;
+  /* Match nurse-station / ward-interior: left card, not full scene width. */
+  width: 360px;
+  max-width: calc(100% - 32px);
+  z-index: 12;
   padding: 8px 12px; border: 1px solid var(--station-border, #8eabbc);
   border-radius: 8px; color: var(--station-ink, #17384c);
   background: var(--station-surface, rgba(244, 250, 253, .96));
   box-shadow: 0 4px 16px #12334818; pointer-events: auto;
   font-family: inherit; font-size: 13px; line-height: 1.5;
 }
-.corridor-tools--full { right: 16px; }
 :global(.digital-twin[data-theme='dark'] .corridor-tools) { background: #102735; color: #dcebf2; border-color: #456675; }
 header, .corridor-tools__pages, .corridor-tools__selected {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 header { flex-wrap: wrap; }
-.corridor-tools__title { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.corridor-tools__title { display: flex; gap: 8px; align-items: center; font-weight: 600; min-width: 0; }
 .corridor-tools__title small { font-weight: 400; font-size: 11px; opacity: .75; }
-.corridor-tools__actions { display: flex; gap: 6px; flex-shrink: 0; }
+.corridor-tools__actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
 nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 2px; scrollbar-width: thin; }
 button { font: inherit; color: inherit; cursor: pointer; border: 1px solid #7995a5; border-radius: 5px; background: transparent; min-height: 36px; padding: 4px 10px; }
 nav button { flex: 1 0 72px; min-width: 0; max-width: 148px; text-align: left; border-color: #93aebb55; border-top: 3px solid #608f9d; background: #83abc50b; }
@@ -116,16 +119,16 @@ nav small { display: block; max-width: 180px; overflow: hidden; text-overflow: e
 button[aria-pressed="true"] { color: #f7fbfd; background: #075a83; border-color: #075a83; }
 button:focus-visible, summary:focus-visible { outline: 3px solid #0088b8; outline-offset: 2px; }
 button:disabled { opacity: .45; cursor: default; }
-.corridor-tools__selected { padding-top: 8px; border-top: 1px solid #93aebb66; }
+.corridor-tools__selected { padding-top: 8px; border-top: 1px solid #93aebb66; flex-wrap: wrap; }
 .corridor-tools__selected > span { min-width: 0; overflow-wrap: anywhere; }
 .corridor-tools__selected button { flex-shrink: 0; }
-.corridor-tools__pages { justify-content: center; }
+.corridor-tools__pages { justify-content: center; flex-wrap: wrap; }
 .corridor-tools__hint { margin: 6px 0 0; font-size: 12px; opacity: .8; }
-.corridor-tools__hint span { float: right; }
+.corridor-tools__hint span { display: block; margin-top: 2px; opacity: .85; }
 details { margin-top: 6px; max-height: 130px; overflow: auto; }
 details summary { cursor: pointer; }
 @media (max-width: 767px) {
-  .corridor-tools { top: 96px; left: 8px; right: 8px; padding: 8px; font-size: 12px; }
+  .corridor-tools { top: 96px; left: 8px; width: calc(100% - 16px); max-width: calc(100% - 16px); padding: 8px; font-size: 12px; }
   .corridor-tools__hint { display: none; }
   .corridor-tools__title { display: block; font-size: 11px; }
   .corridor-tools__title small { display: block; font-size: 10px; }

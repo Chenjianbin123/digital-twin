@@ -79,6 +79,7 @@ export function createWardBedUnit(prototype: THREE.Object3D, bedCode: string): W
   }
   screen.geometry.setAttribute('uv', uv);
   screen.material = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, toneMapped: false });
+  screen.userData = { ...screen.userData, bedCode, wardBedTerminalSurface: true };
   group.traverse(node => {
     if (node instanceof THREE.Mesh) { node.castShadow = false; node.receiveShadow = true; }
   });

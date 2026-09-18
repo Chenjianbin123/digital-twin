@@ -72,6 +72,8 @@ export interface WardSceneOptions {
   container: HTMLElement;
   theme?: 'light' | 'dark';
   onBedClick?: (bed: TwinBedEntity) => void;
+  /** Fired only when the bedside terminal screen mesh is clicked (not bed/wall). */
+  onBedTerminalClick?: (bed: TwinBedEntity) => void;
   onModelState?: (state: WardInteriorModelState) => void;
 }
 
@@ -121,6 +123,7 @@ export class WardScene {
   private bedTerminalRefreshToken = new Map<string, number>();
   private timer = new THREE.Timer();
   private onBedClick?: (bed: TwinBedEntity) => void;
+  private onBedTerminalClick?: (bed: TwinBedEntity) => void;
   private onModelState?: (state: WardInteriorModelState) => void;
   private resizeObserver: ResizeObserver | null = null;
   private container: HTMLElement;
@@ -128,7 +131,8 @@ export class WardScene {
   private theme: 'light' | 'dark' = 'dark';
   private cameraTransition: CameraTransition | null = null;
   private cameraIntent: 'overview' | 'focus' | 'manual' = 'overview';
-  private suppressBedClick = false;
+  private pointerDownClient: { x: number; y: number } | null = null;
+  private readonly bedClickMoveThresholdPx = 8;
   private accentStrips: THREE.Mesh[] = [];
   private ceilingPanels: THREE.Mesh[] = [];
   private roomGroup = new THREE.Group();
@@ -157,10 +161,11 @@ export class WardScene {
     && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 
   constructor(options: WardSceneOptions) {
-    const { container, onBedClick, onModelState } = options;
+    const { container, onBedClick, onBedTerminalClick, onModelState } = options;
     this.container = container;
     this.theme = options.theme ?? 'dark';
     this.onBedClick = onBedClick;
+    this.onBedTerminalClick = onBedTerminalClick;
     this.onModelState = onModelState;
 
     const width = Math.max(1, container.clientWidth);
@@ -222,6 +227,7 @@ export class WardScene {
     this.setupLights();
     void this.loadWardInteriorModel();
 
+    this.container.addEventListener('pointerdown', this.handlePointerDown);
     this.container.addEventListener('click', this.handleClick);
     this.container.addEventListener('wheel', this.cancelCameraTransition, { passive: true });
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
@@ -263,13 +269,11 @@ export class WardScene {
 
   private onControlsStart = () => {
     this.cancelCameraTransition();
-    this.suppressBedClick = false;
   };
 
   private onControlsChange = () => {
     if (this.enforcingControlBounds)
       return;
-    this.suppressBedClick = true;
     this.enforceWardInteriorControlBounds();
     window.clearTimeout(this.cameraViewLogTimer);
     this.cameraViewLogTimer = window.setTimeout(() => this.logCameraView('拖动中'), 160);
@@ -2984,8 +2988,7 @@ export class WardScene {
     this.selectedBedCode = bedCode;
     for (const meshGroup of this.bedMeshes.values())
       this.setBedSelectionVisible(meshGroup, meshGroup.bedCode === bedCode);
-    if (bedCode)
-      this.focusSelectedBed(bedCode);
+    // Selection highlights only — do not fly the camera (wall/bed clicks must not steal the view).
   }
 
   setVitalWarningBedCodes(codes: string[]) {
@@ -3026,10 +3029,20 @@ export class WardScene {
     };
   }
 
+  private handlePointerDown = (event: PointerEvent) => {
+    this.pointerDownClient = { x: event.clientX, y: event.clientY };
+  };
+
   private handleClick = (event: MouseEvent) => {
-    if (!this.ward || this.suppressBedClick) {
-      this.suppressBedClick = false;
+    if (!this.ward)
       return;
+    // Distinguish orbit drag from a real click; OrbitControls often emits tiny moves.
+    if (this.pointerDownClient) {
+      const dx = event.clientX - this.pointerDownClient.x;
+      const dy = event.clientY - this.pointerDownClient.y;
+      this.pointerDownClient = null;
+      if ((dx * dx) + (dy * dy) > this.bedClickMoveThresholdPx ** 2)
+        return;
     }
 
     const rect = this.container.getBoundingClientRect();
@@ -3040,11 +3053,13 @@ export class WardScene {
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const groups = [
-      ...[...this.bedMeshes.values()].map(m => m.group),
-      ...(this.wardInteriorModel ? [this.wardInteriorModel] : []),
-    ];
-    const intersects = this.raycaster.intersectObjects(groups, true).filter(hit => {
+    // Only the bedside terminal screen opens 床头屏 — walls / bed body must not steal the camera.
+    const screens = [...this.bedMeshes.values()]
+      .map(mesh => mesh.bedTerminalScreen)
+      .filter((screen): screen is THREE.Mesh => Boolean(screen));
+    if (!screens.length)
+      return;
+    const intersects = this.raycaster.intersectObjects(screens, false).filter(hit => {
       let object: THREE.Object3D | null = hit.object;
       while (object) {
         if (!object.visible) return false;
@@ -3053,26 +3068,18 @@ export class WardScene {
       return true;
     });
 
-    if (intersects.length > 0) {
-      const hit = intersects[0];
-      // console.info('[WardScene] 射线命中', {
-      //   name: hit.object.name || '(unnamed)',
-      //   parent: hit.object.parent?.name || '(none)',
-      //   point: hit.point.toArray().map(value => Number(value.toFixed(3))),
-      //   camera: this.camera.position.toArray().map(value => Number(value.toFixed(3))),
-      //   target: this.controls.target.toArray().map(value => Number(value.toFixed(3))),
-      // });
-      let obj: THREE.Object3D | null = hit.object;
-      while (obj && !obj.userData.bedCode)
-        obj = obj.parent;
-      if (obj?.userData.bedCode) {
-        const bed = this.ward.beds.find(b => b.bedCode === obj!.userData.bedCode);
-        if (bed) {
-          if (this.selectedBedCode === bed.bedCode) this.focusSelectedBed(bed.bedCode);
-          this.onBedClick?.(bed);
-        }
-      }
-    }
+    if (!intersects.length)
+      return;
+
+    const hitScreen = intersects[0]!.object;
+    const meshGroup = [...this.bedMeshes.values()].find(mesh => mesh.bedTerminalScreen === hitScreen);
+    if (!meshGroup)
+      return;
+    const bed = this.ward.beds.find(item => item.bedCode === meshGroup.bedCode);
+    if (!bed)
+      return;
+    this.onBedClick?.(bed);
+    this.onBedTerminalClick?.(bed);
   };
 
   private handleResize() {
@@ -3261,6 +3268,7 @@ export class WardScene {
     this.controls.removeEventListener('start', this.onControlsStart);
     this.controls.removeEventListener('change', this.onControlsChange);
     this.controls.removeEventListener('end', this.onControlsEnd);
+    this.container.removeEventListener('pointerdown', this.handlePointerDown);
     this.container.removeEventListener('click', this.handleClick);
     this.container.removeEventListener('wheel', this.cancelCameraTransition);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
