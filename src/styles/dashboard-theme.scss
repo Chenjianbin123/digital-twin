@@ -626,6 +626,42 @@
  .alert-task__meta-live { color: #3d6b5c !important; background: #d5e2dc; border-color: #9aafb8; border-radius: 3px; }
  .alert-task__meta span { color: #5a717c !important; background-color: transparent; }
  .alert-task-panel__filters button strong { color: #3a6572 !important; background: #cfdce2; border-radius: 3px; }
+ .alert-task-panel__filters {
+   background: #e8f0f3 !important;
+   border-color: #9aafb8 !important;
+ }
+ .alert-task-panel__filters button {
+   color: #5a717c !important;
+   background: transparent !important;
+ }
+ .alert-task-panel__filters button.is-active {
+   color: #f7fbfd !important;
+   background: #3d7585 !important;
+   border-color: #3d7585 !important;
+   box-shadow: none !important;
+ }
+ .alert-task-panel__filters button.is-active strong {
+   color: #1f5f70 !important;
+   background: #d7e8ee !important;
+ }
+ .alert-task-panel__more {
+   background: #e8f0f3 !important;
+   border-color: #9aafb8 !important;
+   color: #5a717c !important;
+ }
+ .alert-task-panel__more button {
+   color: #f7fbfd !important;
+   background: #3d7585 !important;
+   border-color: #3d7585 !important;
+ }
+ .alert-task-panel__more button:hover {
+   background: #346879 !important;
+   border-color: #346879 !important;
+ }
+ .alert-task-panel__more-arrow {
+   color: #e8f5f7 !important;
+   background: rgba(247, 251, 253, 0.16) !important;
+ }
  .alert-task__signal { color: #8a4554 !important; background: #e6d5d9; border-radius: 3px; }
  .alert-task__locate { color: #3a6572 !important; background: #d0dce2; border-color: #9aafb8; border-radius: 3px; }
  .room-card__enter { border-radius: 3px !important; box-shadow: none; }
