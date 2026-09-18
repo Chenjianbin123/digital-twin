@@ -5507,7 +5507,7 @@ export class AreaScene {
   private updateThemeBackground() {
     const corridorLightBg = wardCorridorSceneConfig.appearance.lightBackground;
     const lightBackground = this.viewPhase === 'corridor' ? corridorLightBg : NURSE_STATION_BG;
-    this.scene.background = new THREE.Color(this.darkTheme ? '#0b1824' : lightBackground);
+    this.scene.background = new THREE.Color(this.darkTheme ? SCENE_BG : lightBackground);
   }
 
   setTheme(theme: 'light' | 'dark') {

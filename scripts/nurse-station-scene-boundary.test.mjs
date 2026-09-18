@@ -49,7 +49,7 @@ assert.match(areaScene, /new THREE\.PlaneGeometry\(overlayWidth, overlayHeight\)
 assert.match(areaScene, /overlay\.name = `nurse-station-screen-overlay-\$\{kind\}`/);
 assert.match(areaScene, /depthWrite: false/);
 assert.doesNotMatch(areaScene, /this\.replaceMeshMaterialWithTexture\(object, texture\)/);
-assert.match(sceneConfig, /background: 0xdbe2e2/);
+assert.match(sceneConfig, /background: 0xe8eef0/);
 assert.doesNotMatch(areaScene, /nurseStationHospitalEnvironment/);
 assert.doesNotMatch(areaScene, /buildNurseStationHospitalEnvironment/);
 assert.doesNotMatch(areaScene, /nurse-station-hospital-environment/);
@@ -62,7 +62,7 @@ assert.match(areaScene, /createIntegrationDisplay\(1\.1, 'roomStatus', 0\.82\)/)
 assert.doesNotMatch(areaScene, /createIntegrationDisplay\(0,/);
 assert.match(areaScene, /ctx\.font = 'bold 58px "Microsoft YaHei", sans-serif';/);
 assert.match(areaScene, /ctx\.font = 'bold 50px "Microsoft YaHei", sans-serif';/);
-assert.match(areaScene, /this\.scene\.background = new THREE\.Color\(showCorridor \? SCENE_BG : NURSE_STATION_BG\);/);
+assert.match(areaScene, /this\.scene\.background = new THREE\.Color\(this\.darkTheme \? SCENE_BG : lightBackground\);/);
 assert.match(areaScene, /\['dashboard', \['Screen_Main', 'Screen_Main_Frame'\]\]/);
 assert.match(areaScene, /\['taskQueue', \['Screen_Work_01', 'Monitor_UI_01_00'\]\]/);
 assert.match(areaScene, /\['wardStatus', \['Screen_Work_02', 'Monitor_UI_02_02'\]\]/);
