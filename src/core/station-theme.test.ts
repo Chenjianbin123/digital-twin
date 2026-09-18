@@ -21,9 +21,9 @@ test('station theme applies both themes and leaves screens untouched', () => {
     assert.equal(screen.color.getHex(), 0xffffff);
     apply(root, lights, false);
     wall = (root.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-    assert.equal(wall.color.getHexString(), 'f1f2ef');
+    assert.equal(wall.color.getHexString(), 'e3ecee');
     assert.equal(screen.color.getHex(), 0xffffff);
-    assert.ok(light.intensity > .6);
+    assert.ok(light.intensity < .6);
   }
 });
 
@@ -47,8 +47,8 @@ test('dark materials soften reflections and light mode keeps stable physical pro
     led = (root.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial;
     assert.equal(surface.roughness, .86);
     assert.ok(surface.envMapIntensity < 1.2);
-    assert.equal(surface.color.getHexString(), 'f7f8f6');
-    assert.equal(led.emissive.getHexString(), 'f5f8f9');
+    assert.equal(surface.color.getHexString(), 'eef3f2');
+    assert.equal(led.emissive.getHexString(), 'edf3f3');
     assert.ok(led.emissiveIntensity >= .35);
   }
 });
@@ -80,8 +80,9 @@ test('approved palette separates shared wood surfaces in dark and light themes',
     const lightCounter = counter.material as THREE.MeshStandardMaterial;
     assert.equal(lightWall.map, null);
     assert.equal(lightWall.normalMap, normalMap);
-    assert.equal(lightWall.color.getHexString(), 'd8bea0');
-    assert.equal(lightCounter.color.getHexString(), 'd8bea0');
+    assert.equal(lightWall.color.getHexString(), 'ced8d5');
+    assert.equal(lightCounter.color.getHexString(), 'b8cdd1');
+    assert.equal(lightCounter.map, null);
     apply(root, undefined, true);
     assert.equal(wall.material, darkWall);
     assert.equal(counter.material, darkCounter);
@@ -109,15 +110,15 @@ test('approved architecture colors keep shared paint and counter surfaces indepe
     ['Oak_Wall_Panel_00', wood, 'd8e1df'],
   ] as const;
   const lightCases = [
-    ['Ceiling', 'f9f9f7'],
-    ['墙壁', 'f4f5f2'],
-    ['Corridor_Inner_Wall_1', 'f4f5f2'],
-    ['Back_Wall', 'eeeae3'],
-    ['Nurse_Counter', 'f7f8f6'],
-    ['Nurse_Counter_Top', 'f9faf9'],
-    ['Station_Canopy', 'f7f8f7'],
-    ['Ward_Door_1_0', '806047'],
-    ['Oak_Wall_Panel_00', 'd8bea0'],
+    ['Ceiling', 'eef2f1'],
+    ['墙壁', 'e3ecee'],
+    ['Corridor_Inner_Wall_1', 'e3ecee'],
+    ['Back_Wall', 'e5edec'],
+    ['Nurse_Counter', 'eef3f2'],
+    ['Nurse_Counter_Top', 'f4f6f4'],
+    ['Station_Canopy', 'f0f4f3'],
+    ['Ward_Door_1_0', '78969d'],
+    ['Oak_Wall_Panel_00', 'ced8d5'],
   ] as const;
   for (const [name, material] of darkCases) {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);

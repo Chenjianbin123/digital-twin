@@ -2730,6 +2730,12 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
   :deep(.dash-head__count) { color: #afdcd9; background: #1b3b48; border-color: #79a8b23b; font-size: dash-font(12); }
 }
 
+:global(.digital-twin[data-theme='light'] .nurse-panel) {
+  --station-surface: #f7fbfd;
+  --station-inset: #eef4f7;
+  --station-border: #c5d5dd;
+  --station-muted: #5a717c;
+}
 </style>
 
 <style scoped lang="scss" src="../styles/nurse-workspace.scss"></style>

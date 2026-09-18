@@ -15,19 +15,21 @@ const darkPalette: Record<string, string> = {
 
 /** 浅色：对齐参考图 — 中性白台面 + 低饱和浅橡木。 */
 const lightPalette: Record<string, string> = {
-  Warm_White_Solid_Surface: '#f7f8f6',
-  Warm_White_Paint: '#f1f2ef',
-  Warm_Grey_Vinyl: '#d9dcda',
-  Floor_Border: '#9ea6a2',
-  Natural_Oak: '#d8bea0',
-  Sign_Teal: '#44515b',
-  V2_Exterior_Daylight: '#e6eef2',
-  Warm_LED: '#f7f9fa',
-  Brushed_Stainless: '#b9a68b',
+  Warm_White_Solid_Surface: '#eef3f2',
+  Warm_White_Paint: '#e3ecee',
+  Warm_Grey_Vinyl: '#d1d8d6',
+  Floor_Border: '#8e9b9b',
+  Natural_Oak: '#ced8d5',
+  Sign_Teal: '#2f6673',
+  V2_Exterior_Daylight: '#e5eef1',
+  Warm_LED: '#f0f4f4',
+  Brushed_Stainless: '#9eaaad',
 };
 
-const LIGHT_OAK_TINT = '#d8bea0';
-const LIGHT_OAK_DOOR = '#806047';
+const LIGHT_OAK_TINT = '#ced8d5';
+const LIGHT_OAK_MAP_COLOR = '#edf2f0';
+const LIGHT_WARD_DOOR = '#78969d';
+const LIGHT_NURSE_COUNTER_ACCENT = '#b8cdd1';
 
 const themedMaterialNames = new Set([
   ...Object.keys(darkPalette),
@@ -221,54 +223,68 @@ export function createStationTheme() {
             if (original.map) {
               const warm = resolveWarmOakMap(original.map);
               material.map = warm;
-              material.color.set(warm ? '#f7f1e8' : LIGHT_OAK_TINT);
+              material.color.set(warm ? LIGHT_OAK_MAP_COLOR : LIGHT_OAK_TINT);
             }
             else {
               material.map = null;
               material.color.set(LIGHT_OAK_TINT);
             }
           }
-          if (mesh.name === 'Nurse_Counter') material.color.set('#f7f8f6');
+          if (mesh.name === 'Nurse_Counter') material.color.set('#eef3f2');
           if (mesh.name === 'Nurse_Counter_Oak') {
-            material.color.set(material.map ? '#f7f1e8' : LIGHT_OAK_TINT);
+            material.map = null;
+            material.normalMap = null;
+            material.roughnessMap = null;
+            material.color.set(LIGHT_NURSE_COUNTER_ACCENT);
+            material.roughness = .82;
+            material.metalness = 0;
+            material.envMapIntensity = original.envMapIntensity * .24;
           }
           if (mesh.name.startsWith('Oak_Wall_Panel') || mesh.name === 'Back_Cabinet' || mesh.name.startsWith('Cabinet_Door_') || mesh.name.startsWith('Upper_Cabinet_')) {
-            material.color.set(material.map ? '#f7f1e8' : LIGHT_OAK_TINT);
+            material.color.set(material.map ? LIGHT_OAK_MAP_COLOR : LIGHT_OAK_TINT);
           }
-          if (mesh.name === 'Back_Wall') material.color.set('#eeeae3');
-          if (mesh.name === 'Station_Canopy') material.color.set('#f7f8f7');
-          if (mesh.name === 'Ceiling') material.color.set('#f9f9f7');
-          if (['墙壁', '墙壁2'].includes(mesh.name) || mesh.name.startsWith('Corridor_Inner_Wall')) material.color.set('#f4f5f2');
+          if (mesh.name === 'Back_Wall') material.color.set('#e5edec');
+          if (mesh.name === 'Station_Canopy') material.color.set('#f0f4f3');
+          if (mesh.name === 'Ceiling') material.color.set('#eef2f1');
+          if (['墙壁', '墙壁2'].includes(mesh.name) || mesh.name.startsWith('Corridor_Inner_Wall')) material.color.set('#e3ecee');
           if (mesh.name.startsWith('Ward_Door_')) {
-            material.color.set(material.map ? '#bda58f' : LIGHT_OAK_DOOR);
+            material.map = null;
+            material.roughnessMap = null;
+            material.color.set(LIGHT_WARD_DOOR);
+            material.roughness = .82;
+            material.metalness = 0;
+            material.envMapIntensity = original.envMapIntensity * .28;
           }
-          if (['Nurse_Counter_Top', 'Staff_Worktop', 'Back_Cabinet_Top'].includes(mesh.name)) material.color.set('#f9faf9');
+          if (['Nurse_Counter_Top', 'Staff_Worktop', 'Back_Cabinet_Top'].includes(mesh.name)) material.color.set('#f4f6f4');
           if (mesh.name === 'Counter_Steel_Plinth') {
-            material.color.set('#b9a68b');
+            material.color.set('#9eaaad');
             material.roughness = .42;
             material.metalness = .58;
           }
-          if (mesh.name === 'Wall_Motto' || mesh.name === 'Counter_Lettering') material.color.set('#44515b');
-          if (mesh.name === 'Counter_Lettering_Rule') material.color.set('#8a9096');
+          if (mesh.name === 'Wall_Motto' || mesh.name === 'Counter_Lettering') material.color.set('#2f6673');
+          if (mesh.name === 'Counter_Lettering_Rule') material.color.set('#77a6af');
           if (material.name === 'Warm_White_Solid_Surface') {
             material.roughness = .86;
             material.envMapIntensity = original.envMapIntensity * .32;
           }
           if (material.name === 'Natural_Oak') {
-            material.roughness = original.roughnessMap ? Math.max(original.roughness, .58) : .58;
-            material.envMapIntensity = original.envMapIntensity * .42;
+            const isFlatClinicalSurface = mesh.name === 'Nurse_Counter_Oak' || mesh.name.startsWith('Ward_Door_');
+            material.roughness = isFlatClinicalSurface
+              ? .82
+              : original.roughnessMap ? Math.max(original.roughness, .58) : .58;
+            material.envMapIntensity = original.envMapIntensity * (mesh.name === 'Nurse_Counter_Oak' ? .24 : mesh.name.startsWith('Ward_Door_') ? .28 : .42);
           }
           if (material.name === 'Warm_LED') {
-            material.emissive.set('#f5f8f9');
-            material.emissiveIntensity = Math.max(original.intensity * .32, .22);
+            material.emissive.set('#edf3f3');
+            material.emissiveIntensity = Math.max(original.intensity * .26, .18);
           }
           if (mesh.name === 'Counter_Reveal_LED') {
-            // 参考图白/木交界的细金线。
-            material.color.set('#b99b6d');
-            material.emissive.set('#ad8c5c');
-            material.emissiveIntensity = 0.18;
-            material.roughness = .36;
-            material.metalness = .42;
+            // 白色台面与浅木饰面间使用护理蓝青分隔线。
+            material.color.set('#4f8792');
+            material.emissive.set('#4f8792');
+            material.emissiveIntensity = 0.08;
+            material.roughness = .52;
+            material.metalness = .22;
           }
           if (material.name === 'Warm_Grey_Vinyl') {
             material.roughnessMap = null;
@@ -277,10 +293,10 @@ export function createStationTheme() {
             material.envMapIntensity = original.envMapIntensity * .28;
           }
           if (material.name === 'Sign_Teal') {
-            material.color.set('#44515b');
+            material.color.set('#2f6673');
           }
           if (material.name === 'Brushed_Stainless') {
-            material.color.set('#c9b286');
+            material.color.set('#9eaaad');
             material.metalness = .68;
             material.roughness = .34;
           }
@@ -303,9 +319,9 @@ export function createStationTheme() {
         object.color.set(object instanceof THREE.HemisphereLight ? '#e6edf0' : '#f2f3ed');
       }
       else {
-        // 参考图偏明亮中性光，避免过暖发黄。
-        object.intensity *= object instanceof THREE.HemisphereLight ? 1.08 : 1.12;
-        object.color.set(object instanceof THREE.HemisphereLight ? '#f4f6f4' : '#fff8ef');
+        // 浅色模式保留阴影与材质明暗，避免白墙、顶棚和台面一起过曝。
+        object.intensity *= object instanceof THREE.HemisphereLight ? .98 : 1;
+        object.color.set(object instanceof THREE.HemisphereLight ? '#eef5f5' : '#fffaf3');
       }
     });
   };

@@ -40,40 +40,99 @@
   --tech-cyan-soft: rgba(61, 117, 133, 0.12);
   --tech-cyan-line: rgba(61, 117, 133, 0.28);
   .dash-header.dash-header {
-    background: #dce6ea;
-    border-color: #9aafb8;
-    box-shadow: none;
+    background:
+      radial-gradient(ellipse at 50% -40%, rgba(90, 168, 184, 0.16), transparent 55%),
+      linear-gradient(180deg, rgba(232, 240, 244, 0.72) 0%, rgba(221, 232, 237, 0.58) 72%, rgba(213, 226, 232, 0.42) 100%);
+    border-color: rgba(138, 163, 174, 0.55);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      0 8px 22px rgba(40, 64, 74, 0.06);
     border-bottom-width: 1px;
+    backdrop-filter: blur(24px) saturate(130%);
+    -webkit-backdrop-filter: blur(24px) saturate(130%);
   }
+  .dash-header__rail {
+    background: linear-gradient(90deg, transparent, #3d8a9a, #5aa8b8, #3d8a9a, transparent) !important;
+    box-shadow: 0 0 10px rgba(61, 138, 154, 0.28) !important;
+  }
+  .dash-header__sheen { opacity: .28 !important; }
+  .dash-header__corner { border-color: #5aa0b0cc !important; }
+  .dash-header__kicker { color: #4a7a88 !important; }
   .dash-header__title {
-    color: #243944 !important;
-    letter-spacing: .08em !important;
+    color: #1e3642 !important;
+    letter-spacing: .1em !important;
     font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif !important;
     font-weight: 600 !important;
+    text-shadow: none !important;
   }
+  .dash-header__title-glow {
+    background: linear-gradient(90deg, transparent, #5aa8b8, transparent) !important;
+    box-shadow: none !important;
+  }
+  .dash-header__wing {
+    background: linear-gradient(90deg, transparent, #5aa8b8cc) !important;
+  }
+  .dash-header__wing--right {
+    background: linear-gradient(90deg, #5aa8b8cc, transparent) !important;
+  }
+  .dash-header__wing::before { border-color: #5aa8b8aa !important; box-shadow: none !important; }
+  .dash-header__area-cluster,
+  .dash-header__actions {
+    background: linear-gradient(160deg, rgba(228, 238, 242, 0.55), rgba(213, 226, 232, 0.4)) !important;
+    border-color: rgba(154, 175, 184, 0.55) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(10px);
+  }
+  .dash-header__area-trigger {
+    background: linear-gradient(160deg, rgba(232, 241, 244, 0.72), rgba(216, 229, 235, 0.55)) !important;
+    border-color: rgba(138, 163, 174, 0.55) !important;
+    color: #1e3642 !important;
+  }
+  .dash-header__area-mark {
+    background: linear-gradient(180deg, #4aa0b0, #3d7585) !important;
+    box-shadow: none !important;
+  }
+  .dash-header__area-name { color: #1e3642 !important; }
   .dash-header__dept, .dash-header__operator strong { color: #5a717c !important; }
-  .dash-header button, .digital-twin__panel-toggle {
-    background: #d0dce2 !important;
-    color: #243944 !important;
-    border-color: #9aafb8 !important;
-    border-radius: 3px !important;
+  .dash-header__operator {
+    background: rgba(213, 226, 232, 0.55) !important;
+    border-color: rgba(154, 175, 184, 0.55) !important;
   }
-  .dash-header__area-icon { color: var(--tech-cyan) !important; }
+  .dash-header__operator-dot {
+    background: #3d9a7a !important;
+    box-shadow: 0 0 6px rgba(61, 154, 122, 0.45) !important;
+  }
+  .dash-header button, .digital-twin__panel-toggle {
+    background: linear-gradient(165deg, rgba(228, 238, 242, 0.7), rgba(208, 220, 226, 0.55)) !important;
+    color: #243944 !important;
+    border-color: rgba(154, 175, 184, 0.55) !important;
+    border-radius: 8px !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  }
+  .dash-header__logout {
+    color: #7a5a28 !important;
+    background: linear-gradient(165deg, rgba(235, 224, 200, 0.75), rgba(224, 212, 184, 0.6)) !important;
+    border-color: rgba(196, 173, 130, 0.65) !important;
+  }
+  .dash-header__area-icon { color: var(--tech-cyan) !important; filter: none !important; }
+  .dash-header__chevron i { border-top-color: #3d7585 !important; }
   .dash-header__tag, .dash-header__data-status {
     color: #3a6572 !important;
-    background: #cfdce2 !important;
-    border-color: #9aafb8 !important;
-    border-radius: 3px !important;
+    background: rgba(207, 220, 226, 0.65) !important;
+    border-color: rgba(154, 175, 184, 0.55) !important;
+    border-radius: 999px !important;
     font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
     letter-spacing: .03em;
   }
-  .dash-header__data-status--warning, .dash-header__tag--mock { color: #7a5a28 !important; background: #ebe0c8 !important; }
-  .dash-header__data-status--error, .dash-header__data-status--stale { color: #8a4554 !important; background: #ead8dc !important; }
+  .dash-header__data-status--warning, .dash-header__tag--mock { color: #7a5a28 !important; background: rgba(235, 224, 200, 0.75) !important; }
+  .dash-header__data-status--error, .dash-header__data-status--stale { color: #8a4554 !important; background: rgba(234, 216, 220, 0.75) !important; }
   .digital-twin__panel, .digital-twin__panel-body, .nurse-panel { background: #d5e0e5 !important; color: #243944; border-color: #9aafb8 !important; box-shadow: none !important; }
   .digital-twin__panel.digital-twin__panel--station {
     background: linear-gradient(180deg, #e6eef1 0%, #dce6ea 100%) !important;
-    border-left: 2px solid #3d7585 !important;
-    box-shadow: -10px 0 28px rgba(28, 48, 56, 0.08) !important;
+    border-left: 1px solid #b7c9d2 !important;
+    box-shadow:
+      -8px 0 20px rgba(40, 64, 74, 0.05),
+      -1px 0 0 rgba(154, 175, 184, 0.4) !important;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -82,7 +141,7 @@
   .nurse-panel :is(span, p, small, strong, h2, h3, em, summary) { color: #4f6865 !important; text-shadow: none !important; }
   .nurse-panel :is(.station-hero__eyebrow, .station-section-title, .dash-head__title, .alert-task__head strong, .focus-room__main strong) { color: #294c48 !important; }
   .nurse-panel :is(.station-hero, .inspection-overview, .handoff-card, .data-health, .surface-panel, .nurse-metric-chart, .nurse-panel__details, .alert-task-panel) { background: #f7fbfd !important; border-color: #d7e2dc !important; box-shadow: none !important; }
-  .nurse-panel :is(.inspection-metric, .metric-item, .focus-room, .data-health__freshness-item, .env-card, .ops-row, .alert-task-panel__more) { background: #f3f7f4 !important; border-color: #dce5df !important; box-shadow: none !important; }
+  .nurse-panel :is(.inspection-metric, .metric-item, .focus-room, .data-health__freshness-item, .env-card, .ops-row) { background: #f3f7f4 !important; border-color: #dce5df !important; box-shadow: none !important; }
   .nurse-panel .alert-task { background: #f7fbfd !important; border-color: #e3e9e5 !important; border-left-color: var(--task-accent) !important; }
   .nurse-panel .alert-task--critical { --task-accent: #b95567; }
   .nurse-panel .alert-task--high { --task-accent: #a67525; }
@@ -139,7 +198,41 @@
   .alert-task-panel__filters { background: transparent !important; }
   .alert-task-panel__filters button { background: transparent !important; border-radius: 3px !important; }
   .alert-task-panel__filters button.is-active { background: rgba(61, 117, 133, 0.14) !important; }
-  .alert-task-panel__more { background: transparent !important; }
+  .alert-task-panel__more {
+    --alert-more-bg: #e8f0f4;
+    --alert-more-border: #b7c9d2;
+    --alert-more-ink: #5a717c;
+    --alert-more-muted: #5a717c;
+    --alert-more-strong: #243944;
+    --alert-more-btn-bg: #3d7585;
+    --alert-more-btn-ink: #f7fbfd;
+    --alert-more-btn-border: #3d7585;
+    --alert-more-btn-hover: #346574;
+    --alert-more-btn-border-hover: #346574;
+    --alert-more-arrow-bg: rgba(61, 117, 133, 0.12);
+    --alert-more-arrow-ink: #3d7585;
+    background: #e8f0f4 !important;
+    border: 1px solid #b7c9d2 !important;
+    color: #5a717c !important;
+    box-shadow: none !important;
+  }
+  .alert-task-panel__remaining,
+  .alert-task-panel__remaining > svg { color: #5a717c !important; }
+  .alert-task-panel__remaining strong { color: #243944 !important; }
+  .alert-task-panel__more button {
+    color: #f7fbfd !important;
+    background: #3d7585 !important;
+    border-color: #3d7585 !important;
+  }
+  .alert-task-panel__more button:hover {
+    color: #f7fbfd !important;
+    background: #346574 !important;
+    border-color: #346574 !important;
+  }
+  .alert-task-panel__more-arrow {
+    background: rgba(61, 117, 133, 0.12) !important;
+    color: #3d7585 !important;
+  }
   .station-hero__chip { background: transparent !important; }
   .metric-item { background: #e2eaee !important; }
 }
@@ -605,70 +698,391 @@
  .alert-task-panel__more-arrow svg { width: 16px; height: 16px; }
 }
 .digital-twin[data-theme='light'] .digital-twin__panel--overlay {
- --room-surface: #e2eaee; --room-inset: #d5e0e5; --room-line: #9aafb8;
- --room-ink: #243944; --room-muted: #5a717c; --room-accent: #3d7585;
- --room-alert: #8a4554; --room-ok: #3d6b5c; --room-warn: #7a5a28;
- background: #d5e0e5 !important;
- :is(.hospital-intro, .dash-section, .area-dashboard__intro, .ward-info-panel > section, .door-staff-cards, .status-history, .alert-task-panel) {
-   border-radius: 4px !important;
-   box-shadow: none !important;
- }
- :is(.hospital-intro__metric, .monitor-row, .person-card, .stat-chip, .staff-role-card, .room-card, .bed-chip, .env-item, .patient-info, .vitals-card, .bed-detail-section, .alert-task) {
-   border-radius: 4px !important;
- }
- .ward-info-panel__header {
-   background: #d8e3e8 !important;
-   border-left: 2px solid #3d7585 !important;
- }
- .door-staff-cards__title-count, .monitor-row__tag, .room-card__badge { color: #3a6572 !important; background: #cfdce2; border-color: #9aafb8; border-radius: 3px; }
- .alert-task { --task-accent: #8a4554; }
- .alert-task__severity { color: #8a4554 !important; background: #e6d5d9; border-radius: 3px; }
- .alert-task__meta-live { color: #3d6b5c !important; background: #d5e2dc; border-color: #9aafb8; border-radius: 3px; }
- .alert-task__meta span { color: #5a717c !important; background-color: transparent; }
- .alert-task-panel__filters button strong { color: #3a6572 !important; background: #cfdce2; border-radius: 3px; }
- .alert-task-panel__filters {
-   background: #e8f0f3 !important;
-   border-color: #9aafb8 !important;
- }
- .alert-task-panel__filters button {
-   color: #5a717c !important;
-   background: transparent !important;
- }
- .alert-task-panel__filters button.is-active {
-   color: #f7fbfd !important;
-   background: #3d7585 !important;
-   border-color: #3d7585 !important;
-   box-shadow: none !important;
- }
- .alert-task-panel__filters button.is-active strong {
-   color: #1f5f70 !important;
-   background: #d7e8ee !important;
- }
- .alert-task-panel__more {
-   background: #e8f0f3 !important;
-   border-color: #9aafb8 !important;
-   color: #5a717c !important;
- }
- .alert-task-panel__more button {
-   color: #f7fbfd !important;
-   background: #3d7585 !important;
-   border-color: #3d7585 !important;
- }
- .alert-task-panel__more button:hover {
-   background: #346879 !important;
-   border-color: #346879 !important;
- }
- .alert-task-panel__more-arrow {
-   color: #e8f5f7 !important;
-   background: rgba(247, 251, 253, 0.16) !important;
- }
- .alert-task__signal { color: #8a4554 !important; background: #e6d5d9; border-radius: 3px; }
- .alert-task__locate { color: #3a6572 !important; background: #d0dce2; border-color: #9aafb8; border-radius: 3px; }
- .room-card__enter { border-radius: 3px !important; box-shadow: none; }
- :is(.stat-chip__val, .person-card__value, .hospital-intro__metric-value, .monitor-row__percent) {
-   font-family: "Bahnschrift", "Segoe UI", sans-serif !important;
-   font-variant-numeric: tabular-nums;
- }
+  --room-surface: #f5f9fb;
+  --room-inset: #e8f0f4;
+  --room-line: #b7c9d2;
+  --room-ink: #243944;
+  --room-muted: #5a717c;
+  --room-accent: #3d7585;
+  --room-alert: #8a4554;
+  --room-ok: #3d6b5c;
+  --room-warn: #7a5a28;
+  color: #243944 !important;
+  background: #e2eaee !important;
+  border-left: 1px solid #b7c9d2 !important;
+  border-left-color: #b7c9d2 !important;
+  box-shadow:
+    -8px 0 20px rgba(40, 64, 74, 0.05),
+    -1px 0 0 rgba(154, 175, 184, 0.4) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  scrollbar-color: #9aafb8 transparent;
+
+  .digital-twin__panel-body {
+    background: transparent !important;
+  }
+
+  /* 压制病房/走廊面板内遗留的深色 HUD 装饰 */
+  .ward-info-panel,
+  .area-dashboard {
+    color: #243944 !important;
+    scrollbar-color: #9aafb8 transparent;
+
+    &::before,
+    &::after {
+      display: none !important;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #9aafb8 !important;
+    }
+  }
+
+  .ward-info-panel h3,
+  .area-dashboard h3,
+  .dash-head__title,
+  .door-staff-cards__title,
+  .status-history h3 {
+    color: #294c58 !important;
+    text-shadow: none !important;
+  }
+
+  :is(
+    .hospital-intro,
+    .dash-section,
+    .area-dashboard__intro,
+    .ward-info-panel > section,
+    .ward-info-panel__door,
+    .ward-info-panel__env,
+    .ward-info-panel__bed,
+    .ward-info-panel__inspection,
+    .ward-info-panel__hint,
+    .ward-info-panel__header,
+    .ward-info-panel__task,
+    .ward-call-list,
+    .door-staff-cards,
+    .status-history,
+    .alert-task-panel,
+    .room-card
+  ) {
+    color: #243944 !important;
+    background: #f7fbfd !important;
+    border: 1px solid #c5d5dd !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 2px rgba(35, 68, 84, 0.05) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+
+    &::before,
+    &::after {
+      display: none !important;
+    }
+  }
+
+  .ward-info-panel__header {
+    background: #eef4f7 !important;
+    border-left: 3px solid #3d7585 !important;
+  }
+
+  .ward-info-panel__stats {
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .ward-info-panel__inspection {
+    border-left: 3px solid #3d7585 !important;
+  }
+
+  .ward-bed-nav {
+    color: #243944 !important;
+    background: #f7fbfd !important;
+    border-color: #c5d5dd !important;
+    box-shadow: 0 1px 2px rgba(35, 68, 84, 0.05) !important;
+  }
+
+  .ward-bed-nav label,
+  .ward-bed-nav p,
+  .ward-call-list__note,
+  .ward-call-list__time {
+    color: #5a717c !important;
+  }
+
+  .ward-bed-nav label::before {
+    background: #3d7585 !important;
+    box-shadow: none !important;
+  }
+
+  .ward-bed-nav button,
+  .ward-bed-nav select,
+  .ward-call-list button,
+  .area-dashboard__back-station,
+  .close-btn,
+  .task-card__actions button {
+    color: #2a4d5a !important;
+    background: #eef4f7 !important;
+    border: 1px solid #b7c9d2 !important;
+    box-shadow: none !important;
+  }
+
+  .ward-bed-nav button:not(:disabled):hover,
+  .ward-bed-nav select:hover,
+  .ward-call-list button:hover:not(:disabled),
+  .area-dashboard__back-station:hover,
+  .task-card__actions button:hover {
+    color: #1e3642 !important;
+    background: #e2eaee !important;
+    border-color: #3d7585 !important;
+  }
+
+  .ward-bed-nav button:disabled {
+    color: #8aa0aa !important;
+    background: #e2eaee !important;
+    border-color: #c5d5dd !important;
+  }
+
+  :is(
+    .hospital-intro__metric,
+    .monitor-row,
+    .person-card,
+    .stat-chip,
+    .staff-role-card,
+    .bed-chip,
+    .env-item,
+    .patient-info,
+    .vitals-card,
+    .bed-detail-section,
+    .alert-task,
+    .bed-list__item
+  ) {
+    color: #243944 !important;
+    background: #eef4f7 !important;
+    border: 1px solid #c5d5dd !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+
+    &::before,
+    &::after {
+      display: none !important;
+    }
+  }
+
+  .stat-chip:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: #9aafb8 !important;
+  }
+
+  .stat-chip__val,
+  .person-card__value,
+  .hospital-intro__metric-value,
+  .monitor-row__percent {
+    color: #3d7585 !important;
+    text-shadow: none !important;
+  }
+
+  .stat-chip--occupied .stat-chip__val { color: #3d6b5c !important; }
+  .stat-chip--empty .stat-chip__val { color: #5a717c !important; }
+
+  :is(
+    .hospital-intro__note,
+    .hospital-intro__name,
+    .hospital-intro__metric-label,
+    .ward-info-panel__subtitle,
+    .stat-chip__label,
+    .inspection-card__foot,
+    .bed-status,
+    .room-card__status,
+    .person-card__label,
+    .person-card__sub,
+    .env-label,
+    .status-history .time,
+    .status-history .room,
+    .status-history .bed,
+    .status-history .category,
+    .staff-role-card__badge,
+    .door-staff-cards__subhead,
+    .ward-info-panel__inspection p,
+    .ward-info-panel__hint > p
+  ) {
+    color: #5a717c !important;
+  }
+
+  :is(.staff-role-card__name, .bed-patient, .bed-name, .room-card__name, .feed__text, .status-history .label) {
+    color: #243944 !important;
+    text-shadow: none !important;
+  }
+
+  .status-history__item--call .label { color: #8a4554 !important; }
+  .status-history__item--env .label { color: #7a5a28 !important; }
+
+  .status-history {
+    background: #f7fbfd !important;
+    border: 1px solid #c5d5dd !important;
+    box-shadow: 0 1px 2px rgba(35, 68, 84, 0.05) !important;
+  }
+
+  .status-history::before,
+  .status-history::after {
+    display: none !important;
+  }
+
+  .status-history h3 {
+    color: #294c58 !important;
+    text-shadow: none !important;
+  }
+
+  .status-history ul {
+    scrollbar-color: #9aafb8 transparent;
+  }
+
+  .status-history li {
+    border-bottom-color: #dde6eb !important;
+  }
+
+  .status-history li:hover {
+    background: rgba(61, 117, 133, 0.08) !important;
+    transform: none !important;
+  }
+
+  .status-history .category {
+    color: #3a6572 !important;
+    background: #eef4f7 !important;
+    border-color: #b7c9d2 !important;
+  }
+
+  .door-staff-cards__title-count,
+  .monitor-row__tag,
+  .room-card__badge,
+  .room-card__priority {
+    color: #3a6572 !important;
+    background: #e2eaee !important;
+    border: 1px solid #b7c9d2 !important;
+    border-radius: 4px !important;
+  }
+
+  .person-card__ring {
+    background: #f7fbfd !important;
+    border-color: #b7c9d2 !important;
+    color: #3d7585 !important;
+    box-shadow: none !important;
+  }
+
+  .room-card {
+    .door-staff-cards {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      padding: 12px 0 !important;
+    }
+
+    .room-card__inspection {
+      background: #eef4f7 !important;
+      border-color: #c5d5dd !important;
+    }
+
+    .room-card__beds {
+      border-color: #c5d5dd !important;
+    }
+
+    .bed-chip {
+      background: transparent !important;
+      border: 0 !important;
+    }
+
+    .bed-chip + .bed-chip {
+      border-top: 1px solid #c5d5dd !important;
+    }
+
+    .bed-chip__state {
+      background: #e8f0f4 !important;
+    }
+
+    .room-card__enter {
+      color: #f7fbfd !important;
+      background: #3d7585 !important;
+      border-color: #3d7585 !important;
+    }
+
+    .room-card__enter:hover {
+      background: #346574 !important;
+      filter: none;
+    }
+  }
+
+  .monitor-row__bar {
+    background: #c5d5dd !important;
+  }
+
+  .monitor-row__bar i {
+    background: #3d7585 !important;
+  }
+
+  .alert-task {
+    --task-accent: #8a4554;
+    border-left: 3px solid var(--task-accent) !important;
+  }
+
+  .alert-task__severity,
+  .alert-task__signal {
+    color: #8a4554 !important;
+    background: #f0e2e5 !important;
+    border-radius: 4px;
+  }
+
+  .alert-task__meta-live {
+    color: #3d6b5c !important;
+    background: #dfeae4 !important;
+    border-color: #b7c9d2 !important;
+  }
+
+  .alert-task__meta span {
+    color: #5a717c !important;
+    background-color: transparent;
+  }
+
+  .alert-task-panel__filters {
+    background: #eef4f7 !important;
+    border-color: #c5d5dd !important;
+  }
+
+  .alert-task-panel__filters button {
+    color: #5a717c !important;
+  }
+
+  .alert-task-panel__filters button.is-active {
+    color: #3d7585 !important;
+    background: #f7fbfd !important;
+    border-color: #b7c9d2 !important;
+  }
+
+  .alert-task-panel__filters button strong {
+    color: #3a6572 !important;
+    background: #e2eaee !important;
+  }
+
+  .alert-task__locate,
+  .alert-task-panel__more button {
+    color: #3a6572 !important;
+    background: #eef4f7 !important;
+    border-color: #b7c9d2 !important;
+  }
+
+  .other-care-card {
+    background: #eef4f7 !important;
+    box-shadow: none !important;
+    border-color: #c5d5dd !important;
+  }
+
+  .other-care-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .other-care-card > .staff-avatar {
+    filter: none !important;
+  }
 }
 .digital-twin[data-theme='dark'] .digital-twin__panel--overlay.digital-twin__panel--interior {
  --room-surface: rgba(6, 30, 43, 0.78);
@@ -786,7 +1200,11 @@
  .room-card__enter { display: flex; justify-content: center; align-items: center; min-height: 42px; margin-top: 12px; background: var(--room-accent); color: #0b2735 !important; letter-spacing: .03em; }
  .room-card__enter:hover { filter: brightness(1.07); background: var(--room-accent); }
 }
-.digital-twin[data-theme='light'] .digital-twin__panel--overlay .room-card .room-card__enter { color: #f7fbfd !important; }
+.digital-twin[data-theme='light'] .digital-twin__panel--overlay .room-card .room-card__enter {
+  color: #f7fbfd !important;
+  background: #3d7585 !important;
+  border-color: #3d7585 !important;
+}
 @media(max-width: 400px) {
  .digital-twin .digital-twin__panel--overlay .room-card {
   .room-card__body { padding: 12px; }
@@ -840,7 +1258,16 @@
  }
 }
 .digital-twin[data-theme='light'] .digital-twin__panel--interior .other-care-card {
- box-shadow: inset 0 1px 0 rgba(255, 255, 255, .86), 0 6px 14px rgba(35, 68, 84, .1) !important;
+  background: #eef4f7 !important;
+  box-shadow: none !important;
+  border-color: #c5d5dd !important;
+}
+.digital-twin[data-theme='light'] .digital-twin__panel--interior .other-care-card:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+.digital-twin[data-theme='light'] .digital-twin__panel--interior .other-care-card > .staff-avatar {
+  filter: none !important;
 }
 @media (prefers-reduced-motion: reduce) {
  .digital-twin .digital-twin__panel--interior .other-care-card { transition: none; transform: none; }
@@ -1254,12 +1681,13 @@
   --tasks-muted: #5b7786;
   --tasks-accent: #348799;
   border-color: #c5dce6 !important;
-  background: linear-gradient(165deg, rgba(247, 251, 253, 0.76), rgba(238, 245, 248, 0.7)) !important;
-  backdrop-filter: blur(22px) saturate(108%) brightness(1.02);
-  -webkit-backdrop-filter: blur(22px) saturate(108%) brightness(1.02);
-  box-shadow:
-    inset 0 1px 0 #f7fbfd,
-    0 8px 20px rgba(35, 68, 84, 0.06) !important;
+  background: #f7fbfd !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 1px 2px rgba(35, 68, 84, 0.05) !important;
+  animation: none;
+
+  &::before { display: none !important; }
 
   .workspace-section-intro h2 { color: #294b5b !important; }
   .workspace-section-intro > span { color: #5b7786 !important; }
@@ -1285,6 +1713,40 @@
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     box-shadow: inset 0 1px 0 #f7fbfd, 0 2px 8px rgba(35, 68, 84, 0.05) !important;
+  }
+  .alert-task-panel__more {
+    --alert-more-bg: #e8f0f4;
+    --alert-more-border: #b7c9d2;
+    --alert-more-ink: #5a717c;
+    --alert-more-muted: #5a717c;
+    --alert-more-strong: #243944;
+    --alert-more-btn-bg: #3d7585;
+    --alert-more-btn-ink: #f7fbfd;
+    --alert-more-btn-border: #3d7585;
+    --alert-more-btn-hover: #346574;
+    --alert-more-btn-border-hover: #346574;
+    --alert-more-arrow-bg: rgba(61, 117, 133, 0.12);
+    --alert-more-arrow-ink: #3d7585;
+    background: #e8f0f4 !important;
+    border: 1px solid #b7c9d2 !important;
+    color: #5a717c !important;
+  }
+  .alert-task-panel__remaining,
+  .alert-task-panel__remaining > svg { color: #5a717c !important; }
+  .alert-task-panel__remaining strong { color: #243944 !important; }
+  .alert-task-panel__more button {
+    color: #f7fbfd !important;
+    background: #3d7585 !important;
+    border-color: #3d7585 !important;
+  }
+  .alert-task-panel__more button:hover {
+    color: #f7fbfd !important;
+    background: #346574 !important;
+    border-color: #346574 !important;
+  }
+  .alert-task-panel__more-arrow {
+    background: rgba(61, 117, 133, 0.12) !important;
+    color: #3d7585 !important;
   }
   @media (hover: hover) and (pointer: fine) {
     .alert-task--workspace:not(.alert-task--swp-call):hover {
@@ -1374,3 +1836,263 @@
 @keyframes call-signal-ripple { 0% { transform: scale(1); opacity: 0; } 6% { opacity: .4; } 38%, 100% { transform: scale(1.38); opacity: 0; } }
 @keyframes task-card-reveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes task-detail-reveal { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 护士站浅色终态：降低告警噪声，用清晰的纸面层级替代灰蓝色块堆叠。 */
+.digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
+  --workspace-surface: #edf3f6;
+  --workspace-ink: #203843;
+  --workspace-muted: #607985;
+  --workspace-line: #c8d7de;
+
+  .station-hero {
+    border-color: #c3d4dc !important;
+    border-radius: 12px !important;
+    background:
+      radial-gradient(circle at 4% 0, rgba(61, 138, 154, .08), transparent 38%),
+      linear-gradient(145deg, rgba(255, 255, 255, .94), rgba(239, 246, 248, .92)) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .95),
+      0 6px 18px rgba(36, 68, 82, .07) !important;
+
+    &::before {
+      background:
+        linear-gradient(90deg, transparent 31px, rgba(61, 117, 133, .025) 32px) !important;
+      background-size: 32px 100% !important;
+    }
+
+    &::after {
+      box-shadow: inset 3px 0 0 #4b8995 !important;
+    }
+
+    .station-hero__identity-icon {
+      color: #397886 !important;
+      background: #edf5f7 !important;
+      border-color: #c4d8df !important;
+      border-radius: 9px !important;
+    }
+
+    .station-hero__overview-foot {
+      border-color: #cbd9df !important;
+      border-radius: 8px !important;
+      background: rgba(240, 246, 248, .78) !important;
+    }
+
+    .workspace-status--alert {
+      border-color: #e4bdc5 !important;
+      background: linear-gradient(90deg, #fae9ec, rgba(250, 233, 236, .42)) !important;
+    }
+
+    .station-hero__wallboard-toggle,
+    .station-hero__alert-toggle {
+      color: #355863 !important;
+      background: rgba(255, 255, 255, .72) !important;
+      border-color: #c4d5dc !important;
+      border-radius: 8px !important;
+    }
+
+    .station-hero__wallboard-toggle:hover,
+    .station-hero__alert-toggle:hover {
+      background: #e8f1f4 !important;
+      border-color: #7da5b0 !important;
+    }
+  }
+
+  .workspace-tabs {
+    border-color: #c1d2da !important;
+    border-radius: 10px !important;
+    background: rgba(239, 245, 247, .86) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .9),
+      0 4px 12px rgba(36, 68, 82, .05) !important;
+
+    button {
+      border-radius: 7px !important;
+    }
+
+    button[aria-selected='true'] {
+      color: #fff !important;
+      background: linear-gradient(135deg, #467f8b, #326c79) !important;
+      border-color: #326c79 !important;
+      box-shadow: 0 3px 9px rgba(50, 108, 121, .18) !important;
+    }
+  }
+
+  .workspace-scroll {
+    scrollbar-color: #9bb2bc transparent;
+  }
+
+  .tasks-workspace {
+    border-color: #c8d8df !important;
+    border-radius: 12px !important;
+    background: rgba(250, 253, 254, .82) !important;
+    box-shadow:
+      inset 0 1px 0 #fff,
+      0 5px 16px rgba(36, 68, 82, .055) !important;
+
+    .alert-task-panel__filters {
+      padding: 4px !important;
+      border-color: #c8d8df !important;
+      border-radius: 9px !important;
+      background: #edf3f6 !important;
+    }
+
+    .alert-task-panel__filters button {
+      min-height: 34px;
+      border-radius: 6px !important;
+    }
+
+    .alert-task-panel__filters button.is-active {
+      color: #285e6a !important;
+      background: #fff !important;
+      border-color: #9ebdc6 !important;
+      box-shadow: 0 2px 6px rgba(36, 68, 82, .07) !important;
+    }
+  }
+}
+
+.digital-twin[data-theme='light'] .nurse-workspace .alert-task--workspace.alert-task--swp-call {
+  border: 1px solid #d7e2e7 !important;
+  border-left: 3px solid #c94a5c !important;
+  border-radius: 9px !important;
+  background: linear-gradient(100deg, rgba(201, 74, 92, .035), #fff 26%, #f9fcfd) !important;
+  box-shadow: 0 3px 10px rgba(36, 68, 82, .045) !important;
+
+  &::before,
+  &::after {
+    display: none !important;
+  }
+
+  &.alert-task--waiting-attention {
+    border-color: #d7e2e7 !important;
+    border-left-color: #b8893a !important;
+  }
+
+  &.alert-task--waiting-urgent,
+  &.alert-task--critical {
+    border-color: #d7e2e7 !important;
+    border-left-color: #c94a5c !important;
+  }
+
+  .alert-task__signal {
+    color: #b94355 !important;
+    border-color: #e5bdc4 !important;
+    background: #faecef !important;
+    box-shadow: none !important;
+  }
+
+  .alert-task__severity {
+    color: #a73648 !important;
+    background: #f7dfe4 !important;
+    border: 1px solid #ebbdc6 !important;
+    border-radius: 5px !important;
+  }
+
+  .alert-task__actions {
+    border-left-color: #dce6ea !important;
+  }
+
+  .alert-task__details summary {
+    color: #356d79 !important;
+    background: #edf4f6 !important;
+    border-color: #cfdee4 !important;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .digital-twin[data-theme='light'] .nurse-workspace .alert-task--workspace.alert-task--swp-call:hover {
+    border-color: #bfcfd6 !important;
+    border-left-color: #c94a5c !important;
+    box-shadow: 0 7px 18px rgba(36, 68, 82, .08) !important;
+    transform: translateY(-1px);
+  }
+}
+
+/* 顶部指挥栏浅色终态：提升实体表面对比，避免透明层与 3D 场景混色。 */
+.digital-twin[data-theme='light'] .dash-header.dash-header {
+  --hdr-ink: #203843;
+  --hdr-muted: #5c7480;
+  --hdr-cyan: #327889;
+  --hdr-line: #b8cdd5;
+  background:
+    radial-gradient(ellipse at 50% -45%, rgba(61, 138, 154, .12), transparent 48%),
+    linear-gradient(180deg, rgba(250, 253, 254, .94), rgba(232, 241, 244, .92)) !important;
+  border-bottom-color: #b6cad2 !important;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 7px 18px rgba(35, 68, 84, .1) !important;
+  backdrop-filter: blur(18px) saturate(108%);
+  -webkit-backdrop-filter: blur(18px) saturate(108%);
+
+  .dash-header__rail {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #4b8d9a, #327889, #4b8d9a, transparent) !important;
+    box-shadow: 0 0 7px rgba(50, 120, 137, .18) !important;
+  }
+
+  .dash-header__sheen {
+    background:
+      linear-gradient(115deg, transparent 18%, rgba(255, 255, 255, .34) 42%, transparent 58%),
+      repeating-linear-gradient(90deg, transparent 0 31px, rgba(50, 120, 137, .018) 32px) !important;
+    opacity: .8 !important;
+  }
+
+  .dash-header__area-cluster,
+  .dash-header__actions {
+    background: rgba(241, 247, 249, .84) !important;
+    border-color: #c1d3da !important;
+    box-shadow: inset 0 1px 0 #fff, 0 2px 7px rgba(35, 68, 84, .05) !important;
+  }
+
+  .dash-header__area-trigger,
+  .dash-header__theme,
+  .dash-header__refresh {
+    color: #294a56 !important;
+    background: rgba(255, 255, 255, .86) !important;
+    border-color: #bdd0d8 !important;
+    box-shadow: inset 0 1px 0 #fff !important;
+  }
+
+  .dash-header__operator {
+    color: #355762 !important;
+    background: #e8f1f4 !important;
+    border-color: #c3d5dc !important;
+  }
+
+  .dash-header__logout {
+    color: #79551f !important;
+    background: #f6eedc !important;
+    border-color: #ddc58f !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9) !important;
+  }
+
+  .dash-header__tag,
+  .dash-header__data-status {
+    color: #365f6a !important;
+    background: #e6eff2 !important;
+    border-color: #bed1d8 !important;
+  }
+
+  .dash-header__data-status--warning,
+  .dash-header__tag--mock {
+    color: #815c1f !important;
+    background: #f5ecd8 !important;
+    border-color: #dcc58f !important;
+  }
+
+  .dash-header__title {
+    color: #18333f !important;
+  }
+
+  button:hover:not(:disabled) {
+    color: #183b47 !important;
+    background: #e5f0f3 !important;
+    border-color: #7ea7b1 !important;
+    box-shadow: inset 0 1px 0 #fff, 0 2px 8px rgba(35, 68, 84, .08) !important;
+  }
+
+  .dash-header__logout:hover:not(:disabled) {
+    color: #684714 !important;
+    background: #f1e4c8 !important;
+    border-color: #c8a961 !important;
+  }
+}

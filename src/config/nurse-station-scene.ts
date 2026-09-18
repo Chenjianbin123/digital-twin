@@ -69,7 +69,7 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
   },
   position: { x: 0, z: 14 },
   appearance: {
-    background: 0xdbe2e2,
+    background: 0xdfe7e9,
     /** 首屏视野角：数值越小，模型越大；数值越大，看到的环境越多。 */
     deskFov: 38,
     /** 贴近原型：避免 ACES 再额外提亮。 */

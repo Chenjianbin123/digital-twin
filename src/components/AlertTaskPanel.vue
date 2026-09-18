@@ -1230,16 +1230,25 @@ function taskStatusText(task: AlertTask) {
   .alert-task__locate { border-color: #73c4c655; color: #b6f7eb; background: #20525c; box-shadow: none; font-weight: 500; }
   .alert-task__locate::after { display: none; }
   .alert-task__recovery-tip { max-width: 140px; font-weight: 400; line-height: 1.6; color: #a6bfcd; }
-  .alert-task-panel__more { margin-top: 12px; padding: 10px 12px; gap: 10px; flex-wrap: wrap; border: 1px solid #789bad26; border-radius: 8px; background: #0c202d; color: #a9c1ce; }
+  .alert-task-panel__more {
+    margin-top: 12px;
+    padding: 10px 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+    border: 1px solid var(--alert-more-border, #789bad26);
+    border-radius: 8px;
+    background: var(--alert-more-bg, #0c202d);
+    color: var(--alert-more-ink, #a9c1ce);
+  }
   .alert-task-panel__remaining { display: inline-flex; align-items: center; gap: 8px; font-size: clamp(12px, calc(11 * var(--dashboard-font-unit, 1px)), 13px); }
-  .alert-task-panel__remaining > svg { width: 18px; height: 18px; color: #8fb9c5; flex-shrink: 0; }
-  .alert-task-panel__remaining strong { margin-inline: 3px; color: #deedf2; font-size: clamp(14px, calc(14 * var(--dashboard-font-unit, 1px)), 17px); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .alert-task-panel__more button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 36px; margin-left: auto; padding: 7px 12px; border: 1px solid #77b9bd55; border-radius: 6px; color: #c5eee8; background: #1b3d49; font-size: clamp(12px, calc(11 * var(--dashboard-font-unit, 1px)), 13px); font-weight: 500; line-height: 20px; white-space: nowrap; }
-  .alert-task-panel__more button:hover { background: #295763; border-color: #8cd6cf; }
+  .alert-task-panel__remaining > svg { width: 18px; height: 18px; color: var(--alert-more-muted, #8fb9c5); flex-shrink: 0; }
+  .alert-task-panel__remaining strong { margin-inline: 3px; color: var(--alert-more-strong, #deedf2); font-size: clamp(14px, calc(14 * var(--dashboard-font-unit, 1px)), 17px); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .alert-task-panel__more button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 36px; margin-left: auto; padding: 7px 12px; border: 1px solid var(--alert-more-btn-border, #77b9bd55); border-radius: 6px; color: var(--alert-more-btn-ink, #c5eee8); background: var(--alert-more-btn-bg, #1b3d49); font-size: clamp(12px, calc(11 * var(--dashboard-font-unit, 1px)), 13px); font-weight: 500; line-height: 20px; white-space: nowrap; }
+  .alert-task-panel__more button:hover { background: var(--alert-more-btn-hover, #295763); border-color: var(--alert-more-btn-border-hover, #8cd6cf); }
   .alert-task-panel__more button:focus-visible { outline: 2px solid #94e5d7; outline-offset: 3px; }
   .alert-task-panel__more-arrow svg { display: block; width: 14px; height: 14px; }
   .alert-task-panel__more-arrow svg.is-expanded { transform: rotate(-90deg); }
-  .alert-task-panel__more-arrow { display: grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; margin: 0; line-height: 1; border-radius: 50%; background: #93d9d416; color: #ade9df; }
+  .alert-task-panel__more-arrow { display: grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; margin: 0; line-height: 1; border-radius: 50%; background: var(--alert-more-arrow-bg, #93d9d416); color: var(--alert-more-arrow-ink, #ade9df); }
 }
 @container compact-alerts (max-width: 420px) {
   .alert-task-panel--compact .alert-task-panel__summary { display: none; }
@@ -1249,5 +1258,95 @@ function taskStatusText(task: AlertTask) {
 }
 @container compact-alerts (max-width: 300px) {
   .alert-task-panel--compact .alert-task-panel__filters button { padding-inline: 7px; gap: 2px; }
+}
+
+/* 浅色主题：底部「还有 N 项」条与按钮，避免深色 HUD 残留 */
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact) {
+  --station-surface: #f7fbfd;
+  --station-inset: #eef4f7;
+  --station-border: #c5d5dd;
+  --alert-more-bg: #e8f0f4;
+  --alert-more-border: #b7c9d2;
+  --alert-more-ink: #5a717c;
+  --alert-more-muted: #5a717c;
+  --alert-more-strong: #243944;
+  --alert-more-btn-bg: #3d7585;
+  --alert-more-btn-ink: #f7fbfd;
+  --alert-more-btn-border: #3d7585;
+  --alert-more-btn-hover: #346574;
+  --alert-more-btn-border-hover: #346574;
+  --alert-more-arrow-bg: rgba(61, 117, 133, 0.12);
+  --alert-more-arrow-ink: #3d7585;
+  background: #f7fbfd !important;
+  border-color: #c5d5dd !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__filters) {
+  background: #e8f0f4 !important;
+  border-color: #b7c9d2 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__filters button) {
+  color: #5a717c !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__filters button.is-active) {
+  color: #243944 !important;
+  background: #f7fbfd !important;
+  border-color: #3d7585 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__filters button.is-active strong) {
+  color: #f7fbfd !important;
+  background: #3d7585 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task) {
+  background: #eef4f7 !important;
+  border-color: #c5d5dd !important;
+  color: #243944;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task p),
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task__meta span),
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task__recovery-tip),
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task__unlocated) {
+  color: #5a717c !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task__head strong) {
+  color: #243944 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__more) {
+  background: #e8f0f4 !important;
+  border: 1px solid #b7c9d2 !important;
+  color: #5a717c !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__remaining),
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__remaining > svg) {
+  color: #5a717c !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__remaining strong) {
+  color: #243944 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__more button) {
+  color: #f7fbfd !important;
+  background: #3d7585 !important;
+  border-color: #3d7585 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__more button:hover) {
+  color: #f7fbfd !important;
+  background: #346574 !important;
+  border-color: #346574 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .alert-task-panel--compact .alert-task-panel__more-arrow) {
+  background: rgba(61, 117, 133, 0.12) !important;
+  color: #3d7585 !important;
 }
 </style>

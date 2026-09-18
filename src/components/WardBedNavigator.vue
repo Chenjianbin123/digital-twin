@@ -47,28 +47,39 @@ function choose(event: Event) {
 <style scoped lang="scss">
 .ward-bed-nav {
   --ward-nav-bg: rgba(7, 34, 48, 0.76);
+  --ward-nav-surface: rgba(14, 54, 68, 0.72);
+  --ward-nav-glow: rgba(139, 224, 229, 0.09);
   --ward-nav-control: rgba(8, 43, 58, 0.72);
   --ward-nav-control-hover: rgba(18, 68, 82, 0.78);
   --ward-nav-ink: #e5f2f5;
   --ward-nav-muted: #a5bec8;
+  --ward-nav-btn: #c7e7ec;
+  --ward-nav-btn-hover: #f1feff;
+  --ward-nav-btn-disabled: #76909a;
+  --ward-nav-disabled-bg: rgba(7, 28, 40, 0.42);
   --ward-nav-border: rgba(112, 192, 207, 0.32);
+  --ward-nav-border-hover: rgba(139, 224, 229, 0.58);
+  --ward-nav-border-disabled: rgba(112, 192, 207, 0.14);
   --ward-nav-accent: #8be0e5;
+  --ward-nav-rail: rgba(145, 236, 238, 0.72);
+  --ward-nav-shadow: rgba(0, 10, 20, 0.2);
+  --ward-nav-inset: rgba(196, 242, 247, 0.08);
   position: sticky; top: 0; z-index: 3; overflow: hidden;
   padding: 14px; margin-bottom: 14px;
   color: var(--ward-nav-ink);
   background:
-    linear-gradient(145deg, rgba(14, 54, 68, 0.72), var(--ward-nav-bg)),
-    radial-gradient(circle at 10% 0, rgba(139, 224, 229, 0.09), transparent 44%);
+    linear-gradient(145deg, var(--ward-nav-surface), var(--ward-nav-bg)),
+    radial-gradient(circle at 10% 0, var(--ward-nav-glow), transparent 44%);
   border: 1px solid var(--ward-nav-border); border-radius: 10px;
-  box-shadow: inset 0 1px 0 rgba(196, 242, 247, 0.08), 0 8px 18px rgba(0, 10, 20, 0.2);
+  box-shadow: inset 0 1px 0 var(--ward-nav-inset), 0 8px 18px var(--ward-nav-shadow);
   backdrop-filter: blur(16px) saturate(112%);
   -webkit-backdrop-filter: blur(16px) saturate(112%);
 
   &::before {
     content: "";
     position: absolute; top: 0; left: 10%; right: 36%; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(145, 236, 238, 0.72), transparent);
-    box-shadow: 0 0 10px rgba(111, 221, 226, 0.28);
+    background: linear-gradient(90deg, transparent, var(--ward-nav-rail), transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--ward-nav-accent) 40%, transparent);
     pointer-events: none;
   }
 
@@ -93,20 +104,20 @@ function choose(event: Event) {
   }
   button {
     min-width: 54px; padding: 5px 10px; cursor: pointer;
-    color: #c7e7ec; white-space: nowrap;
+    color: var(--ward-nav-btn); white-space: nowrap;
   }
   button:not(:disabled):hover {
-    color: #f1feff; border-color: rgba(139, 224, 229, 0.58);
+    color: var(--ward-nav-btn-hover); border-color: var(--ward-nav-border-hover);
     background-color: var(--ward-nav-control-hover);
-    box-shadow: inset 0 1px 0 rgba(206, 249, 251, 0.08), 0 0 12px rgba(111, 221, 226, 0.1);
+    box-shadow: inset 0 1px 0 var(--ward-nav-inset), 0 0 12px color-mix(in srgb, var(--ward-nav-accent) 18%, transparent);
   }
   button:disabled {
-    color: #76909a; border-color: rgba(112, 192, 207, 0.14);
-    background-color: rgba(7, 28, 40, 0.42); cursor: default;
+    color: var(--ward-nav-btn-disabled); border-color: var(--ward-nav-border-disabled);
+    background-color: var(--ward-nav-disabled-bg); cursor: default;
   }
   select {
     min-width: 0; width: 100%; padding: 5px 36px 5px 12px;
-    appearance: none; cursor: pointer; color-scheme: light;
+    appearance: none; cursor: pointer; color-scheme: dark;
     background-image:
       linear-gradient(45deg, transparent 50%, var(--ward-nav-accent) 50%),
       linear-gradient(135deg, var(--ward-nav-accent) 50%, transparent 50%);
@@ -114,27 +125,91 @@ function choose(event: Event) {
     background-size: 5px 5px, 5px 5px;
     background-repeat: no-repeat;
   }
-  select:hover { border-color: rgba(139, 224, 229, 0.52); background-color: var(--ward-nav-control-hover); }
+  select:hover { border-color: var(--ward-nav-border-hover); background-color: var(--ward-nav-control-hover); }
   select option, select optgroup { color: #173744; background: #f7fbfd; }
   :focus-visible {
     outline: 2px solid var(--ward-nav-accent); outline-offset: 2px;
     border-color: var(--ward-nav-accent);
-    box-shadow: 0 0 0 3px rgba(139, 224, 229, 0.12);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ward-nav-accent) 18%, transparent);
   }
   p { font-size: 12px; line-height: 1.55; margin: 9px 0 0; color: var(--ward-nav-muted); }
 }
-:global(.digital-twin[data-theme='light']) .ward-bed-nav {
-  --ward-nav-bg: rgba(244, 249, 252, 0.78);
-  --ward-nav-control: rgba(255, 255, 255, 0.74);
-  --ward-nav-control-hover: rgba(237, 247, 250, 0.92);
-  --ward-nav-ink: #294b59;
-  --ward-nav-muted: #597582;
-  --ward-nav-border: #bdd5df;
-  --ward-nav-accent: #2f899a;
+
+:global(.digital-twin[data-theme='light'] .ward-bed-nav) {
+  --ward-nav-bg: #e8f0f4;
+  --ward-nav-surface: #f2f8fa;
+  --ward-nav-glow: rgba(61, 117, 133, 0.08);
+  --ward-nav-control: #eef4f7;
+  --ward-nav-control-hover: #e2eaee;
+  --ward-nav-ink: #243944;
+  --ward-nav-muted: #5a717c;
+  --ward-nav-btn: #2a4d5a;
+  --ward-nav-btn-hover: #1e3642;
+  --ward-nav-btn-disabled: #8aa0aa;
+  --ward-nav-disabled-bg: #d5e0e5;
+  --ward-nav-border: #9aafb8;
+  --ward-nav-border-hover: #3d7585;
+  --ward-nav-border-disabled: #b7c7ce;
+  --ward-nav-accent: #3d7585;
+  --ward-nav-rail: #5aa8b8;
+  --ward-nav-shadow: rgba(35, 68, 84, 0.08);
+  --ward-nav-inset: rgba(255, 255, 255, 0.85);
+  color: #243944;
   color-scheme: light;
-  select { color-scheme: light; }
-  select option, select optgroup { color: #294b59; background: #f7fbfd; }
+  background:
+    linear-gradient(145deg, #f2f8fa, #e8f0f4),
+    radial-gradient(circle at 10% 0, rgba(61, 117, 133, 0.08), transparent 44%);
+  border-color: #9aafb8;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 6px 14px rgba(35, 68, 84, 0.08);
 }
+
+:global(.digital-twin[data-theme='light'] .ward-bed-nav button) {
+  color: #2a4d5a;
+  background-color: #eef4f7;
+  border-color: #9aafb8;
+}
+
+:global(.digital-twin[data-theme='light'] .ward-bed-nav button:not(:disabled):hover) {
+  color: #1e3642;
+  background-color: #e2eaee;
+  border-color: #3d7585;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+:global(.digital-twin[data-theme='light'] .ward-bed-nav button:disabled) {
+  color: #8aa0aa;
+  background-color: #d5e0e5;
+  border-color: #b7c7ce;
+}
+
+:global(.digital-twin[data-theme='light'] .ward-bed-nav select) {
+  color: #243944;
+  color-scheme: light;
+  background-color: #eef4f7;
+  border-color: #9aafb8;
+}
+
+:global(.digital-twin[data-theme='light'] .ward-bed-nav select:hover) {
+  background-color: #e2eaee;
+  border-color: #3d7585;
+}
+
+:global(.digital-twin[data-theme='light'] .ward-bed-nav label),
+:global(.digital-twin[data-theme='light'] .ward-bed-nav p) {
+  color: #5a717c;
+}
+
+:global(.digital-twin[data-theme='light'] .ward-bed-nav label::before) {
+  background: #3d7585;
+  box-shadow: 0 0 8px rgba(61, 117, 133, 0.35);
+}
+
+:global(.digital-twin[data-theme='light'] .ward-bed-nav select option),
+:global(.digital-twin[data-theme='light'] .ward-bed-nav select optgroup) {
+  color: #243944;
+  background: #f7fbfd;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ward-bed-nav button, .ward-bed-nav select { transition: none; }
 }

@@ -114,4 +114,74 @@ function categoryLabel(category: StatusHistoryEntry['category']) {
     white-space: nowrap;
   }
 }
+
+:global(.digital-twin[data-theme='light'] .status-history) {
+  background: #f7fbfd !important;
+  border: 1px solid #c5d5dd !important;
+  box-shadow: 0 1px 2px rgba(35, 68, 84, 0.05) !important;
+  color: #243944;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history)::before {
+  display: none !important;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history h3) {
+  color: #294c58 !important;
+  text-shadow: none !important;
+  letter-spacing: 0.04em;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history ul) {
+  scrollbar-color: #9aafb8 transparent;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history ul::-webkit-scrollbar-thumb) {
+  background: #9aafb8 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history li) {
+  color: #5a717c !important;
+  border-bottom-color: #dde6eb !important;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history li:hover) {
+  background: rgba(61, 117, 133, 0.08) !important;
+  transform: none;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history .time),
+:global(.digital-twin[data-theme='light'] .status-history .room),
+:global(.digital-twin[data-theme='light'] .status-history .bed) {
+  color: #5a717c !important;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history .category) {
+  color: #3a6572 !important;
+  background: #eef4f7 !important;
+  border: 1px solid #b7c9d2 !important;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history .label) {
+  color: #243944 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history__item--call .label) {
+  color: #8a4554 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history__item--env .label),
+:global(.digital-twin[data-theme='light'] .status-history__item--device .label) {
+  color: #7a5a28 !important;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history__item--infusion .label) {
+  color: #2f6f8a !important;
+}
+
+:global(.digital-twin[data-theme='light'] .status-history__item--vital .label) {
+  color: #8a4554 !important;
+}
 </style>

@@ -960,3 +960,17 @@
     background: rgba(8, 24, 36, 0.94) !important;
   }
 }
+
+:global(.digital-twin[data-theme='light'] .digital-twin__panel.digital-twin__panel--overlay) {
+  border-left: 1px solid #b7c9d2;
+  box-shadow:
+    -8px 0 20px rgba(40, 64, 74, 0.05),
+    -1px 0 0 rgba(154, 175, 184, 0.4) !important;
+}
+
+:global(.digital-twin[data-theme='light'] .digital-twin__panel.digital-twin__panel--station) {
+  border-left: 1px solid #b7c9d2;
+  box-shadow:
+    -8px 0 20px rgba(40, 64, 74, 0.05),
+    -1px 0 0 rgba(154, 175, 184, 0.4) !important;
+}

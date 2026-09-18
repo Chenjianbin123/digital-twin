@@ -112,15 +112,100 @@ const metrics = computed(() => {
   > * { position: relative; z-index: 1; }
 
   &[data-theme='light'] {
-    --info-bg: linear-gradient(145deg, rgba(247, 252, 253, 0.76), rgba(234, 244, 248, 0.7));
-    --info-ink: #233e49;
-    --info-muted: #5b7786;
-    --info-line: #c5dce6;
-    --info-accent: #348799;
-    --info-alert: #b43c57;
-    box-shadow: inset 0 1px 0 #f7fbfd, 0 10px 24px rgba(35, 68, 84, 0.08);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    --info-bg:
+      radial-gradient(circle at 6% 0, rgba(72, 143, 157, 0.1), transparent 38%),
+      linear-gradient(145deg, rgba(252, 254, 255, 0.94), rgba(236, 244, 247, 0.92));
+    --info-ink: #203843;
+    --info-muted: #5c7480;
+    --info-line: #bed1d9;
+    --info-accent: #327889;
+    --info-alert: #b83d58;
+    border-color: #b8ccd5;
+    box-shadow:
+      inset 0 1px 0 #fff,
+      0 0 0 1px rgba(61, 117, 133, 0.04),
+      0 10px 24px rgba(35, 68, 84, 0.12);
+    backdrop-filter: blur(18px) saturate(110%);
+    -webkit-backdrop-filter: blur(18px) saturate(110%);
+    animation: station-info-border-breathe-light 3.6s ease-in-out infinite;
+
+    &::before {
+      background:
+        radial-gradient(ellipse at 8% 0%, rgba(61, 138, 154, 0.09), transparent 44%),
+        linear-gradient(90deg, transparent 23px, rgba(61, 117, 133, 0.025) 24px);
+      background-size: auto, 24px 100%;
+      mask-image: linear-gradient(90deg, #0b1418 0%, #0b1418 58%, transparent 100%);
+      opacity: .72;
+    }
+
+    &::after {
+      background: linear-gradient(90deg, transparent, rgba(61, 138, 154, 0.58), transparent);
+      box-shadow: 0 0 8px rgba(61, 138, 154, 0.2);
+    }
+
+    .station-info__eyebrow {
+      color: #2f7a8a;
+      &::before {
+        box-shadow: 22px 0 0 rgba(61, 117, 133, 0.22);
+      }
+    }
+
+    h2 {
+      text-shadow: none;
+    }
+
+    .station-info__sync {
+      color: #2f765d;
+      border-color: #b8d5c8;
+      background: #e8f3ee;
+
+      &.is-warning {
+        color: #8a641d;
+        border-color: #dfc98e;
+        background: #f8f0dc;
+      }
+    }
+
+    button {
+      color: #496772;
+      background: rgba(255, 255, 255, 0.82);
+      border-color: #bdd0d8;
+      box-shadow: inset 0 1px 0 #fff, 0 2px 5px rgba(35, 68, 84, 0.06);
+    }
+
+    button:hover {
+      color: #1e3642;
+      border-color: rgba(61, 117, 133, 0.45);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    dl {
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid #cbdbe1;
+      box-shadow:
+        inset 0 1px 0 #fff,
+        0 4px 12px rgba(35, 68, 84, 0.055);
+      backdrop-filter: blur(6px);
+    }
+
+    dl > div + div::before {
+      background: #d3e0e5;
+    }
+
+    dl > div.is-attention {
+      background: #faedf0;
+      box-shadow: inset 0 0 0 1px #e8bdc7;
+    }
+
+    .is-alert {
+      text-shadow: none;
+    }
+
+    footer.is-warning {
+      color: #886020;
+      background: rgba(248, 240, 220, 0.76);
+      border-top-color: #dfc98e;
+    }
   }
 
   header {
@@ -224,10 +309,6 @@ const metrics = computed(() => {
 
   button svg { width: 18px; height: 18px; }
 
-  &[data-theme='light'] button {
-    background: #edf5f8;
-  }
-
   dl {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -241,11 +322,6 @@ const metrics = computed(() => {
       inset 0 1px 0 rgba(159, 226, 233, 0.06),
       inset 12px 0 24px -24px rgba(119, 223, 230, 0.5);
     box-shadow: inset 0 1px 0 rgba(180, 236, 245, 0.06);
-  }
-
-  &[data-theme='light'] dl {
-    background: #edf5f8;
-    border-color: #c5dce6;
   }
 
   dl > div {
@@ -308,11 +384,6 @@ const metrics = computed(() => {
     background: #e5c783;
   }
 
-  &[data-theme='light'] dl > div.is-attention {
-    background: #f9eef1;
-    box-shadow: inset 0 0 0 1px #e7c0c8;
-  }
-
   footer {
     display: flex;
     flex-wrap: wrap;
@@ -327,8 +398,6 @@ const metrics = computed(() => {
   footer.is-warning {
     color: #dfba7f;
   }
-
-  &[data-theme='light'] footer.is-warning { color: #886020; }
 
   footer p {
     flex-basis: 100%;
@@ -349,6 +418,17 @@ const metrics = computed(() => {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     background: rgba(10, 28, 38, 0.94);
+
+    &[data-theme='light'] {
+      background: #eef4f7;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+
+      dl {
+        background: #f5fafc;
+        backdrop-filter: none;
+      }
+    }
   }
 }
 
@@ -358,6 +438,15 @@ const metrics = computed(() => {
   }
   50% {
     border-color: rgba(137, 232, 234, 0.62);
+  }
+}
+
+@keyframes station-info-border-breathe-light {
+  0%, 100% {
+    border-color: rgba(61, 117, 133, 0.22);
+  }
+  50% {
+    border-color: rgba(61, 138, 154, 0.48);
   }
 }
 

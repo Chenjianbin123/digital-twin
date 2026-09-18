@@ -390,6 +390,34 @@
   :deep(.alert-task__severity) {
     border-radius: 3px;
   }
+  :deep(.alert-task-panel__more) {
+    margin-top: 16px;
+    padding: 10px 12px !important;
+    border: 1px solid #b7c9d2 !important;
+    border-radius: 6px !important;
+    background: #e8f0f4 !important;
+    color: #5a717c !important;
+  }
+  :deep(.alert-task-panel__remaining),
+  :deep(.alert-task-panel__remaining > svg) {
+    color: #5a717c !important;
+  }
+  :deep(.alert-task-panel__remaining strong) {
+    color: #243944 !important;
+  }
+  :deep(.alert-task-panel__more button) {
+    color: #f7fbfd !important;
+    background: #3d7585 !important;
+    border-color: #3d7585 !important;
+  }
+  :deep(.alert-task-panel__more button:hover) {
+    background: #346574 !important;
+    border-color: #346574 !important;
+  }
+  :deep(.alert-task-panel__more-arrow) {
+    background: rgba(61, 117, 133, 0.12) !important;
+    color: #3d7585 !important;
+  }
   :deep(.metric-item > strong),
   :deep(.alert-task-panel__filters button strong) {
     font-variant-numeric: tabular-nums;
