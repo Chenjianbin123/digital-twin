@@ -457,6 +457,7 @@ function inspectionTime(value: string | null | undefined) {
 :deep(.corridor-alerts) {
   margin-bottom: 16px;
   padding: 14px;
+  overflow: visible;
   border-color: rgba(104, 181, 205, 0.26);
   border-radius: 10px;
   background:
@@ -494,15 +495,43 @@ function inspectionTime(value: string | null | undefined) {
   }
 
   .alert-task-panel__list {
-    gap: 8px;
+    gap: 12px;
+    max-height: min(58vh, 520px);
+    padding: 2px 4px 14px 2px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    align-content: start;
   }
 
   .alert-task {
-    min-height: 92px;
-    gap: 12px;
-    padding: 10px 12px;
-    border-color: rgba(101, 151, 169, 0.3);
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    height: auto;
+    min-height: 188px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: start;
+    gap: 10px;
+    padding: 14px 14px 18px;
+    border: 1px solid rgba(101, 151, 169, 0.34);
+    border-radius: 10px;
     background: rgba(8, 31, 44, 0.78);
+    overflow: visible;
+    box-sizing: border-box;
+  }
+
+  .alert-task--swp-call,
+  .alert-task--critical.alert-task--pending {
+    min-height: 200px;
+    padding-bottom: 20px;
+  }
+
+  .alert-task--swp-call::before,
+  .alert-task--swp-call::after {
+    display: none !important;
+    content: none !important;
+    box-shadow: none !important;
   }
 
   .alert-task__head strong {
@@ -515,19 +544,40 @@ function inspectionTime(value: string | null | undefined) {
   }
 
   .alert-task__actions {
-    min-width: 112px;
-    max-width: 128px;
-    padding-left: 12px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    align-self: start;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 40px;
+    height: auto;
+    gap: 8px;
+    padding: 12px 0 2px;
+    border-left: 0;
+    border-top: 1px solid rgba(120, 155, 170, 0.22);
   }
 
-  .alert-task__actions button {
-    width: 100%;
+  .alert-task__actions button,
+  .alert-task__actions .alert-task__unlocated {
+    width: auto;
+    flex: 0 1 auto;
+    min-height: 34px;
+    max-width: 100%;
+    padding: 0 12px;
+    white-space: nowrap;
   }
 
   .alert-task__recovery-tip {
-    max-width: 128px;
-    line-height: 1.45;
-    text-align: center;
+    max-width: none;
+    flex: 1 1 100%;
+    min-width: 0;
+    line-height: 1.4;
+    text-align: left;
+    white-space: normal;
   }
 
   .alert-task-panel__more {

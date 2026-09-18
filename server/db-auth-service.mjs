@@ -140,12 +140,16 @@ export function createDbAuthService({ query, auth }) {
         SELECT a.id, a.area_code areaCode, a.area_name areaName,
                COUNT(DISTINCT r.id) roomCount,
                COUNT(DISTINCT b.id) bedCount,
-               COUNT(DISTINCT d.id) deviceCount
+               COUNT(DISTINCT d.id) deviceCount,
+               COUNT(DISTINCT s.id) occupiedCount
         FROM hosp_area_info a
         ${fullAreaAccess ? '' : 'JOIN sys_role_area_data rad ON rad.area_id = a.id AND rad.role_id = ?'}
         LEFT JOIN hosp_sickroom_info r ON r.area_id = a.id AND IFNULL(r.is_enable, '1') = '1'
         LEFT JOIN hosp_bed_info b ON b.area_id = a.id AND IFNULL(b.is_enable, '1') = '1'
         LEFT JOIN swp_device_info d ON d.area_id = a.id AND IFNULL(d.is_enable, '1') = '1'
+        LEFT JOIN out_sick_info s
+          ON (s.area_out_code = a.area_out_code OR s.area_out_code = a.area_code)
+         AND (s.sick_out_time IS NULL OR s.sick_status IN ('1','2','3'))
         WHERE IFNULL(a.is_enable, '1') = '1'
         GROUP BY a.id, a.area_code, a.area_name
         ORDER BY bedCount DESC, deviceCount DESC, a.sort, a.id

@@ -151,10 +151,12 @@
   .nurse-panel .station-state--warn { background: #fcf5e9 !important; border-color: #e8d6b6 !important; }
   .nurse-panel .station-state--alert :is(small, .station-hero__badge) { color: #a13d51 !important; }
   .nurse-panel .station-state--alert .station-hero__badge { background: #f7e0e5 !important; }
-  .nurse-panel .station-hero__overview-metrics strong, .nurse-panel .metric-item > strong { color: #376e66 !important; }
-  .nurse-panel .inspection-metric--normal strong { color: #26725b !important; }
-  .nurse-panel .inspection-metric--due strong { color: #936116 !important; }
-  .nurse-panel .inspection-metric--overdue strong, .nurse-panel .metric-item--alert > strong { color: #ad4054 !important; }
+  .nurse-panel .station-hero__overview-metrics strong, .nurse-panel .metric-item > strong { color: #1287a3 !important; font-weight: 800 !important; }
+  .nurse-panel .inspection-metric--normal strong { color: #1a9a72 !important; }
+  .nurse-panel .inspection-metric--due strong { color: #c4841a !important; }
+  .nurse-panel .inspection-metric--overdue strong, .nurse-panel .metric-item--alert > strong { color: #c23d55 !important; }
+  .nurse-panel .metric-item--empty > strong { color: #6a7d88 !important; }
+  .nurse-panel .metric-item--warn > strong { color: #c4841a !important; }
   .nurse-panel :is(.station-hero__identity-icon, .station-section-icon, .alert-task-panel__heading-icon) { color: #477b7a !important; background: #eaf2ed !important; border-color: #c9dcd1 !important; }
   .nurse-panel button { background: #eaf1ed !important; border-color: #cbddd2 !important; color: #365f55 !important; box-shadow: none !important; }
   .nurse-panel button:hover:not(:disabled) { background: #dce9e1 !important; }
@@ -162,9 +164,9 @@
   .nurse-panel .alert-task-panel__filters button.is-active { background: #d8e9df !important; border-color: #adcbbb !important; }
   .nurse-panel .alert-task-panel__filters button strong, .nurse-panel .dash-head__count { background: #e2eee6 !important; border-color: #c9dbce !important; color: #3c695b !important; }
   .nurse-panel .alert-task__meta-live { background: #e6f1eb !important; color: #326e59 !important; border-color: #cbdfd1 !important; }
-  .nurse-panel .station-hero__status-live, .nurse-panel .data-health__status--ready { color: #32725c !important; }
-  .nurse-panel :is(.data-health__status--warning, .data-health__status--stale, .data-health__status--loading) { color: #8c601d !important; }
-  .nurse-panel .data-health__status--error { color: #ab4254 !important; }
+  .nurse-panel .station-hero__status-live, .nurse-panel .data-health__status--ready { color: #1a9a72 !important; font-weight: 700 !important; }
+  .nurse-panel :is(.data-health__status--warning, .data-health__status--stale, .data-health__status--loading) { color: #c4841a !important; font-weight: 700 !important; }
+  .nurse-panel .data-health__status--error { color: #c23d55 !important; font-weight: 700 !important; }
   .nurse-panel .metric-item__progress, .nurse-panel .ops-row__track { background: #dce5df !important; }
   .nurse-panel .metric-item__progress i { background: #578e7b !important; }
   .nurse-panel .data-health > p { background: #faf4e8 !important; color: #795c2f !important; }
@@ -237,7 +239,8 @@
   .metric-item { background: #e2eaee !important; }
 }
 
-.digital-twin[data-theme="light"] .nurse-panel.nurse-workspace .handoff-card li { color: var(--workspace-muted); }
+.digital-twin[data-theme="light"] .nurse-panel.nurse-workspace .handoff-card li { color: #142830; }
+.digital-twin[data-theme="light"] .nurse-panel.nurse-workspace .handoff-card--attention li { color: #8a5a14; }
 
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace .alert-task__details summary { color: #365f55; }
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .alert-task--workspace { border-color: #52849c45; box-shadow: inset 0 1px 0 #a0dcf009; }
@@ -475,41 +478,270 @@
 }
 
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
+ /* 病区核心指标 / 交班 / 数据健康：特殊数据按状态上色并加重 */
+ .nurse-metric-chart__head strong {
+   color: #0c1a22 !important;
+   font-weight: 700 !important;
+ }
+ .nurse-metric-chart__status--ready { color: #1a9a72 !important; font-weight: 700 !important; }
+ .nurse-metric-chart__status--warning,
+ .nurse-metric-chart__status--stale,
+ .nurse-metric-chart__status--loading { color: #c4841a !important; font-weight: 700 !important; }
+ .nurse-metric-chart__status--error { color: #c23d55 !important; font-weight: 700 !important; }
+
  .metric-item {
-   background: #e2eaee !important;
-   border: 1px solid #9aafb8 !important;
-   border-radius: 4px !important;
-   box-shadow: inset 2px 0 0 #3d7585 !important;
+   background: #f3f7f9 !important;
+   border: 1px solid #c5d5dd !important;
+   border-radius: 8px !important;
+   box-shadow: inset 3px 0 0 #1287a3 !important;
+ }
+ .metric-item > span {
+   color: #4a5d68 !important;
+   font-weight: 500 !important;
  }
  .metric-item > strong {
-   color: #2f5f6c !important;
+   color: #1287a3 !important;
    font-family: "Bahnschrift", "Segoe UI", sans-serif !important;
+   font-weight: 800 !important;
    font-variant-numeric: tabular-nums;
    letter-spacing: .01em;
    text-shadow: none;
  }
- .metric-item--alert > strong { color: #8a4554 !important; }
- .metric-item__icon { color: #3d7585; filter: none; }
- .metric-item__progress { background: #c4d2d8 !important; border-radius: 0 !important; }
- .metric-item__progress i {
-   background: #3d7585 !important;
+ .metric-item > strong small {
+   color: #5a6d78 !important;
+   font-weight: 600 !important;
+ }
+ .metric-item__detail { color: #4a5d68 !important; }
+ .metric-item--cyan > strong,
+ .metric-item--green > strong { color: #1287a3 !important; }
+ .metric-item--blue > strong { color: #3d7eb0 !important; }
+ .metric-item--infusion > strong { color: #1a8fb8 !important; }
+ .metric-item--warn > strong {
+   color: #c4841a !important;
    box-shadow: none;
  }
- .handoff-card li { background: #e2eaee !important; border-color: #9aafb8 !important; border-radius: 4px !important; }
- .data-health ul { border-color: #9aafb8; background: #e2eaee; border-radius: 4px; }
- .data-health li:nth-child(odd) { background: #d8e3e8; }
- .data-health__freshness-item { background: #e2eaee !important; border-color: #9aafb8 !important; border-radius: 4px !important; }
+ .metric-item--alert:not(.metric-item--empty) {
+   box-shadow: inset 3px 0 0 #c23d55 !important;
+   background: #fff6f7 !important;
+   border-color: #ecc0c8 !important;
+ }
+ .metric-item--alert:not(.metric-item--empty) > strong { color: #c23d55 !important; }
+ .metric-item--empty > strong {
+   color: #6a7d88 !important;
+   font-weight: 700 !important;
+ }
+ .metric-item__icon { color: #1287a3 !important; filter: none; }
+ .metric-item--alert:not(.metric-item--empty) .metric-item__icon { color: #c23d55 !important; }
+ .metric-item--warn:not(.metric-item--empty) .metric-item__icon { color: #c4841a !important; }
+ .metric-item__progress { background: #d5e0e6 !important; border-radius: 999px !important; }
+ .metric-item__progress i {
+   background: currentColor !important;
+   box-shadow: none;
+ }
+ .metric-item--alert .metric-item__progress i { background: #c23d55 !important; }
+ .metric-item--cyan .metric-item__progress i,
+ .metric-item--green .metric-item__progress i { background: #1287a3 !important; }
+
+ .handoff-card__head > strong {
+   color: #0c1a22 !important;
+   font-weight: 700 !important;
+ }
+ .handoff-card--attention {
+   border-color: #e0c48a !important;
+   background: #fffbf3 !important;
+ }
+ .handoff-card--attention .handoff-card__head > strong { color: #a66b12 !important; }
+ .handoff-card li {
+   background: transparent !important;
+   border-color: #d5e0e6 !important;
+   border-radius: 0 !important;
+   color: #142830 !important;
+   font-weight: 600 !important;
+ }
+ .handoff-card--attention li {
+   color: #8a5a14 !important;
+   font-weight: 700 !important;
+ }
+
+ .data-health__head > strong {
+   color: #0c1a22 !important;
+   font-weight: 700 !important;
+ }
+ .data-health--warning .data-health__head > strong,
+ .data-health--stale .data-health__head > strong {
+   color: #c4841a !important;
+ }
+ .data-health--error .data-health__head > strong {
+   color: #c23d55 !important;
+ }
+ .data-health--ready .data-health__head > strong {
+   color: #1a9a72 !important;
+ }
+ .data-health ul { border-color: #c5d5dd; background: #f7fbfd; border-radius: 8px; }
+ .data-health li:nth-child(odd) { background: #f0f5f7; }
+ .data-health li > span {
+   color: #142830 !important;
+   font-weight: 600 !important;
+ }
+ .data-health li > strong,
+ .data-health__freshness-item > strong {
+   font-weight: 800 !important;
+   font-variant-numeric: tabular-nums;
+ }
+ .data-health__status--ready { color: #1a9a72 !important; }
+ .data-health__status--warning,
+ .data-health__status--stale,
+ .data-health__status--loading { color: #c4841a !important; }
+ .data-health__status--error { color: #c23d55 !important; }
+ .data-health__freshness-item {
+   background: #f3f7f9 !important;
+   border-color: #c5d5dd !important;
+   border-radius: 8px !important;
+ }
+ .data-health__freshness-item > span {
+   color: #142830 !important;
+   font-weight: 600 !important;
+ }
  .data-health__freshness-item > small,
  .data-health li > small {
    font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
    font-variant-numeric: tabular-nums;
-   color: #3a6572 !important;
+   color: #4a5d68 !important;
+   font-weight: 500 !important;
+ }
+ .data-health > p {
+   background: #fff6e8 !important;
+   color: #8a5a14 !important;
+   font-weight: 600 !important;
+   border-left: 3px solid #c4841a !important;
  }
 }
 .digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace {
- .metric-item { background: linear-gradient(135deg, #173847, #102735); border-color: #47748766; box-shadow: inset 0 2px 0 #6dcbd524; }
- .handoff-card li, .data-health__freshness-item { background: #102b3a; }
- .data-health ul { background: #0d2533; }
+ /* 与浅色同一套特殊数据层级：青蓝主数 / 在院绿 / 告警红 / 预警琥珀 / 空值弱化 */
+ .nurse-metric-chart__head strong {
+   color: #e8f4f8 !important;
+   font-weight: 700 !important;
+ }
+ .nurse-metric-chart__status--ready { color: #9df4bf !important; font-weight: 700 !important; }
+ .nurse-metric-chart__status--warning,
+ .nurse-metric-chart__status--stale,
+ .nurse-metric-chart__status--loading { color: #e4c28c !important; font-weight: 700 !important; }
+ .nurse-metric-chart__status--error { color: #ef9aae !important; font-weight: 700 !important; }
+
+ .metric-item {
+   background: linear-gradient(135deg, #173847, #102735);
+   border-color: #47748766;
+   box-shadow: inset 3px 0 0 #7ddde1;
+ }
+ .metric-item > span {
+   color: #9db8c4 !important;
+   font-weight: 500 !important;
+ }
+ .metric-item > strong {
+   color: #7ddde1 !important;
+   font-family: "Bahnschrift", "Segoe UI", sans-serif !important;
+   font-weight: 800 !important;
+   font-variant-numeric: tabular-nums;
+   letter-spacing: .01em;
+ }
+ .metric-item > strong small {
+   color: #8eacb9 !important;
+   font-weight: 600 !important;
+ }
+ .metric-item__detail { color: #9db8c4 !important; }
+ .metric-item--cyan > strong,
+ .metric-item--green > strong { color: #7ddde1 !important; }
+ .metric-item--blue > strong { color: #7eb8e0 !important; }
+ .metric-item--infusion > strong { color: #6ec8e0 !important; }
+ .metric-item--warn > strong { color: #e4c28c !important; }
+ .metric-item--alert:not(.metric-item--empty) {
+   box-shadow: inset 3px 0 0 #ef9aae !important;
+   background: linear-gradient(135deg, #3a1e2a, #24141c) !important;
+   border-color: #8a455466 !important;
+ }
+ .metric-item--alert:not(.metric-item--empty) > strong { color: #ef9aae !important; }
+ .metric-item--empty > strong {
+   color: #7f96a0 !important;
+   font-weight: 700 !important;
+ }
+ .metric-item__icon { color: #7ddde1 !important; filter: none; }
+ .metric-item--alert:not(.metric-item--empty) .metric-item__icon { color: #ef9aae !important; }
+ .metric-item--warn:not(.metric-item--empty) .metric-item__icon { color: #e4c28c !important; }
+ .metric-item__progress { background: #1a3544 !important; border-radius: 999px !important; }
+ .metric-item__progress i { background: currentColor !important; box-shadow: none; }
+ .metric-item--alert .metric-item__progress i { background: #ef9aae !important; }
+ .metric-item--cyan .metric-item__progress i,
+ .metric-item--green .metric-item__progress i { background: #7ddde1 !important; }
+
+ .station-hero__overview-metrics strong { color: #7ddde1 !important; font-weight: 800 !important; }
+ .inspection-metric--normal strong { color: #9df4bf !important; }
+ .inspection-metric--due strong { color: #e4c28c !important; }
+ .inspection-metric--overdue strong { color: #ef9aae !important; }
+
+ .handoff-card__head > strong {
+   color: #e8f4f8 !important;
+   font-weight: 700 !important;
+ }
+ .handoff-card--attention {
+   border-color: #8a6a3866 !important;
+   background: rgba(90, 60, 20, 0.28) !important;
+ }
+ .handoff-card--attention .handoff-card__head > strong { color: #e4c28c !important; }
+ .handoff-card li {
+   background: #102b3a;
+   color: #d4e7ef !important;
+   font-weight: 600 !important;
+ }
+ .handoff-card--attention li {
+   color: #e4c28c !important;
+   font-weight: 700 !important;
+ }
+
+ .data-health__head > strong {
+   color: #e8f4f8 !important;
+   font-weight: 700 !important;
+ }
+ .data-health--warning .data-health__head > strong,
+ .data-health--stale .data-health__head > strong { color: #e4c28c !important; }
+ .data-health--error .data-health__head > strong { color: #ef9aae !important; }
+ .data-health--ready .data-health__head > strong { color: #9df4bf !important; }
+ .data-health ul { background: #0d2533; border-color: #47748766; border-radius: 8px; }
+ .data-health li > span {
+   color: #d4e7ef !important;
+   font-weight: 600 !important;
+ }
+ .data-health li > strong,
+ .data-health__freshness-item > strong {
+   font-weight: 800 !important;
+   font-variant-numeric: tabular-nums;
+ }
+ .data-health__status--ready,
+ .station-hero__status-live { color: #9df4bf !important; font-weight: 700 !important; }
+ .data-health__status--warning,
+ .data-health__status--stale,
+ .data-health__status--loading { color: #e4c28c !important; font-weight: 700 !important; }
+ .data-health__status--error { color: #ef9aae !important; font-weight: 700 !important; }
+ .data-health__freshness-item {
+   background: #102b3a;
+   border-color: #47748766;
+   border-radius: 8px;
+ }
+ .data-health__freshness-item > span {
+   color: #d4e7ef !important;
+   font-weight: 600 !important;
+ }
+ .data-health__freshness-item > small,
+ .data-health li > small {
+   color: #9db8c4 !important;
+   font-weight: 500 !important;
+   font-variant-numeric: tabular-nums;
+ }
+ .data-health > p {
+   background: rgba(90, 60, 20, 0.35) !important;
+   color: #e4c28c !important;
+   font-weight: 600 !important;
+   border-left: 3px solid #e4c28c !important;
+ }
 }
 
 .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace .surface-panel--feed {
@@ -534,8 +766,9 @@
 .digital-twin[data-theme='light'] .area-switcher {
  background: #24394455;
  .area-switcher__drawer { color: #243944; background: #dce6ea; border-left: 2px solid #3d7585; box-shadow: -10px 0 28px rgba(28, 48, 56, 0.1); }
- .area-switcher__header h2 { color: #243944; letter-spacing: .06em; font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif; }
- .area-switcher__header p, .area-switcher__row-copy span, .area-switcher__empty, .area-switcher__hint { color: #5a717c; }
+ .area-switcher__header h2 { color: #0c1a22; letter-spacing: .06em; font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif; font-weight: 800; }
+ .area-switcher__header p, .area-switcher__empty, .area-switcher__hint, .area-switcher__metrics-empty { color: #5a717c; }
+ .area-switcher__current-name { color: #1287a3 !important; font-weight: 800 !important; }
  .area-switcher__close { color: #5a717c; border-radius: 3px; }
  .area-switcher__close:hover:not(:disabled) { color: #243944; background: #cfdce2; }
  .area-switcher__search { color: #3a6572; background: #e2eaee; border-color: #9aafb8; border-radius: 3px; }
@@ -543,33 +776,101 @@
  .area-switcher__search input::placeholder { color: #7a9099; }
  .area-switcher__search:focus-within { border-color: #3d7585; box-shadow: 0 0 0 2px rgba(61, 117, 133, 0.16); }
  .area-switcher__body { scrollbar-color: #7f96a0 #d5e0e5; }
- .area-switcher__row { color: #243944; background: #e2eaee; border-color: #9aafb8; border-radius: 4px; box-shadow: none; }
- .area-switcher__row:hover:not(:disabled) { border-color: #3d7585; background: #d8e3e8; }
- .area-switcher__row--candidate { border-color: #3d7585; background: #cfdce2; box-shadow: inset 2px 0 #3d7585; }
- .area-switcher__badge { color: #3a6572; background: #cfdce2; border-radius: 3px; }
+ .area-switcher__row { color: #243944; background: #eef4f7; border-color: #c5d5dd; border-radius: 8px; box-shadow: none; }
+ .area-switcher__row:hover:not(:disabled) { border-color: #3d7585; background: #e4eef2; }
+ .area-switcher__row--candidate { border-color: #1287a3; background: #e5f2f6; box-shadow: inset 3px 0 #1287a3; }
+ .area-switcher__row-name { color: #0c1a22 !important; font-weight: 800 !important; }
+ .area-switcher__row-code { color: #5a717c !important; font-weight: 600 !important; }
+ .area-switcher__metric {
+   color: #4a5d68 !important;
+   background: #e2eef2 !important;
+   font-weight: 600 !important;
+ }
+ .area-switcher__metric em {
+   color: #1287a3 !important;
+   font-size: 16px !important;
+   font-weight: 800 !important;
+ }
+ .area-switcher__metric--people {
+   background: #d9eef4 !important;
+   em { color: #0f738c !important; }
+ }
+ .area-switcher__metric--occupied {
+   background: #e3f4ec !important;
+   em { color: #1a9a72 !important; }
+ }
+ .area-switcher__metric--bed em,
+ .area-switcher__metric--room em,
+ .area-switcher__metric--device em {
+   color: #1287a3 !important;
+ }
+ .area-switcher__metric--zero {
+   background: #e8eef1 !important;
+   em { color: #6a7d88 !important; font-weight: 700 !important; }
+ }
+ .area-switcher__badge { color: #1a6b58 !important; background: #d8f0e6 !important; border-radius: 3px; font-weight: 700 !important; }
  .area-switcher__check { color: #3d7585; }
  .area-switcher__empty { border-color: #9aafb8; }
  .area-switcher__footer { border-color: #9aafb8; }
  .area-switcher__error { color: #8a4554; }
  .area-switcher__status-dot { background: #3d7585; box-shadow: none; }
- .area-switcher__confirm { color: #e8f0f3; background: #3d7585; border-radius: 3px; box-shadow: none; }
+ .area-switcher__confirm { color: #e8f0f3; background: #3d7585; border-radius: 3px; box-shadow: none; font-weight: 700; }
  .area-switcher__confirm:hover:not(:disabled) { background: #346576; }
  .area-switcher__spinner { border-color: #ffffff45; border-top-color: #e8f0f3; }
  :is(.area-switcher__close, .area-switcher__row, .area-switcher__confirm):focus-visible { outline-color: #3d7585; }
 }
 
 .digital-twin[data-theme='light'] .area-switcher {
- --switcher-accent: #3d7585; --switcher-line: #9aafb8;
+ --switcher-accent: #1287a3; --switcher-line: #9aafb8;
  .area-switcher__drawer { background: #dce6ea; }
  .area-switcher__list-head { color: #5a717c; letter-spacing: .04em; }
- .area-switcher__ward-icon { color: #3a6572; background: #cfdce2; border-radius: 3px; }
+ .area-switcher__list-head strong { color: #1287a3 !important; background: #e2f3f7 !important; font-weight: 800 !important; }
+ .area-switcher__ward-icon { color: #3a6572; background: #e2eaee; border-radius: 6px; }
  .area-switcher__row { box-shadow: none; }
- .area-switcher__row--candidate { background: #cfdce2; }
- .area-switcher__row--candidate .area-switcher__ward-icon { color: #2f5f6c; background: #bfd0d7; }
+ .area-switcher__row--candidate { background: #e5f2f6; }
+ .area-switcher__row--candidate .area-switcher__ward-icon { color: #1287a3; background: #d5eaf0; }
 }
 .digital-twin[data-theme='dark'] .area-switcher {
+ --switcher-accent: #7ddde1; --switcher-line: #75b7ca30;
  .area-switcher__drawer { background: radial-gradient(ellipse at 100% 0, #27627740, transparent 42%), #081c29; }
- .area-switcher__row--candidate { background: linear-gradient(110deg, #153d50, #0b2939); }
+ .area-switcher__header h2 { color: #f2fbff; font-weight: 800; letter-spacing: .04em; }
+ .area-switcher__header p, .area-switcher__empty, .area-switcher__hint, .area-switcher__metrics-empty { color: #8eacb9; }
+ .area-switcher__current-name { color: #8af0f4 !important; font-weight: 800 !important; }
+ .area-switcher__list-head { color: #8eacb9; letter-spacing: .04em; }
+ .area-switcher__list-head strong { color: #8af0f4 !important; background: #75b7ca20 !important; font-weight: 800 !important; }
+ .area-switcher__row--candidate { background: linear-gradient(110deg, #153d50, #0b2939); border-color: #7ddde1; box-shadow: inset 3px 0 #7ddde1; }
+ .area-switcher__row-name { color: #f2fbff !important; font-weight: 800 !important; }
+ .area-switcher__row-code { color: #8eacb9 !important; font-weight: 600 !important; }
+ .area-switcher__metric {
+   color: #a8c2cd !important;
+   background: rgba(125, 221, 225, 0.1) !important;
+   font-weight: 600 !important;
+ }
+ .area-switcher__metric em {
+   color: #7ddde1 !important;
+   font-size: 16px !important;
+   font-weight: 800 !important;
+ }
+ .area-switcher__metric--people {
+   background: rgba(125, 221, 225, 0.16) !important;
+   em { color: #8af0f4 !important; }
+ }
+ .area-switcher__metric--occupied {
+   background: rgba(157, 244, 191, 0.12) !important;
+   em { color: #9df4bf !important; }
+ }
+ .area-switcher__metric--bed em,
+ .area-switcher__metric--room em,
+ .area-switcher__metric--device em {
+   color: #7ddde1 !important;
+ }
+ .area-switcher__metric--zero {
+   background: rgba(127, 150, 160, 0.1) !important;
+   em { color: #7f96a0 !important; font-weight: 700 !important; }
+ }
+ .area-switcher__badge { color: #9df4bf !important; background: rgba(157, 244, 191, 0.14) !important; font-weight: 700 !important; }
+ .area-switcher__ward-icon { color: #75adc0; background: #75b7ca0b; }
+ .area-switcher__row--candidate .area-switcher__ward-icon { color: #8af0f4; background: #75b7ca20; }
 }
 
 /* 三维场景切换层与工作台主题一致，包含首次加载及失败回退。 */
@@ -655,7 +956,8 @@
  }
  :is(.hospital-intro, .dash-section, .ward-info-panel > section, .door-staff-cards, .status-history) { padding: 16px; }
  :is(.hospital-intro__title, .dash-head__title, .ward-info-panel h2, .ward-info-panel h3, .door-staff-cards__title, .status-history h3) { color: var(--room-ink) !important; text-shadow: none; font-weight: 600; }
- :is(.hospital-intro__note, .hospital-intro__name, .hospital-intro__metric-label, .ward-info-panel__subtitle, .stat-chip__label, .inspection-card__foot, .bed-status, .room-card__status, .person-card__label, .person-card__sub, .env-label, .status-history .time, .status-history .room, .status-history .bed, .status-history .category) { color: var(--room-muted) !important; }
+ :is(.hospital-intro__note, .hospital-intro__metric-label, .ward-info-panel__subtitle, .stat-chip__label, .inspection-card__foot, .bed-status, .room-card__status, .person-card__label, .person-card__sub, .env-label, .status-history .time, .status-history .room, .status-history .bed, .status-history .category) { color: var(--room-muted) !important; }
+ .hospital-intro__name { color: var(--room-ink) !important; font-weight: 800; }
  :is(.hospital-intro__note, .inspection-card__foot) { line-height: 1.7; font-size: 13px; }
  :is(.hospital-intro__metric, .monitor-row, .person-card, .stat-chip, .staff-role-card, .room-card, .bed-chip, .env-item, .patient-info, .vitals-card, .bed-detail-section) {
   color: var(--room-ink) !important; background: var(--room-inset) !important; border: 1px solid var(--room-line); border-radius: 8px;
@@ -663,10 +965,76 @@
  }
  :is(.staff-role-card__name, .staff-role-card__badge, .bed-patient, .bed-name, .room-card__name, .feed__text) { color: var(--room-ink) !important; text-shadow: none; }
  :is(.staff-role-card__hint, .door-staff-cards__subhead) { color: var(--room-muted) !important; }
- :is(.stat-chip__val, .person-card__value, .hospital-intro__metric-value, .monitor-row__percent) { color: var(--room-accent) !important; font-family: "Bahnschrift", "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+ :is(.stat-chip__val, .person-card__value, .hospital-intro__metric-value, .monitor-row__percent) {
+  color: var(--room-accent) !important;
+  font-family: "Bahnschrift", "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+ }
  .stat-chip__val { font-size: 28px; }
  .stat-chip--occupied .stat-chip__val { color: var(--room-ok) !important; }
  .stat-chip--empty .stat-chip__val { color: var(--room-muted) !important; }
+ .stat-chip--alert .stat-chip__val,
+ .stat-chip--calling .stat-chip__val { color: var(--room-alert) !important; }
+
+ /* 特殊数据：与浅色同一语义层级（深色提亮饱和度） */
+ .hospital-intro__name { letter-spacing: 0.01em; }
+ .hospital-intro__metric { box-shadow: inset 3px 0 0 var(--room-accent) !important; }
+ .hospital-intro__metric-value small { font-weight: 600 !important; }
+ .hospital-intro__metric--empty { box-shadow: inset 3px 0 0 rgba(154, 175, 184, 0.45) !important; }
+ .hospital-intro__metric--empty .hospital-intro__metric-value {
+   color: #7f96a0 !important;
+   font-weight: 700 !important;
+ }
+ .hospital-intro__metric--empty .hospital-intro__metric-symbol {
+   color: #7f96a0 !important;
+   opacity: 0.7 !important;
+ }
+ .hospital-intro__metric--patient {
+   box-shadow: inset 3px 0 0 var(--room-ok) !important;
+   background: rgba(140, 219, 187, 0.1) !important;
+ }
+ .hospital-intro__metric--patient .hospital-intro__metric-value,
+ .hospital-intro__metric--patient .hospital-intro__metric-symbol { color: var(--room-ok) !important; }
+ .hospital-intro__metric--rate-high {
+   box-shadow: inset 3px 0 0 var(--room-warn) !important;
+   background: rgba(228, 194, 140, 0.1) !important;
+ }
+ .hospital-intro__metric--rate-high .hospital-intro__metric-value,
+ .hospital-intro__metric--rate-high .hospital-intro__metric-symbol { color: var(--room-warn) !important; }
+ .hospital-intro__metric--rate-mid .hospital-intro__metric-value,
+ .hospital-intro__metric--rate .hospital-intro__metric-value,
+ .hospital-intro__metric--capacity .hospital-intro__metric-value,
+ .hospital-intro__metric--device .hospital-intro__metric-value { color: var(--room-accent) !important; }
+
+ .ward-bed-nav__count {
+   font-weight: 800 !important;
+   font-variant-numeric: tabular-nums;
+ }
+ .ward-bed-nav__count--occupied { color: var(--room-ok) !important; }
+ .ward-bed-nav__count--empty { color: var(--room-warn) !important; }
+ .ward-bed-nav__count--zero { color: #7f96a0 !important; font-weight: 700 !important; }
+
+ .ward-call-list header > strong { font-weight: 700 !important; }
+ .ward-call-list__count {
+   font-weight: 800 !important;
+   font-variant-numeric: tabular-nums;
+ }
+ .ward-call-list__count--active { color: var(--room-alert) !important; }
+ .ward-call-list__count--zero { color: #7f96a0 !important; font-weight: 700 !important; }
+
+ .ward-info-panel__stats .stat-chip { box-shadow: inset 3px 0 0 var(--room-accent) !important; }
+ .ward-info-panel__stats .stat-chip--occupied {
+   box-shadow: inset 3px 0 0 var(--room-ok) !important;
+   background: rgba(140, 219, 187, 0.1) !important;
+ }
+ .ward-info-panel__stats .stat-chip--empty { box-shadow: inset 3px 0 0 rgba(154, 175, 184, 0.45) !important; }
+ .ward-info-panel__stats .stat-chip__val { font-weight: 800 !important; }
+ .ward-info-panel__inspection--normal .inspection-card__head strong { color: var(--room-ok) !important; }
+ .ward-info-panel__inspection--due .inspection-card__head strong { color: var(--room-warn) !important; }
+ .ward-info-panel__inspection--overdue .inspection-card__head strong { color: var(--room-alert) !important; }
+ .ward-info-panel__inspection--unknown .inspection-card__head strong,
+ .ward-info-panel__inspection--no-record .inspection-card__head strong { color: #7f96a0 !important; }
  :is(.bed-list__item, .status-history li, .hospital-intro__footer, .inspection-card__foot) { border-color: var(--room-line); }
  .bed-list__item:hover { background: var(--room-inset); }
  .bed-list__item--selected { background: var(--room-inset); outline: 1px solid var(--room-accent); }
@@ -701,13 +1069,14 @@
   --room-surface: #f5f9fb;
   --room-inset: #e8f0f4;
   --room-line: #b7c9d2;
-  --room-ink: #243944;
-  --room-muted: #5a717c;
-  --room-accent: #3d7585;
-  --room-alert: #8a4554;
-  --room-ok: #3d6b5c;
-  --room-warn: #7a5a28;
-  color: #243944 !important;
+  /* 字色加深：主题底不变，标题/正文/次要说明拉开对比。 */
+  --room-ink: #142830;
+  --room-muted: #4a5d68;
+  --room-accent: #1287a3;
+  --room-alert: #c23d55;
+  --room-ok: #1a9a72;
+  --room-warn: #c4841a;
+  color: #142830 !important;
   background: #e2eaee !important;
   border-left: 1px solid #b7c9d2 !important;
   border-left-color: #b7c9d2 !important;
@@ -725,7 +1094,7 @@
   /* 压制病房/走廊面板内遗留的深色 HUD 装饰 */
   .ward-info-panel,
   .area-dashboard {
-    color: #243944 !important;
+    color: #142830 !important;
     scrollbar-color: #9aafb8 transparent;
 
     &::before,
@@ -738,13 +1107,19 @@
     }
   }
 
+  .ward-info-panel h2,
   .ward-info-panel h3,
   .area-dashboard h3,
+  .hospital-intro__title,
   .dash-head__title,
   .door-staff-cards__title,
-  .status-history h3 {
-    color: #294c58 !important;
+  .status-history h3,
+  .alert-task__head strong,
+  .alert-task-panel__heading {
+    color: #0c1a22 !important;
+    font-weight: 700 !important;
     text-shadow: none !important;
+    letter-spacing: 0.01em;
   }
 
   :is(
@@ -765,7 +1140,7 @@
     .alert-task-panel,
     .room-card
   ) {
-    color: #243944 !important;
+    color: #142830 !important;
     background: #f7fbfd !important;
     border: 1px solid #c5d5dd !important;
     border-radius: 8px !important;
@@ -796,7 +1171,7 @@
   }
 
   .ward-bed-nav {
-    color: #243944 !important;
+    color: #142830 !important;
     background: #f7fbfd !important;
     border-color: #c5d5dd !important;
     box-shadow: 0 1px 2px rgba(35, 68, 84, 0.05) !important;
@@ -806,11 +1181,11 @@
   .ward-bed-nav p,
   .ward-call-list__note,
   .ward-call-list__time {
-    color: #5a717c !important;
+    color: #4a5d68 !important;
   }
 
   .ward-bed-nav label::before {
-    background: #3d7585 !important;
+    background: #2f6a7a !important;
     box-shadow: none !important;
   }
 
@@ -820,7 +1195,7 @@
   .area-dashboard__back-station,
   .close-btn,
   .task-card__actions button {
-    color: #2a4d5a !important;
+    color: #1a3642 !important;
     background: #eef4f7 !important;
     border: 1px solid #b7c9d2 !important;
     box-shadow: none !important;
@@ -831,9 +1206,9 @@
   .ward-call-list button:hover:not(:disabled),
   .area-dashboard__back-station:hover,
   .task-card__actions button:hover {
-    color: #1e3642 !important;
+    color: #0c1a22 !important;
     background: #e2eaee !important;
-    border-color: #3d7585 !important;
+    border-color: #2f6a7a !important;
   }
 
   .ward-bed-nav button:disabled {
@@ -856,7 +1231,7 @@
     .alert-task,
     .bed-list__item
   ) {
-    color: #243944 !important;
+    color: #142830 !important;
     background: #eef4f7 !important;
     border: 1px solid #c5d5dd !important;
     border-radius: 8px !important;
@@ -874,20 +1249,244 @@
     border-color: #9aafb8 !important;
   }
 
+  /* 重点数据：饱和色 + 加粗，标签保持中性灰。 */
   .stat-chip__val,
   .person-card__value,
   .hospital-intro__metric-value,
   .monitor-row__percent {
-    color: #3d7585 !important;
+    color: #1287a3 !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.01em;
     text-shadow: none !important;
   }
 
-  .stat-chip--occupied .stat-chip__val { color: #3d6b5c !important; }
-  .stat-chip--empty .stat-chip__val { color: #5a717c !important; }
+  .hospital-intro__name {
+    color: #0c1a22 !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.01em;
+  }
+
+  .hospital-intro__expand {
+    color: #1287a3 !important;
+    font-weight: 700 !important;
+  }
+
+  .hospital-intro__metric {
+    box-shadow: inset 3px 0 0 #1287a3 !important;
+  }
+
+  .hospital-intro__metric-value small {
+    color: #4a5d68 !important;
+    font-weight: 600 !important;
+  }
+
+  .hospital-intro__metric--empty {
+    box-shadow: inset 3px 0 0 #9aafb8 !important;
+  }
+
+  .hospital-intro__metric--empty .hospital-intro__metric-value {
+    color: #6a7d88 !important;
+    font-weight: 700 !important;
+  }
+
+  .hospital-intro__metric--empty .hospital-intro__metric-symbol {
+    color: #8aa0aa !important;
+    opacity: 0.7 !important;
+  }
+
+  .hospital-intro__metric--patient {
+    box-shadow: inset 3px 0 0 #1a9a72 !important;
+    background: #f2faf6 !important;
+  }
+
+  .hospital-intro__metric--patient .hospital-intro__metric-value {
+    color: #1a9a72 !important;
+  }
+
+  .hospital-intro__metric--patient .hospital-intro__metric-symbol {
+    color: #1a9a72 !important;
+  }
+
+  .hospital-intro__metric--rate-high {
+    box-shadow: inset 3px 0 0 #c4841a !important;
+    background: #fffbf3 !important;
+  }
+
+  .hospital-intro__metric--rate-high .hospital-intro__metric-value {
+    color: #c4841a !important;
+  }
+
+  .hospital-intro__metric--rate-high .hospital-intro__metric-symbol {
+    color: #c4841a !important;
+  }
+
+  .hospital-intro__metric--rate-mid .hospital-intro__metric-value,
+  .hospital-intro__metric--rate .hospital-intro__metric-value,
+  .hospital-intro__metric--capacity .hospital-intro__metric-value,
+  .hospital-intro__metric--device .hospital-intro__metric-value {
+    color: #1287a3 !important;
+  }
+
+  .stat-chip--occupied .stat-chip__val { color: #1a9a72 !important; }
+  .stat-chip--empty .stat-chip__val { color: #5a6d78 !important; }
+  .stat-chip--alert .stat-chip__val,
+  .stat-chip--calling .stat-chip__val { color: #d4455e !important; }
+
+  /* 病房侧栏：房号 / 床位计数 / 呼叫条数 / 巡视状态 */
+  .ward-info-panel__header h2 {
+    color: #0c1a22 !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.01em;
+  }
+
+  .ward-info-panel__subtitle {
+    color: #4a5d68 !important;
+    font-weight: 500 !important;
+  }
+
+  .ward-bed-nav label {
+    color: #4a5d68 !important;
+  }
+
+  .ward-bed-nav__count {
+    font-weight: 800 !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ward-bed-nav__count--occupied {
+    color: #1a9a72 !important;
+  }
+
+  .ward-bed-nav__count--empty {
+    color: #c4841a !important;
+  }
+
+  .ward-bed-nav__count--zero {
+    color: #6a7d88 !important;
+    font-weight: 700 !important;
+  }
+
+  .ward-call-list header > strong {
+    color: #0c1a22 !important;
+    font-weight: 700 !important;
+  }
+
+  .ward-call-list__count {
+    font-weight: 800 !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ward-call-list__count--active {
+    color: #c23d55 !important;
+  }
+
+  .ward-call-list__count--zero {
+    color: #6a7d88 !important;
+    font-weight: 700 !important;
+  }
+
+  .ward-call-list__time {
+    color: #4a5d68 !important;
+    font-weight: 500 !important;
+  }
+
+  .ward-info-panel__stats .stat-chip {
+    box-shadow: inset 3px 0 0 #1287a3 !important;
+  }
+
+  .ward-info-panel__stats .stat-chip--occupied {
+    box-shadow: inset 3px 0 0 #1a9a72 !important;
+    background: #f2faf6 !important;
+  }
+
+  .ward-info-panel__stats .stat-chip--empty {
+    box-shadow: inset 3px 0 0 #9aafb8 !important;
+  }
+
+  .ward-info-panel__stats .stat-chip__val {
+    font-weight: 800 !important;
+  }
+
+  .inspection-card__head strong {
+    font-weight: 800 !important;
+  }
+
+  .ward-info-panel__inspection--normal .inspection-card__head strong {
+    color: #1a9a72 !important;
+  }
+
+  .ward-info-panel__inspection--due .inspection-card__head strong {
+    color: #c4841a !important;
+  }
+
+  .ward-info-panel__inspection--overdue .inspection-card__head strong {
+    color: #c23d55 !important;
+  }
+
+  .ward-info-panel__inspection--unknown .inspection-card__head strong,
+  .ward-info-panel__inspection--no-record .inspection-card__head strong {
+    color: #6a7d88 !important;
+  }
+
+  .dash-head__count,
+  .alert-task-panel__filters button strong,
+  .alert-task-panel__remaining strong,
+  .door-staff-cards__title-count {
+    color: #1287a3 !important;
+    font-weight: 700 !important;
+  }
+
+  .alert-task-panel__summary strong,
+  .inspection-card__head strong {
+    color: #1287a3 !important;
+    font-weight: 700 !important;
+  }
+
+  .monitor-row__bar i {
+    background: #1287a3 !important;
+  }
+
+  .person-card__ring {
+    color: #1287a3 !important;
+  }
+
+  .alert-task__severity,
+  .alert-task__signal {
+    color: #c23d55 !important;
+    background: #f8e6ea !important;
+    font-weight: 700 !important;
+  }
+
+  .alert-task--critical .alert-task__severity,
+  .alert-task--high.alert-task--critical .alert-task__severity {
+    color: #fff !important;
+    background: #c23d55 !important;
+  }
+
+  .alert-task__meta-live {
+    color: #1a9a72 !important;
+    background: #e3f4ec !important;
+    border-color: #a8d4bf !important;
+    font-weight: 600 !important;
+  }
+
+  .status-history__item--call .label { color: #c23d55 !important; font-weight: 700 !important; }
+  .status-history__item--env .label { color: #c4841a !important; font-weight: 700 !important; }
+
+  .room-card__enter {
+    color: #f7fbfd !important;
+    background: #1287a3 !important;
+    border-color: #1287a3 !important;
+    font-weight: 700 !important;
+  }
+
+  .room-card__enter:hover {
+    background: #0f738c !important;
+    filter: none;
+  }
 
   :is(
     .hospital-intro__note,
-    .hospital-intro__name,
     .hospital-intro__metric-label,
     .ward-info-panel__subtitle,
     .stat-chip__label,
@@ -906,16 +1505,17 @@
     .ward-info-panel__inspection p,
     .ward-info-panel__hint > p
   ) {
-    color: #5a717c !important;
+    color: #4a5d68 !important;
   }
 
   :is(.staff-role-card__name, .bed-patient, .bed-name, .room-card__name, .feed__text, .status-history .label) {
-    color: #243944 !important;
+    color: #0c1a22 !important;
+    font-weight: 600 !important;
     text-shadow: none !important;
   }
 
-  .status-history__item--call .label { color: #8a4554 !important; }
-  .status-history__item--env .label { color: #7a5a28 !important; }
+  .status-history__item--call .label { color: #c23d55 !important; font-weight: 700 !important; }
+  .status-history__item--env .label { color: #c4841a !important; font-weight: 700 !important; }
 
   .status-history {
     background: #f7fbfd !important;
@@ -929,7 +1529,8 @@
   }
 
   .status-history h3 {
-    color: #294c58 !important;
+    color: #0c1a22 !important;
+    font-weight: 700 !important;
     text-shadow: none !important;
   }
 
@@ -956,16 +1557,17 @@
   .monitor-row__tag,
   .room-card__badge,
   .room-card__priority {
-    color: #3a6572 !important;
-    background: #e2eaee !important;
-    border: 1px solid #b7c9d2 !important;
+    color: #1287a3 !important;
+    background: #e2f3f7 !important;
+    border: 1px solid #9ecbd6 !important;
     border-radius: 4px !important;
+    font-weight: 700 !important;
   }
 
   .person-card__ring {
     background: #f7fbfd !important;
-    border-color: #b7c9d2 !important;
-    color: #3d7585 !important;
+    border-color: #9ecbd6 !important;
+    color: #1287a3 !important;
     box-shadow: none !important;
   }
 
@@ -1001,12 +1603,13 @@
 
     .room-card__enter {
       color: #f7fbfd !important;
-      background: #3d7585 !important;
-      border-color: #3d7585 !important;
+      background: #1287a3 !important;
+      border-color: #1287a3 !important;
+      font-weight: 700 !important;
     }
 
     .room-card__enter:hover {
-      background: #346574 !important;
+      background: #0f738c !important;
       filter: none;
     }
   }
@@ -1016,25 +1619,27 @@
   }
 
   .monitor-row__bar i {
-    background: #3d7585 !important;
+    background: #1287a3 !important;
   }
 
   .alert-task {
-    --task-accent: #8a4554;
+    --task-accent: #c23d55;
     border-left: 3px solid var(--task-accent) !important;
   }
 
   .alert-task__severity,
   .alert-task__signal {
-    color: #8a4554 !important;
-    background: #f0e2e5 !important;
+    color: #c23d55 !important;
+    background: #f8e6ea !important;
     border-radius: 4px;
+    font-weight: 700 !important;
   }
 
   .alert-task__meta-live {
-    color: #3d6b5c !important;
-    background: #dfeae4 !important;
-    border-color: #b7c9d2 !important;
+    color: #1a9a72 !important;
+    background: #e3f4ec !important;
+    border-color: #a8d4bf !important;
+    font-weight: 600 !important;
   }
 
   .alert-task__meta span {
@@ -1052,21 +1657,23 @@
   }
 
   .alert-task-panel__filters button.is-active {
-    color: #3d7585 !important;
+    color: #1287a3 !important;
     background: #f7fbfd !important;
-    border-color: #b7c9d2 !important;
+    border-color: #9ecbd6 !important;
   }
 
   .alert-task-panel__filters button strong {
-    color: #3a6572 !important;
-    background: #e2eaee !important;
+    color: #1287a3 !important;
+    background: #e2f3f7 !important;
+    font-weight: 700 !important;
   }
 
   .alert-task__locate,
   .alert-task-panel__more button {
-    color: #3a6572 !important;
+    color: #1287a3 !important;
     background: #eef4f7 !important;
-    border-color: #b7c9d2 !important;
+    border-color: #9ecbd6 !important;
+    font-weight: 600 !important;
   }
 
   .other-care-card {
@@ -1332,11 +1939,11 @@
   .hospital-intro__mark { width: 3px; height: 14px; background: var(--room-accent); clip-path: none; border: 0; }
   .hospital-intro__line { background: var(--room-line); height: 1px; }
   .hospital-intro__footer { margin: 0 0 12px; padding: 0; border: 0; gap: 10px; }
-  .hospital-intro__name { color: var(--room-ink) !important; font-size: 20px; line-height: 1.45; font-weight: 600; overflow-wrap: anywhere; }
+  .hospital-intro__name { color: var(--room-ink) !important; font-size: 22px; line-height: 1.35; font-weight: 800; overflow-wrap: anywhere; }
   .hospital-intro__logo { width: 36px; height: 36px; border: 1px solid var(--room-line); border-radius: 8px; flex-shrink: 0; }
   .hospital-intro__note { max-height: none; overflow: visible; margin: 0; color: var(--room-muted) !important; font-size: 14px; line-height: 1.85; text-align: left; overflow-wrap: anywhere; }
   .hospital-intro__note--collapsed { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-  .hospital-intro__expand { display: flex; align-items: center; gap: 8px; min-height: 32px; margin-top: 5px; padding: 0; border: 0; background: transparent; color: var(--room-accent); font: inherit; font-size: 12px; cursor: pointer; }
+  .hospital-intro__expand { display: flex; align-items: center; gap: 8px; min-height: 32px; margin-top: 5px; padding: 0; border: 0; background: transparent; color: var(--room-accent); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
   .hospital-intro__expand:hover { text-decoration: underline; }
   .hospital-intro__expand:focus-visible { outline: 2px solid var(--room-accent); outline-offset: 3px; border-radius: 3px; }
   .hospital-intro__grid { grid-template-columns: repeat(auto-fit, minmax(82px, 1fr)); gap: 8px; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--room-line); }
@@ -1344,8 +1951,8 @@
   .hospital-intro__metric-symbol { position: absolute; width: 17px; height: 17px; right: 10px; top: 12px; color: var(--room-accent); opacity: .75; }
   .hospital-intro__metric-label { display: block; padding-right: 22px; font-size: 12px; line-height: 1.5; }
   .hospital-intro__metric-body { gap: 10px; }
-  .hospital-intro__metric-value { font-size: 28px; line-height: 1.1; font-weight: 600; overflow-wrap: anywhere; }
-  .hospital-intro__metric-value small { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--room-muted); }
+  .hospital-intro__metric-value { font-size: 28px; line-height: 1.1; font-weight: 800; overflow-wrap: anywhere; }
+  .hospital-intro__metric-value small { margin-left: 4px; font-size: 12px; font-weight: 600; color: var(--room-muted); }
   .hospital-intro__loading { color: var(--room-muted); padding: 12px 0; }
 }
 
@@ -1378,6 +1985,109 @@
   .alert-task__meta-live::before { animation: none; box-shadow: none; }
   .alert-task__actions { border-left-color: var(--call-line); }
   .alert-task__unlocated { color: var(--call-disabled) !important; background: var(--call-disabled-bg); border: 1px solid var(--call-line); border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 500; white-space: nowrap; svg { color: inherit; } }
+}
+
+/* 仅走廊异常闭环（compact 且非护士站待办）加高；护士站待办另走 workspace 节奏 */
+.digital-twin[data-theme] .alert-task-panel--compact:not(.alert-task-panel--workspace) {
+  overflow: visible;
+
+  .alert-task-panel__list {
+    gap: 12px;
+    max-height: min(58vh, 520px);
+    padding: 2px 2px 12px;
+    margin: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  .alert-task,
+  .alert-task--swp-call {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    height: auto;
+    min-height: 188px;
+    padding: 14px 14px 18px !important;
+    overflow: visible !important;
+    box-sizing: border-box;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    align-content: start;
+  }
+
+  .alert-task--swp-call,
+  .alert-task--critical.alert-task--pending {
+    min-height: 200px;
+  }
+
+  .alert-task--swp-call {
+    &::before,
+    &::after {
+      display: none !important;
+      content: none !important;
+      box-shadow: none !important;
+    }
+
+    .alert-task__actions {
+      border-left: 0 !important;
+      border-top: 1px solid var(--call-line, #789baa26);
+      padding: 12px 0 2px !important;
+      margin: 0;
+      width: 100%;
+      max-width: none;
+      min-height: 40px;
+      height: auto;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-self: start;
+      gap: 8px;
+    }
+  }
+}
+
+.digital-twin[data-theme='light'] .alert-task-panel--compact:not(.alert-task-panel--workspace) {
+  .alert-task,
+  .alert-task--swp-call {
+    border-color: #c5d5dd !important;
+  }
+
+  .alert-task--swp-call.alert-task--critical {
+    border-left-color: #bc4a5c !important;
+  }
+
+  .alert-task-panel__list {
+    padding-bottom: 14px;
+  }
+}
+
+/* 护士站待办：保持紧凑两列，不被走廊加高样式影响 */
+.digital-twin[data-theme] .alert-task-panel--compact.alert-task-panel--workspace {
+  .alert-task-panel__list {
+    gap: 10px;
+    max-height: none;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .alert-task--workspace {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 12px 14px !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: none !important;
+    align-content: stretch;
+  }
+
+  .alert-task--workspace .alert-task__actions {
+    width: auto;
+    min-width: 60px;
+    max-width: none;
+    min-height: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    flex-direction: column;
+    align-self: center;
+  }
 }
 .digital-twin[data-theme='light'] .alert-task-panel .alert-task--swp-call {
   --call-ink: #294b59; --call-copy: #496876; --call-muted: #597582; --call-line: #c5dce6;

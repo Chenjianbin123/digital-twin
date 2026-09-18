@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { HospAreaRecord } from '@/types/hospital-area';
+import { areaMetricValue } from '@/core/hospital-area';
 
 const props = defineProps<{
   open: boolean;
@@ -86,6 +87,20 @@ function confirmSwitch() {
     emit('switch', candidateAreaId.value);
 }
 
+function areaCodeLabel(area: HospAreaRecord) {
+  return area.areaCode || area.areaOutCode || '未设置编号';
+}
+
+function metricTone(key: 'people' | 'occupied' | 'bed' | 'room' | 'device', value: number) {
+  if (value === 0)
+    return 'zero';
+  return key;
+}
+
+function metric(area: HospAreaRecord, key: 'peopleCount' | 'occupiedCount' | 'bedCount' | 'roomCount' | 'deviceCount') {
+  return areaMetricValue(area, key);
+}
+
 function getFocusableElements() {
   if (!drawerRef.value)
     return [];
@@ -162,7 +177,7 @@ onBeforeUnmount(() => {
           <div>
             <span class="area-switcher__eyebrow" aria-hidden="true">WARD WORKSPACE</span>
             <h2 id="area-switcher-title">切换工作病区</h2>
-            <p>当前：{{ currentArea?.areaName ?? '当前病区' }}</p>
+            <p>当前：<strong class="area-switcher__current-name">{{ currentArea?.areaName ?? '当前病区' }}</strong></p>
           </div>
           <button
             type="button"
@@ -196,8 +211,40 @@ onBeforeUnmount(() => {
             >
               <svg class="area-switcher__ward-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3h14v18M3 21h18M9 21v-5h6v5M9 7h2m2 0h2M9 11h2m2 0h2"/></svg>
               <span class="area-switcher__row-copy">
-                <strong>{{ areaOption.areaName }}</strong>
-                <span>{{ areaOption.areaCode || areaOption.areaOutCode || '未设置编号' }}</span>
+                <strong class="area-switcher__row-name">{{ areaOption.areaName }}</strong>
+                <span class="area-switcher__row-code">{{ areaCodeLabel(areaOption) }}</span>
+                <span class="area-switcher__metrics">
+                  <span
+                    class="area-switcher__metric"
+                    :class="`area-switcher__metric--${metricTone('people', metric(areaOption, 'peopleCount'))}`"
+                  >
+                    总人数 <em>{{ metric(areaOption, 'peopleCount') }}</em>
+                  </span>
+                  <span
+                    class="area-switcher__metric"
+                    :class="`area-switcher__metric--${metricTone('occupied', metric(areaOption, 'occupiedCount'))}`"
+                  >
+                    在院 <em>{{ metric(areaOption, 'occupiedCount') }}</em>
+                  </span>
+                  <span
+                    class="area-switcher__metric"
+                    :class="`area-switcher__metric--${metricTone('bed', metric(areaOption, 'bedCount'))}`"
+                  >
+                    床位 <em>{{ metric(areaOption, 'bedCount') }}</em>
+                  </span>
+                  <span
+                    class="area-switcher__metric"
+                    :class="`area-switcher__metric--${metricTone('room', metric(areaOption, 'roomCount'))}`"
+                  >
+                    病房 <em>{{ metric(areaOption, 'roomCount') }}</em>
+                  </span>
+                  <span
+                    class="area-switcher__metric"
+                    :class="`area-switcher__metric--${metricTone('device', metric(areaOption, 'deviceCount'))}`"
+                  >
+                    设备 <em>{{ metric(areaOption, 'deviceCount') }}</em>
+                  </span>
+                </span>
               </span>
               <span v-if="areaOption.id === currentAreaId" class="area-switcher__badge">当前</span>
               <span v-else class="area-switcher__check" :class="{ 'area-switcher__check--selected': areaOption.id === candidateAreaId }" aria-hidden="true">{{ areaOption.id === candidateAreaId ? '✓' : '›' }}</span>
@@ -521,18 +568,48 @@ onBeforeUnmount(() => {
  &__search { min-height: 44px; border-radius: 8px; margin-bottom: 14px; }
  &__search svg { width: 18px; height: 18px; flex-shrink: 0; }
  &__list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 13px; color: #b1cbd6; }
- &__list-head strong { padding: 2px 7px; margin-left: 5px; border-radius: 4px; background: #75b7ca14; color: var(--switcher-accent); font-variant-numeric: tabular-nums; }
+ &__list-head strong { padding: 2px 7px; margin-left: 5px; border-radius: 4px; background: #75b7ca14; color: var(--switcher-accent); font-weight: 800; font-variant-numeric: tabular-nums; }
  &__list-head small { font-size: 12px; }
  &__list { gap: 9px; }
- &__row { min-height: 76px; padding: 14px; border-radius: 8px; gap: 12px; }
- &__row-copy { flex: 1; }
- &__row-copy strong { font-size: 15px; font-weight: 600; }
- &__row-copy span { font-family: "Bahnschrift", "Segoe UI", sans-serif; font-size: 12px; letter-spacing: .04em; }
- &__ward-icon { width: 36px; height: 40px; flex: 0 0 36px; padding: 7px; border: 1px solid var(--switcher-line); border-radius: 6px; color: #75adc0; background: #75b7ca0b; }
+ &__row { min-height: 88px; padding: 14px; border-radius: 8px; gap: 12px; align-items: flex-start; }
+ &__row-copy { flex: 1; min-width: 0; display: grid; gap: 4px; }
+ &__row-name { display: block; color: #f2fbff; font-size: 16px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+ &__row-code { display: block; color: #8eacb9; font-family: "Bahnschrift", "Segoe UI", sans-serif; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+ &__current-name { color: var(--switcher-accent); font-weight: 800; }
+ &__metrics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+ &__metric {
+   display: inline-flex; align-items: baseline; gap: 4px;
+   padding: 3px 8px;
+   border-radius: 5px;
+   background: rgba(125, 221, 225, 0.08);
+   color: #a8c2cd; font-size: 12px; font-weight: 600; line-height: 1.3;
+   em {
+     font-family: "Bahnschrift", "Segoe UI", sans-serif;
+     font-style: normal; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums;
+     letter-spacing: 0.01em;
+     color: #7ddde1;
+   }
+ }
+ &__metric--people {
+   background: rgba(125, 221, 225, 0.14);
+   em { color: #8af0f4; }
+ }
+ &__metric--occupied {
+   background: rgba(157, 244, 191, 0.12);
+   em { color: #9df4bf; }
+ }
+ &__metric--bed em,
+ &__metric--room em,
+ &__metric--device em { color: #7ddde1; }
+ &__metric--zero {
+   background: rgba(127, 150, 160, 0.08);
+   em { color: #7f96a0; font-weight: 700; }
+ }
+ &__ward-icon { width: 36px; height: 40px; flex: 0 0 36px; padding: 7px; border: 1px solid var(--switcher-line); border-radius: 6px; color: #75adc0; background: #75b7ca0b; margin-top: 2px; }
  &__row--candidate &__ward-icon { color: var(--switcher-accent); background: #75b7ca20; }
- &__check { opacity: .55; font-size: 22px; }
+ &__check { opacity: .55; font-size: 22px; margin-top: 6px; }
  &__check--selected { opacity: 1; font-size: 16px; }
- &__badge { font-size: 11px; font-weight: 600; padding: 4px 7px; }
+ &__badge { font-size: 11px; font-weight: 700; padding: 4px 7px; margin-top: 4px; color: #0d303a; background: #9bcec9; }
  &__footer { margin-top: 12px; padding-top: 16px; }
  &__hint { font-size: 13px; }
  &__confirm { min-height: 46px; border-radius: 7px; font-size: 14px; font-weight: 600; }

@@ -1143,6 +1143,8 @@ export function buildHospitalWardDoor(
     new THREE.BoxGeometry(0.045, leafH, leafW),
     glassMat,
   );
+  doorLeaf.name = 'WardDoorLeaf';
+  doorLeaf.userData.role = 'wardCorridorDoor';
   doorLeaf.position.set(doorX + faceOffset, doorH / 2, 0);
   parent.add(doorLeaf);
 
@@ -1155,6 +1157,7 @@ export function buildHospitalWardDoor(
       roughness: 0.95,
     }),
   );
+  frostedBand.userData.role = 'wardCorridorDoor';
   frostedBand.position.set(doorX + faceOffset + towardCorridor * 0.028, doorH * 0.68, 0);
   parent.add(frostedBand);
 
@@ -1162,6 +1165,7 @@ export function buildHospitalWardDoor(
     new THREE.BoxGeometry(0.02, 0.22, leafW - 0.06),
     kickPlateMat,
   );
+  kickPlate.userData.role = 'wardCorridorDoor';
   kickPlate.position.set(doorX + faceOffset + towardCorridor * 0.024, 0.13, 0);
   parent.add(kickPlate);
 
@@ -1169,6 +1173,7 @@ export function buildHospitalWardDoor(
     new THREE.BoxGeometry(0.03, 0.05, 0.28),
     frameDarkMat,
   );
+  handle.userData.role = 'wardCorridorDoor';
   handle.position.set(
     doorX + faceOffset + towardCorridor * 0.035,
     1.02,
@@ -1180,6 +1185,7 @@ export function buildHospitalWardDoor(
     new THREE.CylinderGeometry(0.014, 0.014, 0.26, 10),
     frameDarkMat,
   );
+  handleBar.userData.role = 'wardCorridorDoor';
   handleBar.rotation.x = Math.PI / 2;
   handleBar.position.set(
     doorX + faceOffset + towardCorridor * 0.042,

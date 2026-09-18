@@ -190,10 +190,12 @@ function clampedPercent(value: number | null | undefined) {
 
   &__detail { margin-top: 5px; }
   &--blue { color: #7aa8ff; }
+  &--cyan { color: #68e5ff; }
   &--green { color: #9df4bf; }
   &--alert { color: #ff86b3; }
   &--infusion { color: #8de7ff; }
   &--warn { color: #ffd080; }
+  &--empty > strong { color: rgba(190, 225, 238, 0.55); }
 }
 
 @media (max-width: 1199px) {

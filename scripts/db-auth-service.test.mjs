@@ -18,7 +18,7 @@ function createFixture(overrides = {}) {
     },
     roles: [{ id: 3, roleName: '护士', roleCode: 'nurse' }],
     roleAllowed: true,
-    areas: [{ id: 72, areaCode: '2001', areaName: '一病区', roomCount: 6, bedCount: 12, deviceCount: 18 }],
+    areas: [{ id: 72, areaCode: '2001', areaName: '一病区', roomCount: 6, bedCount: 12, deviceCount: 18, occupiedCount: 4 }],
     area: { id: 72, area_code: '2001', area_out_code: 'A-2001' },
     areaAllowed: true,
     areaListAllowed: true,
@@ -86,7 +86,7 @@ test('role confirmation and area access are verified on the server', async () =>
   assert.deepEqual(await service.confirmRole('pending-17', 3), { token: 'session-17-3' });
   await assert.rejects(createFixture({ roleAllowed: false }).service.confirmRole('pending-17', 3), /无权使用该角色/);
   assert.deepEqual(await service.listAuthorizedAreas('session-17-3'), [
-    { id: 72, areaCode: '2001', areaName: '一病区', roomCount: 6, bedCount: 12, deviceCount: 18 },
+    { id: 72, areaCode: '2001', areaName: '一病区', roomCount: 6, bedCount: 12, deviceCount: 18, occupiedCount: 4 },
   ]);
   assert.equal((await service.assertAreaAccess('session-17-3', '2001')).id, 72);
   await assert.rejects(createFixture({ areaAllowed: false }).service.assertAreaAccess('session-17-3', '2001'), /无权访问该病区/);
@@ -106,7 +106,7 @@ test('administrator and nurse roles can list and enter every enabled area', asyn
       areaAllowed: false,
     });
     assert.deepEqual(await service.listAuthorizedAreas('session-17-3'), [
-      { id: 72, areaCode: '2001', areaName: '一病区', roomCount: 6, bedCount: 12, deviceCount: 18 },
+      { id: 72, areaCode: '2001', areaName: '一病区', roomCount: 6, bedCount: 12, deviceCount: 18, occupiedCount: 4 },
     ]);
     assert.equal((await service.assertAreaAccess('session-17-3', '2001')).id, 72);
   }

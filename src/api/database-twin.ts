@@ -10,6 +10,7 @@ export interface DatabaseAreaOption {
   roomCount: number;
   bedCount: number;
   deviceCount: number;
+  occupiedCount?: number;
 }
 
 export interface DatabaseTwinPayload {

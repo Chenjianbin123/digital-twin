@@ -83,6 +83,7 @@ import type {
 import type { EnvAlertResult } from '@/core/env-alert';
 import type { HospitalInfo } from '@/types/hospital';
 import type { HospAreaRecord } from '@/types/hospital-area';
+import { summarizeTwinAreaOccupancy } from '@/core/hospital-area';
 import type { DoorEnvParams, StatusBarInfo } from '@/types/ward';
 import { getAreaId } from '@/utils/device-cache';
 import type { DataPhase } from '@/core/data-status';
@@ -474,11 +475,18 @@ export const useTwinStore = defineStore('twin', () => {
             areaCode: item.areaCode,
             areaOutCode: '',
             isEnable: '1',
+            roomCount: item.roomCount ?? 0,
+            bedCount: item.bedCount ?? 0,
+            deviceCount: item.deviceCount ?? 0,
+            occupiedCount: item.occupiedCount ?? 0,
+            peopleCount: item.occupiedCount ?? 0,
           }))
         : allowAllAreaAccessPolicy.filterAreas(await fetchHospitalAreas());
       if (!areaListRequestGuard.isCurrent(requestToken))
         return;
       areaOptions.value = areas;
+      if (area.value && selectedAreaId.value != null)
+        syncAreaOptionStats(selectedAreaId.value, area.value);
       const storedId = readStoredAreaId();
       rememberedAreaId.value = resolveRememberedAreaId(areas, storedId);
       preferredAreaId.value = resolvePreferredAreaId(areas, storedId, getAreaId());
@@ -565,6 +573,23 @@ export const useTwinStore = defineStore('twin', () => {
     };
   }
 
+  function syncAreaOptionStats(areaId: number, twinArea: TwinAreaEntity) {
+    const index = areaOptions.value.findIndex(item => item.id === areaId);
+    if (index < 0)
+      return;
+    const current = areaOptions.value[index];
+    const stats = summarizeTwinAreaOccupancy(twinArea);
+    if (
+      current.roomCount === stats.roomCount
+      && current.bedCount === stats.bedCount
+      && current.occupiedCount === stats.occupiedCount
+      && current.peopleCount === stats.peopleCount
+      && current.deviceCount === stats.deviceCount
+    )
+      return;
+    areaOptions.value[index] = { ...current, ...stats };
+  }
+
   async function commitRequestedArea(areaId: number, mode: 'enter' | 'switch'): Promise<boolean> {
     const requestToken = areaRequestGuard.begin();
     pendingAreaId.value = areaId;
@@ -580,6 +605,7 @@ export const useTwinStore = defineStore('twin', () => {
       hospitalInfo.value = snapshot.hospitalInfo;
       dataWarnings.value = snapshot.warnings;
       selectedAreaId.value = areaId;
+      syncAreaOptionStats(areaId, snapshot.area);
       resetSwpEventState();
       rememberedAreaId.value = areaId;
       selectionGeneration += 1;
@@ -674,6 +700,7 @@ export const useTwinStore = defineStore('twin', () => {
       deviceCodes.value = snapshot.deviceCodes;
       hospitalInfo.value = snapshot.hospitalInfo;
       dataWarnings.value = snapshot.warnings;
+      syncAreaOptionStats(areaId, snapshot.area);
       if (options.preserveScene) {
         sceneType.value = previousSceneType;
         currentRoomIndex.value = restoreRoomIndexByIdentity(snapshot.area.rooms, previousRoom, previousRoomIndex);

@@ -25,7 +25,16 @@ function choose(event: Event) {
 </script>
 <template>
   <nav class="ward-bed-nav" aria-label="病房床位切换">
-    <label for="ward-bed-picker">床位 · 已入住 {{ groups.occupied.length }} / 空床 {{ groups.empty.length }}</label>
+    <label for="ward-bed-picker">
+      床位 · 已入住
+      <strong class="ward-bed-nav__count ward-bed-nav__count--occupied">{{ groups.occupied.length }}</strong>
+      /
+      空床
+      <strong
+        class="ward-bed-nav__count"
+        :class="groups.empty.length ? 'ward-bed-nav__count--empty' : 'ward-bed-nav__count--zero'"
+      >{{ groups.empty.length }}</strong>
+    </label>
     <div class="ward-bed-nav__controls">
       <button type="button" :disabled="index <= 0" @click="move(-1)">上一床</button>
       <select id="ward-bed-picker" :value="selectedBed?.bedCode ?? ''" @change="choose">
@@ -84,10 +93,20 @@ function choose(event: Event) {
   }
 
   label {
-    display: flex; align-items: center; gap: 7px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
     margin-bottom: 10px; color: var(--ward-nav-muted);
     font-size: 12px; font-weight: 600; letter-spacing: .025em;
   }
+  .ward-bed-nav__count {
+    font-family: "Bahnschrift", "Segoe UI", sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--ward-nav-accent);
+  }
+  .ward-bed-nav__count--occupied { color: #9df4bf; }
+  .ward-bed-nav__count--empty { color: #ffd080; }
+  .ward-bed-nav__count--zero { color: var(--ward-nav-muted); font-weight: 700; }
   label::before {
     content: ""; width: 4px; height: 4px; flex: 0 0 4px;
     border-radius: 50%; background: var(--ward-nav-accent);

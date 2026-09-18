@@ -425,14 +425,14 @@ test('unifies corridor door and chair blues with the nurse-station light theme',
   const apply = createCorridorTheme();
   apply(root, false);
   const doorMats = door.material as THREE.MeshStandardMaterial[];
-  assert.equal(doorMats[0].color.getHex(), 0x4f86b0);
-  assert.equal(doorMats[1].color.getHex(), 0xf8fafb);
-  assert.equal((floor.material as THREE.MeshStandardMaterial).color.getHex(), 0xd09c48);
+  assert.equal(doorMats[0].color.getHex(), 0x7cbdee);
+  assert.equal(doorMats[1].color.getHex(), 0xf8f5f0);
+  assert.equal((floor.material as THREE.MeshStandardMaterial).color.getHex(), 0xff9a14);
 
   apply(root, true);
   assert.equal(doorMats[0].color.getHex(), 0x4a7290);
   apply(root, false);
-  assert.equal(doorMats[0].color.getHex(), 0x4f86b0);
+  assert.equal(doorMats[0].color.getHex(), 0x7cbdee);
 });
 
 test('polishes corridor floor materials for subtle reflection', () => {

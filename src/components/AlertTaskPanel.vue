@@ -218,7 +218,10 @@ function taskStatusText(task: AlertTask) {
 <template>
   <section
     class="alert-task-panel"
-    :class="{ 'alert-task-panel--compact': compact }"
+    :class="{
+      'alert-task-panel--compact': compact,
+      'alert-task-panel--workspace': workspace,
+    }"
   >
     <div class="alert-task-panel__heading">
       <svg v-if="compact" class="alert-task-panel__heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M12 5v5m0 3v.1" /></svg>
@@ -424,6 +427,7 @@ function taskStatusText(task: AlertTask) {
 
   &--compact {
     padding: 10px;
+    overflow: visible;
   }
 
   &__toolbar {
@@ -1193,43 +1197,6 @@ function taskStatusText(task: AlertTask) {
   .alert-task-panel__filters button strong { margin-left: 3px; font-weight: 600; color: #c0dce6; background: #87b2bf17; }
   .alert-task-panel__filters button.is-active strong { color: #0d303a; background: #9bcec9; }
   .alert-task-panel__summary { color: #9bb9c8; font-size: dash-font(12); }
-  .alert-task-panel__list { gap: 10px; padding-bottom: 0; }
-  .alert-task {
-    --task-accent: #85c5df;
-    --task-tint: #85c5df0a;
-    min-height: 100px;
-    gap: 16px;
-    padding: 12px 14px;
-    border: 1px solid #65849630;
-    border-left: 3px solid var(--task-accent);
-    border-radius: 8px;
-    background: var(--station-inset, #0c202d);
-    box-shadow: none;
-    animation: none;
-  }
-  .alert-task--critical, .alert-task--waiting-urgent { --task-accent: #f18b9d; --task-tint: #ec7e9610; }
-  .alert-task--high, .alert-task--waiting-attention { --task-accent: #eac28a; --task-tint: #eac28a0d; }
-  .alert-task--handling { background-color: #132e3a; }
-  .alert-task::before, .alert-task::after, .alert-task__scan { display: none; }
-  .alert-task__head { flex-wrap: wrap; gap: 7px; }
-  .alert-task__head strong { font-size: dash-font(14); line-height: 1.5; white-space: normal; overflow-wrap: anywhere; font-weight: 600; }
-  .alert-task__signal { width: 26px; height: 26px; flex-basis: 26px; color: var(--task-accent); border: 1px solid #ed93a33d; border-radius: 7px; background: #ed93a310; box-shadow: none; }
-  .alert-task__signal::before, .alert-task__signal::after { display: none; }
-  .alert-task__signal svg { width: 16px; height: 16px; }
-  .alert-task__severity { padding: 2px 6px; border-radius: 4px; color: var(--task-accent); background: #8caec112; font-size: dash-font(12); font-weight: 600; }
-  .alert-task__type { font-weight: 500; font-size: dash-font(12); }
-  .alert-task p { margin: 8px 0; font-size: dash-font(12); color: #b7cbd7; line-height: 1.6; overflow-wrap: anywhere; }
-  .alert-task__meta { gap: 6px; }
-  .alert-task__meta span { font-size: dash-font(12); font-weight: 400; color: #adc7d4; }
-  .alert-task__meta .alert-task__time { padding-left: 0; background: transparent; }
-  .alert-task__meta .alert-task__meta-live { color: #a1e4d4; border-color: #75c5ad33; background: #2a655c30; }
-  .alert-task__meta-live::before { animation: none; box-shadow: none; }
-  .alert-task__actions { width: max-content; min-width: 104px; max-width: 160px; padding-left: 14px; border-left: 1px solid #789baa26; gap: 8px; }
-  .alert-task__unlocated { gap: 6px; padding: 8px 0; border: 0; background: none; color: #b9c7d0; font-size: dash-font(12); font-weight: 400; white-space: nowrap; }
-  .alert-task__unlocated svg { color: #cbb793; }
-  .alert-task__locate { border-color: #73c4c655; color: #b6f7eb; background: #20525c; box-shadow: none; font-weight: 500; }
-  .alert-task__locate::after { display: none; }
-  .alert-task__recovery-tip { max-width: 140px; font-weight: 400; line-height: 1.6; color: #a6bfcd; }
   .alert-task-panel__more {
     margin-top: 12px;
     padding: 10px 12px;
@@ -1250,11 +1217,155 @@ function taskStatusText(task: AlertTask) {
   .alert-task-panel__more-arrow svg.is-expanded { transform: rotate(-90deg); }
   .alert-task-panel__more-arrow { display: grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; margin: 0; line-height: 1; border-radius: 50%; background: var(--alert-more-arrow-bg, #93d9d416); color: var(--alert-more-arrow-ink, #ade9df); }
 }
+
+/* 走廊异常闭环：加高卡片，操作区在文案下方 */
+.alert-task-panel--compact:not(.alert-task-panel--workspace) {
+  .alert-task-panel__list {
+    gap: 12px;
+    max-height: min(58vh, 520px);
+    padding: 2px 4px 14px 2px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    align-content: start;
+  }
+  .alert-task {
+    --task-accent: #85c5df;
+    --task-tint: #85c5df0a;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    height: auto;
+    min-height: 188px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: start;
+    gap: 10px;
+    padding: 14px 14px 18px;
+    border: 1px solid #65849630;
+    border-left: 3px solid var(--task-accent);
+    border-radius: 10px;
+    background: var(--station-inset, #0c202d);
+    box-shadow: none;
+    animation: none;
+    overflow: visible;
+    box-sizing: border-box;
+  }
+  .alert-task--swp-call,
+  .alert-task--critical.alert-task--pending {
+    min-height: 200px;
+    padding-bottom: 20px;
+  }
+  .alert-task--critical, .alert-task--waiting-urgent { --task-accent: #f18b9d; --task-tint: #ec7e9610; }
+  .alert-task--high, .alert-task--waiting-attention { --task-accent: #eac28a; --task-tint: #eac28a0d; }
+  .alert-task--handling { background-color: #132e3a; }
+  .alert-task::before, .alert-task::after, .alert-task__scan { display: none !important; content: none !important; box-shadow: none !important; }
+  .alert-task__main { min-width: 0; padding-right: 0; }
+  .alert-task__head { flex-wrap: wrap; gap: 7px; }
+  .alert-task__head strong { font-size: dash-font(14); line-height: 1.5; white-space: normal; overflow-wrap: anywhere; font-weight: 600; }
+  .alert-task__signal { width: 26px; height: 26px; flex-basis: 26px; color: var(--task-accent); border: 1px solid #ed93a33d; border-radius: 7px; background: #ed93a310; box-shadow: none; }
+  .alert-task__signal::before, .alert-task__signal::after { display: none; }
+  .alert-task__signal svg { width: 16px; height: 16px; }
+  .alert-task__severity { padding: 2px 6px; border-radius: 4px; color: var(--task-accent); background: #8caec112; font-size: dash-font(12); font-weight: 600; }
+  .alert-task__type { font-weight: 500; font-size: dash-font(12); }
+  .alert-task p { margin: 8px 0; font-size: dash-font(12); color: #b7cbd7; line-height: 1.6; overflow-wrap: anywhere; }
+  .alert-task__meta { gap: 6px; }
+  .alert-task__meta span { font-size: dash-font(12); font-weight: 400; color: #adc7d4; }
+  .alert-task__meta .alert-task__time { padding-left: 0; background: transparent; }
+  .alert-task__meta .alert-task__meta-live { color: #a1e4d4; border-color: #75c5ad33; background: #2a655c30; }
+  .alert-task__meta-live::before { animation: none; box-shadow: none; }
+  .alert-task__actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    align-self: start;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 40px;
+    height: auto;
+    gap: 8px;
+    padding: 12px 0 2px;
+    border-left: 0;
+    border-top: 1px solid #789baa26;
+  }
+  .alert-task__actions--empty { justify-content: flex-start; }
+  .alert-task__actions > button,
+  .alert-task__actions > .alert-task__unlocated {
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 34px;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+  .alert-task__unlocated { gap: 6px; padding: 6px 10px; border: 0; background: none; color: #b9c7d0; font-size: dash-font(12); font-weight: 400; white-space: nowrap; }
+  .alert-task__unlocated svg { color: #cbb793; }
+  .alert-task__locate { border-color: #73c4c655; color: #b6f7eb; background: #20525c; box-shadow: none; font-weight: 500; }
+  .alert-task__locate::after { display: none; }
+  .alert-task__recovery-tip { max-width: none; flex: 1 1 100%; min-width: 0; font-weight: 400; line-height: 1.4; text-align: left; color: #a6bfcd; white-space: normal; }
+}
+
+/* 护士站待办：紧凑两列，不吃走廊加高 */
+.alert-task-panel--compact.alert-task-panel--workspace {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  .alert-task-panel__list {
+    gap: 10px;
+    max-height: none;
+    padding: 0;
+    overflow: visible;
+  }
+  .alert-task--workspace {
+    --task-accent: #85c5df;
+    min-height: 0;
+    height: auto;
+    padding: 12px 14px;
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: none;
+    align-content: stretch;
+    overflow: hidden;
+    border-radius: 10px;
+    animation: none;
+  }
+  .alert-task--workspace.alert-task--swp-call,
+  .alert-task--workspace.alert-task--critical.alert-task--pending {
+    min-height: 0;
+    padding-bottom: 12px;
+  }
+  .alert-task--workspace .alert-task__actions {
+    width: auto;
+    min-width: 60px;
+    max-width: none;
+    min-height: 0;
+    height: auto;
+    padding: 0;
+    border: 0;
+    flex-direction: column;
+    align-self: center;
+    gap: 6px;
+  }
+  .alert-task--workspace .alert-task__recovery-tip {
+    max-width: 108px;
+    flex: none;
+    text-align: center;
+    white-space: normal;
+  }
+}
 @container compact-alerts (max-width: 420px) {
-  .alert-task-panel--compact .alert-task-panel__summary { display: none; }
-  .alert-task-panel--compact .alert-task { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .alert-task-panel--compact .alert-task__actions { width: 100%; min-width: 0; max-width: none; padding: 10px 0 0; border-left: 0; border-top: 1px solid #789baa26; align-items: flex-start; }
-  .alert-task-panel--compact .alert-task__unlocated { padding: 0; min-height: 24px; }
+  .alert-task-panel--compact:not(.alert-task-panel--workspace) .alert-task-panel__summary { display: none; }
+  .alert-task-panel--compact:not(.alert-task-panel--workspace) .alert-task__actions {
+    flex-wrap: wrap;
+  }
+  .alert-task-panel--compact:not(.alert-task-panel--workspace) .alert-task__recovery-tip {
+    flex-basis: 100%;
+    white-space: normal;
+  }
 }
 @container compact-alerts (max-width: 300px) {
   .alert-task-panel--compact .alert-task-panel__filters button { padding-inline: 7px; gap: 2px; }

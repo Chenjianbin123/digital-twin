@@ -19,6 +19,36 @@ assert.deepEqual(areas, [{
   areaCode: 'A03',
   areaOutCode: '',
   isEnable: '1',
+  roomCount: 0,
+  bedCount: 0,
+  occupiedCount: 0,
+  peopleCount: 0,
+  deviceCount: 0,
+}]);
+
+const areasWithStats = normalizeHospitalAreaRecords([
+  {
+    id: 200,
+    areaName: '心内病区',
+    areaCode: '000002',
+    isEnable: '1',
+    roomCount: 8,
+    bedCount: 30,
+    sickNum: 12,
+    deviceCount: 18,
+  },
+]);
+assert.deepEqual(areasWithStats, [{
+  id: 200,
+  areaName: '心内病区',
+  areaCode: '000002',
+  areaOutCode: '',
+  isEnable: '1',
+  roomCount: 8,
+  bedCount: 30,
+  occupiedCount: 12,
+  peopleCount: 12,
+  deviceCount: 18,
 }]);
 assert.deepEqual(allowAllAreaAccessPolicy.filterAreas(areas), areas);
 assert.equal(allowAllAreaAccessPolicy.canSwitchArea(192, 193), true);

@@ -99,6 +99,16 @@ export function createCorridorTheme() {
           std.envMapIntensity = 0.46;
           std.metalness = 0.08;
         }
+        else if (std.name === '材质.008' || std.name === '材质.020' || std.name === '材质.018') {
+          // 导向带自发光一点，避免曝光/环境光把色带洗成灰。
+          const hex = palette[std.name]!;
+          std.color.setHex(hex);
+          std.emissive.setHex(hex);
+          std.emissiveIntensity = 0.16;
+          std.roughness = 0.48;
+          std.envMapIntensity = 0.52;
+          std.metalness = 0.02;
+        }
         std.needsUpdate = true;
       }
     });
@@ -119,14 +129,19 @@ export function polishHospitalCorridorMaterials(root: THREE.Object3D) {
       const min = Math.min(std.color.r, std.color.g, std.color.b);
       const chroma = max === 0 ? 0 : (max - min) / max;
       if (object.name === '地板' && chroma < 0.35) {
-        std.roughness = Math.min(std.roughness || 1, 0.48);
-        std.envMapIntensity = Math.max(std.envMapIntensity || 0, 0.68);
-        std.metalness = Math.min(std.metalness || 0, 0.08);
+        std.roughness = Math.min(std.roughness || 1, 0.42);
+        std.envMapIntensity = Math.max(std.envMapIntensity || 0, 0.82);
+        std.metalness = Math.min(Math.max(std.metalness || 0, 0.06), 0.12);
         std.needsUpdate = true;
       }
       else if (object.name === '天花板' || std.name.includes('天花板')) {
-        std.roughness = Math.min(std.roughness || 1, 0.82);
-        std.envMapIntensity = Math.max(std.envMapIntensity || 0, 0.28);
+        std.roughness = Math.min(std.roughness || 1, 0.78);
+        std.envMapIntensity = Math.max(std.envMapIntensity || 0, 0.34);
+        std.needsUpdate = true;
+      }
+      else if (std.name === '灰白' || /墙|wall/i.test(object.name)) {
+        std.roughness = Math.min(std.roughness || 1, 0.72);
+        std.envMapIntensity = Math.max(std.envMapIntensity || 0, 0.45);
         std.needsUpdate = true;
       }
     }

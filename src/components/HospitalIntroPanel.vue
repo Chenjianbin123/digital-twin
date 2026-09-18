@@ -33,6 +33,21 @@ const visibleMetrics = computed(() =>
   (props.keyMetrics ?? []).filter(m => m.value != null && m.value !== '' && m.value !== '-'),
 );
 
+function metricToneClass(item: KeyMetric) {
+  const numeric = typeof item.value === 'number' ? item.value : Number(item.value);
+  const isEmpty = Number.isFinite(numeric) && numeric === 0;
+  if (isEmpty) return 'hospital-intro__metric--empty';
+  if (item.key === 'patient') return 'hospital-intro__metric--patient';
+  if (item.key === 'rate') {
+    if (numeric >= 90) return 'hospital-intro__metric--rate-high';
+    if (numeric >= 70) return 'hospital-intro__metric--rate-mid';
+    return 'hospital-intro__metric--rate';
+  }
+  if (item.key === 'device') return 'hospital-intro__metric--device';
+  if (item.key === 'rooms' || item.key === 'bed') return 'hospital-intro__metric--capacity';
+  return '';
+}
+
 const hasContent = computed(() =>
   props.loading
   || !!introText.value
@@ -71,10 +86,17 @@ const hasContent = computed(() =>
       </div>
 
       <div v-if="visibleMetrics.length" class="hospital-intro__grid">
-        <article v-for="item in visibleMetrics" :key="item.key" class="hospital-intro__metric">
+        <article
+          v-for="item in visibleMetrics"
+          :key="item.key"
+          class="hospital-intro__metric"
+          :class="metricToneClass(item)"
+        >
           <svg class="hospital-intro__metric-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <template v-if="item.key === 'rooms'"><path d="M4 21V4h16v17M2 21h20M9 21v-5h6v5M8 8h2m4 0h2M8 12h2m4 0h2" /></template>
             <template v-else-if="item.key === 'patient'"><circle cx="12" cy="7" r="3" /><path d="M5 21v-3a7 7 0 0 1 14 0v3" /></template>
+            <template v-else-if="item.key === 'device'"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></template>
+            <template v-else-if="item.key === 'rate'"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></template>
             <template v-else><path d="M4 4v16h16M8 15l4-5 4 2 4-6" /></template>
           </svg>
           <div class="hospital-intro__metric-body">

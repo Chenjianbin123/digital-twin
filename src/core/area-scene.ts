@@ -651,18 +651,18 @@ export class AreaScene {
       return;
     }
 
-    // 走廊：保留接触影，但抬环境光、压阴影深度，避免整体发闷
-    this.scene.add(new THREE.AmbientLight(0xf7fbf9, 0.2));
-    this.scene.add(new THREE.HemisphereLight(0xf6faf8, 0x7a8c86, 0.26));
+    // 走廊白天阳光：略提环境填充与主光，拉开地面/门框亮点。
+    this.scene.add(new THREE.AmbientLight(0xfff6ea, 0.16));
+    this.scene.add(new THREE.HemisphereLight(0xfff2e0, 0x7a8a94, 0.24));
 
-    const key = new THREE.DirectionalLight(0xfff8f0, 1.38);
+    const key = new THREE.DirectionalLight(0xffecd2, 1.62);
     key.name = 'corridor-key-shadow';
     key.position.set(6, 14, 10);
     key.castShadow = true;
     key.shadow.mapSize.set(4096, 4096);
     key.shadow.bias = -0.00012;
     key.shadow.normalBias = 0.018;
-    key.shadow.radius = 1.15;
+    key.shadow.radius = 1.05;
     key.shadow.intensity = 1.22;
     key.shadow.camera.near = 0.5;
     key.shadow.camera.far = 80;
@@ -674,11 +674,11 @@ export class AreaScene {
     this.scene.add(key);
     this.scene.add(key.target);
 
-    const fill = new THREE.DirectionalLight(0xf2f7f4, 0.2);
+    const fill = new THREE.DirectionalLight(0xdceaf6, 0.3);
     fill.position.set(-14, 14, 6);
     this.scene.add(fill);
 
-    const corridor = new THREE.DirectionalLight(0xffffff, 0.16);
+    const corridor = new THREE.DirectionalLight(0xfff8ef, 0.24);
     corridor.position.set(0, 18, -18);
     this.scene.add(corridor);
 
@@ -3549,7 +3549,16 @@ export class AreaScene {
       doorRoot.userData.roomIndex = binding.slot.roomIndex;
       if (!binding.slot.interactive) return;
       const deviceRoot = this.wardCorridorModel!.getObjectByName(binding.slot.deviceNode);
-      if (deviceRoot) deviceRoot.visible = true;
+      if (deviceRoot) {
+        deviceRoot.visible = true;
+        deviceRoot.userData.role = 'wardCorridorEntranceDevice';
+        deviceRoot.traverse((node) => {
+          if (node === deviceRoot)
+            return;
+          if (!node.userData.role)
+            node.userData.role = 'wardCorridorEntranceDevice';
+        });
+      }
       const doorCenter = new THREE.Box3().setFromObject(binding.door).getCenter(new THREE.Vector3());
       // 优先按同编号绑定（门1 ↔ 门口机1），避免模型空间排序变化导致错配；
       // 只有节点未按编号命名时才回退到空间最近匹配。
@@ -3586,7 +3595,12 @@ export class AreaScene {
       binding.label = overlays.label;
       if (binding.screen) {
         binding.screen.userData.roomIndex = binding.slot.roomIndex;
-        binding.screen.userData.role = binding.door.userData.role;
+        // Screen/door-machine must not inherit door enter role.
+        binding.screen.userData.role = 'wardCorridorScreen';
+      }
+      if (binding.label) {
+        binding.label.userData.roomIndex = binding.slot.roomIndex;
+        binding.label.userData.role = 'wardCorridorLabel';
       }
     });
 
@@ -4605,13 +4619,6 @@ export class AreaScene {
     );
   }
 
-  /** 门旁小牌点击：与侧栏「进入病房」一致，立即切换单房视图 */
-  private triggerRoomEnter(roomIndex: number) {
-    if (!this.roomMeshes.has(roomIndex))
-      return;
-    this.onRoomClick?.(roomIndex);
-  }
-
   /** 走廊两侧病房：门洞落在走廊内壁，纵深向建筑内侧延伸 */
   private getRoomPosition(
     index: number,
@@ -4801,6 +4808,8 @@ export class AreaScene {
     });
 
     this.placeDoorTerminal(built.group, depthX, corridorSide, isHorizontal);
+    built.group.userData.role = 'wardCorridorEntranceDevice';
+    built.screen.userData.role = 'wardCorridorScreen';
     return { group: built.group, screen: built.screen, led: built.led, texture };
   }
 
@@ -4940,6 +4949,10 @@ export class AreaScene {
     const { wallMat, doorFrameLed } = this.buildCorridorWardFacade(
       group, facade.w, corridorSide, isEmpty, isCalling,
     );
+    group.traverse((object) => {
+      if (object.userData.role === 'wardCorridorDoor')
+        object.userData.roomIndex = index;
+    });
 
     const hitBox = new THREE.Mesh(
       new THREE.BoxGeometry(AREA_FACADE_DEPTH + 0.3, CORRIDOR_CEILING_H, facade.w),
@@ -5408,6 +5421,32 @@ export class AreaScene {
     });
   }
 
+  /** 门口机 / 门旁标识 / 动态贴图面：只展示，不作为“进入病房”热区。 */
+  private isWardCorridorEnterBlocked(object: THREE.Object3D): boolean {
+    let node: THREE.Object3D | null = object;
+    while (node && node !== this.wardCorridorModel) {
+      const role = node.userData.role;
+      if (
+        role === 'wardCorridorScreen'
+        || role === 'wardCorridorLabel'
+        || role === 'wardCorridorEntranceDevice'
+        || role === 'doorDisplay'
+      )
+        return true;
+      if (node.userData.hospitalCorridorTemplateDevice || node.userData.generatedHospitalCorridorOverlay)
+        return true;
+      if (
+        /^门口机\d+/.test(node.name)
+        || node.name.includes('-dynamic-screen')
+        || node.name.includes('-room-label')
+        || node.name.includes('-screen-highlight')
+      )
+        return true;
+      node = node.parent;
+    }
+    return false;
+  }
+
   private handleClick = (event: MouseEvent) => {
     if (!this.isActive || this.cameraTransition) return;
     if (this.viewPhase === 'station')
@@ -5432,7 +5471,7 @@ export class AreaScene {
     const intersects = this.raycaster.intersectObjects(groups, true);
 
     if (intersects.length > 0) {
-      const hit = intersects[0].object;
+      const hit = intersects[0]!.object;
       const worldPosition = hit.getWorldPosition(new THREE.Vector3());
       const materials = hit instanceof THREE.Mesh
         ? (Array.isArray(hit.material) ? hit.material : [hit.material])
@@ -5449,38 +5488,19 @@ export class AreaScene {
         },
         materialNames,
       });
-      // console.info('[AreaScene] 射线命中节点', {
-      //   name: hit.name,
-      //   type: hit.type,
-      //   parent: hit.parent?.name,
-      //   materialNames,
-      //   worldPosition,
-      // });
-      let obj: THREE.Object3D | null = intersects[0].object;
-      while (obj && obj !== this.wardCorridorModel && obj.userData.role !== 'wardCorridorDoor')
-        obj = obj.parent;
-      if (obj?.userData.role === 'wardCorridorDoor' && typeof obj.userData.roomIndex === 'number') {
-        const index = obj.userData.roomIndex as number;
-        this.focusRoom(index, () => this.onRoomClick?.(index));
-        return;
-      }
-      if (this.shouldShowWardCorridorModel())
-        return;
 
-      obj = intersects[0].object;
-      while (obj && obj.userData.role !== 'doorDisplay' && obj.userData.roomIndex === undefined)
-        obj = obj.parent;
-      if (obj?.userData.role === 'doorDisplay' && obj.userData.roomIndex !== undefined) {
-        this.triggerRoomEnter(obj.userData.roomIndex as number);
-        return;
-      }
-
-      obj = intersects[0].object;
-      while (obj && obj.userData.roomIndex === undefined)
-        obj = obj.parent;
-      if (obj?.userData.roomIndex !== undefined) {
-        const index = obj.userData.roomIndex as number;
-        this.focusRoom(index, () => this.onRoomClick?.(index));
+      // Only the physical door opens the ward — not 门口机 / door-side plaques.
+      for (const intersect of intersects) {
+        if (this.isWardCorridorEnterBlocked(intersect.object))
+          continue;
+        let obj: THREE.Object3D | null = intersect.object;
+        while (obj && obj !== this.wardCorridorModel && obj.userData.role !== 'wardCorridorDoor')
+          obj = obj.parent;
+        if (obj?.userData.role === 'wardCorridorDoor' && typeof obj.userData.roomIndex === 'number') {
+          const index = obj.userData.roomIndex as number;
+          this.focusRoom(index, () => this.onRoomClick?.(index));
+          return;
+        }
       }
     }
   };

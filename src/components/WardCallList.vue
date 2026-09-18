@@ -23,7 +23,13 @@ function duration(task: AlertTask) {
 </script>
 <template>
   <section class="ward-call-list" aria-label="本病房呼叫系统记录">
-    <header><strong>呼叫系统 · 本病房</strong><span>{{ tasks.length }} 条记录</span></header>
+    <header>
+      <strong>呼叫系统 · 本病房</strong>
+      <span
+        class="ward-call-list__count"
+        :class="tasks.length ? 'ward-call-list__count--active' : 'ward-call-list__count--zero'"
+      >{{ tasks.length }} 条记录</span>
+    </header>
     <p v-if="status !== 'ready'" role="status">{{ wardDataNotice(status) }}；当前呼叫状态待核对。</p>
     <p v-else-if="!tasks.length">最近一次同步未发现本病房活动呼叫。</p>
     <p v-if="sync?.lastSyncedAt" class="ward-call-list__time">呼叫源最近成功同步：{{ timeLabel(sync.lastSyncedAt) }}</p>
@@ -42,7 +48,16 @@ function duration(task: AlertTask) {
 .ward-call-list {
   padding: 12px; margin-bottom: 14px; border: 1px solid var(--room-line, #456271); border-radius: 8px;
   background: var(--room-inset, #153443); color: var(--room-ink, #dcebf2);
-  header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+  header > strong { font-weight: 700; }
+  &__count {
+    font-family: "Bahnschrift", "Segoe UI", sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  &__count--active { color: var(--room-alert, #ff9cb7); }
+  &__count--zero { color: var(--room-muted, #a6c0cd); font-weight: 700; }
   p, small { font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
   p { margin: 8px 0 0; }
   ul { list-style: none; padding: 0; margin: 8px 0 0; max-height: 240px; overflow: auto; }

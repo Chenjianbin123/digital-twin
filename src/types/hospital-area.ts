@@ -4,6 +4,13 @@ export interface HospAreaRecord {
   areaCode: string;
   areaOutCode: string;
   isEnable: string;
+  /** Optional occupancy / capacity stats when the source provides them. */
+  roomCount?: number;
+  bedCount?: number;
+  occupiedCount?: number;
+  /** Total people in the ward; defaults to occupiedCount when only one headcount is available. */
+  peopleCount?: number;
+  deviceCount?: number;
 }
 
 export interface HospAreaRawRecord {
@@ -12,6 +19,18 @@ export interface HospAreaRawRecord {
   areaCode?: string;
   areaOutCode?: string;
   isEnable?: string;
+  roomCount?: number | string;
+  roomNum?: number | string;
+  bedCount?: number | string;
+  bedNum?: number | string;
+  occupiedCount?: number | string;
+  sickNum?: number | string;
+  patientNum?: number | string;
+  patientCount?: number | string;
+  peopleCount?: number | string;
+  peopleNum?: number | string;
+  deviceCount?: number | string;
+  deviceNum?: number | string;
 }
 
 export interface HospAreaPageData {
