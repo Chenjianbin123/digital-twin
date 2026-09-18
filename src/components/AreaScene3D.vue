@@ -262,6 +262,8 @@ watch(() => props.focusedRoomIndex, (index, prev) => {
     return;
   if (index === prev)
     return;
+  if (props.active === false)
+    return;
   scene?.focusRoom(index);
 });
 
@@ -269,8 +271,15 @@ watch(() => props.theme, theme => scene?.setTheme(theme ?? 'light'));
 
 watch(() => props.active, (active) => {
   scene?.setActive(active !== false);
-  if (active && (props.focusedRoomIndex ?? -1) >= 0)
+  if (!active)
+    return;
+  if ((props.focusedRoomIndex ?? -1) >= 0) {
     scene?.focusRoom(props.focusedRoomIndex!);
+    return;
+  }
+  // Returning from ward-interior with no focused room: restore corridor overview.
+  if (areaPhase.value === 'corridor')
+    scene?.resetToNurseStationView();
 });
 defineExpose({ getCorridorDiagnostics: () => scene?.getCorridorDiagnostics() });
 </script>

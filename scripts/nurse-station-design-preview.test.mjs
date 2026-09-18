@@ -11,7 +11,7 @@ test('station workspace no longer exposes the tools menu or preview entry', () =
 });
 test('design preview is separate from the production scene and data', () => {
   const preview = read('../src/preview/station-preview.ts');
-  assert.match(preview, /nurse-station-design-v3\.glb\?url/);
+  assert.match(preview, /\/models\/smart-ward-nurse-station\/nurse-station-design-v3\.glb/);
   assert.doesNotMatch(preview, /@\/api|@\/stores|nurse-station-scene/);
   assert.match(read('../src/config/nurse-station-scene.ts'), /nurse-station-design-v[234]\.glb/);
   assert.match(read('../nurse-station-preview.html'), /src\/preview\/main\.ts/);

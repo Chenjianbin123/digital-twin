@@ -3,7 +3,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
-import modelUrl from "../../output/nurse-station-reference-v2/nurse-station-design-v3.glb?url";
+const modelUrl = "/models/smart-ward-nurse-station/nurse-station-design-v3.glb?v=20260909";
 
 export type PreviewView = "front" | "detail" | "workstation" | "wall";
 // Blender Z-up → glTF Y-up: (x, y, z) becomes (x, z, -y).

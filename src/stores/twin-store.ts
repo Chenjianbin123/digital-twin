@@ -412,24 +412,23 @@ export const useTwinStore = defineStore('twin', () => {
     if (type === 'ward-interior' && !ensureRoomForInterior())
       return;
 
-    const returningToCorridor = sceneType.value === 'ward-interior' && type === 'ward';
-    const returnIndex = currentRoomIndex.value;
-    sceneType.value = type;
-
     if (type === 'nurse-station' || type === 'ward') {
       bedDetailsRequestGeneration += 1;
       bedDetailsLoading.value = false;
       bedDetailsError.value = null;
       clearAlertFocusSelection();
-      currentRoomIndex.value = returningToCorridor && area.value?.rooms[returnIndex] ? returnIndex : -1;
+      // Clear focus before flipping the scene so corridor activate does not refocus the door.
+      currentRoomIndex.value = -1;
       selectedBedCode.value = null;
     }
-    else if (currentRoomIndex.value < 0) {
-      currentRoomIndex.value = 0;
-    }
 
-    if (type === 'ward-interior')
+    sceneType.value = type;
+
+    if (type === 'ward-interior') {
+      if (currentRoomIndex.value < 0)
+        currentRoomIndex.value = 0;
       void loadCurrentWardBedDetails();
+    }
   }
 
   function setWardInteriorView(view: WardInteriorView) {
