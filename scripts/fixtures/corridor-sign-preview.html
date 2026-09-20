@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>走廊吊屏排版验收</title>
+<style>
+  body { margin: 0; padding: 32px; font: 16px 'Microsoft YaHei', sans-serif; background: #e6edef; color: #17384c; }
+  main { max-width: 960px; margin: auto; }
+  h1 { font-size: 22px; } h2 { font-size: 16px; font-weight: 500; }
+  section { margin: 24px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  canvas { width: 100%; display: block; border: 5px solid #697c84; box-sizing: border-box; }
+  .distant canvas { max-width: 180px; border-width: 2px; }
+  @media(max-width: 600px) { body { padding: 16px; } section { grid-template-columns: 1fr; } }
+</style>
+<main><h1>走廊吊屏排版验收</h1><p>实际 Canvas 渲染代码；非三维场景截图。使用示例病区名。</p></main>
+<script type="module">
+  import { createCorridorSignTexture } from '/src/core/corridor-sign-texture.ts';
+  import { CorridorMarker } from '/src/core/ward-corridor-markers.ts';
+  import * as THREE from '/node_modules/three/build/three.module.js';
+  const main = document.querySelector('main');
+  const markerHeading = document.createElement('h2');
+  markerHeading.textContent = '电子门牌：正常、选中、离线、呼叫';
+  main.append(markerHeading);
+  const markerSection = document.createElement('section');
+  for (const [focused, offline, calling] of [[false, false, false], [true, false, false], [false, true, false], [false, false, true]]) {
+    const door = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    const marker = new CorridorMarker(door);
+    marker.update('A101', calling ? { priority: 'calling', statusText: '呼叫中' } : undefined, offline, focused);
+    markerSection.append(marker.sprite.material.map.image);
+    marker.dispose();
+    door.geometry.dispose();
+    door.material.dispose();
+  }
+  main.append(markerSection);
+  for (const theme of ['light', 'dark']) {
+    const heading = document.createElement('h2');
+    heading.textContent = theme === 'light' ? '浅色模式' : '深色模式';
+    main.append(heading);
+    for (const distant of [false, true]) {
+      const section = document.createElement('section');
+      if (distant) section.className = 'distant';
+      for (const mode of ['area', 'clock']) {
+        const texture = createCorridorSignTexture({ theme, mode, areaName: '骨科病区', aspect: 4 });
+        section.append(texture.image);
+        texture.dispose();
+      }
+      main.append(section);
+    }
+  }
+</script>
+</html>

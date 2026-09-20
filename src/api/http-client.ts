@@ -68,7 +68,9 @@ function buildHeaders(auth: PostJsonOptions['auth'] = 'auto'): Record<string, st
   return headers;
 }
 
-function expireAuthentication(message: string): void {
+function expireAuthentication(message: string, requestToken?: string): void {
+  // A background response from the previous login must not expire the current session.
+  if (!requestToken || requestToken !== getSessionToken()) return;
   const hadSession = !!getSessionToken();
   clearAuthSession();
   if (hadSession && typeof window !== 'undefined')
@@ -86,18 +88,19 @@ export async function postJson<T>(
   let responseStatus: number | undefined;
   let requestError: string | undefined;
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  const headers = buildHeaders(options.auth);
 
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: buildHeaders(options.auth),
+      headers,
       body: JSON.stringify(body),
       signal: controller.signal,
     });
     responseStatus = res.status;
 
     if (res.status === 401 || res.status === 403) {
-      expireAuthentication('登录已过期，请重新登录');
+      expireAuthentication('登录已过期，请重新登录', headers.token);
       throw new ApiError(`HTTP ${res.status}: ${res.statusText}`, res.status);
     }
 
@@ -106,7 +109,7 @@ export async function postJson<T>(
 
     const payload = await res.json() as ApiResponse<T>;
     if (payload.code === 401 || payload.code === 403) {
-      expireAuthentication(payload.message || '登录已过期，请重新登录');
+      expireAuthentication(payload.message || '登录已过期，请重新登录', headers.token);
       throw new ApiError(payload.message || '登录已过期，请重新登录', payload.code);
     }
 

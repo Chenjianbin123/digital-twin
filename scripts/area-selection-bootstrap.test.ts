@@ -191,3 +191,22 @@ assert.equal(databaseResult, null);
 assert.deepEqual(databaseCalls, ['files', 'areas', 'remembered']);
 
 console.log('Area-selection bootstrap tests passed.');
+
+// A blocked resource host must not hold up ward selection or remembered-area recovery.
+let releasePrefix!: () => void;
+let enteredBeforePrefix = false;
+const prefixPending = new Promise<void>(resolve => { releasePrefix = resolve; });
+const independent = prepareAreaSelection({
+  useRemoteDeviceApi: true,
+  assertRuntimeConfigured() {},
+  initializeFilePrefix: () => prefixPending,
+  async loadAreaOptions() {},
+  async loadLocalArea() { return null; },
+  getRememberedAreaId: () => 192,
+  async enterRememberedArea() { enteredBeforePrefix = true; },
+  onPhase() {},
+});
+await new Promise(resolve => setTimeout(resolve, 0));
+assert.equal(enteredBeforePrefix, true);
+assert.equal(await independent, null);
+releasePrefix();

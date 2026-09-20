@@ -2,6 +2,7 @@ import { queryTemplateById } from '@/api/template';
 import { createRetryablePromiseCache } from '@/core/retryable-promise-cache';
 import { parseTemplateInfo } from '@/core/template/parser';
 import type { ParsedTemplate, SwpTemplateInfo } from '@/types/template';
+import { waitForFileUrlPrefix } from '@/utils/file-prefix';
 
 const TEMPLATE_CACHE_TTL_MS = 5 * 60 * 1000;
 const infoCache = createRetryablePromiseCache<number, SwpTemplateInfo>({ ttlMs: TEMPLATE_CACHE_TTL_MS });
@@ -12,7 +13,7 @@ export async function loadTemplateInfo(id: number): Promise<SwpTemplateInfo> {
 }
 
 export async function loadParsedTemplate(id: number): Promise<ParsedTemplate> {
-  const info = await loadTemplateInfo(id);
+  const [info] = await Promise.all([loadTemplateInfo(id), waitForFileUrlPrefix()]);
   const signature = `${info.analyzeType ?? ''}\u0000${info.templateContent}`;
   const cached = parsedCache.get(id);
   if (cached?.signature === signature)

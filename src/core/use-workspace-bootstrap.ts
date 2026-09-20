@@ -16,10 +16,13 @@ export function useWorkspaceBootstrap(load: (context: BootstrapContext) => Promi
   let started = false;
   let disposed = false;
   let timer: ReturnType<typeof setInterval> | undefined;
+  let completionTimer: ReturnType<typeof setTimeout> | undefined;
 
   function clearTimer() {
     if (timer !== undefined) clearInterval(timer);
+    if (completionTimer !== undefined) clearTimeout(completionTimer);
     timer = undefined;
+    completionTimer = undefined;
   }
 
   function cancel() {
@@ -38,7 +41,6 @@ export function useWorkspaceBootstrap(load: (context: BootstrapContext) => Promi
     const isCurrent = () => !disposed && generation === session;
     const startedAt = Date.now();
     let target = 4;
-    let completedAt: number | null = null;
     let loaded = false;
     clearTimer();
     busy.value = true;
@@ -49,26 +51,16 @@ export function useWorkspaceBootstrap(load: (context: BootstrapContext) => Promi
     if (showProgress) {
       timer = setInterval(() => {
         if (!isCurrent()) return;
-        if (loaded && Date.now() - startedAt >= 1400) {
-          target = 100;
-          phase.value = error.value ? '初始化未完成，请重试' : '正在进入工作空间';
-        }
         const gap = target - progress.value;
-        const step = target === 100 ? 3.2 : gap > 18 ? 3.4 : gap > 7 ? 2.2 : 1.05;
+        const step = gap > 18 ? 3.4 : gap > 7 ? 2.2 : 1.05;
         progress.value = Math.min(target, progress.value + step);
-        if (progress.value < 100) return;
-        completedAt ??= Date.now();
-        if (Date.now() - completedAt < 260) return;
-        clearTimer();
-        visible.value = false;
-        busy.value = false;
       }, 56);
     }
     try {
       const result = await load({
         isCurrent,
         onPhase: (value, label) => {
-          if (!isCurrent()) return;
+          if (!isCurrent() || loaded) return;
           target = Math.max(target, Math.min(86, value));
           phase.value = label;
         },
@@ -81,8 +73,19 @@ export function useWorkspaceBootstrap(load: (context: BootstrapContext) => Promi
     finally {
       if (isCurrent()) {
         loaded = true;
-        target = 86;
-        if (!showProgress) busy.value = false;
+        clearTimer();
+        progress.value = 100;
+        phase.value = error.value ? '初始化未完成，请重试' : '正在进入工作空间';
+        if (showProgress) {
+          // Only prevent a flash; completed work must not wait for simulated progress.
+          completionTimer = setTimeout(() => {
+            if (!isCurrent()) return;
+            completionTimer = undefined;
+            visible.value = false;
+            busy.value = false;
+          }, Math.max(80, 180 - (Date.now() - startedAt)));
+        }
+        else busy.value = false;
       }
     }
   }

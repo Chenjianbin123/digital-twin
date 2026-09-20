@@ -168,8 +168,8 @@ export function createReferenceStationLights() {
   return group;
 }
 
-export function createReferenceClockTexture(now = new Date()) {
-  const canvas = document.createElement('canvas');
+export function createReferenceClockTexture(now = new Date(), target?: THREE.CanvasTexture) {
+  const canvas: HTMLCanvasElement = target?.image ?? document.createElement('canvas');
   canvas.width = canvas.height = 512;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('无法创建护士站时钟画布');
@@ -188,7 +188,8 @@ export function createReferenceClockTexture(now = new Date()) {
     ctx.beginPath(); ctx.lineWidth = width; ctx.lineCap = 'round';
     ctx.moveTo(0, 0); ctx.lineTo(Math.sin(angle) * length, -Math.cos(angle) * length); ctx.stroke();
   }
-  const texture = new THREE.CanvasTexture(canvas);
+  const texture = target ?? new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
   return texture;
 }

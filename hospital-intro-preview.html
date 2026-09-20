@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>医院外景 · 开场动画预览</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/preview/hospital-intro.css" />
+  </head>
+  <body>
+    <div id="scene" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <header><a class="brand" href="/">智慧病房<span>DIGITAL TWIN</span></a><span class="edition">医院外景 / 开场预览</span></header>
+    <main id="intro">
+      <div class="controls"><button id="pause" type="button">暂停</button><button id="skip" type="button">跳过动画 <span aria-hidden="true">↗</span></button></div>
+      <section class="caption"><p class="eyebrow">A CLOSER LOOK AT CARE</p><h1>从这里，走进智慧医疗。</h1><p id="shot" role="status">正在准备医院外景…</p></section>
+      <footer><span>通用医院示意模型 · 实时三维预览</span><div class="timeline"><span id="time">00 / 08</span><div class="track"><i id="progress"></i></div></div></footer>
+    </main>
+    <section id="login" hidden aria-labelledby="login-title">
+      <div class="login-copy"><p class="eyebrow">WELCOME TO YOUR WORKSPACE</p><h2>看见空间。<br />连接每一份关怀。</h2><p>医院外景开场动画预览</p></div>
+      <div class="login-card"><span class="badge">智慧病房 / DIGITAL TWIN</span><h2 id="login-title" tabindex="-1">欢迎进入</h2><p id="result" role="status">开场结束，进入登录。</p><div class="sample-field">账号<span>请输入工作账号</span></div><div class="sample-field">密码<span>请输入登录密码</span></div><a class="primary" href="/">前往当前登录页 <span aria-hidden="true">→</span></a><button id="replay" type="button">↺ 重新播放动画</button><small>此处仅演示过渡效果，不采集账号信息。</small></div>
+    </section>
+    <script type="module">
+      // Keep the skip path usable even if the 3D module cannot load.
+      const intro = document.getElementById('intro');
+      const login = document.getElementById('login');
+      window.showIntroLogin = (message) => {
+        intro.hidden = true;
+        login.hidden = false;
+        document.body.classList.add('finished');
+        document.getElementById('result').textContent = message;
+        document.getElementById('login-title').focus({ preventScroll: true });
+      };
+      document.getElementById('skip').onclick = () => window.showIntroLogin('已跳过动画，进入登录。');
+      document.getElementById('replay').onclick = () => location.reload();
+      import('/src/preview/hospital-intro.ts').catch(() => {
+        window.showIntroLogin('三维预览暂不可用，可直接前往登录。');
+      });
+    </script>
+  </body>
+</html>

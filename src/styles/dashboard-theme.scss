@@ -757,7 +757,7 @@
  .feed__tag { color: #8fdadf; }
 }
 
-/* 病区切换抽屉与工作台使用同一主题祖先，打开期间也能即时跟随主题。 */
+/* 病区切换弹窗与工作台使用同一主题祖先，打开期间也能即时跟随主题。 */
 .digital-twin .area-switcher {
  font-family: "Microsoft YaHei UI", "PingFang SC", "Microsoft YaHei", sans-serif;
  .area-switcher__body { scrollbar-width: thin; scrollbar-color: #416879 #0a202e; padding: 2px 4px 2px 2px; }
@@ -765,7 +765,7 @@
 }
 .digital-twin[data-theme='light'] .area-switcher {
  background: #24394455;
- .area-switcher__drawer { color: #243944; background: #dce6ea; border-left: 2px solid #3d7585; box-shadow: -10px 0 28px rgba(28, 48, 56, 0.1); }
+ .area-switcher__drawer { color: #243944; background: #edf5f8f5; border: 1px solid #8bb8c9; box-shadow: 0 24px 72px #1c303829, inset 0 1px 0 #ffffff; }
  .area-switcher__header h2 { color: #0c1a22; letter-spacing: .06em; font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif; font-weight: 800; }
  .area-switcher__header p, .area-switcher__empty, .area-switcher__hint, .area-switcher__metrics-empty { color: #5a717c; }
  .area-switcher__current-name { color: #1287a3 !important; font-weight: 800 !important; }
@@ -788,7 +788,7 @@
  }
  .area-switcher__metric em {
    color: #1287a3 !important;
-   font-size: 16px !important;
+   font-size: 20px !important;
    font-weight: 800 !important;
  }
  .area-switcher__metric--people {
@@ -822,7 +822,7 @@
 
 .digital-twin[data-theme='light'] .area-switcher {
  --switcher-accent: #1287a3; --switcher-line: #9aafb8;
- .area-switcher__drawer { background: #dce6ea; }
+ .area-switcher__drawer { background: radial-gradient(ellipse at 100% 0, #c3e5ef80, transparent 50%), #edf5f8f5; }
  .area-switcher__list-head { color: #5a717c; letter-spacing: .04em; }
  .area-switcher__list-head strong { color: #1287a3 !important; background: #e2f3f7 !important; font-weight: 800 !important; }
  .area-switcher__ward-icon { color: #3a6572; background: #e2eaee; border-radius: 6px; }
@@ -832,7 +832,7 @@
 }
 .digital-twin[data-theme='dark'] .area-switcher {
  --switcher-accent: #7ddde1; --switcher-line: #75b7ca30;
- .area-switcher__drawer { background: radial-gradient(ellipse at 100% 0, #27627740, transparent 42%), #081c29; }
+ .area-switcher__drawer { background: radial-gradient(ellipse at 100% 0, #27627760, transparent 50%), #081c29ed; }
  .area-switcher__header h2 { color: #f2fbff; font-weight: 800; letter-spacing: .04em; }
  .area-switcher__header p, .area-switcher__empty, .area-switcher__hint, .area-switcher__metrics-empty { color: #8eacb9; }
  .area-switcher__current-name { color: #8af0f4 !important; font-weight: 800 !important; }
@@ -848,7 +848,7 @@
  }
  .area-switcher__metric em {
    color: #7ddde1 !important;
-   font-size: 16px !important;
+   font-size: 20px !important;
    font-weight: 800 !important;
  }
  .area-switcher__metric--people {
@@ -984,6 +984,9 @@
  font-family: "Microsoft YaHei UI", "PingFang SC", "Microsoft YaHei", sans-serif;
  scrollbar-width: thin; scrollbar-color: #648c9e transparent;
  .digital-twin__panel-body { background: transparent !important; }
+ :is(.hospital-intro__heading-icon, .corridor-alerts .alert-task-panel__heading-icon) {
+  color: var(--room-accent); background: var(--room-inset); border-color: var(--room-line);
+ }
  :is(.hospital-intro, .area-dashboard, .ward-info-panel) { color: var(--room-ink) !important; background: transparent; font-size: 14px; }
  :is(.hospital-intro, .dash-section, .area-dashboard__intro, .ward-info-panel > section, .door-staff-cards, .status-history, .alert-task-panel) {
   background: var(--room-surface) !important; border: 1px solid var(--room-line) !important; border-radius: 10px;
@@ -1968,12 +1971,8 @@
 }
 
 /* 医院介绍：机构身份、可展开简介、单行指标。 */
-.digital-twin .digital-twin__panel--overlay .hospital-intro {
-  padding: 18px;
-  .hospital-intro__head { margin-bottom: 14px; }
-  .hospital-intro__title { font-size: 14px; letter-spacing: .04em; }
-  .hospital-intro__mark { width: 3px; height: 14px; background: var(--room-accent); clip-path: none; border: 0; }
-  .hospital-intro__line { background: var(--room-line); height: 1px; }
+.digital-twin .digital-twin__main--ward .digital-twin__panel--overlay .hospital-intro {
+  padding: 14px;
   .hospital-intro__footer { margin: 0 0 12px; padding: 0; border: 0; gap: 10px; }
   .hospital-intro__name { color: var(--room-ink) !important; font-size: 22px; line-height: 1.35; font-weight: 800; overflow-wrap: anywhere; }
   .hospital-intro__logo { width: 36px; height: 36px; border: 1px solid var(--room-line); border-radius: 8px; flex-shrink: 0; }

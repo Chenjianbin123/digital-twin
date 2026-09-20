@@ -1,3 +1,5 @@
+import { measureLoadStage } from './load-timing.ts';
+
 export interface AreaSelectionBootstrapOptions {
   useRemoteDeviceApi: boolean;
   useAreaSelection?: boolean;
@@ -26,16 +28,15 @@ export async function prepareAreaSelection(options: AreaSelectionBootstrapOption
     }
 
     options.onPhase(34, '加载病区文件资源');
-    const filePrefixTask = options.initializeFilePrefix();
+    // File resources have their own readiness barrier; the area selector does not need them.
+    void (async () => {
+      try { await options.initializeFilePrefix(); }
+      catch { /* Resource consumers own fallback; this must not reject the area bootstrap. */ }
+    })();
     options.onPhase(58, '同步可用病区');
-    const [, areaResult] = await Promise.allSettled([
-      filePrefixTask,
-      options.loadAreaOptions(),
-    ]);
+    await measureLoadStage('area-options', options.loadAreaOptions);
     // A stale list request must not resume a remembered area in a newer login.
     if (options.isCurrent?.() === false) return null;
-    if (areaResult.status === 'rejected')
-      throw areaResult.reason;
 
     const rememberedAreaId = options.getRememberedAreaId();
     if (rememberedAreaId != null) {

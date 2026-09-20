@@ -4,10 +4,6 @@ import { mapEnvRecords, mapSwpRecordsToDoorDevices, normalizeDoorDevice } from '
 
 import { resolveDataSource, type DataSource } from '@/core/data-source';
 
-import { preloadDoorTemplates } from '@/core/door-template-preload';
-
-import { loadTemplateInfo } from '@/core/template/template-cache';
-
 import { fetchDoorDeviceListOnce, isSwpDiscoverConfigured } from '@/api/swp-device';
 
 import { MOCK_DOOR_DEVICE_LIST } from '@/mock/door-device-list';
@@ -148,8 +144,6 @@ async function fetchRemoteDoorDeviceList(
       .filter(Boolean);
 
     const sortedDetails = sortDoorDevices(detailDevices);
-    const templateResult = await preloadDoorTemplates(sortedDetails, loadTemplateInfo);
-    warnings.push(...templateResult.warnings);
     return {
       devices: sortedDetails,
       codes: [...lastResolvedDoorCodes],

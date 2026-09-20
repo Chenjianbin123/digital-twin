@@ -1,0 +1,21 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,"><title>护士站屏幕刷新回归</title>
+<header>实际模型 · 合成数据（非真实患者） <span id="state">loading</span></header>
+<div id="scene"></div><footer><button id="call">切换测试呼叫</button></footer>
+<script type="module">
+import { AreaScene } from '/src/core/area-scene.ts';
+import { buildNurseStationViewModel } from '/src/core/nurse-station-view-model.ts';
+import { summarizeArea } from '/src/core/area-summary.ts';
+const area={areaName:'刷新回归病区',areaCode:'TEST',deptName:'测试',rooms:[{sickroomName:'测试房间',sickroomCode:'T',beds:[{bedCode:'B',bedName:'测试床',deviceCode:'B',position:{x:0,z:0},isOccupied:true,isOnline:true,isCalling:false}]}]};
+window.fixture={area,ready:false};
+const scene=new AreaScene({container:document.getElementById('scene'),modelKind:'station',onModelState:state=>{document.getElementById('state').textContent=state;fixture.ready=state==='ready';}});
+fixture.scene=scene;
+fixture.update=()=>{
+  const sync={phase:'ready',lastSyncedAt:new Date().toISOString(),error:null,warning:null};
+  scene.setNurseStationViewModel(buildNurseStationViewModel({area,roomSummaries:summarizeArea(area.rooms),wardDataStatus:'ready',wardDataSyncedAtMs:Date.now(),swpEventSync:sync,swpResponseSync:sync,inspectionSync:sync}));
+  scene.syncAreaData(area);
+};
+fixture.update();scene.setViewPhase('station',false);
+document.getElementById('call').onclick=()=>{area.rooms[0].beds[0].isCalling=!area.rooms[0].beds[0].isCalling;fixture.update();};
+addEventListener('pagehide',()=>scene.dispose(),{once:true});
+</script><style>body{margin:0;background:#132631;color:#eef;font:14px 'Microsoft YaHei',sans-serif}header,footer{padding:12px}#scene{position:absolute;inset:48px 0 48px}footer{position:absolute;bottom:0}button{padding:8px}</style></html>

@@ -57,7 +57,7 @@ import {
   getHospitalCorridorEntranceDeviceOrder,
   getHospitalCorridorEntranceScreenOrder,
   getHospitalCorridorEntranceScreenMaterialIndex,
-  getHospitalCorridorEntranceScreenAspect,
+  orientHospitalCorridorScreenUV,
   createHospitalCorridorDisplayGeometry,
   fitHospitalCorridorEntranceScreenGeometry,
   shouldDepthTestHospitalCorridorScreen,
@@ -79,6 +79,7 @@ import {
 import { resolveAreaCorridorControlLimits } from '@/core/area-corridor-controls';
 import { nurseStationSceneConfig } from '@/config/nurse-station-scene';
 import { bindReferenceStationDisplays, createReferenceClockTexture, createReferenceStationLights, prepareReferenceStation, referenceStationFov } from '@/core/reference-nurse-station';
+import { buildReferenceBoardSignatures } from '@/core/nurse-station-board-signatures';
 import { wardCorridorSceneConfig } from '@/config/ward-corridor-scene';
 import type { AreaViewPhase, TwinAreaEntity, TwinWardEntity } from '@/types/twin';
 import { getWardRoomSize } from '@/types/twin';
@@ -170,6 +171,7 @@ interface NurseStationBoardDisplay {
   screen: THREE.Mesh;
   texture: THREE.Texture;
   video?: HTMLVideoElement;
+  signature?: string;
 }
 
 type NurseStationWorkstationKind = 'taskQueue' | 'wardStatus' | 'bedMonitor' | 'deviceHealth';
@@ -1301,9 +1303,9 @@ export class AreaScene {
     };
   }
 
-  private createBoardCanvas(width: number, height: number) {
+  private createBoardCanvas(width: number, height: number, target?: THREE.CanvasTexture) {
     const CANVAS_SCALE = 2;
-    const canvas = document.createElement('canvas');
+    const canvas: HTMLCanvasElement = target?.image ?? document.createElement('canvas');
     canvas.width = width * CANVAS_SCALE;
     canvas.height = height * CANVAS_SCALE;
     const ctx = canvas.getContext('2d')!;
@@ -1312,8 +1314,8 @@ export class AreaScene {
     return { canvas, ctx };
   }
 
-  private makeBoardTexture(canvas: HTMLCanvasElement) {
-    const texture = new THREE.CanvasTexture(canvas);
+  private makeBoardTexture(canvas: HTMLCanvasElement, target?: THREE.CanvasTexture) {
+    const texture = target ?? new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
     texture.minFilter = THREE.LinearFilter;
@@ -1667,8 +1669,9 @@ export class AreaScene {
 
   private createNurseWorkScreenTexture(
     kind: 'taskQueue' | 'wardStatus' | 'bedMonitor' | 'deviceHealth',
+    target?: THREE.CanvasTexture,
   ) {
-    const { canvas, ctx } = this.createBoardCanvas(960, 520);
+    const { canvas, ctx } = this.createBoardCanvas(960, 520, target);
     const stats = this.getAreaBoardStats();
     const sortedRooms = [...this.getNurseStationSummaries()]
       .sort((a, b) => {
@@ -1807,7 +1810,7 @@ export class AreaScene {
       ctx.fillText(stats.offlineCount || stats.envWarningCount ? '请按优先级完成设备巡检' : '暂无设备与环境告警', 480, 380);
     }
 
-    return this.makeBoardTexture(canvas);
+    return this.makeBoardTexture(canvas, target);
   }
 
   private createNurseRearShiftTexture() {
@@ -1890,8 +1893,8 @@ export class AreaScene {
     return texture;
   }
 
-  private createReferenceOverviewTexture() {
-    const { canvas, ctx } = this.createBoardCanvas(1600, 500);
+  private createReferenceOverviewTexture(target?: THREE.CanvasTexture) {
+    const { canvas, ctx } = this.createBoardCanvas(1600, 500, target);
     const vm = this.nurseStationViewModel;
     const available = (key: 'ward' | 'events') => {
       const source = vm?.dataFreshnessItems.find(item => item.key === key);
@@ -1971,7 +1974,7 @@ export class AreaScene {
     ctx.fillStyle = this.darkTheme ? '#638d7938' : '#b9cdd2'; ctx.fillRect(56, 407, 656, 1); ctx.fillRect(888, 407, 656, 1);
     text(wardReady && m ? '空余床位   ' + m.empty + ' 床' : '病区数据待同步', 76, 441, 24, muted, 574);
     text(wardReady && m ? '接入设备   ' + m.deviceTotal + ' 台' : '设备数据待同步', 900, 441, 24, muted, 574);
-    const texture = this.makeBoardTexture(canvas);
+    const texture = this.makeBoardTexture(canvas, target);
     // The wall display occupies a small portion of the full scene; mipmaps keep text stable at a distance.
     texture.generateMipmaps = true;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -1979,7 +1982,6 @@ export class AreaScene {
   }
 
   private createNurseRearDashboardTexture() {
-    if (IS_REFERENCE_STATION) return this.createReferenceOverviewTexture();
     const { canvas, ctx } = this.createBoardCanvas(1200, 640);
     const stats = this.getAreaBoardStats();
     const info = this.getNurseStationDisplayInfo();
@@ -2211,9 +2213,9 @@ export class AreaScene {
     return this.makeBoardTexture(canvas);
   }
 
-  private createNurseStationBoardTexture(kind: NurseStationBoardKind) {
+  private createNurseStationBoardTexture(kind: NurseStationBoardKind, target?: THREE.CanvasTexture) {
     if (kind === 'clock')
-      return this.createNurseStationClockTexture();
+      return this.createNurseStationClockTexture(target);
     if (kind === 'corridorArea') {
       const texture = createCorridorScreenTexture({
         ...this.getCorridorDisplayData(),
@@ -2229,7 +2231,7 @@ export class AreaScene {
     }
     // The reference dashboard is authored at its physical wide-screen aspect.
     if (kind === 'dashboard')
-      return this.createNurseRearDashboardTexture();
+      return IS_REFERENCE_STATION ? this.createReferenceOverviewTexture(target) : this.createNurseRearDashboardTexture();
     if (kind === 'whiteboard')
       return this.createNurseRearShiftTexture();
     if (kind === 'roomStatus')
@@ -2243,13 +2245,13 @@ export class AreaScene {
     if (kind === 'workRight')
       return this.createWorkstationScreenTexture('right');
     if (kind === 'taskQueue' || kind === 'wardStatus' || kind === 'bedMonitor' || kind === 'deviceHealth')
-      return this.createNurseWorkScreenTexture(kind);
+      return this.createNurseWorkScreenTexture(kind, target);
     return this.createKioskScreenTexture();
   }
 
-  private createNurseStationClockTexture() {
+  private createNurseStationClockTexture(target?: THREE.CanvasTexture) {
     if (IS_REFERENCE_STATION)
-      return createReferenceClockTexture();
+      return createReferenceClockTexture(new Date(), target);
     const canvas = document.createElement('canvas');
     canvas.width = 640;
     canvas.height = 192;
@@ -3192,12 +3194,28 @@ export class AreaScene {
   }
 
   private refreshNurseStationBoardDisplays() {
-    if (!this.nurseStationBoardDisplays.length)
+    if (!this.isActive || !this.nurseStationBoardDisplays.length)
       return;
 
+    const signatures: Partial<Record<NurseStationBoardKind, string>> | null = IS_REFERENCE_STATION
+      ? buildReferenceBoardSignatures({
+        viewModel: this.nurseStationViewModel,
+        metrics: this.getNurseStationLiveData(),
+        summaries: this.getNurseStationSummaries(),
+        areaName: this.nurseStationViewModel?.area.areaName ?? this.area?.areaName ?? '护士站',
+        darkTheme: this.darkTheme,
+      }, Date.now()) : null;
     for (const display of this.nurseStationBoardDisplays) {
       if (display.video)
         continue;
+      const signature = signatures?.[display.kind];
+      if (signature !== undefined && display.texture instanceof THREE.CanvasTexture) {
+        if (display.signature === signature) continue;
+        // Keep the GPU texture, UV orientation and material; repaint only its existing canvas.
+        this.createNurseStationBoardTexture(display.kind, display.texture);
+        display.signature = signature;
+        continue;
+      }
       const flipY = display.texture.flipY;
       display.texture.dispose();
       display.texture = this.createNurseStationBoardTexture(display.kind);
@@ -3642,12 +3660,13 @@ export class AreaScene {
 
     uniqueDisplayNodes.slice(0, 2).forEach((screen, index) => {
       const mode: CorridorModelDisplay['mode'] = index === 0 ? 'area' : 'clock';
+      const materialIndex = getHospitalCorridorEntranceScreenMaterialIndex(screen);
+      const overlayGeometry = createHospitalCorridorDisplayGeometry(screen, materialIndex);
       const texture = createCorridorScreenTexture({
         ...this.getCorridorDisplayData(),
         mode,
+        aspect: overlayGeometry.userData.displayAspect,
       });
-      const materialIndex = getHospitalCorridorEntranceScreenMaterialIndex(screen);
-      const overlayGeometry = createHospitalCorridorDisplayGeometry(screen, materialIndex);
 
       const overlay = new THREE.Mesh(
         overlayGeometry,
@@ -3655,7 +3674,7 @@ export class AreaScene {
           map: texture,
           side: THREE.DoubleSide,
           toneMapped: false,
-          depthTest: false,
+          depthTest: true,
           depthWrite: false,
           polygonOffset: true,
           polygonOffsetFactor: -4,
@@ -3678,7 +3697,8 @@ export class AreaScene {
     const data = this.getCorridorDisplayData();
     for (const display of this.corridorModelDisplays) {
       display.texture.dispose();
-      display.texture = createCorridorScreenTexture({ ...data, mode: display.mode });
+      display.texture = createCorridorScreenTexture({ ...data, mode: display.mode,
+        aspect: display.overlay.geometry.userData.displayAspect });
       const material = display.overlay.material as THREE.MeshBasicMaterial;
       material.map = display.texture;
       material.needsUpdate = true;
@@ -3708,7 +3728,7 @@ export class AreaScene {
           screen: entranceDevice as THREE.Mesh,
           label: undefined,
           screenMaterialIndex,
-          screenAspect: getHospitalCorridorEntranceScreenAspect(entranceDevice),
+          screenAspect: orientHospitalCorridorScreenUV(entranceDevice),
         };
       }
     }
@@ -4703,7 +4723,7 @@ export class AreaScene {
   }
 
   private async refreshDoorScreen(roomIndex: number) {
-    if (!this.isActive || this.shouldShowWardCorridorModel()) return;
+    if (this.modelKind === 'station' || !this.isActive || this.shouldShowWardCorridorModel()) return;
     const meshGroup = this.roomMeshes.get(roomIndex);
     const room = this.area?.rooms[roomIndex];
     const summary = this.summaries[roomIndex];
@@ -5559,6 +5579,7 @@ export class AreaScene {
     this.controls.enabled = active;
     if (active) {
       void this.refreshWardCorridorScreens();
+      this.refreshNurseStationBoardDisplays();
       this.timer.getDelta();
       this.handleResize();
       if (!this.animationId)
@@ -5668,7 +5689,7 @@ export class AreaScene {
       });
     }
 
-    if (this.corridorDisplays.length) {
+    if (this.corridorDisplays.length || this.corridorModelDisplays.length) {
       const nowMs = performance.now();
       if (nowMs - this.corridorTimeRefreshAt >= 1000) {
         this.corridorTimeRefreshAt = nowMs;

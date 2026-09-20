@@ -314,6 +314,12 @@ export function createHospitalCorridorDisplayGeometry(
   });
   const width = Math.max(max.z - min.z, 1e-6);
   const height = Math.max(max.y - min.y, 1e-6);
+  mesh.updateWorldMatrix(true, false);
+  const physicalWidth = new THREE.Vector3(0, 0, width).applyMatrix4(mesh.matrixWorld)
+    .distanceTo(new THREE.Vector3().applyMatrix4(mesh.matrixWorld));
+  const physicalHeight = new THREE.Vector3(0, height, 0).applyMatrix4(mesh.matrixWorld)
+    .distanceTo(new THREE.Vector3().applyMatrix4(mesh.matrixWorld));
+  geometry.userData.displayAspect = physicalWidth / physicalHeight;
   const uv = new THREE.BufferAttribute(new Float32Array(position.count * 2), 2);
   for (let index = 0; index < position.count; index++) {
     const u = (position.getZ(index) - min.z) / width;
@@ -357,57 +363,65 @@ export function shouldDepthTestHospitalCorridorScreen(mesh: THREE.Mesh) {
   return !mesh.userData.generatedHospitalCorridorOverlay;
 }
 
-/** 将门口机内屏幕面调整为 9:16；只改屏幕顶点，不拉伸门框。 */
+/** 按世界坐标调整竖屏宽度；框体边缘平移，保留高度、厚度和安装中心。 */
 export function fitHospitalCorridorEntranceScreenGeometry(
   mesh: THREE.Mesh,
   targetAspect = 9 / 16,
 ) {
-  if (mesh.userData.hospitalCorridorScreenGeometryFitted)
+  if (mesh.userData.hospitalCorridorScreenGeometryFitted || !Number.isFinite(targetAspect) || targetAspect <= 0)
     return;
   const materialIndex = getHospitalCorridorEntranceScreenMaterialIndex(mesh);
-  if (materialIndex < 0)
-    return;
+  if (materialIndex < 0) return;
+  mesh.updateWorldMatrix(true, false);
+  const bounds = getHospitalCorridorEntranceScreenBounds(mesh, materialIndex).applyMatrix4(mesh.matrixWorld);
+  const size = bounds.getSize(new THREE.Vector3());
+  const axis = size.x > size.z ? 'x' : 'z';
+  const width = size[axis];
+  if (!(width > 0 && size.y > 0)) return;
+  const center = bounds.getCenter(new THREE.Vector3())[axis];
+  const halfWidth = width / 2;
+  const targetHalfWidth = size.y * targetAspect / 2;
 
-  const geometry = mesh.geometry.clone();
-  const position = geometry.getAttribute('position');
-  const groups = geometry.groups.filter(group => group.materialIndex === materialIndex);
-  if (!position || !groups.length)
-    return;
-
-  const vertexIndices = new Set<number>();
-  for (const group of groups) {
-    const end = Math.min(group.start + group.count, geometry.index?.count ?? position.count);
-    for (let i = group.start; i < end; i++)
-      vertexIndices.add(geometry.index?.getX(i) ?? i);
+  // GLTFLoader may split the frame and screen into sibling meshes under one device.
+  let device: THREE.Object3D = mesh;
+  for (let parent = mesh.parent; parent; parent = parent.parent) {
+    if (/^门口机\d+$/.test(parent.name)) { device = parent; break; }
   }
-  if (!vertexIndices.size)
-    return;
-
-  const bounds = new THREE.Box3();
-  const point = new THREE.Vector3();
-  for (const index of vertexIndices) {
-    point.fromBufferAttribute(position, index);
-    bounds.expandByPoint(point);
-  }
-  const width = Math.abs(bounds.max.x - bounds.min.x);
-  const height = Math.abs(bounds.max.z - bounds.min.z);
-  if (width <= 0 || height <= 0)
-    return;
-
-  const currentPortraitAspect = (height * Math.abs(mesh.scale.z))
-    / (width * Math.abs(mesh.scale.x));
-  const zFactor = targetAspect / currentPortraitAspect;
-  const centerZ = (bounds.min.z + bounds.max.z) / 2;
-  for (const index of vertexIndices) {
-    const x = position.getX(index);
-    const y = position.getY(index);
-    const z = centerZ + (position.getZ(index) - centerZ) * zFactor;
-    position.setXYZ(index, x, y, z);
-  }
-  position.needsUpdate = true;
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  mesh.geometry = geometry;
+  device.updateWorldMatrix(true, true);
+  device.traverse(node => {
+    if (!(node instanceof THREE.Mesh)) return;
+    const materials = Array.isArray(node.material) ? node.material : [node.material];
+    const allowed = new Set(materials.map((material, index) =>
+      /门口机内|门口机周/.test(material.name) ? index : -1).filter(index => index >= 0));
+    if (!allowed.size) return;
+    const geometry = node.geometry.clone();
+    const position = geometry.getAttribute('position');
+    if (!position) { geometry.dispose(); return; }
+    const groups = geometry.groups.length ? geometry.groups
+      : [{ start: 0, count: geometry.index?.count ?? position.count, materialIndex: 0 }];
+    const indices = new Set<number>();
+    for (const group of groups) {
+      if (!allowed.has(group.materialIndex ?? 0)) continue;
+      const end = Math.min(group.start + group.count, geometry.index?.count ?? position.count);
+      for (let i = group.start; i < end; i++) indices.add(geometry.index?.getX(i) ?? i);
+    }
+    const inverse = node.matrixWorld.clone().invert();
+    const point = new THREE.Vector3();
+    for (const index of indices) {
+      point.fromBufferAttribute(position, index).applyMatrix4(node.matrixWorld);
+      const distance = point[axis] - center;
+      point[axis] = center + (Math.abs(distance) >= halfWidth
+        ? Math.sign(distance) * (targetHalfWidth + Math.abs(distance) - halfWidth)
+        : distance * targetHalfWidth / halfWidth);
+      point.applyMatrix4(inverse);
+      position.setXYZ(index, point.x, point.y, point.z);
+    }
+    position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    node.geometry = geometry;
+  });
   mesh.userData.hospitalCorridorScreenGeometryFitted = true;
 }
 
@@ -429,6 +443,40 @@ export function getHospitalCorridorEntranceScreenBounds(mesh: THREE.Mesh, materi
     }
   }
   return bounds;
+}
+
+/** Canvas top is v=0 with flipY=false. Imported UVs may be rotated in a new GLB. */
+export function orientHospitalCorridorScreenUV(mesh: THREE.Mesh): number {
+  const cached = mesh.userData.hospitalCorridorOrientedScreen;
+  if (cached?.geometry === mesh.geometry.uuid) return cached.aspect;
+  mesh.updateWorldMatrix(true, false);
+  const materialIndex = getHospitalCorridorEntranceScreenMaterialIndex(mesh);
+  const geometry = mesh.geometry.clone();
+  const position = geometry.getAttribute('position');
+  const groups = geometry.groups.filter(group => group.materialIndex === materialIndex);
+  const ranges = groups.length ? groups : [{ start: 0, count: geometry.index?.count ?? position.count }];
+  const indices = new Set<number>();
+  for (const group of ranges)
+    for (let i = group.start; i < group.start + group.count; i++) indices.add(geometry.index?.getX(i) ?? i);
+  const points = [...indices].map(index => ({ index,
+    point: new THREE.Vector3().fromBufferAttribute(position, index).applyMatrix4(mesh.matrixWorld) }));
+  const box = new THREE.Box3().setFromPoints(points.map(item => item.point));
+  const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+  // Screens face into the centered corridor. Camera-right = world-up cross facing normal.
+  const normalX = size.x < size.z;
+  const right = normalX ? new THREE.Vector3(0, 0, center.x > 0 ? 1 : -1)
+    : new THREE.Vector3(center.z > 0 ? -1 : 1, 0, 0);
+  const xs = points.map(item => item.point.dot(right));
+  const min = Math.min(...xs), width = Math.max(...xs) - min;
+  if (!(width > 0 && size.y > 0)) { geometry.dispose(); return 1; }
+  const uv = geometry.getAttribute('uv')?.clone()
+    ?? new THREE.BufferAttribute(new Float32Array(position.count * 2), 2);
+  points.forEach(({ index, point }, i) => uv.setXY(index, (xs[i]! - min) / width, (box.max.y - point.y) / size.y));
+  geometry.setAttribute('uv', uv);
+  // Preserve vertices, normals, groups and frame UVs; only the display mapping changes.
+  mesh.geometry = geometry;
+  mesh.userData.hospitalCorridorOrientedScreen = { geometry: geometry.uuid, aspect: width / size.y };
+  return width / size.y;
 }
 
 export function configureWardCorridorCanvasTexture(

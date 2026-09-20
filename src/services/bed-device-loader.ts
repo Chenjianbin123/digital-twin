@@ -5,6 +5,7 @@ import {
   applyBedDeviceInfoToTwinBed,
   isBedDeviceResponseApplicable,
   shouldWarnForMissingBedDevice,
+  hasOccupiedEmptyBedLabel,
 } from '@/core/bed-device-mapping';
 import { loadParsedTemplate } from '@/core/template/template-cache';
 import type { BedDeviceInfoData } from '@/types/bed-device';
@@ -21,8 +22,16 @@ export interface BedDeviceLoadOptions {
 
 export interface BedDeviceLoadResult {
   warnings: string[];
+  issues: BedDeviceIssue[];
   loaded: number;
   failed: number;
+}
+
+export interface BedDeviceIssue {
+  bedCode: string;
+  bedName: string;
+  kind: 'unbound' | 'request-failed' | 'response-mismatch' | 'occupancy-conflict';
+  message: string;
 }
 
 async function loadOneBedDeviceInfo(deviceCode: string, patientKeys: string[]): Promise<BedDeviceInfoData> {
@@ -51,6 +60,7 @@ export async function loadBedDeviceDetails(
 ): Promise<BedDeviceLoadResult> {
   const generation = cacheGeneration;
   const warnings: string[] = [];
+  const issues: BedDeviceIssue[] = [];
   const bedGroups = new Map<string, TwinBedEntity[]>();
   let loaded = 0;
   let failed = 0;
@@ -60,6 +70,7 @@ export async function loadBedDeviceDetails(
     if (!deviceCode) {
       if (shouldWarnForMissingBedDevice(bed)) {
         warnings.push(`${bed.bedName || bed.bedCode || '未知床位'} 未关联床头机设备`);
+        issues.push({ bedCode: bed.bedCode, bedName: bed.bedName || bed.bedCode || '未知床位', kind: 'unbound', message: '未关联床头机设备，请检查设备绑定' });
         failed += 1;
       }
       continue;
@@ -98,6 +109,7 @@ export async function loadBedDeviceDetails(
             warnings.push(
               `${bed.bedName || bed.bedCode || '未知床位'} 床头机响应不匹配（请求 ${deviceCode}，返回 ${responseCode}），已忽略`,
             );
+            issues.push({ bedCode: bed.bedCode, bedName: bed.bedName || bed.bedCode || '未知床位', kind: 'response-mismatch', message: '床头机响应与绑定设备不匹配，已忽略本次数据' });
             failed += 1;
             return;
           }
@@ -111,9 +123,31 @@ export async function loadBedDeviceDetails(
     failed += group.length;
     const reason = result.reason instanceof Error ? result.reason.message : '查询失败';
     warnings.push(`${deviceCode} 床头机信息加载失败：${reason}`);
+    const message = /超时|timeout/i.test(reason)
+      ? '床头机信息查询超时，请重新同步'
+      : '床头机信息加载失败，请重新同步';
+    for (const bed of group)
+      issues.push({ bedCode: bed.bedCode, bedName: bed.bedName || bed.bedCode || '未知床位', kind: 'request-failed', message });
   });
 
-  return { warnings, loaded, failed };
+  // Validate the final snapshot even on a cache hit; do not rewrite occupancy to match a label.
+  if (generation === cacheGeneration && isCurrent()) {
+    const issuesByBed = new Map(issues.map(issue => [issue.bedCode, issue]));
+    for (const bed of beds) {
+      if (!hasOccupiedEmptyBedLabel(bed)) continue;
+      const message = '名称与入住记录不一致，请核对床位资料；当前保留入住记录';
+      const bedName = bed.bedName || bed.bedCode || '未知床位';
+      const existing = issuesByBed.get(bed.bedCode);
+      if (existing) existing.message += `；${message}`;
+      else {
+        const issue: BedDeviceIssue = { bedCode: bed.bedCode, bedName, kind: 'occupancy-conflict', message };
+        issues.push(issue);
+        issuesByBed.set(bed.bedCode, issue);
+      }
+      warnings.push(`${bedName} ${message}`);
+    }
+  }
+  return { warnings, issues, loaded, failed };
 }
 
 /** 按床头机返回的 templateId 去重预解析模板，避免进入病房后才首次请求。 */

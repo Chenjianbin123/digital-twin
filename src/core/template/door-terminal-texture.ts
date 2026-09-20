@@ -27,8 +27,13 @@ function containDoorTemplateCanvas(
   source: HTMLCanvasElement,
   isHorizontal: boolean,
   background: string,
+  targetAspect?: number,
 ) {
   const targetSize = getDoorTargetCanvasSize(isHorizontal);
+  if (targetAspect && Number.isFinite(targetAspect) && targetAspect > 0) {
+    targetSize.width = targetAspect < 1 ? 1080 : 1920;
+    targetSize.height = Math.max(1, Math.round(targetSize.width / targetAspect));
+  }
   const target = document.createElement('canvas');
   target.width = targetSize.width;
   target.height = targetSize.height;
@@ -387,7 +392,7 @@ export async function renderDoorTerminalTexture(
     }
     const canvas = areaMeta?.fit === 'fill' && areaMeta.targetAspect
       ? fillDoorTemplateCanvas(sourceCanvas, areaMeta.targetAspect, template.background)
-      : containDoorTemplateCanvas(sourceCanvas, layout.isHorizontal, template.background);
+      : containDoorTemplateCanvas(sourceCanvas, layout.isHorizontal, template.background, areaMeta?.targetAspect);
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.needsUpdate = true;

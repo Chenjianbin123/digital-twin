@@ -115,12 +115,6 @@ function vitalWarningValue(task: AlertTask) {
   return value ? `${metric} ${value}` : metric;
 }
 
-const areaIntro = computed(() => {
-  if (!props.area)
-    return '';
-  return `${props.area.areaName}（${props.area.deptName}）`;
-});
-
 const bedMonitorRows = computed(() => {
   const stats = areaStats.value;
   if (!stats)
@@ -214,16 +208,6 @@ function inspectionTime(value: string | null | undefined) {
 
 <template>
   <div class="area-dashboard">
-    <button
-      v-if="showBackToStation"
-      type="button"
-      class="area-dashboard__back-station"
-      @click="emit('backToStation')"
-    >
-      ← 返回护士站工作台
-    </button>
-
-    <p v-if="areaIntro" class="area-dashboard__intro">{{ areaIntro }}</p>
 
     <AlertTaskPanel
       class="corridor-alerts"

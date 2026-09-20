@@ -13,6 +13,7 @@ import { initFileUrlPrefix } from '@/utils/file-prefix';
 import type { AuthSession } from '@/types/auth';
 import StartupLoader from '@/components/StartupLoader.vue';
 import AreaSelectionView from '@/components/AreaSelectionView.vue';
+import HospitalIntroGate from '@/components/HospitalIntroGate.vue';
 import '@/styles/dashboard-theme.scss';
 import '@/styles/entrance-theme.scss';
 
@@ -21,6 +22,7 @@ const DigitalTwinWorkspace = defineRecoverableComponent(() => import('@/componen
 const { theme, toggleTheme } = useDashboardTheme();
 const store = useTwinStore();
 const authSession = ref<AuthSession | null>(readAuthSession());
+const showHospitalIntro = ref(!authSession.value);
 const authNotice = ref('');
 const { area, areaOptions, preferredAreaId, rememberedAreaId, isAreaListLoading,
   isAreaSwitching, pendingAreaId, areaSwitchError, areaListError } = storeToRefs(store);
@@ -52,6 +54,13 @@ async function loadAreaSelectionContext(context: BootstrapContext) {
   });
 }
 
+function finishHospitalIntro(reason: string) {
+  showHospitalIntro.value = false;
+  if (reason === 'unavailable') authNotice.value = '医院外景暂不可用，您可正常登录。';
+}
+function focusLogin() {
+  document.querySelector<HTMLInputElement>('.swp-login input[name="username"]')?.focus({ preventScroll: true });
+}
 function handleAuthenticated(session: AuthSession) {
   cancelBootstrap();
   authSession.value = session;
@@ -60,6 +69,7 @@ function handleAuthenticated(session: AuthSession) {
   void bootstrapDigitalTwin();
 }
 function handleAuthExpired(event: Event) {
+  showHospitalIntro.value = false;
   cancelBootstrap();
   store.clearSessionState();
   authSession.value = null;
@@ -67,6 +77,7 @@ function handleAuthExpired(event: Event) {
     ? event.detail.message : '登录已过期，请重新登录';
 }
 function handleLogout() {
+  showHospitalIntro.value = false;
   cancelBootstrap();
   clearAuthSession();
   store.clearSessionState();
@@ -88,13 +99,18 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="app-session" :data-theme="theme">
-    <SwpLoginGate
-      v-if="!authSession"
-      :theme="theme"
-      :notice="authNotice"
-      @toggle-theme="toggleTheme"
-      @authenticated="handleAuthenticated"
-    />
+    <template v-if="!authSession">
+      <Transition name="entrance-fade" mode="out-in" @after-enter="focusLogin">
+        <HospitalIntroGate v-if="showHospitalIntro" @complete="finishHospitalIntro" />
+        <SwpLoginGate
+          v-else
+          :theme="theme"
+          :notice="authNotice"
+          @toggle-theme="toggleTheme"
+          @authenticated="handleAuthenticated"
+        />
+      </Transition>
+    </template>
     <template v-else>
       <Transition name="startup-fade">
         <StartupLoader v-if="showStartupLoader" :theme="theme" :progress="bootProgress" :phase="bootPhase" @toggle-theme="toggleTheme" />
@@ -127,6 +143,11 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .app-session { width: 100%; height: 100%; }
+.entrance-fade-enter-active, .entrance-fade-leave-active { transition: opacity .25s ease; }
+.entrance-fade-enter-from, .entrance-fade-leave-to { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .entrance-fade-enter-active, .entrance-fade-leave-active { transition: none; }
+}
 .startup-fade-enter-active, .startup-fade-leave-active { transition: opacity 0.5s ease, filter 0.5s ease; }
 .startup-fade-enter-from, .startup-fade-leave-to { opacity: 0; filter: blur(8px); }
 </style>

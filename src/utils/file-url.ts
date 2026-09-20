@@ -1,4 +1,4 @@
-import { getFileUrlPrefix } from '@/utils/file-prefix';
+import { getFileUrlPrefix, isFileUrlPrefixLoading } from '@/utils/file-prefix';
 
 /** 对齐主项目：fileUrlPrefix + path */
 export function resolveFileUrl(path?: string): string {
@@ -11,6 +11,9 @@ export function resolveFileUrl(path?: string): string {
 
   if (/^https?:\/\//i.test(trimmed))
     return trimmed;
+
+  // Reactive consumers retry when initialization finishes instead of requesting a wrong origin.
+  if (isFileUrlPrefixLoading()) return '';
 
   const normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
   const prefix = getFileUrlPrefix();

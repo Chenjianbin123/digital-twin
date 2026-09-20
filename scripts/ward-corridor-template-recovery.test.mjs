@@ -6,10 +6,11 @@ const originalImage = globalThis.Image;
 const originalDocument = globalThis.document;
 let broken = true;
 let draws = 0;
+let lastDraw;
 globalThis.Image = class {
   set src(value) { queueMicrotask(() => broken ? this.onerror?.() : this.onload?.()); }
 };
-const context = new Proxy({ measureText: () => ({ width: 10 }), drawImage: () => { draws++; } }, {
+const context = new Proxy({ measureText: () => ({ width: 10 }), drawImage: (...args) => { draws++; lastDraw = args; } }, {
   get: (target, key) => key in target ? target[key] : () => {},
 });
 globalThis.document = { createElement: () => ({ getContext: () => context }) };
@@ -36,6 +37,18 @@ try {
   broken = false;
   await changed();
   assert.equal(applied, 2);
+  for (const [width, height] of [[1080, 1920], [1920, 1080]]) {
+    const texture = await renderDoorTerminalTexture(
+      { ...room, director: width > height ? '0' : '1' }, {},
+      { width, height, background: '#fff', nodes: [] },
+      { targetAspect: 0.6, fit: 'contain' },
+    );
+    assert.equal(texture.image.width / texture.image.height, 0.6);
+    const [, x, y, drawnWidth, drawnHeight] = lastDraw;
+    assert.ok(Math.abs(drawnWidth / drawnHeight - width / height) < 1e-8, 'template must not stretch');
+    assert.ok(x >= 0 && y >= 0 && x + drawnWidth <= texture.image.width && y + drawnHeight <= texture.image.height);
+    texture.dispose();
+  }
 }
 finally {
   globalThis.Image = originalImage;

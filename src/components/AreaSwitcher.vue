@@ -281,21 +281,28 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 100;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
   background: rgba(2, 9, 14, 0.62);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 
   &__drawer {
     display: flex;
-    width: min(520px, 88vw);
-    height: 100%;
+    position: relative;
+    width: min(1280px, 100%);
+    height: min(960px, calc(100dvh - 48px));
+    box-sizing: border-box;
     min-width: 0;
     padding: 24px;
-    border-left: 1px solid #3c8ba9;
+    border: 1px solid #63b9d366;
+    border-radius: 18px;
+    overflow: hidden;
     flex-direction: column;
     color: #e5f6fb;
     background: #081c29;
-    box-shadow: -18px 0 42px rgba(20, 40, 48, 0.46);
+    box-shadow: 0 24px 80px #020b1666, inset 0 1px 0 #b9efff20;
   }
 
   &__header {
@@ -383,7 +390,7 @@ onBeforeUnmount(() => {
     overscroll-behavior: contain;
   }
 
-  &__list { display: grid; gap: 8px; }
+  &__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
   &__row {
     display: flex;
@@ -523,10 +530,13 @@ onBeforeUnmount(() => {
   &--switching { cursor: progress; }
 
   @include down($bp-sm) {
+    padding: 12px;
     &__drawer {
       width: 100%;
+      height: calc(100dvh - 24px);
       padding: 18px 14px;
     }
+    &__list { grid-template-columns: minmax(0, 1fr); }
 
     &__header { margin-bottom: 16px; }
     &__header h2 { font-size: 18px; }
@@ -537,11 +547,11 @@ onBeforeUnmount(() => {
 .area-switcher-enter-active,
 .area-switcher-leave-active { transition: opacity 0.18s ease; }
 .area-switcher-enter-active .area-switcher__drawer,
-.area-switcher-leave-active .area-switcher__drawer { transition: transform 0.18s ease; }
+.area-switcher-leave-active .area-switcher__drawer { transition: transform 0.22s cubic-bezier(.2,.7,.2,1); }
 .area-switcher-enter-from,
 .area-switcher-leave-to { opacity: 0; }
 .area-switcher-enter-from .area-switcher__drawer,
-.area-switcher-leave-to .area-switcher__drawer { transform: translateX(100%); }
+.area-switcher-leave-to .area-switcher__drawer { transform: translateY(12px) scale(.97); }
 
 @keyframes switcher-spin {
   to { transform: rotate(360deg); }
@@ -562,19 +572,20 @@ onBeforeUnmount(() => {
  &__header { position: relative; padding-bottom: 20px; border-bottom: 1px solid var(--switcher-line); margin-bottom: 18px; }
  &__header::before { content: ""; position: absolute; top: -28px; left: 0; width: 56px; height: 2px; background: var(--switcher-accent); box-shadow: 62px 0 0 var(--switcher-line); }
  &__eyebrow { display: block; color: var(--switcher-accent); font: 500 10px/1.4 "Bahnschrift", "Segoe UI", sans-serif; letter-spacing: .18em; margin-bottom: 8px; }
- &__header h2 { font-size: 24px; letter-spacing: .04em; }
- &__header p { margin-top: 10px; font-size: 13px; }
+ &__header h2 { font-size: 30px; letter-spacing: .04em; }
+ &__header p { margin-top: 10px; font-size: 16px; }
  &__close { border: 1px solid var(--switcher-line); border-radius: 7px; }
- &__search { min-height: 44px; border-radius: 8px; margin-bottom: 14px; }
+ &__search { min-height: 52px; border-radius: 8px; margin-bottom: 14px; font-size: 18px; }
  &__search svg { width: 18px; height: 18px; flex-shrink: 0; }
- &__list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 13px; color: #b1cbd6; }
+ &__list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 16px; color: #b1cbd6; }
  &__list-head strong { padding: 2px 7px; margin-left: 5px; border-radius: 4px; background: #75b7ca14; color: var(--switcher-accent); font-weight: 800; font-variant-numeric: tabular-nums; }
- &__list-head small { font-size: 12px; }
+ &__list-head small { font-size: 14px; }
  &__list { gap: 9px; }
- &__row { min-height: 88px; padding: 14px; border-radius: 8px; gap: 12px; align-items: flex-start; }
+ &__row { min-height: 116px; padding: 18px; border-radius: 8px; gap: 14px; align-items: flex-start; }
  &__row-copy { flex: 1; min-width: 0; display: grid; gap: 4px; }
- &__row-name { display: block; color: #f2fbff; font-size: 16px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
- &__row-code { display: block; color: #8eacb9; font-family: "Bahnschrift", "Segoe UI", sans-serif; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+ &__row-copy &__row-name { display: block; color: #f2fbff; font-size: 20px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+ &__row-copy &__row-code { display: block; color: #8eacb9; font-family: "Bahnschrift", "Segoe UI", sans-serif; font-size: 14px; font-weight: 600; letter-spacing: .04em; }
+ &__row-copy &__metric { font-size: 14px; }
  &__current-name { color: var(--switcher-accent); font-weight: 800; }
  &__metrics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
  &__metric {
@@ -610,15 +621,19 @@ onBeforeUnmount(() => {
  &__check { opacity: .55; font-size: 22px; margin-top: 6px; }
  &__check--selected { opacity: 1; font-size: 16px; }
  &__badge { font-size: 11px; font-weight: 700; padding: 4px 7px; margin-top: 4px; color: #0d303a; background: #9bcec9; }
- &__footer { margin-top: 12px; padding-top: 16px; }
- &__hint { font-size: 13px; }
- &__confirm { min-height: 46px; border-radius: 7px; font-size: 14px; font-weight: 600; }
+ &__footer { margin-top: 12px; padding-top: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+ &__footer > .area-switcher__error { width: 100%; }
+ &__footer .area-switcher__hint { flex: 1; margin: 0; }
+ &__hint { font-size: 15px; }
+ &__confirm { width: auto; min-width: 260px; max-width: 100%; min-height: 52px; border-radius: 7px; font-size: 17px; font-weight: 600; }
  @media(max-width: 400px) {
   &__drawer { padding: 20px 14px 14px; }
   &__header { padding-bottom: 14px; margin-bottom: 14px; }
   &__header h2 { font-size: 21px; }
   &__row { padding: 12px; gap: 10px; }
   &__ward-icon { width: 30px; flex-basis: 30px; height: 34px; padding: 5px; }
+  &__footer { gap: 10px; }
+  &__confirm { width: 100%; }
  }
 }
 </style>

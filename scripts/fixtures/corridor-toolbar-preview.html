@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>病房导航交互验收</title>
+<style>body{margin:20px;background:#e3ebef;color:#294c60;font:14px 'Microsoft YaHei',sans-serif}.controls{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}.controls button{padding:8px 12px} .digital-twin{position:relative;width:800px;max-width:100%;height:720px;background:linear-gradient(125deg,#8da5b0,#cbd9de);border:1px solid #7897a8;box-sizing:border-box}.digital-twin[data-theme=dark]{background:linear-gradient(125deg,#233e4c,#678591)}.digital-twin.narrow{width:320px}.note{max-width:800px}</style>
+<h1>病房导航交互验收</h1><p class="note">真实 Vue 组件，使用示例数据。定位、进入与翻组仅记录事件，不连接业务接口。</p><div id="app"></div>
+<script type="module">
+import {createApp,h,ref,computed} from 'vue';
+import Toolbar from '/src/components/WardCorridorToolbar.vue';
+createApp({setup(){
+ const theme=ref('dark'),narrow=ref(false),count=ref(9),focused=ref(-1),page=ref(0),event=ref('尚未操作');
+ const rooms=computed(()=>Array.from({length:count.value},(_,i)=>({sickroomName:i===3?'康复观察病房 A108':`${101+i}房`,sickroomCode:String(101+i),beds:[],isOnline:i%3!==0})));
+ const layout=computed(()=>({mode:'schematic',page:page.value,pageCount:Math.max(1,Math.ceil(count.value/10)),issues:[],slots:rooms.value.slice(page.value*10,page.value*10+10).map((room,i)=>({roomIndex:page.value*10+i,label:room.sickroomName,doorNode:`door${i}`,interactive:true}))}));
+ const summaries=computed(()=>rooms.value.map((r,i)=>({priority:i===2?'calling':'normal',statusText:i===2?'呼叫中':'4/5 在床'})));
+ return ()=>h('div',[
+ h('div',{class:'controls'},[
+ h('button',{onClick:()=>theme.value=theme.value==='dark'?'light':'dark'},'切换浅深模式'),
+ h('button',{onClick:()=>narrow.value=!narrow.value},'切换320宽度'),
+ ...[0,1,9,15].map(n=>h('button',{onClick:()=>{count.value=n;focused.value=-1;page.value=0}},`${n}间病房`))]),
+ h('p',{'aria-live':'polite'},event.value),
+ h('div',{class:'digital-twin',style:{width:narrow.value?'320px':'800px'},'data-theme':theme.value},[
+ h(Toolbar,{key:count.value,area:{rooms:rooms.value},summaries:summaries.value,layout:layout.value,focusedRoomIndex:focused.value,panelsVisible:true,
+ onFocus:i=>{focused.value=i;event.value=`定位 ${rooms.value[i].sickroomName}`},onEnter:i=>event.value=`进入 ${rooms.value[i].sickroomName}`,onReset:()=>{focused.value=-1;event.value='恢复总览'},onPage:p=>{page.value=p;focused.value=-1;event.value=`切换第 ${p+1} 组`}})])]);
+}}).mount('#app');
+</script></html>

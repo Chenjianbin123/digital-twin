@@ -13,6 +13,9 @@ import {
   type DataSource,
 } from '@/api/door-device';
 import { fetchHospitalInfo } from '@/api/hospital-info';
+import { useHospitalInfo } from '@/core/use-hospital-info';
+import { clearFileUrlPrefix } from '@/utils/file-prefix';
+import { clearLoadTimings, measureLoadStage, startLoadStage } from '@/core/load-timing';
 import { mapDoorListToTwinArea } from '@/types/twin';
 import { analyzeEnvAlert } from '@/core/env-alert';
 import { resolveBedStatus } from '@/core/bed-status';
@@ -68,7 +71,7 @@ import {
   loadSwpCallAlertsEnabled,
   notifyNewSwpCalls,
 } from '@/services/swp-call-notifier';
-import { loadBedDeviceDetails, preloadBedTemplates } from '@/services/bed-device-loader';
+import { loadBedDeviceDetails, type BedDeviceIssue } from '@/services/bed-device-loader';
 import { clearBedTemplateIdCache } from '@/services/bed-template-enricher';
 import { startStatusPusher, stopStatusPusher } from '@/services/status-pusher';
 import type {
@@ -154,8 +157,9 @@ interface LoadAreaOptions {
 interface AreaSnapshot {
   area: TwinAreaEntity;
   deviceCodes: string[];
-  hospitalInfo: HospitalInfo | null;
+  hospitalInfo?: HospitalInfo | null;
   warnings: string[];
+  retainedRoomDeviceCodes: string[];
 }
 
 interface FetchAreaSnapshotOptions {
@@ -234,6 +238,8 @@ export const useTwinStore = defineStore('twin', () => {
   const error = ref<string | null>(null);
   const bedDetailsLoading = ref(false);
   const bedDetailsError = ref<string | null>(null);
+  const bedDetailsIssues = ref<BedDeviceIssue[]>([]);
+  const retainedRoomDeviceCodes = ref<string[]>([]);
   let bedDetailsRequestGeneration = 0;
   const statusHistory = ref<StatusHistoryEntry[]>([]);
   const dataSource = ref<DataSource>(getDataSource());
@@ -242,8 +248,8 @@ export const useTwinStore = defineStore('twin', () => {
   const lastFetchedAtMs = ref<number | null>(null);
   const dataWarnings = ref<string[]>([]);
   const dataPhase = ref<DataPhase>('idle');
-  const hospitalInfo = ref<HospitalInfo | null>(null);
-  const hospitalInfoLoading = ref(false);
+  const hospitalResource = useHospitalInfo(fetchHospitalInfo);
+  const { info: hospitalInfo, loading: hospitalInfoLoading, error: hospitalInfoError } = hospitalResource;
   const alertAckRecords = ref<AlertAckRecordMap>(typeof window === 'undefined' ? {} : loadAlertAckRecords());
   const alertOperator = ref(getDefaultAlertOperator());
   const callAlertsEnabled = ref(loadSwpCallAlertsEnabled());
@@ -290,6 +296,9 @@ export const useTwinStore = defineStore('twin', () => {
       return null;
     return currentWard.value.beds.find(b => b.bedCode === selectedBedCode.value) ?? null;
   });
+
+  const currentWardSnapshotRetained = computed(() => !!currentWard.value
+    && retainedRoomDeviceCodes.value.includes(currentWard.value.deviceCode));
 
   function clearAlertFocusSelection() {
     if (alertFocusTimer) {
@@ -417,6 +426,7 @@ export const useTwinStore = defineStore('twin', () => {
       bedDetailsRequestGeneration += 1;
       bedDetailsLoading.value = false;
       bedDetailsError.value = null;
+      bedDetailsIssues.value = [];
       clearAlertFocusSelection();
       // Clear focus before flipping the scene so corridor activate does not refocus the door.
       currentRoomIndex.value = -1;
@@ -447,14 +457,17 @@ export const useTwinStore = defineStore('twin', () => {
     const requestGeneration = ++bedDetailsRequestGeneration;
     bedDetailsLoading.value = true;
     bedDetailsError.value = null;
+    bedDetailsIssues.value = [];
     try {
       const result = await loadBedDeviceDetails(
         room.beds,
         () => requestGeneration === bedDetailsRequestGeneration && currentWard.value === room,
         { forceRefresh },
       );
-      if (requestGeneration === bedDetailsRequestGeneration && currentWard.value === room && result.warnings.length)
-        bedDetailsError.value = result.warnings.join('；');
+      if (requestGeneration === bedDetailsRequestGeneration && currentWard.value === room) {
+        bedDetailsError.value = result.warnings.length ? result.warnings.join('；') : null;
+        bedDetailsIssues.value = result.issues;
+      }
     }
     finally {
       if (requestGeneration === bedDetailsRequestGeneration)
@@ -525,17 +538,13 @@ export const useTwinStore = defineStore('twin', () => {
         deviceCodes: result.deviceCodes,
         hospitalInfo: result.hospitalInfo,
         warnings: result.warnings,
+        retainedRoomDeviceCodes: [],
       };
     }
 
-    const [deviceResult, hospitalResult] = await Promise.allSettled([
-      fetchDoorDeviceList({ areaId, refreshDeviceList: options.refreshDeviceList }),
-      fetchHospitalInfo(),
-    ]);
-    if (deviceResult.status === 'rejected')
-      throw deviceResult.reason instanceof Error ? deviceResult.reason : new Error('获取门口机数据失败');
-    const result = deviceResult.value;
-    const hospital = hospitalResult.status === 'fulfilled' ? hospitalResult.value : null;
+    void hospitalResource.load();
+    const result = await measureLoadStage('door-details', () =>
+      fetchDoorDeviceList({ areaId, refreshDeviceList: options.refreshDeviceList }));
     if (!result.devices.length)
       throw new Error('未获取到任何病房数据');
 
@@ -543,33 +552,28 @@ export const useTwinStore = defineStore('twin', () => {
     nextArea.areaName = selectedOption.areaName;
     nextArea.areaCode = selectedOption.areaCode;
     const warnings = [...result.warnings, ...validateDoorDeviceCodes(result.devices)];
+    let retainedCodes: string[] = [];
     if (options.preserveLastValidRooms) {
       const reconciled = reconcileRealAreaSnapshot(nextArea, area.value, result.codes);
       nextArea = reconciled.area;
+      retainedCodes = reconciled.retainedDeviceCodes;
       if (reconciled.retainedDeviceCodes.length) {
         warnings.push(
           `${reconciled.retainedDeviceCodes.length} 间病房详情刷新失败，当前保留上一次有效数据`,
         );
       }
     }
-    const bedResult = await loadBedDeviceDetails(
+    const bedResult = await measureLoadStage('bed-details', () => loadBedDeviceDetails(
       nextArea.rooms.flatMap(room => room.beds),
       () => true,
       { forceRefresh: true },
-    );
+    ));
     warnings.push(...bedResult.warnings);
-    warnings.push(...await preloadBedTemplates(nextArea.rooms.flatMap(room => room.beds)));
-    if (!hospital) {
-      const reason = hospitalResult.status === 'rejected' && hospitalResult.reason instanceof Error
-        ? `：${hospitalResult.reason.message}`
-        : '';
-      warnings.push(`医院基本信息接口失败或返回空数据${reason}`);
-    }
     return {
       area: nextArea,
       deviceCodes: result.codes,
-      hospitalInfo: hospital,
       warnings,
+      retainedRoomDeviceCodes: retainedCodes,
     };
   }
 
@@ -591,6 +595,7 @@ export const useTwinStore = defineStore('twin', () => {
   }
 
   async function commitRequestedArea(areaId: number, mode: 'enter' | 'switch'): Promise<boolean> {
+    const finishEntry = startLoadStage('area-entry');
     const requestToken = areaRequestGuard.begin();
     pendingAreaId.value = areaId;
     isAreaSwitching.value = true;
@@ -602,8 +607,9 @@ export const useTwinStore = defineStore('twin', () => {
         return false;
       area.value = snapshot.area;
       deviceCodes.value = snapshot.deviceCodes;
-      hospitalInfo.value = snapshot.hospitalInfo;
+      if (snapshot.hospitalInfo !== undefined) hospitalInfo.value = snapshot.hospitalInfo;
       dataWarnings.value = snapshot.warnings;
+      retainedRoomDeviceCodes.value = snapshot.retainedRoomDeviceCodes;
       selectedAreaId.value = areaId;
       syncAreaOptionStats(areaId, snapshot.area);
       resetSwpEventState();
@@ -629,6 +635,7 @@ export const useTwinStore = defineStore('twin', () => {
       return false;
     }
     finally {
+      finishEntry(!areaRequestGuard.isCurrent(requestToken) ? 'stale' : areaSwitchError.value ? 'error' : 'ready');
       if (areaRequestGuard.isCurrent(requestToken)) {
         pendingAreaId.value = null;
         isAreaSwitching.value = false;
@@ -698,8 +705,9 @@ export const useTwinStore = defineStore('twin', () => {
       const previousInteriorView = wardInteriorView.value;
       area.value = snapshot.area;
       deviceCodes.value = snapshot.deviceCodes;
-      hospitalInfo.value = snapshot.hospitalInfo;
+      if (snapshot.hospitalInfo !== undefined) hospitalInfo.value = snapshot.hospitalInfo;
       dataWarnings.value = snapshot.warnings;
+      retainedRoomDeviceCodes.value = snapshot.retainedRoomDeviceCodes;
       syncAreaOptionStats(areaId, snapshot.area);
       if (options.preserveScene) {
         sceneType.value = previousSceneType;
@@ -786,8 +794,6 @@ export const useTwinStore = defineStore('twin', () => {
         );
         if (!isCurrent()) return;
         warnings.push(...bedResult.warnings);
-        warnings.push(...await preloadBedTemplates(nextArea.rooms.flatMap(room => room.beds)));
-        if (!isCurrent()) return;
         dataWarnings.value = warnings;
         area.value = nextArea;
       }
@@ -1320,6 +1326,9 @@ export const useTwinStore = defineStore('twin', () => {
   }
 
   function clearSessionState() {
+    hospitalResource.clear();
+    clearFileUrlPrefix();
+    clearLoadTimings();
     stopSimulation();
     stopRemoteServices();
     areaListRequestGuard.begin();
@@ -1359,6 +1368,8 @@ export const useTwinStore = defineStore('twin', () => {
     hospitalInfoLoading.value = false;
     bedDetailsLoading.value = false;
     bedDetailsError.value = null;
+    bedDetailsIssues.value = [];
+    retainedRoomDeviceCodes.value = [];
     selectionGeneration += 1;
   }
 
@@ -1398,6 +1409,7 @@ export const useTwinStore = defineStore('twin', () => {
     if (dataSource.value === 'remote' || dataSource.value === 'database') {
       if (dataSource.value === 'remote')
         clearAreaDiscoveryCache();
+      if (dataSource.value === 'remote') void hospitalResource.load(true);
       await refreshCurrentArea();
     }
     else {
@@ -1450,8 +1462,11 @@ export const useTwinStore = defineStore('twin', () => {
     dataPhase,
     hospitalInfo,
     hospitalInfoLoading,
+    hospitalInfoError,
     bedDetailsLoading,
     bedDetailsError,
+    bedDetailsIssues,
+    currentWardSnapshotRetained,
     alertTasks,
     alertStats,
     activeAlertTask,

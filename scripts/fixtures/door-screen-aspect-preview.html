@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="UTF-8"><title>门口屏 9:16 验证</title>
+<style>body{font:16px sans-serif;background:#dce5e8;color:#234452;margin:24px}main{display:flex;gap:24px;flex-wrap:wrap}figure{margin:0}canvas{max-width:90vw}figcaption{padding:12px}</style>
+<h1>门口屏 9:16 验证</h1><p>实际走廊 GLB 门口机，使用无患者数据的 1080×1920 测试画布。青色线应贴合内屏四边。</p><main></main><p id="status">加载模型中</p>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader.js';
+import {WARD_CORRIDOR_MODEL_URL,normalizeHospitalCorridorModelTransform,getHospitalCorridorEntranceScreenOrder,fitHospitalCorridorEntranceScreenGeometry,orientHospitalCorridorScreenUV} from '/src/core/ward-corridor-model.ts';
+const draco=new DRACOLoader().setDecoderPath('/draco/');
+try {
+ const loaded=await new GLTFLoader().setDRACOLoader(draco).loadAsync(WARD_CORRIDOR_MODEL_URL);
+ normalizeHospitalCorridorModelTransform(loaded.scene); loaded.scene.rotation.y=Math.PI/2; loaded.scene.updateMatrixWorld(true);
+ const device=loaded.scene.getObjectByName('门口机1');
+ const scene=new THREE.Scene();scene.background=new THREE.Color('#dce5e8');
+ const root=device.clone(true);root.matrixAutoUpdate=false;root.matrix.copy(device.matrixWorld);scene.add(root);scene.updateMatrixWorld(true);
+ root.traverse(node=>{if(node.isMesh){const name=node.material.name;node.material=new THREE.MeshBasicMaterial({name,color:name.includes('内')?0xffffff:0x263238,side:THREE.DoubleSide});}});
+ const nodes=[];root.traverse(node=>nodes.push(node));const screen=getHospitalCorridorEntranceScreenOrder(nodes)[0];
+ fitHospitalCorridorEntranceScreenGeometry(screen);const ratio=orientHospitalCorridorScreenUV(screen);
+ const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1920;const ctx=canvas.getContext('2d');
+ ctx.fillStyle='#eef5f8';ctx.fillRect(0,0,1080,1920);ctx.strokeStyle='#00a6b5';ctx.lineWidth=16;ctx.strokeRect(8,8,1064,1904);
+ ctx.fillStyle='#244858';ctx.textAlign='center';ctx.font='bold 130px sans-serif';ctx.fillText('9:16',540,300);ctx.font='70px sans-serif';ctx.fillText('1080 × 1920',540,420);
+ for(let y=600;y<1800;y+=300){ctx.strokeStyle='#89a8b4';ctx.lineWidth=3;ctx.strokeRect(40,y,1000,220);ctx.beginPath();ctx.arc(540,y+110,80,0,Math.PI*2);ctx.stroke();}
+ const texture=new THREE.CanvasTexture(canvas);texture.flipY=false;texture.colorSpace=THREE.SRGBColorSpace;screen.material.map=texture;screen.material.needsUpdate=true;
+ const center=new THREE.Box3().setFromObject(screen).getCenter(new THREE.Vector3());
+ const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(400,520);
+ for(const [label,offset] of [['正面',0],['斜视',.35]]){
+  const camera=new THREE.PerspectiveCamera(38,400/520,.01,20);camera.position.copy(center).add(new THREE.Vector3(center.x>0?-1.15:1.15,.02,offset));camera.lookAt(center);renderer.render(scene,camera);
+  const output=document.createElement('canvas');output.width=400;output.height=520;output.getContext('2d').drawImage(renderer.domElement,0,0);const figure=document.createElement('figure'),caption=document.createElement('figcaption');caption.textContent=label;figure.append(output,caption);document.querySelector('main').append(figure);
+ }
+ document.querySelector('#status').textContent=`实际内屏比例：${ratio.toFixed(6)}；目标：0.562500`;
+ renderer.dispose();texture.dispose();
+} catch(error){document.querySelector('#status').textContent=String(error);throw error;} finally{draco.dispose();}
+</script></html>

@@ -870,6 +870,10 @@
 
     > :deep(.hospital-intro) {
       flex-shrink: 0;
+      // 与下方 area-dashboard 内的异常闭环卡片保持相同左右边界。
+      margin: 16px 18px 0;
+
+      @include down($bp-md) { margin: 14px 12px 0; }
     }
   }
 

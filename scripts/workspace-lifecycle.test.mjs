@@ -22,6 +22,47 @@ function tick(t, count = 100) {
   for (let i = 0; i < count; i++) t.mock.timers.tick(56);
 }
 
+test('fast bootstrap closes after a short anti-flash hold instead of simulated progress', async t => {
+  const { result: boot } = setup(t, () => useWorkspaceBootstrap(async context => {
+    context.onPhase(74, '数据已完成');
+    return null;
+  }));
+  await boot.start();
+  assert.equal(boot.progress.value, 100);
+  t.mock.timers.tick(179);
+  assert.equal(boot.visible.value, true);
+  t.mock.timers.tick(1);
+  assert.equal(boot.visible.value, false);
+  assert.equal(boot.busy.value, false);
+});
+
+test('slow bootstrap stays visible until completion and then only holds 80ms', async t => {
+  const request = deferred();
+  const { result: boot } = setup(t, () => useWorkspaceBootstrap(() => request.promise));
+  const task = boot.start();
+  tick(t, 100);
+  assert.equal(boot.visible.value, true);
+  assert.ok(boot.progress.value < 100);
+  request.resolve(null); await task;
+  t.mock.timers.tick(79);
+  assert.equal(boot.visible.value, true);
+  t.mock.timers.tick(1);
+  assert.equal(boot.visible.value, false);
+});
+
+test('failed startup exposes retry without waiting for simulated progress or late phases', async t => {
+  let context;
+  const { result: boot } = setup(t, () => useWorkspaceBootstrap(async c => {
+    context = c; throw new Error('offline');
+  }));
+  await boot.start();
+  context.onPhase(80, 'late phase');
+  t.mock.timers.tick(180);
+  assert.equal(boot.visible.value, false);
+  assert.equal(boot.error.value, 'offline');
+  assert.equal(boot.phase.value, '初始化未完成，请重试');
+});
+
 test('cancelled bootstrap cannot overwrite a new login or complete its loader', async t => {
   const requests = [];
   const { result: boot } = setup(t, () => useWorkspaceBootstrap(context => {

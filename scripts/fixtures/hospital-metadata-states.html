@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>医院信息加载状态 · 合成测试</title>
+<link rel="icon" href="data:,">
+<div id="app"></div>
+<script type="module">
+import { createApp, h } from 'vue';
+import HospitalIntroPanel from '/src/components/HospitalIntroPanel.vue';
+createApp({ render: () => h('main', [
+  h('h1', '医院信息加载状态 · 合成测试'),
+  h(HospitalIntroPanel, { info: null, loading: true }),
+  h(HospitalIntroPanel, { info: null, error: 'synthetic failure' }),
+  h(HospitalIntroPanel, { info: { hospitalName: '测试医院（上次有效结果）', hospitalNote: '这里是用于验证加载失败时保留旧信息的测试内容。' }, error: 'synthetic failure' }),
+]) }).mount('#app');
+</script>
+<style>body{margin:0;background:#102635;color:#eef8ff;font-family:'Microsoft YaHei',sans-serif}main{max-width:440px;margin:0 auto;padding:12px}h1{font-size:16px;font-weight:500;margin:12px 6px 24px}</style>
+</html>

@@ -276,15 +276,15 @@ test('keeps model door screens behind the physical frame for oblique views', () 
   assert.equal(shouldDepthTestHospitalCorridorScreen(mesh), false);
 });
 
-test('fits only the 门口机内 geometry to a 9:16 screen without stretching the frame', () => {
+test('fits the screen and frame to 9:16 while preserving the frame edge thickness', () => {
   const shell = new THREE.MeshBasicMaterial();
   shell.name = '门口机周';
   const screen = new THREE.MeshBasicMaterial();
   screen.name = '门口机内';
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
-    -5, 0, -5, 5, 0, -5, 5, 0, 5, -5, 0, 5,
-    -1, 0, -2, 1, 0, -2, 1, 0, 2, -1, 0, 2,
+    -2.1, -1.1, 0, 2.1, -1.1, 0, 2.1, 1.1, 0, -2.1, 1.1, 0,
+    -2, -1, 0, 2, -1, 0, 2, 1, 0, -2, 1, 0,
   ]), 3));
   geometry.setIndex([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
   geometry.addGroup(0, 6, 0);
@@ -298,13 +298,13 @@ test('fits only the 门口机内 geometry to a 9:16 screen without stretching th
 
   const fittedBounds = getHospitalCorridorEntranceScreenBounds(mesh, 1);
   const fittedSize = fittedBounds.getSize(new THREE.Vector3());
-  assert.ok(Math.abs(fittedSize.z / fittedSize.x - 9 / 16) < 0.001);
-  assert.deepEqual(
-    new THREE.Box3().setFromBufferAttribute(
-      mesh.geometry.getAttribute('position') as THREE.BufferAttribute,
-    ).getSize(new THREE.Vector3()).toArray(),
-    originalShellSize.toArray(),
-  );
+  assert.ok(Math.abs(fittedSize.x / fittedSize.y - 9 / 16) < 0.001);
+  const shellSize = new THREE.Box3().setFromBufferAttribute(
+    mesh.geometry.getAttribute('position') as THREE.BufferAttribute,
+  ).getSize(new THREE.Vector3());
+  assert.ok(Math.abs(shellSize.x - fittedSize.x - 0.2) < 0.001);
+  assert.equal(shellSize.y, originalShellSize.y);
+  assert.equal(shellSize.z, originalShellSize.z);
 });
 
 test('normalizes the Y-up corridor model to centered bounds', () => {

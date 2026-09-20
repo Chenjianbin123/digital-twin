@@ -430,12 +430,12 @@ test('warns when an occupied bed has no terminal binding', () => {
   }), true);
 });
 
-test('does not warn for a placeholder empty-bed label even if occupancy is stale', () => {
+test('occupied placeholder labels cannot suppress a missing terminal warning', () => {
   assert.equal(shouldWarnForMissingBedDevice({
     bedName: '空床',
     deviceCode: '',
     isOccupied: true,
-  }), false);
+  }), true);
 });
 
 test('treats a placeholder empty-patient record as a vacant bed', () => {

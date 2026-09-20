@@ -4,22 +4,26 @@ import type { DataStatus } from '@/core/data-status';
 import type { TwinWardEntity } from '@/types/twin';
 import { selectOccupiedWardBeds } from '@/core/ward-interior-beds';
 import { wardInteriorSceneConfig } from '@/config/ward-interior-scene';
+import { buildWardIssueSummary } from '@/core/ward-interior-status';
+import type { BedDeviceIssue } from '@/services/bed-device-loader';
 
 const props = defineProps<{
   ward: TwinWardEntity;
   status: DataStatus;
   busy: boolean;
   lastSyncedAt?: number | null;
-  warnings?: string[];
+  issues?: BedDeviceIssue[];
+  snapshotRetained?: boolean;
 }>();
 defineEmits<{ retry: [] }>();
 const occupied = computed(() => selectOccupiedWardBeds(props.ward));
-const warnings = computed(() => [...new Set(props.warnings?.filter(Boolean) ?? [])]);
+const issues = computed(() => props.issues ?? []);
 const message = computed(() => {
   if (props.busy) return '正在同步，暂时保留当前画面';
   if (props.status === 'error') return '同步失败，当前为上次数据';
   if (props.status === 'stale') return '数据已过期，请重新同步';
-  if (props.status === 'warning') return '部分数据同步失败，请查看异常详情';
+  if (props.snapshotRetained) return '本病房门口机详情刷新失败，当前保留上次数据';
+  if (props.status === 'warning') return buildWardIssueSummary(issues.value) || '本病房数据需关注';
   if (!occupied.value.occupiedCount) return '当前病房暂无入住记录';
   return '患者数据已同步';
 });
@@ -36,10 +40,13 @@ const syncTime = computed(() => props.lastSyncedAt
       <button type="button" :disabled="busy" @click="$emit('retry')">{{ busy ? '同步中…' : '重新同步' }}</button>
     </div>
     <p role="status">{{ message }}<span class="ward-interior-status__time"> · 病区最近成功同步 {{ syncTime }}</span></p>
-    <details v-if="warnings.length || occupied.invalidCount">
-      <summary>查看异常详情<span v-if="occupied.invalidCount"> · {{ occupied.invalidCount }} 条入住记录未展示</span></summary>
+    <details v-if="issues.length || snapshotRetained || occupied.invalidCount">
+      <summary>查看本病房异常<span v-if="issues.length || snapshotRetained"> · {{ issues.length + (snapshotRetained ? 1 : 0) }} 项</span><span v-if="occupied.invalidCount"> · {{ occupied.invalidCount }} 条入住记录未展示</span></summary>
       <p v-if="occupied.invalidCount">床号缺失或重复，无法准确绑定患者；请核对床位数据后重新同步。</p>
-      <ul v-if="warnings.length"><li v-for="warning in warnings" :key="warning">{{ warning }}</li></ul>
+      <ul v-if="issues.length || snapshotRetained">
+        <li v-if="snapshotRetained">本病房门口机详情刷新失败，正在使用上次数据，请重新同步。</li>
+        <li v-for="issue in issues" :key="`${issue.bedCode}:${issue.kind}`">{{ issue.bedName }}：{{ issue.message }}</li>
+      </ul>
     </details>
     <small v-if="occupied.beds.length > wardInteriorSceneConfig.modular.slots.length">房间按入住数量扩展，尺寸为展示示意。</small>
   </section>

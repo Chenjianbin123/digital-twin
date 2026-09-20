@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>双面侧挂门牌安装预览</title>
+<style>body{margin:24px;background:#e6edef;color:#294c60;font:16px 'Microsoft YaHei',sans-serif}main{display:flex;flex-wrap:wrap;gap:24px}figure{margin:0}canvas{width:min(540px,90vw);display:block}figcaption{padding:12px 0}</style>
+<h1>双面侧挂门牌</h1><p>实际门牌组件，示意门框；不是完整病区模型。</p><main></main>
+<script type="module">
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { CorridorMarker } from '/src/core/ward-corridor-markers.ts';
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#e6edef');
+scene.add(new THREE.HemisphereLight(0xffffff, 0x657d88, 3));
+const light = new THREE.DirectionalLight(0xffffff, 2); light.position.set(3,5,4);scene.add(light);
+const door = new THREE.Mesh(new THREE.BoxGeometry(.2,2.4,1.2),new THREE.MeshStandardMaterial({color:'#517789',roughness:.85}));
+door.position.set(-2,1.2,0);scene.add(door);
+const wall = new THREE.Mesh(new THREE.BoxGeometry(.12,3.2,3.4),new THREE.MeshStandardMaterial({color:'#9aafb5',roughness:1}));
+wall.position.set(-2.14,1.6,0);scene.add(wall);
+const marker = new CorridorMarker(door,new THREE.Box3(new THREE.Vector3(-3,0,-3),new THREE.Vector3(3,3.2,3)),'x');
+marker.update('A101',undefined,false,false);scene.add(marker.sprite);
+const renderer = new THREE.WebGLRenderer({antialias:true});renderer.setSize(540,380);renderer.setPixelRatio(1);
+for(const [label,z] of [['从走廊前方看',2],['从走廊后方看',-2]]){
+ const camera=new THREE.PerspectiveCamera(38,540/380,.01,20);camera.position.set(.25,2.9,z);camera.lookAt(-1.65,2.48,0);
+ renderer.render(scene,camera);
+ const figure=document.createElement('figure'),canvas=document.createElement('canvas'),caption=document.createElement('figcaption');
+ canvas.width=540;canvas.height=380;canvas.getContext('2d').drawImage(renderer.domElement,0,0);
+ caption.textContent=label;figure.append(canvas,caption);document.querySelector('main').append(figure);
+}
+marker.dispose();door.geometry.dispose();door.material.dispose();wall.geometry.dispose();wall.material.dispose();renderer.dispose();
+</script></html>

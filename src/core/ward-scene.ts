@@ -1818,8 +1818,7 @@ export class WardScene {
       this.roomGroup.visible = false;
       this.clearBedMeshes();
 
-      // 房间外壳先就绪；床位装配失败不应把整场景打成 fallback。
-      this.onModelState?.('ready');
+      // 床位装配失败保留外壳；ready 仍必须等待 GPU 准备和首帧。
       try {
         if (this.ward) {
           this.updateWard(this.ward);
@@ -1837,6 +1836,7 @@ export class WardScene {
       this.renderer.shadowMap.needsUpdate = true;
       this.renderer.render(this.scene, this.camera);
       this.logCameraView('模型就绪');
+      this.onModelState?.('ready');
     }
     catch (error) {
       if (unitAsset && unitAsset !== this.bedUnitAsset)

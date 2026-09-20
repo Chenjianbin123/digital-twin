@@ -68,7 +68,9 @@ try {
   assert.equal(await store.refreshCurrentArea({ preserveScene: true, silent: true }), true);
   assert.equal(store.bedDetailsError, null); assert.equal(store.dataPhase, 'ready');
   assert.equal(count(), 1); assert.equal(store.currentWard.beds[1].sickInfo.sickNo, 'RECOVERED');
-  assert.ok(calls.includes('querySwpDeviceInfo')); assert.ok(calls.includes('querySwpTemplateInfoById'));
+  assert.ok(calls.includes('querySwpDeviceInfo'));
+  // Store-only navigation must not fetch templates; the visible scene owns that work.
+  assert.equal(calls.includes('querySwpTemplateInfoById'), false);
   console.log('Remote API adapter → mapping → Pinia → occupied beds: passed', counts);
 }
 finally { globalThis.fetch = originalFetch; await server.close(); }

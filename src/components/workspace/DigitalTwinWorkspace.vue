@@ -21,6 +21,7 @@ import { buildAreaSceneIdentity } from '@/core/area-scene-identity';
 import { useSceneLoading } from '@/core/use-scene-loading';
 import { useTwinStore } from '@/stores/twin-store';
 import { resolveDataStatus } from '@/core/data-status';
+import { resolveWardInteriorDataStatus } from '@/core/ward-interior-status';
 import { buildNurseStationViewModel } from '@/core/nurse-station-view-model';
 import { ALERT_ACK_STORAGE_KEY } from '@/core/alert-ack';
 import { SWP_CALL_ALERTS_STORAGE_KEY } from '@/services/swp-call-notifier';
@@ -99,11 +100,13 @@ const {
   deviceCodes,
   hospitalInfo,
   hospitalInfoLoading,
+  hospitalInfoError,
   dataWarnings,
   dataPhase,
   lastFetchedAtMs,
   bedDetailsLoading,
-  bedDetailsError,
+  bedDetailsIssues,
+  currentWardSnapshotRetained,
   alertTasks,
   activeAlertTask,
   alertAckRecords,
@@ -126,12 +129,14 @@ const dataStatus = computed(() => resolveDataStatus({
 
 const currentRoomCalls = computed(() => currentWard.value ? roomCallTasks(alertTasks.value, currentWard.value, currentRoomIndex.value) : []);
 
-const wardInteriorDataStatus = computed(() => {
-  if (dataStatus.value === 'error' || dataStatus.value === 'stale') return dataStatus.value;
-  if (bedDetailsError.value) return 'warning';
-  if (bedDetailsLoading.value) return 'loading';
-  return dataStatus.value;
-});
+const wardInteriorDataStatus = computed(() => resolveWardInteriorDataStatus({
+  phase: dataPhase.value,
+  lastFetchedAtMs: lastFetchedAtMs.value,
+  nowMs: dataStatusNow.value,
+  busy: bedDetailsLoading.value,
+  issues: bedDetailsIssues.value,
+  snapshotRetained: currentWardSnapshotRetained.value,
+}));
 
 const nurseStationViewModel = computed(() => area.value
   ? buildNurseStationViewModel({
@@ -413,7 +418,8 @@ onBeforeUnmount(() => {
           :status="wardInteriorDataStatus"
           :busy="wardSyncBusy"
           :last-synced-at="lastFetchedAtMs"
-          :warnings="bedDetailsError ? [bedDetailsError, ...dataWarnings] : dataWarnings"
+          :issues="bedDetailsIssues"
+          :snapshot-retained="currentWardSnapshotRetained"
           @retry="retryWardSync"
         />
         <EnvAlertBanner
@@ -552,6 +558,7 @@ onBeforeUnmount(() => {
             v-if="isWard"
             :info="hospitalInfo"
             :loading="hospitalInfoLoading"
+            :error="hospitalInfoError"
             :key-metrics="keyMetrics"
           />
 

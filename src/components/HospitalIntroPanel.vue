@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import DashSectionHeader from './dashboard/DashSectionHeader.vue';
 import type { HospitalInfo } from '@/types/hospital';
 import { htmlToPlainText } from '@/utils/html-text';
 import { resolveFileUrl } from '@/utils/file-url';
@@ -10,6 +11,7 @@ export type { KeyMetric } from '@/core/workspace-metrics';
 const props = defineProps<{
   info: HospitalInfo | null;
   loading?: boolean;
+  error?: string | null;
   keyMetrics?: KeyMetric[];
 }>();
 
@@ -50,6 +52,7 @@ function metricToneClass(item: KeyMetric) {
 
 const hasContent = computed(() =>
   props.loading
+  || !!props.error
   || !!introText.value
   || visibleMetrics.value.length > 0
   || (!!logoUrl.value && !logoFailed.value)
@@ -59,15 +62,19 @@ const hasContent = computed(() =>
 
 <template>
   <section v-if="hasContent" class="hospital-intro" aria-label="医院介绍">
-    <header class="hospital-intro__head">
-      <span class="hospital-intro__mark" aria-hidden="true" />
-      <h2 class="hospital-intro__title">医院介绍</h2>
-      <span class="hospital-intro__line" aria-hidden="true" />
-    </header>
+    <div class="hospital-intro__head">
+      <svg class="hospital-intro__heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5 21V4h14v17M3 21h18M9 21v-5h6v5M10 8h4m-2-2v4M8 13h2m4 0h2" />
+      </svg>
+      <DashSectionHeader title="医院介绍" />
+    </div>
 
     <div v-if="loading" class="hospital-intro__loading">加载医院介绍...</div>
 
     <template v-else>
+      <div v-if="error" class="hospital-intro__loading" role="status">
+        {{ info ? '医院信息更新失败，当前保留上次结果。' : '医院信息暂不可用。' }}可通过页面刷新重试。
+      </div>
       <div v-if="(logoUrl && !logoFailed) || info?.hospitalName" class="hospital-intro__footer">
         <img
           v-if="logoUrl && !logoFailed"
@@ -126,23 +133,24 @@ const hasContent = computed(() =>
   transform: translateZ(0);
 
   &__head {
-    @include dash-section-head;
-    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+
+    :deep(.dash-head) { flex: 1; min-width: 0; margin-bottom: 0; }
+    :deep(.dash-head__mark) { display: none; }
   }
 
-  &__mark {
-    @include dash-section-mark;
-    filter: none;
-  }
-
-  &__title {
-    @include dash-section-title;
-    text-shadow: none;
-  }
-
-  &__line {
-    @include dash-section-line;
-    box-shadow: none;
+  &__heading-icon {
+    width: 28px;
+    height: 28px;
+    padding: 5px;
+    flex-shrink: 0;
+    color: var(--room-accent, #8cd9d1);
+    border: 1px solid var(--room-line, #7bccc43d);
+    border-radius: 6px;
+    background: var(--room-inset, rgba(56, 132, 143, 0.14));
   }
 
   &__note {

@@ -190,10 +190,14 @@ export function isBedDeviceResponseApplicable(
 export function shouldWarnForMissingBedDevice(
   bed: Pick<TwinBedEntity, 'deviceCode' | 'isOccupied'> & { bedName?: string },
 ): boolean {
-  const emptyBedLabel = new Set(['空床', '无患者', '未入住', '未分配']);
-  return !text(bed.deviceCode).trim()
-    && bed.isOccupied
-    && !emptyBedLabel.has(text(bed.bedName).trim());
+  // A display name cannot override an occupied record or hide a missing binding.
+  return !text(bed.deviceCode).trim() && bed.isOccupied;
+}
+
+const EMPTY_BED_LABELS = new Set(['空床', '无患者', '未入住', '未分配']);
+
+export function hasOccupiedEmptyBedLabel(bed: Pick<TwinBedEntity, 'isOccupied' | 'bedName'>): boolean {
+  return bed.isOccupied && EMPTY_BED_LABELS.has(text(bed.bedName).trim());
 }
 
 /** 将床头机接口响应写入单个床位，床头患者字段优先于门口机快照。 */
