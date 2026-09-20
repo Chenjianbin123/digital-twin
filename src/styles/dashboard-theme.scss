@@ -875,20 +875,56 @@
 
 /* 三维场景切换层与工作台主题一致，包含首次加载及失败回退。 */
 .digital-twin[data-theme='light'] .scene-switch-loader {
- --loader-accent: #247e92; --loader-soft: #3c9bb620; --loader-glow: #3c9bb60c;
+ --loader-accent: #1287a3; --loader-soft: #1287a318; --loader-glow: #1287a30c;
  color: #233e49; background: #eaf2f6e8;
- &--ward { --loader-accent: #3d6fa7; --loader-soft: #5588bf20; --loader-glow: #5588bf0c; }
- &--interior { --loader-accent: #287d70; --loader-soft: #459c8720; --loader-glow: #459c870c; }
- &[data-state='fallback'] { --loader-accent: #926018; --loader-soft: #b4843020; --loader-glow: #b484300c; }
- .scene-switch-loader__card { border-color: #bfd6e1; background: radial-gradient(ellipse at 0 0, var(--loader-soft), transparent 60%), linear-gradient(135deg, #f7fbfd, #f2f8fb); box-shadow: 0 24px 70px #294c601c, inset 0 1px #f7fbfd; }
- .scene-switch-loader__eyebrow, .scene-switch-loader__visual-caption, .scene-switch-loader__headline p, .scene-switch-loader__route-node small, .scene-switch-loader__route-note, .scene-switch-loader__progress-meta, .scene-switch-loader__card-foot p { color: #536f7e; }
- .scene-switch-loader__icon { background: linear-gradient(135deg, var(--loader-soft), #f7fbfd); box-shadow: inset 0 1px #f7fbfd, 0 10px 24px #355a6c12; }
+ &--ward { --loader-accent: #3d6fa7; --loader-soft: #3d6fa718; --loader-glow: #3d6fa70c; }
+ &--interior { --loader-accent: #1a9a72; --loader-soft: #1a9a7218; --loader-glow: #1a9a720c; }
+ &[data-state='fallback'] { --loader-accent: #c4841a; --loader-soft: #c4841a18; --loader-glow: #c4841a0c; }
+ .scene-switch-loader__card {
+   border-color: #bfd6e1;
+   background: radial-gradient(ellipse at 0 0, var(--loader-soft), transparent 60%), linear-gradient(135deg, #f7fbfd, #f2f8fb);
+   box-shadow: 0 24px 70px #294c601c, inset 0 1px #f7fbfd;
+ }
+ .scene-switch-loader__eyebrow,
+ .scene-switch-loader__headline p,
+ .scene-switch-loader__route-node small,
+ .scene-switch-loader__route-note,
+ .scene-switch-loader__progress-meta,
+ .scene-switch-loader__card-foot p { color: #5a717c; }
+ .scene-switch-loader__status {
+   color: var(--loader-accent);
+   background: color-mix(in srgb, var(--loader-accent) 12%, #f7fbfd);
+   border-color: color-mix(in srgb, var(--loader-accent) 28%, #bfd6e1);
+ }
+ .scene-switch-loader__icon {
+   background: linear-gradient(145deg, color-mix(in srgb, var(--loader-accent) 14%, #f7fbfd), #f7fbfd);
+   box-shadow: inset 0 1px #ffffff, 0 0 0 4px var(--loader-glow), 0 12px 24px #355a6c14;
+ }
  .scene-switch-loader__visual-plane { box-shadow: 0 8px 0 -1px #e3eef4, 0 9px 0 var(--loader-soft); }
- .scene-switch-loader__route { background: #eaf3f7; border-color: #d0e2ea; }
+ .scene-switch-loader__visual-caption { color: var(--loader-accent); }
+ .scene-switch-loader__headline h2 {
+   color: var(--loader-accent);
+   text-shadow: none;
+ }
+ .scene-switch-loader__label { color: #4a5d68; }
+ .scene-switch-loader__route {
+   background: linear-gradient(105deg, #eaf3f7, color-mix(in srgb, var(--loader-accent) 8%, #eaf3f7));
+   border-color: #d0e2ea;
+ }
  .scene-switch-loader__route-node strong { color: #294b59; }
+ .scene-switch-loader__route-node--target {
+   background: color-mix(in srgb, var(--loader-accent) 10%, #f7fbfd);
+ }
  .scene-switch-loader__route-node--target strong { color: var(--loader-accent); }
- .scene-switch-loader__route-arrow { color: #638596; }
- .scene-switch-loader__progress { background: #d3e5ed; }
+ .scene-switch-loader__route-arrow { color: var(--loader-accent); }
+ .scene-switch-loader__progress {
+   background: #d3e5ed;
+   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--loader-accent) 10%, transparent);
+ }
+ .scene-switch-loader__progress span {
+   background: linear-gradient(90deg, transparent, var(--loader-accent) 45%, #7ec8d8);
+   box-shadow: 0 0 10px color-mix(in srgb, var(--loader-accent) 28%, transparent);
+ }
  .scene-switch-loader__card-foot { border-color: #d0e2ea; }
  .scene-switch-loader__actions button { color: #365e6d; background: #edf5f8; border-color: #bfd6e1; }
  .scene-switch-loader__actions .scene-switch-loader__retry { color: #f7fbfd; background: var(--loader-accent); border-color: var(--loader-accent); }
