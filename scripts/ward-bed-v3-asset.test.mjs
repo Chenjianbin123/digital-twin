@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const bytes = readFileSync(new URL('../public/models/smart-ward-interior/bed-refined-v1.glb', import.meta.url));
+const bytes = readFileSync(new URL('../public/models/smart-ward-interior/bed-v2.glb', import.meta.url));
 const gltf = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString('utf8'));
 const get = name => gltf.nodes.find(n => n.name === name);
 

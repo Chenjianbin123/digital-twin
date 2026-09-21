@@ -25,7 +25,7 @@ assert.match(areaScene, /\['taskQueue', \['Screen_Work_01', 'Monitor_UI_01_00'\]
 assert.match(areaScene, /\['wardStatus', \['Screen_Work_02', 'Monitor_UI_02_02'\]\]/);
 assert.match(areaScene, /\['bedMonitor', \['Screen_Work_03', 'Monitor_Frame_03'\]\]/);
 assert.match(areaScene, /\['deviceHealth', \['Screen_Work_04', 'Monitor_Frame_04'\]\]/);
-assert.match(areaScene, /\['clock', \['Clock_Display', 'Clock_Frame'\]\]/);
+assert.match(areaScene, /\['clock', \['Clock_Display', 'Clock_Frame', '时钟'\]\]/);
 assert.match(areaScene, /ctx\.font = '700 124px ui-monospace/);
 
 // Keep the scene bright and neutral enough for an on-site hospital display.

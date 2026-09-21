@@ -41,12 +41,12 @@
   --tech-cyan-line: rgba(61, 117, 133, 0.28);
   .dash-header.dash-header {
     background:
-      radial-gradient(ellipse at 50% -40%, rgba(90, 168, 184, 0.16), transparent 55%),
-      linear-gradient(180deg, rgba(232, 240, 244, 0.72) 0%, rgba(221, 232, 237, 0.58) 72%, rgba(213, 226, 232, 0.42) 100%);
-    border-color: rgba(138, 163, 174, 0.55);
+      radial-gradient(ellipse at 50% -40%, rgba(56, 132, 148, 0.32), transparent 55%),
+      linear-gradient(180deg, rgba(168, 200, 210, 0.96) 0%, rgba(154, 188, 200, 0.9) 70%, rgba(142, 178, 190, 0.68) 100%);
+    border-color: rgba(78, 118, 132, 0.58);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.7),
-      0 8px 22px rgba(40, 64, 74, 0.06);
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      0 10px 24px rgba(24, 44, 52, 0.14);
     border-bottom-width: 1px;
     backdrop-filter: blur(24px) saturate(130%);
     -webkit-backdrop-filter: blur(24px) saturate(130%);
@@ -59,10 +59,10 @@
   .dash-header__corner { border-color: #5aa0b0cc !important; }
   .dash-header__kicker { color: #4a7a88 !important; }
   .dash-header__title {
-    color: #1e3642 !important;
+    color: #102830 !important;
     letter-spacing: .1em !important;
     font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     text-shadow: none !important;
   }
   .dash-header__title-glow {
@@ -2760,7 +2760,7 @@
   --hdr-line: #b8cdd5;
   background:
     radial-gradient(ellipse at 50% -45%, rgba(61, 138, 154, .12), transparent 48%),
-    linear-gradient(180deg, rgba(250, 253, 254, .94), rgba(232, 241, 244, .92)) !important;
+    linear-gradient(180deg, rgba(176, 206, 214, .96), rgba(154, 188, 200, .9) 70%, rgba(142, 178, 190, .72) 100%) !important;
   border-bottom-color: #b6cad2 !important;
   box-shadow:
     inset 0 1px 0 #fff,

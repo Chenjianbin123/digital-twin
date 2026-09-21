@@ -21,7 +21,7 @@ test('station theme applies both themes and leaves screens untouched', () => {
     assert.equal(screen.color.getHex(), 0xffffff);
     apply(root, lights, false);
     wall = (root.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-    assert.equal(wall.color.getHexString(), 'e8eef0');
+    assert.equal(wall.color.getHexString(), 'f4efe6');
     assert.equal(screen.color.getHex(), 0xffffff);
     assert.ok(light.intensity <= .6);
   }
@@ -47,7 +47,7 @@ test('dark materials soften reflections and light mode keeps stable physical pro
     led = (root.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial;
     assert.equal(surface.roughness, .72);
     assert.ok(surface.envMapIntensity < 1.2);
-    assert.equal(surface.color.getHexString(), 'e8eef0');
+    assert.equal(surface.color.getHexString(), 'eee8e0');
     assert.equal(led.emissive.getHexString(), 'dcebef');
     assert.ok(led.emissiveIntensity >= .35);
   }
@@ -99,7 +99,7 @@ test('approved architecture colors keep shared paint and counter surfaces indepe
   const wood = new THREE.MeshStandardMaterial({ color: '#aa8866' });
   wood.name = 'Natural_Oak';
   const darkCases = [
-    ['Ceiling', paint, 'e8ece8'],
+    ['Ceiling', paint, '2c3c42'],
     ['墙壁', paint, '6aa0b4'],
     ['Corridor_Inner_Wall_1', paint, '6aa0b4'],
     ['Back_Wall', paint, 'd8e1df'],
@@ -110,13 +110,13 @@ test('approved architecture colors keep shared paint and counter surfaces indepe
     ['Oak_Wall_Panel_00', wood, 'd8e1df'],
   ] as const;
   const lightCases = [
-    ['Ceiling', 'f4f7f6'],
-    ['墙壁', 'eef3f4'],
-    ['Corridor_Inner_Wall_1', 'eef3f4'],
-    ['Back_Wall', 'eef3f2'],
-    ['Nurse_Counter', 'e8eef0'],
+    ['Ceiling', 'f6f1e8'],
+    ['墙壁', 'f8f5f0'],
+    ['Corridor_Inner_Wall_1', 'f8f5f0'],
+    ['Back_Wall', 'f3eee6'],
+    ['Nurse_Counter', 'eee8e0'],
     ['Nurse_Counter_Top', 'e3eae8'],
-    ['Station_Canopy', 'eef3f4'],
+    ['Station_Canopy', '2b6c82'],
     ['Ward_Door_1_0', '4f7f9a'],
     ['Oak_Wall_Panel_00', 'ced8d5'],
   ] as const;
@@ -141,4 +141,29 @@ test('approved architecture colors keep shared paint and counter surfaces indepe
         `light:${name}`,
       ));
   }
+});
+
+test('legacy corridor architecture materials use warm paper instead of glTF white', () => {
+  const apply = createStationTheme();
+  const root = new THREE.Group();
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(),
+    new THREE.MeshStandardMaterial({ name: '灰白', color: '#ffffff' }),
+  );
+  wall.name = '墙壁';
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(),
+    new THREE.MeshStandardMaterial({ name: '地板2', color: '#ffffff' }),
+  );
+  floor.name = '地板';
+  const header = new THREE.Mesh(
+    new THREE.BoxGeometry(),
+    new THREE.MeshStandardMaterial({ name: '天花板', color: '#ffffff' }),
+  );
+  header.name = '顶栏';
+  root.add(wall, floor, header);
+  apply(root, undefined, false);
+  assert.equal((wall.material as THREE.MeshStandardMaterial).color.getHexString(), 'f8f5f0');
+  assert.equal((floor.material as THREE.MeshStandardMaterial).color.getHexString(), 'efe8dc');
+  assert.equal((header.material as THREE.MeshStandardMaterial).color.getHexString(), 'f6f1e8');
 });

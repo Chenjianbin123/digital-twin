@@ -2,15 +2,16 @@ import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
 
 const config = await readFile(new URL('../src/config/nurse-station-scene.ts', import.meta.url), 'utf8');
-const modelPath = new URL('../public/models/smart-ward-nurse-station/nurse-station-design-v3.glb', import.meta.url);
+const modelPath = new URL('../public/models/smart-ward-nurse-station/nurse-station.glb', import.meta.url);
 
-assert.match(config, /url:\s*['"]\/models\/smart-ward-nurse-station\/nurse-station-design-v3\.glb\?v=20260909['"]/);
+assert.match(config, /url:\s*['"]\/models\/smart-ward-nurse-station\/nurse-station\.glb\?v=20260921['"]/);
+assert.match(config, /layout: "legacy"/);
 
 await access(modelPath);
 const model = await readFile(modelPath);
 assert.equal(model.subarray(0, 4).toString('ascii'), 'glTF');
 assert.equal(model.readUInt32LE(4), 2);
-assert.ok(model.length > 5_000_000 && model.length < 12_000_000, `unexpected reference model size: ${model.length}`);
+assert.ok(model.length > 40_000_000 && model.length < 80_000_000, `unexpected nurse-station model size: ${model.length}`);
 
 const jsonLength = model.readUInt32LE(12);
 const jsonType = model.readUInt32LE(16);
@@ -21,23 +22,22 @@ const materialNames = new Set((json.materials ?? []).map(material => material.na
 
 for (const name of [
   'Screen_Main_Frame',
-  'Clock_Frame',
   'Screen_Main',
-  'Screen_Work_01',
-  'Screen_Work_02',
-  'Screen_Work_03',
-  'Screen_Work_04',
   'Clock_Display',
-  'Keyboard_01',
-  'Keyboard_02',
-  'Keyboard_03',
-  'Keyboard_04',
-  'Staff_Worktop',
   'Ceiling',
+  '地板',
+  '墙壁',
+  '墙壁2',
+  '走廊屏_1',
+  '导台',
+  'Station_Header',
 ])
   assert.ok(nodeNames.has(name), `missing required nurse-station node: ${name}`);
 
-for (const name of ['Monitor_Bezel', 'Screen_Glass', 'Natural_Oak', 'Warm_White_Solid_Surface'])
+assert.equal(nodeNames.has('Screen_Work_01'), false, 'work screens are not part of this model contract');
+assert.equal(nodeNames.has('Lobby_Back_Wall'), false);
+
+for (const name of ['Monitor_Bezel', 'Screen_Glass', '门口机内', 'Warm_LED'])
   assert.ok(materialNames.has(name), `missing required nurse-station material: ${name}`);
 
 console.log('Nurse-station model replacement boundary checks passed.');

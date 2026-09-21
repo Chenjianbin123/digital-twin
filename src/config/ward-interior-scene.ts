@@ -84,7 +84,7 @@ export interface WardInteriorSceneConfig {
 /** 病房内部模型、镜头、交互和床位排布参数。业务数据与模型节点校验不在此配置。 */
 export const wardInteriorSceneConfig: WardInteriorSceneConfig = {
   modular: {
-    unitUrl: '/models/smart-ward-interior/bed-refined-v1.glb?v=20260918',
+    unitUrl: '/models/smart-ward-interior/bed-v2.glb?v=20260921',
     // Validated native double-room slots. Additional occupants extend the room while keeping these native bed proportions.
     slots: [
       { position: [-1.670222, 0.903284, -0.070125], rotationY: Math.PI / 2 },

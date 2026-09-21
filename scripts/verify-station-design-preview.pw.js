@@ -50,7 +50,7 @@ async (page) => {
     }
     const failedPage = await page.context().newPage();
     try {
-      const modelPattern = '**/nurse-station-design-v3.glb';
+      const modelPattern = '**/nurse-station.glb';
       await failedPage.route(modelPattern, route => route.abort());
       await failedPage.goto(page.url());
       await failedPage.getByRole('button', { name: '重新加载', exact: true }).waitFor();

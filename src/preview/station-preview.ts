@@ -3,7 +3,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
-const modelUrl = "/models/smart-ward-nurse-station/nurse-station-design-v3.glb?v=20260909";
+const modelUrl = "/models/smart-ward-nurse-station/nurse-station.glb?v=20260921";
 
 export type PreviewView = "front" | "detail" | "workstation" | "wall";
 // Blender Z-up → glTF Y-up: (x, y, z) becomes (x, z, -y).
@@ -186,15 +186,14 @@ export function createStationPreview(host: HTMLElement) {
         releaseAssets();
         return;
       }
-      const main = gltf.scene.getObjectByName("Screen_Main");
-      const screens = [
-        main,
-        ...[1, 2, 3, 4].map((i) =>
-          gltf.scene.getObjectByName(`Screen_Work_0${i}`),
-        ),
-      ];
-      if (screens.some((screen) => !(screen instanceof THREE.Mesh)))
-        throw new Error("模型缺少独立屏幕");
+      const main = gltf.scene.getObjectByName("Screen_Main")
+        ?? gltf.scene.getObjectByName("Screen_Main_Frame");
+      if (!(main instanceof THREE.Mesh))
+        throw new Error("模型缺少主屏 Screen_Main / Screen_Main_Frame");
+      const workScreens = [1, 2, 3, 4]
+        .map((i) => gltf.scene.getObjectByName(`Screen_Work_0${i}`))
+        .filter((screen): screen is THREE.Mesh => screen instanceof THREE.Mesh);
+      const screens: THREE.Mesh[] = [main, ...workScreens];
       const mainTexture = displayTexture(false);
       const workTexture = displayTexture(true);
       textures.add(mainTexture);
@@ -205,7 +204,7 @@ export function createStationPreview(host: HTMLElement) {
           toneMapped: false,
         });
         materials.add(material);
-        (object as THREE.Mesh).material = material;
+        object.material = material;
       });
       const clock = gltf.scene.getObjectByName("Clock_Display");
       if (clock) {

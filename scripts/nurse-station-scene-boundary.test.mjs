@@ -34,7 +34,7 @@ assert.match(dashboardFrame, /dash-frame--minimal/);
 assert.match(app, /<div :class="\{ 'ward-navigation-dock': isWardInterior \}">/);
 assert.match(app, /id="ward-tools-host"/);
 assert.match(app, /<DashboardBottomNav/);
-assert.match(sceneConfig, /nurse-station-design-v3\.glb\?v=20260909/);
+assert.match(sceneConfig, /nurse-station\.glb\?v=20260921/);
 assert.match(sceneConfig, /maxSize: \{ x: 11\.04, y: 2\.3895, z: 5\.102 \}/);
 assert.doesNotMatch(areaScene, /NURSE_STATION_MODEL_HEIGHT_SCALE/);
 assert.doesNotMatch(areaScene, /model\.scale\.y\s*\*=/);
@@ -49,7 +49,9 @@ assert.match(areaScene, /new THREE\.PlaneGeometry\(overlayWidth, overlayHeight\)
 assert.match(areaScene, /overlay\.name = `nurse-station-screen-overlay-\$\{kind\}`/);
 assert.match(areaScene, /depthWrite: false/);
 assert.doesNotMatch(areaScene, /this\.replaceMeshMaterialWithTexture\(object, texture\)/);
-assert.match(sceneConfig, /background: 0xe8eef0/);
+assert.match(sceneConfig, /background: 0xf8f0e4/);
+assert.match(sceneConfig, /exposure: 1\.34/);
+assert.match(sceneConfig, /environmentIntensity: 0\.4/);
 assert.doesNotMatch(areaScene, /nurseStationHospitalEnvironment/);
 assert.doesNotMatch(areaScene, /buildNurseStationHospitalEnvironment/);
 assert.doesNotMatch(areaScene, /nurse-station-hospital-environment/);
@@ -72,6 +74,6 @@ assert.match(areaScene, /'任务队列'/);
 assert.match(areaScene, /'病房状态'/);
 assert.match(areaScene, /'床位监测'/);
 assert.match(areaScene, /'设备与环境'/);
-assert.match(areaScene, /\['clock', \['Clock_Display', 'Clock_Frame'\]\]/);
+assert.match(areaScene, /\['clock', \['Clock_Display', 'Clock_Frame', '时钟'\]\]/);
 
 console.log('Nurse-station scene boundary tests passed.');

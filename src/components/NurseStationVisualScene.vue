@@ -105,11 +105,11 @@ const emit = defineEmits<{
     z-index: 2;
     pointer-events: none;
     background:
-      radial-gradient(ellipse at 50% 56%, rgba(255, 250, 244, 0.03) 0%, transparent 48%),
-      linear-gradient(90deg, rgba(8, 14, 18, 0.03), transparent 16%, transparent 84%, rgba(8, 14, 18, 0.03)),
-      linear-gradient(180deg, rgba(8, 14, 18, 0.02), transparent 24%, rgba(8, 14, 18, 0.03));
+      radial-gradient(ellipse at 50% 56%, rgba(255, 236, 210, 0.04) 0%, transparent 48%),
+      linear-gradient(90deg, rgba(42, 28, 16, 0.02), transparent 18%, transparent 82%, rgba(42, 28, 16, 0.02)),
+      linear-gradient(180deg, rgba(42, 28, 16, 0.015), transparent 26%, rgba(42, 28, 16, 0.02));
     mix-blend-mode: multiply;
-    opacity: 0.18;
+    opacity: 0.04;
   }
 
   &__ambient,
@@ -122,17 +122,17 @@ const emit = defineEmits<{
   &__ambient {
     z-index: 4;
     background:
-      radial-gradient(ellipse at 50% 42%, rgba(255, 252, 246, 0.05) 0%, transparent 62%),
-      linear-gradient(180deg, rgba(247, 251, 253, 0.025), transparent 22%);
+      radial-gradient(ellipse at 50% 42%, rgba(255, 236, 208, 0.08) 0%, transparent 62%),
+      linear-gradient(180deg, rgba(255, 242, 224, 0.05), transparent 22%);
     mix-blend-mode: screen;
-    opacity: 0.16;
+    opacity: 0.28;
   }
 
   &__depth {
     z-index: 5;
     background:
-      linear-gradient(180deg, rgba(8, 12, 16, 0.03), transparent 22%, transparent 72%, rgba(8, 12, 16, 0.06)),
-      radial-gradient(ellipse at 50% 84%, rgba(20, 28, 32, 0.04), transparent 56%);
+      linear-gradient(180deg, rgba(36, 24, 16, 0.01), transparent 18%, transparent 78%, rgba(36, 24, 16, 0.018)),
+      radial-gradient(ellipse at 50% 84%, rgba(48, 32, 20, 0.016), transparent 56%);
   }
 
   &::before,
@@ -146,17 +146,17 @@ const emit = defineEmits<{
 
   &::before {
     background:
-      linear-gradient(180deg, rgba(8, 12, 16, 0.015), transparent 18%, transparent 74%, rgba(8, 12, 16, 0.025)),
-      radial-gradient(ellipse at 50% 66%, transparent 0%, transparent 58%, rgba(8, 12, 16, 0.02) 90%);
+      linear-gradient(180deg, rgba(36, 24, 16, 0.01), transparent 18%, transparent 74%, rgba(36, 24, 16, 0.018)),
+      radial-gradient(ellipse at 50% 66%, transparent 0%, transparent 58%, rgba(36, 24, 16, 0.015) 90%);
   }
 
   &::after {
     inset: auto 11% 12.5% 11%;
     height: 16%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 50%, rgba(255, 244, 230, 0.06), transparent 68%);
+    background: radial-gradient(ellipse at 50% 50%, rgba(255, 236, 210, 0.1), transparent 68%);
     filter: blur(14px);
-    opacity: 0.16;
+    opacity: 0.28;
   }
 
   &__model-state {

@@ -336,6 +336,7 @@ export class AreaScene {
   private animationId = 0;
   private isActive = true;
   private stationViewLogTimer = 0;
+  private stationViewLogStep = 0;
   private timer = new THREE.Timer();
   private roomMeshes = new Map<number, RoomMeshGroup>();
   private area: TwinAreaEntity | null = null;
@@ -531,82 +532,78 @@ export class AreaScene {
     this.suppressRoomClick = true;
     this.applyStationOrbitCeilingConstraint();
     this.applyCorridorViewBoundsConstraint();
-    // this.scheduleCorridorCameraLog('拖动中');
+    this.scheduleStationCameraLog('拖动中');
     this.emitCameraDebugState();
   };
 
   private onControlsEnd = () => {
     window.clearTimeout(this.stationViewLogTimer);
-    // this.logCorridorCameraView('操作结束');
+    this.logStationCameraView('操作结束');
   };
 
-  // private scheduleCorridorCameraLog(reason: string) {
-  //   window.clearTimeout(this.stationViewLogTimer);
-  //   this.stationViewLogTimer = window.setTimeout(() => this.logCorridorCameraView(reason), 160);
-  // }
+  private scheduleStationCameraLog(reason: string) {
+    if (this.modelKind !== 'station' || this.viewPhase !== 'station')
+      return;
+    window.clearTimeout(this.stationViewLogTimer);
+    this.stationViewLogTimer = window.setTimeout(() => this.logStationCameraView(reason), 180);
+  }
 
-  // 护士站机位已锁定，视角日志先关掉。
-  // private logStationCameraView(reason: string) {
-  //   if (this.modelKind !== 'station' || this.viewPhase !== 'station')
-  //     return;
-  //   const worldPosition = this.camera.position.toArray().map(value => Number(value.toFixed(3)));
-  //   const worldTarget = this.controls.target.toArray().map(value => Number(value.toFixed(3)));
-  //   const localTarget = this.nurseGroup
-  //     ? this.nurseGroup.worldToLocal(this.controls.target.clone())
-  //     : this.controls.target.clone();
-  //   const localPosition = this.nurseGroup
-  //     ? this.nurseGroup.worldToLocal(this.camera.position.clone())
-  //     : this.camera.position.clone();
-  //   const direction = localPosition.clone().sub(localTarget);
-  //   const horizontalDistance = Math.hypot(direction.x, direction.z);
-  //   this.stationViewLogStep += 1;
-  //   console.info(`[NurseStation] 视角 #${this.stationViewLogStep} ${reason}`, {
-  //     position: worldPosition,
-  //     target: worldTarget,
-  //     localPosition: localPosition.toArray().map(value => Number(value.toFixed(3))),
-  //     camera: {
-  //       target: {
-  //         x: Number(localTarget.x.toFixed(3)),
-  //         y: Number(localTarget.y.toFixed(3)),
-  //         z: Number(localTarget.z.toFixed(3)),
-  //       },
-  //       initialDistance: Number(direction.length().toFixed(3)),
-  //       initialAngle: {
-  //         azimuthDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.x, direction.z)).toFixed(2)),
-  //         elevationDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.y, horizontalDistance)).toFixed(2)),
-  //       },
-  //     },
-  //     fov: Number(this.camera.fov.toFixed(2)),
-  //   });
-  // }
-
-  // 病区走廊机位日志先关掉。
-  // private logCorridorCameraView(reason: string) {
-  //   if (this.modelKind !== 'corridor' || this.viewPhase !== 'corridor')
-  //     return;
-  //   const position = this.camera.position.clone();
-  //   const target = this.controls.target.clone();
-  //   const direction = position.clone().sub(target);
-  //   const horizontalDistance = Math.hypot(direction.x, direction.z);
-  //   this.stationViewLogStep += 1;
-  //   console.info(`[WardCorridor] 视角 #${this.stationViewLogStep} ${reason}`, {
-  //     position: position.toArray().map(value => Number(value.toFixed(3))),
-  //     target: target.toArray().map(value => Number(value.toFixed(3))),
-  //     camera: {
-  //       target: {
-  //         x: Number(target.x.toFixed(3)),
-  //         y: Number(target.y.toFixed(3)),
-  //         z: Number(target.z.toFixed(3)),
-  //       },
-  //       initialDistance: Number(direction.length().toFixed(3)),
-  //       initialAngle: {
-  //         azimuthDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.x, direction.z)).toFixed(2)),
-  //         elevationDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.y, horizontalDistance)).toFixed(2)),
-  //       },
-  //     },
-  //     fov: Number(this.camera.fov.toFixed(2)),
-  //   });
-  // }
+  /** 拖动护士站视角时打印可回填配置的机位参数。 */
+  private logStationCameraView(reason: string) {
+    if (this.modelKind !== 'station' || this.viewPhase !== 'station')
+      return;
+    const worldPosition = {
+      x: Number(this.camera.position.x.toFixed(3)),
+      y: Number(this.camera.position.y.toFixed(3)),
+      z: Number(this.camera.position.z.toFixed(3)),
+    };
+    const worldTarget = {
+      x: Number(this.controls.target.x.toFixed(3)),
+      y: Number(this.controls.target.y.toFixed(3)),
+      z: Number(this.controls.target.z.toFixed(3)),
+    };
+    const localTarget = this.nurseGroup
+      ? this.nurseGroup.worldToLocal(this.controls.target.clone())
+      : this.controls.target.clone();
+    const localPosition = this.nurseGroup
+      ? this.nurseGroup.worldToLocal(this.camera.position.clone())
+      : this.camera.position.clone();
+    const direction = localPosition.clone().sub(localTarget);
+    const horizontalDistance = Math.hypot(direction.x, direction.z);
+    const camera = {
+      target: {
+        x: Number(localTarget.x.toFixed(3)),
+        y: Number(localTarget.y.toFixed(3)),
+        z: Number(localTarget.z.toFixed(3)),
+      },
+      initialDistance: Number(direction.length().toFixed(3)),
+      initialAngle: {
+        azimuthDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.x, direction.z)).toFixed(2)),
+        elevationDeg: Number(THREE.MathUtils.radToDeg(Math.atan2(direction.y, horizontalDistance)).toFixed(2)),
+      },
+    };
+    const fov = Number(this.camera.fov.toFixed(2));
+    this.stationViewLogStep += 1;
+    console.info(`[NurseStation] 视角 #${this.stationViewLogStep} ${reason}`, {
+      position: worldPosition,
+      target: worldTarget,
+      localPosition: {
+        x: Number(localPosition.x.toFixed(3)),
+        y: Number(localPosition.y.toFixed(3)),
+        z: Number(localPosition.z.toFixed(3)),
+      },
+      camera,
+      fov,
+      paste: [
+        'camera: {',
+        `  target: { x: ${camera.target.x}, y: ${camera.target.y}, z: ${camera.target.z} },`,
+        `  initialDistance: ${camera.initialDistance},`,
+        `  initialAngle: { azimuthDeg: ${camera.initialAngle.azimuthDeg}, elevationDeg: ${camera.initialAngle.elevationDeg} },`,
+        '},',
+        `appearance.deskFov: ${fov}`,
+      ].join('\n'),
+    });
+  }
 
   /** 输出可直接回填 nurse-station-scene.ts 的护士站相机参数。 */
   private emitCameraDebugState() {
@@ -654,10 +651,16 @@ export class AreaScene {
     }
 
     // 走廊白天阳光：略提环境填充与主光，拉开地面/门框亮点。
-    this.scene.add(new THREE.AmbientLight(0xfff6ea, 0.16));
-    this.scene.add(new THREE.HemisphereLight(0xfff2e0, 0x7a8a94, 0.24));
+    // 护士站环境光略高于走廊，保证白天病房亮度，接触影仍由主光承担。
+    const isStation = this.modelKind === 'station';
+    this.scene.add(new THREE.AmbientLight(0xfff6ea, isStation ? 0.26 : 0.16));
+    this.scene.add(new THREE.HemisphereLight(
+      isStation ? 0xffeed8 : 0xfff2e0,
+      isStation ? 0xa09080 : 0x7a8a94,
+      isStation ? 0.3 : 0.24,
+    ));
 
-    const key = new THREE.DirectionalLight(0xffecd2, 1.62);
+    const key = new THREE.DirectionalLight(0xffecd2, isStation ? 1.78 : 1.62);
     key.name = 'corridor-key-shadow';
     key.position.set(6, 14, 10);
     key.castShadow = true;
@@ -676,11 +679,11 @@ export class AreaScene {
     this.scene.add(key);
     this.scene.add(key.target);
 
-    const fill = new THREE.DirectionalLight(0xdceaf6, 0.3);
+    const fill = new THREE.DirectionalLight(isStation ? 0xffebd6 : 0xdceaf6, isStation ? 0.24 : 0.3);
     fill.position.set(-14, 14, 6);
     this.scene.add(fill);
 
-    const corridor = new THREE.DirectionalLight(0xfff8ef, 0.24);
+    const corridor = new THREE.DirectionalLight(0xfff8ef, isStation ? 0.2 : 0.24);
     corridor.position.set(0, 18, -18);
     this.scene.add(corridor);
 
@@ -698,7 +701,9 @@ export class AreaScene {
         ? object.material.map(m => m.name).join(' ')
         : (object.material?.name ?? '');
       const isFloor = name === '地板' || /floor|地板/i.test(name) || /floor|地板/i.test(matName);
-      const isCeiling = name === '天花板' || /ceiling|天花板|顶棚|顶面/i.test(name)
+      const isCeiling = name === '天花板' || name === '顶栏'
+        || /ceiling|天花板|顶棚|顶面|顶栏/i.test(name)
+        || /^顶灯/.test(name)
         || /ceiling|天花板/i.test(matName);
       const isHangingSign = /牌|吊|sign|banner|letter|text|motto|导向/i.test(name)
         || /牌|导向/i.test(matName);
@@ -743,8 +748,8 @@ export class AreaScene {
     camera.updateProjectionMatrix();
     light.shadow.bias = -0.0001;
     light.shadow.normalBias = 0.016;
-    light.shadow.radius = 1.15;
-    light.shadow.intensity = 1.22;
+    light.shadow.radius = 1.25;
+    light.shadow.intensity = this.modelKind === 'station' ? 1.05 : 1.22;
     this.renderer.shadowMap.needsUpdate = true;
   }
 
@@ -771,14 +776,25 @@ export class AreaScene {
   }
 
   private setupNurseStationAtmosphereLights() {
-    // legacy 布局补光改为中性暖白，避免青冷偏色；reference-v2 走 createReferenceStationLights。
-    const counterGlow = new THREE.RectAreaLight(0xfff2de, 0.42, 5.8, 1.2);
+    // 暖补光只铺色，不另投影，接触影交给收紧后的主光。
+    const warmKey = new THREE.DirectionalLight(0xffefd4, 0.46);
+    warmKey.name = 'nurse-station-warm-key';
+    warmKey.position.set(-2.4, 4.1, NURSE_STATION.z + 2.6);
+    warmKey.target.position.set(0.2, 0.35, NURSE_STATION.z);
+    this.scene.add(warmKey, warmKey.target);
+
+    const warmBounce = new THREE.DirectionalLight(0xffe6cc, 0.24);
+    warmBounce.name = 'nurse-station-warm-bounce';
+    warmBounce.position.set(3.6, 2.9, NURSE_STATION.z - 1.4);
+    this.scene.add(warmBounce);
+
+    const counterGlow = new THREE.RectAreaLight(0xffefd4, 0.42, 5.8, 1.2);
     counterGlow.name = 'nurse-station-counter-softbox';
     counterGlow.position.set(0, 2.25, NURSE_STATION.z + 0.45);
     counterGlow.rotation.x = -Math.PI / 2.55;
     this.scene.add(counterGlow);
 
-    const screenFill = new THREE.PointLight(0xfff7eb, 0.28, 8.2, 1.85);
+    const screenFill = new THREE.PointLight(0xfff0dc, 0.22, 8.2, 1.85);
     screenFill.name = 'nurse-station-screen-fill';
     screenFill.position.set(0, 1.75, NURSE_STATION.z - 0.85);
     this.scene.add(screenFill);
@@ -3019,7 +3035,7 @@ export class AreaScene {
       ['wardStatus', ['Screen_Work_02', 'Monitor_UI_02_02']],
       ['bedMonitor', ['Screen_Work_03', 'Monitor_Frame_03']],
       ['deviceHealth', ['Screen_Work_04', 'Monitor_Frame_04']],
-      ['clock', ['Clock_Display', 'Clock_Frame']],
+      ['clock', ['Clock_Display', 'Clock_Frame', '时钟']],
     ];
 
     for (const [kind, objectNames] of boards) {
@@ -3393,7 +3409,10 @@ export class AreaScene {
       // 让 root.worldToLocal() 使用包含护士站整体位移的完整世界矩阵。
       parent.add(model);
       this.nurseStationModel = model;
+      this.configureCorridorShadowCasters(model);
+      this.fitCorridorKeyShadow(model);
       this.attachNurseStationBoardDisplays(model);
+      this.highlightNurseStationSignage(model);
       this.setTheme(this.darkTheme ? 'dark' : 'light');
       if (IS_REFERENCE_STATION) {
         // Geometry and lights are static; camera and board texture changes do not invalidate shadows.
@@ -3414,6 +3433,7 @@ export class AreaScene {
       await this.warmGpu();
       // 贴图解码完成后再套一次浅色木纹，避免首次主题应用时漫反射未就绪。
       this.setTheme(this.darkTheme ? 'dark' : 'light');
+      this.highlightNurseStationSignage(model);
       if (token !== this.nurseStationModelLoadToken)
         return;
       this.renderer.render(this.scene, this.camera);
@@ -4134,6 +4154,118 @@ export class AreaScene {
     model.position.set(-center.x, -fittedBox.min.y + 0.03, -center.z);
   }
 
+  /** 顶栏给足色相，导台文字保持可读；顶灯自发光但不洗掉接触影。 */
+  private highlightNurseStationSignage(model: THREE.Object3D) {
+    const signage = /^(Station_Header|Station_Header_Motto|Counter_Lettering)$/;
+    const headerTitle = /^Station_Header(_Motto)?$/;
+    const ceilingLights: THREE.RectAreaLight[] = [];
+    const dark = this.darkTheme;
+    model.updateMatrixWorld(true);
+    model.traverse((object) => {
+      if (!(object instanceof THREE.Mesh))
+        return;
+      let sign = false;
+      let ceilingLamp = false;
+      for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+        if (signage.test(node.name))
+          sign = true;
+        if (/^顶灯/.test(node.name))
+          ceilingLamp = true;
+      }
+      if (object.name === '顶栏' || object.name === 'Ceiling') {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        const next = materials.map((material) => {
+          if (!('color' in material))
+            return material;
+          const lit = material.clone();
+          const fascia = /Equipment_White|White_Stone/i.test(material.name);
+          if (fascia) {
+            lit.color.set(dark ? '#3f7384' : '#2b6c82');
+            if ('roughness' in lit)
+              lit.roughness = 0.52;
+            if ('metalness' in lit)
+              lit.metalness = 0.08;
+          } else {
+            lit.color.set(dark ? '#2c3c42' : '#f6f1e8');
+            if ('roughness' in lit)
+              lit.roughness = 0.92;
+          }
+          if ('emissive' in lit) {
+            lit.emissive.set('#000000');
+            lit.emissiveIntensity = 0;
+          }
+          lit.needsUpdate = true;
+          return lit;
+        });
+        object.material = Array.isArray(object.material) ? next : next[0]!;
+      }
+      if (sign) {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        const title = headerTitle.test(object.name) || headerTitle.test(object.parent?.name ?? '');
+        const next = materials.map((material) => {
+          if (!('emissive' in material) || !('color' in material))
+            return material;
+          const lit = material.clone();
+          if (title) {
+            lit.color.set(dark ? '#e7f7fa' : '#f4fbfd');
+            lit.emissive.set(dark ? '#c5e6ec' : '#d7eef2');
+            lit.emissiveIntensity = 0.28;
+          } else {
+            lit.color.set(dark ? '#8fd0dc' : '#16586a');
+            lit.emissive.set(dark ? '#4a8a96' : '#16586a');
+            lit.emissiveIntensity = 0.12;
+          }
+          if ('roughness' in lit)
+            lit.roughness = 0.42;
+          if ('metalness' in lit)
+            lit.metalness = 0;
+          lit.needsUpdate = true;
+          return lit;
+        });
+        object.material = Array.isArray(object.material) ? next : next[0]!;
+      }
+      if (!ceilingLamp)
+        return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      const next = materials.map((material) => {
+        if (!/Warm_LED|LED/i.test(material.name) || !('emissive' in material))
+          return material;
+        const lit = material.clone();
+        lit.color.set('#fff4e4');
+        lit.emissive.set('#ffe2b0');
+        lit.emissiveIntensity = 1.7;
+        lit.needsUpdate = true;
+        return lit;
+      });
+      object.material = Array.isArray(object.material) ? next : next[0]!;
+      const bounds = new THREE.Box3().setFromObject(object);
+      if (bounds.isEmpty())
+        return;
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
+      const axes = [
+        { size: size.x },
+        { size: size.y },
+        { size: size.z },
+      ].sort((left, right) => right.size - left.size);
+      const width = Math.max(axes[0]?.size ?? 0.4, 0.35);
+      const height = Math.max(axes[1]?.size ?? 0.12, 0.08);
+      const lamp = new THREE.RectAreaLight(0xfff3d4, 5.4, width, height);
+      lamp.name = 'nurse-station-ceiling-lamp';
+      lamp.position.set(center.x, center.y - 0.03, center.z);
+      lamp.lookAt(center.x, center.y - 1, center.z);
+      ceilingLights.push(lamp);
+    });
+    this.scene.getObjectByName('nurse-station-ceiling-lamps')?.removeFromParent();
+    if (!ceilingLights.length)
+      return;
+    const group = new THREE.Group();
+    group.name = 'nurse-station-ceiling-lamps';
+    for (const lamp of ceilingLights)
+      group.add(lamp);
+    this.scene.add(group);
+  }
+
   private disposeObjectTree(object: THREE.Object3D) {
     object.traverse((obj) => {
       if (!(obj instanceof THREE.Mesh || obj instanceof THREE.LineSegments || obj instanceof THREE.Points))
@@ -4153,7 +4285,7 @@ export class AreaScene {
   /** 护士站阶段：半封闭外壳遮挡走廊方向，并防止缩放时看到场景外空白 */
   private buildStationBackdrop() {
     const shellMat = new THREE.MeshStandardMaterial({
-      color: 0xe8eef4,
+      color: 0xf3efe8,
       roughness: 0.88,
       metalness: 0.02,
       side: THREE.DoubleSide,
@@ -4179,7 +4311,7 @@ export class AreaScene {
 
     const extFloor = new THREE.Mesh(
       new THREE.BoxGeometry(STATION_SHELL_HALF_W * 2 + 0.2, 0.04, sideDepth + 0.4),
-      new THREE.MeshStandardMaterial({ color: 0xdce3ea, roughness: 0.72 }),
+      new THREE.MeshStandardMaterial({ color: 0xe8e2d8, roughness: 0.72 }),
     );
     extFloor.position.set(0, 0.02, STATION_SHELL_BACK_Z / 2 - 0.35);
     extFloor.receiveShadow = true;
@@ -4187,7 +4319,7 @@ export class AreaScene {
 
     const ceiling = new THREE.Mesh(
       new THREE.BoxGeometry(8.4, 0.06, sideDepth + 0.2),
-      new THREE.MeshStandardMaterial({ color: 0xf0f3f6, roughness: 0.92 }),
+      new THREE.MeshStandardMaterial({ color: 0xf7f3ec, roughness: 0.92 }),
     );
     ceiling.position.set(0, 2.78, STATION_SHELL_BACK_Z / 2 - 0.35);
     shell.add(ceiling);
@@ -4220,17 +4352,23 @@ export class AreaScene {
     return v;
   }
 
-  /** 坐席视角：面向排班看板与 L 型柜台；机位强制落在房间包围盒内。 */
+  /** 坐席视角：面向排班看板与 L 型柜台；限制开启时才钳到房间包围盒。 */
   private getNurseStationDeskCameraView() {
-    const target = this.clampPointToNurseStationBounds(
-      this.worldFromNurseLocal(STATION_TARGET_LOCAL.clone()),
-    );
+    const target = STATION_CAMERA_LIMITS_ENABLED
+      ? this.clampPointToNurseStationBounds(this.worldFromNurseLocal(STATION_TARGET_LOCAL.clone()))
+      : this.worldFromNurseLocal(STATION_TARGET_LOCAL.clone());
     const preferred = this.worldFromNurseLocal(STATION_CAM_LOCAL.clone());
     const offset = preferred.sub(target);
     const fallbackDir = STATION_CAM_DIR.clone();
     if (this.nurseGroup)
       fallbackDir.transformDirection(this.nurseGroup.matrixWorld);
     const dir = offset.lengthSq() > 1e-8 ? offset.normalize() : fallbackDir.normalize();
+    if (!STATION_CAMERA_LIMITS_ENABLED) {
+      return {
+        position: target.clone().addScaledVector(dir, STATION_INIT_DISTANCE),
+        target,
+      };
+    }
     const maxReach = this.getNurseStationOrbitReach(target, dir);
     const distance = THREE.MathUtils.clamp(
       Math.min(STATION_INIT_DISTANCE, maxReach),
@@ -4315,7 +4453,9 @@ export class AreaScene {
   private captureNurseStationViewBounds(model: THREE.Object3D) {
     model.updateMatrixWorld(true);
     const floor = model.getObjectByName(STATION_VIEW_BOUNDS.floorMesh);
-    const ceiling = model.getObjectByName(STATION_VIEW_BOUNDS.ceilingMesh);
+    const ceiling = model.getObjectByName(STATION_VIEW_BOUNDS.ceilingMesh)
+      ?? model.getObjectByName('顶栏')
+      ?? model.getObjectByName('天花板');
     const wallA = model.getObjectByName(STATION_VIEW_BOUNDS.wallMeshes[0]);
     const wallB = model.getObjectByName(STATION_VIEW_BOUNDS.wallMeshes[1]);
     const farWallName = STATION_VIEW_BOUNDS.farWallMesh;
@@ -4507,6 +4647,7 @@ export class AreaScene {
     this.applyStationOrbitCeilingConstraint();
     this.camera.updateProjectionMatrix();
     this.emitCameraDebugState();
+    this.logStationCameraView('初始机位');
   }
 
   private setCorridorContentVisible(visible: boolean) {
