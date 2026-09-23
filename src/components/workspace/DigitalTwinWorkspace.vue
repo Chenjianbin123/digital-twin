@@ -11,6 +11,7 @@ import { buildWorkspaceMetrics, getAreaTemperature } from '@/core/workspace-metr
 import DashboardBottomNav from '@/components/dashboard/DashboardBottomNav.vue';
 import DashboardHeader from '@/components/dashboard/DashboardHeader.vue';
 import DashboardLeftPanel from '@/components/dashboard/DashboardLeftPanel.vue';
+import WardCommandWorkspace from '@/components/dashboard/WardCommandWorkspace.vue';
 import AreaSwitcher from '@/components/AreaSwitcher.vue';
 import SceneSwitchLoader from '@/components/SceneSwitchLoader.vue';
 import EnvAlertBanner from '@/components/EnvAlertBanner.vue';
@@ -19,6 +20,7 @@ import type { TwinBedEntity } from '@/types/twin';
 import type { AlertTask } from '@/core/alert-workflow';
 import { buildAreaSceneIdentity } from '@/core/area-scene-identity';
 import { useSceneLoading } from '@/core/use-scene-loading';
+import type { StartupSceneState } from '@/core/use-workspace-bootstrap';
 import { useTwinStore } from '@/stores/twin-store';
 import { resolveDataStatus } from '@/core/data-status';
 import { resolveWardInteriorDataStatus } from '@/core/ward-interior-status';
@@ -26,12 +28,14 @@ import { buildNurseStationViewModel } from '@/core/nurse-station-view-model';
 import { ALERT_ACK_STORAGE_KEY } from '@/core/alert-ack';
 import { SWP_CALL_ALERTS_STORAGE_KEY } from '@/services/swp-call-notifier';
 
-const { theme, operatorName, operatorRole } = defineProps<{
+const { theme, operatorName, operatorRole, startupLoading = false, startupRetryKey = 0 } = defineProps<{
   theme: 'dark' | 'light';
   operatorName: string;
   operatorRole: string;
+  startupLoading?: boolean;
+  startupRetryKey?: number;
 }>();
-const emit = defineEmits<{ toggleTheme: []; logout: [] }>();
+const emit = defineEmits<{ toggleTheme: []; logout: []; modelState: [state: StartupSceneState] }>();
 function toggleTheme() { emit('toggleTheme'); }
 function handleLogout() { emit('logout'); }
 const store = useTwinStore();
@@ -128,6 +132,15 @@ const dataStatus = computed(() => resolveDataStatus({
 }));
 
 const currentRoomCalls = computed(() => currentWard.value ? roomCallTasks(alertTasks.value, currentWard.value, currentRoomIndex.value) : []);
+const wardCommandMetrics = computed(() => isWard.value
+  ? [
+      { key: 'pending', label: '待处理', value: alertTasks.value.filter(task => task.status === 'pending').length, unit: '项' },
+      { key: 'handling', label: '处理中', value: alertTasks.value.filter(task => task.status === 'handling').length, unit: '项' },
+    ]
+  : [
+      { key: 'occupied', label: '已入住', value: currentWard.value?.beds.filter(bed => bed.isOccupied).length ?? '--', unit: '床' },
+      { key: 'empty', label: '空床', value: currentWard.value?.beds.filter(bed => !bed.isOccupied).length ?? '--', unit: '床' },
+    ]);
 
 const wardInteriorDataStatus = computed(() => resolveWardInteriorDataStatus({
   phase: dataPhase.value,
@@ -204,6 +217,15 @@ const requestedScene = computed(() => isWardInterior.value && wardInteriorView.v
   : sceneType.value);
 const { scenes, feedback: sceneSwitchFeedback, retry: retryScene } = useSceneLoading(sceneScope, requestedScene);
 const stationModelState = computed(() => scenes.value['nurse-station'].state);
+watch(() => startupRetryKey, () => {
+  if (startupLoading) retryScene();
+});
+watch([() => startupLoading, () => startupRetryKey, stationModelState,
+  () => scenes.value['nurse-station'].recovery], () => {
+  if (!startupLoading) return;
+  const station = scenes.value['nurse-station'];
+  emit('modelState', station.recovery === 'reload' ? 'component-error' : station.state);
+}, { immediate: true });
 
 const { panelsVisible } = useWorkspacePanels(sceneType, wardInteriorView, sceneScope);
 watch(sceneScope, () => { isAreaSwitcherOpen.value = false; });
@@ -298,7 +320,7 @@ onBeforeUnmount(() => {
 
 
 <template>
-  <div v-if="area" class="digital-twin" :data-theme="theme">
+  <div v-if="area" class="digital-twin" :data-theme="theme" :inert="startupLoading">
     <div
       class="digital-twin__main"
       :class="{
@@ -521,7 +543,7 @@ onBeforeUnmount(() => {
 
       </div>
       <SceneSwitchLoader
-        :feedback="sceneSwitchFeedback"
+        :feedback="startupLoading ? null : sceneSwitchFeedback"
         @retry="retryScene"
         @return-station="handleSceneTypeChange('nurse-station')"
       />
@@ -554,6 +576,12 @@ onBeforeUnmount(() => {
         </template>
 
         <template v-else>
+          <WardCommandWorkspace
+            :kind="isWard ? 'corridor' : 'room'"
+            :title="isWard ? '病房走廊工作台' : '病房护理工作台'"
+            :subtitle="[area?.deptName, area?.areaName, isWardInterior ? currentWard?.sickroomName : null].filter(Boolean).join(' · ')"
+            :metrics="wardCommandMetrics"
+          >
           <HospitalIntroPanel
             v-if="isWard"
             :info="hospitalInfo"
@@ -565,6 +593,7 @@ onBeforeUnmount(() => {
           <div class="digital-twin__panel-body">
             <AreaInfoPanel
               v-if="isWard"
+              :light-command="theme === 'light'"
               :area="area"
               :room-summaries="roomSummaries"
               :status-history="statusHistory"
@@ -600,6 +629,7 @@ onBeforeUnmount(() => {
               @mark-alert-handling="store.markAlertHandling"
             />
           </div>
+          </WardCommandWorkspace>
         </template>
       </aside>
     </div>

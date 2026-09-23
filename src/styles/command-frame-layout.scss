@@ -1,0 +1,6 @@
+// NurseCommandFrame uses inner rails at x=70/960 in a 1000-wide SVG.
+// Keep text gutters inside those rails, including on tall or narrow screens.
+@mixin safe-content {
+  min-width: 0;
+  padding: max(36px, 3.5vh) calc(4% + 12px) max(36px, 3.5vh) calc(7% + 12px);
+}

@@ -1,0 +1,66 @@
+@use 'sass:map';
+
+// 全局深色交互控件配色；不覆盖告警、同步状态与医疗状态标签。
+$control-theme: (
+  bg: linear-gradient(180deg, #163c58, #0d293f),
+  active: linear-gradient(180deg, #20557a, #123b59),
+  line: #396783,
+  active-line: #64bfe688,
+  ink: #c5dae8,
+  active-ink: #eaf5fc,
+  focus: #73d4f4,
+  disabled-bg: #132b3c,
+  disabled-ink: #8da5b7
+);
+
+@mixin control {
+  color:var(--command-control-ink) !important;
+  background:var(--command-control-bg) !important;
+  border-color:var(--command-control-line) !important;
+  box-shadow:inset 0 1px 0 #8dd4ff19 !important;
+  &:focus-visible { outline:2px solid var(--command-control-focus); outline-offset:3px; }
+  @media (hover:hover) {
+    &:hover:not(:disabled):not([aria-disabled='true']) {
+      color:var(--command-control-active-ink) !important;
+      background:var(--command-control-active) !important;
+      border-color:var(--command-control-active-line) !important;
+    }
+  }
+  &:disabled, &[aria-disabled='true'] {
+    color:var(--command-control-disabled-ink) !important;
+    background:var(--command-control-disabled-bg) !important;
+    border-color:#304759 !important; box-shadow:none !important;
+  }
+}
+@mixin selected {
+  color:var(--command-control-active-ink) !important;
+  background:var(--command-control-active) !important;
+  border-color:var(--command-control-active-line) !important;
+  box-shadow:inset 0 -2px 0 var(--command-control-focus) !important;
+}
+@mixin render {
+  :is(.digital-twin,.swp-login,.startup-loader,.scene-switch-loader,.entrance-theme-toggle)[data-theme='dark'] {
+    @each $key,$value in $control-theme { --command-control-#{$key}: #{$value}; }
+  }
+  .digital-twin[data-theme='dark'][data-theme='dark'] {
+    .dash-header :is(.dash-header__area,.dash-header__theme,.dash-header__refresh),
+    .area-switcher :is(.area-switcher__close,.area-switcher__confirm),
+    :is(.area-scene-3d__reset,.ward-legend__toggle,.ward-scene-3d__actions button,.station-info__tools button,.scene-switch-loader__actions button) { @include control; }
+    .area-switcher .area-switcher__row--candidate { @include selected; }
+    .dash-bottom.dash-bottom {
+      button { @include control; }
+      :is(.dash-bottom__item--active,.dash-bottom__sub-item--active) { @include selected; }
+    }
+    :is(.nurse-panel.nurse-workspace.nurse-workspace,.digital-twin__panel.digital-twin__panel--overlay) {
+      :is(.station-hero__alert-toggle,.station-hero__wallboard-toggle,.alert-task-panel__more button,.alert-task__details summary,.alert-task__locate,.alert-task__ghost,.room-card__enter,.area-dashboard__back-station,.task-card__actions button) { @include control; }
+      .workspace-tabs button[aria-selected='true'],.alert-task-panel__filters button.is-active,
+      .queue-categories button[aria-pressed='true'],.ward-bed-nav__item[aria-selected='true'] { @include selected; }
+    }
+  }
+  .swp-login[data-theme='dark'][data-theme='dark'] {
+    :is(.swp-login__submit,.swp-login__back,.swp-login__input-wrap button) { @include control; }
+    .swp-login__role[aria-checked='true'] { @include selected; }
+  }
+  .startup-loader[data-theme='dark'][data-theme='dark'] .startup-loader__actions button,
+  .entrance-theme-toggle[data-theme='dark'][data-theme='dark'] { @include control; }
+}

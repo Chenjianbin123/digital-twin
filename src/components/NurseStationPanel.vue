@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, useId } from "vue";
 import AlertTaskPanel from "@/components/AlertTaskPanel.vue";
+import NurseCommandFrame from "@/components/dashboard/NurseCommandFrame.vue";
 import DoorStaffCards from "@/components/DoorStaffCards.vue";
 import DashSectionHeader from "@/components/dashboard/DashSectionHeader.vue";
 import NurseStationMetricChart from "@/components/dashboard/NurseStationMetricChart.vue";
@@ -37,6 +38,7 @@ const stationInspectionRooms = computed(() => props.viewModel.inspectionRoomSumm
 const inspectionSync = computed(() => props.viewModel.inspectionSync);
 const supportsRealtimeNursingData = computed(() => props.dataSource == null || props.dataSource === "remote");
 const pendingTaskCount = computed(() => stationTasks.value.filter(task => task.status === 'pending').length);
+const handlingTaskCount = computed(() => stationTasks.value.filter(task => task.status === 'handling').length);
 watch(() => stationArea.value.areaCode, () => { workspaceTab.value = 'tasks'; });
 function onWorkspaceKeydown(event: KeyboardEvent, index: number) {
   let next = index;
@@ -465,11 +467,15 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
     :class="{ 'nurse-panel--wallboard': wallboard }"
     aria-label="护士站工作台"
   >
+    <NurseCommandFrame />
     <header class="station-hero">
+      <div class="command-section-label" aria-hidden="true"><span>01 / 工作台</span><i /></div>
       <span class="station-hero__scanline" aria-hidden="true" />
       <div class="station-hero__overview-head">
         <div class="station-hero__identity">
+          <svg class="command-depth-mark" viewBox="0 0 80 88" aria-hidden="true"><path d="M5 71 39 58 75 71 40 85Z" fill="#194c6c" stroke="#70cbed"/><path d="M12 67 40 57 67 68 40 79Z" fill="#287798" stroke="#8bdcf4"/><path d="M23 23 45 14 61 23 40 33Z" fill="#83d7f5"/><path d="M23 23 40 33v42L23 66Z" fill="#26608b" stroke="#7bbddd"/><path d="m40 33 21-10v42L40 75Z" fill="#398db3" stroke="#96dcf4"/><path d="m43 8 15 8-13 6-15-8Z" fill="#a4e7fc"/><path d="M30 14v10l15 8V22Z" fill="#468bb9"/><path d="m45 22 13-6v10l-13 6Z" fill="#65b9dd"/><path d="m46 39 8-4v8l-8 4Zm0 15 8-4v8l-8 4Z" fill="#b5edff"/><path d="m27 34 7 4v7l-7-4Zm0 14 7 4v7l-7-4Z" fill="#99dffb"/><path d="M40 68v-8l5-3v15" fill="#0b314e"/><path d="M37 16v8m-3-6 6 3" stroke="#e8fbff" stroke-width="2.4"/></svg>
           <svg class="station-hero__identity-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h16v7H4zM6 14V3h12v11M9 6h6v5H9zM10 18h4m-2-2v4" /></svg>
+          <svg class="command-medical-mark" viewBox="0 0 60 66" aria-hidden="true"><path d="M30 2 57 17v32L30 64 3 49V17Z" fill="#e6f6ff" stroke="#009dd3" stroke-width="1.5"/><path d="M30 7 52 20v25L30 59 8 45V20Z" fill="#d2effd"/><path d="M15 28q15-12 30 0l-4 18H19Z" fill="#0076b5"/><path d="M30 28v13m-6-6.5h12" stroke="white" stroke-width="4" stroke-linecap="round"/></svg>
           <div class="station-hero__wordmark">
             <span class="station-hero__kicker" aria-hidden="true">NURSING WORKSPACE</span>
             <span class="station-hero__eyebrow">护士站工作台</span>
@@ -490,9 +496,10 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       <div class="station-hero__overview-foot">
         <div v-if="displayedStationState.level !== 'normal' || loadLabel === '高负载' || viewModel.realtime.status !== 'ready'" class="workspace-status" :class="`workspace-status--${statusTone}`" role="status">
           <span class="station-state__signal" aria-hidden="true" />
-          <span v-if="displayedStationState.level !== 'normal'">{{ displayedStationState.label }}</span>
+          <span v-if="displayedStationState.level !== 'normal'" class="command-state-label">{{ displayedStationState.label }}</span>
           <span v-if="loadLabel === '高负载'">床位高负载</span>
           <span v-if="viewModel.realtime.status !== 'ready'" class="workspace-status__sync" :class="{ 'workspace-status__sync--attention': ['error', 'stale'].includes(viewModel.realtime.status) }">{{ viewModel.realtime.detail }}</span>
+          <span v-if="viewModel.realtime.status !== 'ready'" class="command-sync-label" :class="`command-sync-label--${viewModel.realtime.status}`" :title="viewModel.realtime.detail" :aria-label="viewModel.realtime.detail">{{ viewModel.realtime.label }}</span>
         </div>
         <button
           type="button"
@@ -506,6 +513,10 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
           <span class="station-hero__switch-track" aria-hidden="true"><i /></span>
         </button>
       </div>
+      <dl class="command-telemetry" aria-label="事件处理统计">
+        <div><dt><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 3h14v18H5ZM9 3v4h10M9 11h6m-6 4h6m-6 3h4"/></svg>待处理</dt><dd>{{ pendingTaskCount }}<span>项</span></dd></div>
+        <div><dt><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m9 3-1 3-3 1-2 4 2 2v4l4 3 3-1 3 1 4-3v-4l2-2-2-4-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/></svg>处理中</dt><dd>{{ handlingTaskCount }}<span>项</span></dd></div>
+      </dl>
     </header>
 
     <div v-if="!wallboard" class="workspace-tabs" role="tablist" aria-label="护士站工作区">
@@ -526,14 +537,18 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       :ack-records="alertAckRecords"
       :filter="alertFilter"
       title="待办事项"
-      :max-items="8"
+      :max-items="5"
+      command-queue
+      :synced-at="eventSync.lastSyncedAt ? freshnessTimeLabel(eventSync.lastSyncedAt) : null"
       workspace
       compact
       @locate="emit('locateAlert', $event)"
       @mark-handling="emit('markAlertHandling', $event)"
       @acknowledge="emit('acknowledgeAlert', $event)"
       @update:filter="setAlertFilter"
-    />
+    >
+      <template #queue-heading><h2 class="command-section-label command-queue-heading"><small>02 /</small><span>事件队列</span><i aria-hidden="true" /></h2></template>
+    </AlertTaskPanel>
 
 
       </div>
@@ -2738,4 +2753,5 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 }
 </style>
 
+<style scoped>.command-depth-mark { display: none; }</style>
 <style scoped lang="scss" src="../styles/nurse-workspace.scss"></style>

@@ -1,0 +1,146 @@
+@use './nurse-command-queue' as queue;
+@use './command-frame-layout' as frame;
+
+@mixin render {
+  .digital-twin[data-theme='light'] .digital-twin__panel.digital-twin__panel--overlay {
+    --command-ink: #063365;
+    --command-muted: #44678e;
+    --command-accent: #007fb8;
+    --command-line: #acdff4;
+    --command-paper: #f5fbff;
+    container-type: inline-size; container-name: nurse-panel;
+    padding: 0; overflow: hidden; border: 0 !important; box-shadow: none !important;
+    &::before, &::after { display: none !important; }
+    .ward-command-workspace {
+      display: flex; flex-direction: column; position: relative; isolation: isolate;
+      height: 100%; min-height: 0; flex: 1;
+      @include frame.safe-content;
+      pointer-events: auto;
+      background: linear-gradient(90deg,#dff4ff96,#f9fdfff5 14%,#f5fbfff5 88%,#dff4ff96);
+      > .command-frame { display: block; position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      > :not(.command-frame) { position: relative; z-index: 1; }
+    }
+    .ward-command-hero { display: block; flex-shrink: 0; min-width: 0; padding: 4px 4px 0; }
+    .ward-command-eyebrow, .command-section-label {
+      display: flex; align-items: center; gap: 10px; color: var(--command-accent); margin: 0 0 8px;
+      font-size: 13px; font-weight: 600; letter-spacing: .08em;
+      i { flex: 1; height: 1px; background: linear-gradient(90deg,#5abce7,transparent); }
+      small { color: var(--command-accent) !important; }
+    }
+    .ward-command-eyebrow { padding-left: 58px; }
+    .ward-command-identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .ward-command-mark { width: 48px; height: 54px; flex: 0 0 48px; }
+    .ward-command-identity > div { min-width: 0; }
+    .ward-command-identity small { color: #008ccd; font-size: 9px; letter-spacing: .23em; }
+    .ward-command-identity h2 { color: var(--command-ink) !important; font-size: clamp(22px,5.6cqw,34px); line-height: 1.35; font-weight: 800; margin: 0; overflow-wrap: anywhere; }
+    .ward-command-context { margin: 12px 0 0; padding: 8px 0; border-top: 1px solid #008dc7; color: var(--command-muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+    .ward-command-metrics {
+      display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 12px; margin: 0;
+      border: 1px solid var(--command-line); background: linear-gradient(105deg,#fafdff,#eef9ff70);
+      clip-path: polygon(8px 0,calc(100% - 8px) 0,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0 calc(100% - 8px),0 8px);
+      > div { min-width: 0; padding-left: 24px; }
+      > div + div { border-left: 1px solid #50b9e5; }
+      dt { color: var(--command-ink); font-size: clamp(15px,3.5cqw,20px); font-weight: 700; }
+      dd { margin: 4px 0 0; color: var(--command-ink); font: 750 clamp(40px,10cqw,60px)/1.05 'Bahnschrift','Segoe UI',sans-serif; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+      dd small { margin-left: 6px; color: var(--command-muted); font: 12px 'Microsoft YaHei',sans-serif; }
+    }
+    .ward-command-content {
+      display: block; flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden;
+      padding: 20px 4px 0; scrollbar-width: thin; scrollbar-color: #82c9e5 transparent;
+      .digital-twin__panel-body { display: block; height: auto; overflow: visible; }
+      .area-dashboard, .ward-info-panel { height: auto; padding: 0; overflow: visible; }
+      // One outer command frame: sections use headings and separators, not nested white boxes.
+      :is(.hospital-intro, .dash-section, .ward-info-panel > section, .door-staff-cards, .status-history, .ward-bed-nav, .alert-task-panel) {
+        padding: 0 0 16px; margin: 0 0 20px; background: transparent !important;
+        border: 0 !important; border-bottom: 1px solid var(--command-line) !important; border-radius: 0 !important; box-shadow: none !important;
+      }
+      .hospital-intro { margin-bottom: 24px; }
+      .hospital-intro__head { margin-bottom: 12px; }
+      .hospital-intro__heading-icon { display: none; }
+      .hospital-intro__note { max-height: none; overflow: visible; }
+      .hospital-intro__note--collapsed { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+      .hospital-intro__name { font-size: 17px; }
+      .hospital-intro__grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+      .hospital-intro__metric { padding: 8px; }
+      .hospital-intro__metric-value { font-size: 24px; }
+      .hospital-intro__metric-label { font-size: 12px; }
+      .dash-head__title, .door-staff-cards__title, .status-history h3, .ward-call-list header > strong, .ward-info-panel__env h3 { color: var(--command-ink) !important; font-size: 20px; font-weight: 800; }
+      .dash-head__mark { display: none; }
+      .dash-head__line { background: linear-gradient(90deg,#81c8e8,transparent) !important; }
+      .ward-info-panel > .ward-info-panel__header { display: none; }
+      .ward-info-panel__stats { gap: 8px; }
+      .ward-info-panel__stats .stat-chip { background: #f5fbff !important; border-radius: 0 !important; }
+      .ward-bed-nav { position: static; }
+      .ward-bed-nav label { font-size: 13px; }
+      .ward-bed-nav button, .ward-bed-nav select { border-radius: 0; }
+      .inspection-card__head > div > span { color: var(--command-muted) !important; }
+      .task-card__head strong { color: var(--command-ink) !important; }
+      .ward-info-panel__task p, .task-card__meta span, .task-card__actions > span { color: var(--command-muted) !important; }
+      .task-card__head em { color: #07648e !important; background: #e0f3fc !important; }
+      .task-card__head > span { color: #b52648 !important; background: #ffe7ee !important; }
+      .task-card__vital-reading {
+        background: #fff1f4 !important; border-color: #f1c7d2 !important;
+        span, small { color: #8f3e53 !important; }
+        strong { color: #b52648 !important; text-shadow: none !important; }
+      }
+      .staff-role-card { border-radius: 4px !important; box-shadow: none !important; }
+      .staff-role-card__avatar-wrap { box-shadow: none !important; }
+      .ward-call-list header::before, .ward-info-panel__env h3::before, .door-staff-cards__title::before {
+        color: var(--command-accent); font: 600 14px 'Bahnschrift','Segoe UI',sans-serif; letter-spacing: .04em;
+      }
+      .ward-call-list header::before { content: '02 /'; }
+      .ward-call-list header { justify-content: flex-start; }
+      .ward-call-list__count { margin-left: auto; }
+      .door-staff-cards__title::before { content: '03 /'; margin-right: 8px; }
+      .ward-info-panel__env h3::before { content: '04 /'; margin-right: 8px; }
+      .corridor-alerts {
+        @include queue.render;
+        .alert-task-panel__heading, .alert-task-panel__summary { display: none; }
+        .alert-task-panel__list { max-height: none; overflow: visible; padding: 0; }
+        .alert-task { min-height: 0; }
+        .alert-task--workspace::before, .alert-task--workspace::after { content: '' !important; }
+        .alert-task__head strong { font-size: 17px; }
+        .alert-task__actions { border: 0; padding: 0; gap: 8px; }
+        .alert-task__recovery-tip { font-size: 12px; width: 100%; text-align: right; }
+        .alert-task__details summary { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        .alert-task__details summary::before { content: '›'; }
+        .alert-task__details[open] summary::before { transform: rotate(90deg); }
+        .alert-task__details summary::-webkit-details-marker { display: none; }
+        .alert-task__details p, .alert-task__details small { color: var(--command-muted); font-size: 13px; overflow-wrap: anywhere; }
+      }
+    }
+    @container nurse-panel (max-width: 450px) {
+      .ward-command-mark { width: 38px; height: 44px; flex-basis: 38px; }
+      .ward-command-eyebrow { padding-left: 48px; }
+      .ward-command-metrics { padding: 12px 8px; > div { padding-left: 12px; } }
+    }
+    @container nurse-panel (max-width: 400px) {
+      .ward-command-content .hospital-intro__grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .ward-command-content .ward-bed-nav__controls {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        select { grid-column: 1 / -1; grid-row: 1; }
+        button { grid-row: 2; }
+      }
+    }
+    @media (min-width: 1024px) { padding-top: 56px; }
+    @media (min-width: 1024px) and (max-height: 800px) {
+      .ward-command-hero { padding-top: 0; }
+      .ward-command-eyebrow { margin-bottom: 4px; }
+      .ward-command-identity h2 { font-size: 26px; }
+      .ward-command-mark { width: 40px; height: 44px; flex-basis: 40px; }
+      .ward-command-eyebrow { padding-left: 50px; }
+      .ward-command-context { margin-top: 8px; padding: 6px 0; }
+      .ward-command-metrics {
+        padding: 10px 8px;
+        > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding-left: 12px; }
+        dt { font-size: 15px; }
+        dd { margin: 0; font-size: 36px; }
+      }
+      .ward-command-content { padding-top: 12px; }
+    }
+    @media (max-width: 1023px) {
+      .ward-command-workspace { overflow-y: auto; overscroll-behavior: contain; }
+      .ward-command-content { flex: none; overflow: visible; }
+    }
+  }
+}

@@ -3,9 +3,14 @@ import EntranceThemeToggle from './EntranceThemeToggle.vue';
 import type { DashboardTheme } from '@/core/use-dashboard-theme';
 import { computed } from 'vue';
 const props = defineProps<{
-  theme?: DashboardTheme; progress: number; phase: string }>();
-defineEmits<{ 'toggle-theme': [] }>();
+  theme?: DashboardTheme; progress: number; phase: string;
+  error?: string | null;
+  recovery?: 'retry' | 'reload';
+  waitingForScene?: boolean;
+}>();
+defineEmits<{ 'toggle-theme': []; retry: []; cancel: [] }>();
 const displayProgress = computed(() => Number.isFinite(props.progress) ? Math.min(100, Math.max(0, Math.round(props.progress))) : 0);
+function reloadPage() { window.location.reload(); }
 </script>
 
 <template>
@@ -29,11 +34,16 @@ const displayProgress = computed(() => Number.isFinite(props.progress) ? Math.mi
       <h1>正在准备<br />您的病区工作台</h1>
       <p class="startup-loader__description">连接病区数据，让空间、设备与护理信息在同一视野中呈现。</p>
       <div class="startup-loader__progress-head">
-        <span role="status">{{ phase }}</span>
-        <strong>{{ displayProgress }}<small>%</small></strong>
+        <span role="status">{{ error ? '护士站暂未就绪' : phase }}</span>
+        <strong v-if="!error">{{ displayProgress }}<small>%</small></strong>
       </div>
-      <progress :value="displayProgress" max="100" aria-label="系统初始化进度" />
-      <p class="startup-loader__hint">初始化完成后自动进入工作空间</p>
+      <progress v-if="!error" :value="displayProgress" max="100" aria-label="系统初始化进度" />
+      <p class="startup-loader__hint" :role="error ? 'alert' : undefined">{{ error || (waitingForScene ? '正在准备三维画面，首帧就绪后自动进入；进度为阶段进度。' : '初始化完成后自动进入工作空间') }}</p>
+      <div v-if="waitingForScene" class="startup-loader__actions">
+        <button v-if="error && recovery === 'reload'" type="button" @click="reloadPage">刷新页面</button>
+        <button v-else-if="error" type="button" @click="$emit('retry')">重试加载</button>
+        <button type="button" @click="$emit('cancel')">退出登录</button>
+      </div>
       <div class="startup-loader__capabilities"><span>三维空间</span><span>病区态势</span><span>护理协同</span></div>
     </main>
     <footer class="startup-loader__footer"><div><small>智慧医院 · 实时运营</small><strong>让每一处空间，连接每一份关怀。</strong></div><span>WARD DIGITAL TWIN</span></footer>
@@ -67,6 +77,9 @@ const displayProgress = computed(() => Number.isFinite(props.progress) ? Math.mi
   progress::-webkit-progress-value { background: #8be5d5; }
   progress::-moz-progress-bar { background: #8be5d5; }
   &__hint { margin: 12px 0 28px; color: #9bbcca; font-size: clamp(12px,.65vw,16px); }
+  &__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+  &__actions button { padding: 10px 16px; border: 1px solid #7ccacb80; border-radius: 6px; background: #163b4b; color: #ecf8fc; cursor: pointer; font: inherit; }
+  &__actions button:focus-visible { outline: 2px solid #b2f4e7; outline-offset: 3px; }
   &__capabilities { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; padding-top: 24px; border-top: 1px solid #8cbdc12b; color: #a8c8d2; font-size: clamp(12px,.7vw,17px); }
   &__annotations { position: absolute; inset: 0 46% 0 0; pointer-events: none; }
   &__annotation { position: absolute; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #092c3aa6; border: 1px solid #82d9d65c; color: #ceeeed; font-size: 14px; }

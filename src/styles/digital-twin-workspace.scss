@@ -936,7 +936,8 @@
 .digital-twin__main--station .digital-twin__panel { padding-top: 56px; }
 .digital-twin__main--station .digital-twin__panel-body { min-height: 0; overflow: hidden; }
 @media(min-width:1024px) {
-  .digital-twin__main--station { --scene-panel-width: clamp(400px, 28vw, 600px); }
+  .digital-twin__main--station,
+  .digital-twin__main--ward { --scene-panel-width: clamp(400px, 28vw, 600px); }
   .digital-twin__main--station.digital-twin__main--wallboard { --scene-panel-width: clamp(340px, 23vw, 480px); }
 }
 @media(max-width:1023px) {

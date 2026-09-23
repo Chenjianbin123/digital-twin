@@ -1,0 +1,119 @@
+// Shared light presentation for corridor and room panels; never changes scene data or dark styles.
+@mixin render {
+  .digital-twin[data-theme='light'] .digital-twin__panel.digital-twin__panel--overlay {
+    --room-surface: #fff;
+    --room-inset: #edf8ff;
+    --room-line: #c7e3f2;
+    --room-ink: #063365;
+    --room-muted: #44678e;
+    --room-accent: #087bad;
+    --room-alert: #b52648;
+    --room-ok: #138568;
+    --room-warn: #95620a;
+    background: #f5fbff !important; color: var(--room-ink) !important;
+    border-left: 1px solid #87cbe9 !important;
+    box-shadow: inset 3px 0 #e0f3ff, -8px 0 24px #144d7310 !important;
+    scrollbar-color: #82c9e5 transparent;
+
+    .area-dashboard, .ward-info-panel {
+      color: var(--room-ink) !important; padding: 16px; scrollbar-color: #82c9e5 transparent;
+      &::-webkit-scrollbar-thumb { background: #82c9e5 !important; }
+    }
+    :is(.hospital-intro, .dash-section, .ward-info-panel > section, .door-staff-cards, .status-history, .alert-task-panel, .ward-bed-nav) {
+      color: var(--room-ink) !important; background: var(--room-surface) !important;
+      border: 1px solid var(--room-line) !important; border-radius: 8px !important;
+      box-shadow: none !important; backdrop-filter: none !important;
+    }
+    .dash-section, .ward-info-panel > section, .door-staff-cards { margin-bottom: 16px; }
+    :is(.hospital-intro__name, .dash-head__title, .ward-info-panel h2, .ward-info-panel h3, .ward-call-list header > strong, .door-staff-cards__title, .status-history h3, .alert-task__head strong, .room-card__name, .staff-role-card__name, .ward-care-summary > strong) {
+      color: var(--room-ink) !important; text-shadow: none !important;
+    }
+    .dash-head__title, .ward-call-list header > strong, .door-staff-cards__title, .status-history h3 { font-size: 16px; font-weight: 700; }
+    .dash-head__line { background: linear-gradient(90deg,#9dd5ef,transparent) !important; box-shadow: none !important; }
+    .dash-head__count { color: var(--room-accent) !important; background: #e5f4ff !important; border-color: var(--room-line) !important; }
+    :is(.hospital-intro__note, .hospital-intro__metric-label, .hospital-intro__metric-value small, .ward-info-panel__subtitle, .room-card__status, .person-card__label, .person-card__sub, .staff-role-card__hint, .door-staff-cards__subhead, .stat-chip__label, .env-label, .inspection-card__foot, .ward-bed-nav label, .ward-bed-nav p, .ward-call-list__time, .ward-call-list__note) { color: var(--room-muted) !important; }
+    :is(.hospital-intro__metric, .monitor-row, .person-card, .stat-chip, .staff-role-card, .bed-chip, .env-item, .patient-info, .vitals-card, .bed-detail-section) {
+      color: var(--room-ink) !important; background: var(--room-inset) !important;
+      border-color: var(--room-line) !important; box-shadow: none !important;
+    }
+    :is(.room-card, .alert-task) { background: #fff !important; border-color: var(--room-line) !important; box-shadow: none !important; }
+    .room-card--focused { border-color: #45a9d5 !important; background: #f0faff !important; box-shadow: inset 0 0 0 1px #83cce9 !important; }
+    .room-card:hover { border-color: #85c6e5 !important; }
+    .room-card__badge { color: var(--room-accent) !important; background: #e5f4ff !important; border-color: var(--room-line) !important; }
+    .room-card__inspection { background: var(--room-inset) !important; border-color: var(--room-line) !important; }
+    .room-card__inspection small { color: var(--room-muted) !important; }
+    .room-card__beds { gap: 8px; }
+    .bed-chip__no, .bed-chip__patient { color: var(--room-ink) !important; }
+    .person-card__value, .env-value { color: var(--room-accent) !important; }
+
+    :is(.room-card__enter, .room-card__vital button, .ward-bed-nav button, .ward-bed-nav select, .ward-call-list button, .close-btn, .task-card__actions button, .alert-task__actions button, .alert-task-panel__more button) {
+      min-height: 40px; color: var(--room-accent) !important; background-color: #eaf6ff !important;
+      border: 1px solid #acd4e9 !important; border-radius: 6px; box-shadow: none !important;
+      &:hover:not(:disabled) { color: #07577f !important; background-color: #d9effc !important; border-color: #5bafd6 !important; }
+      &:disabled { color: #70889d !important; background-color: #edf2f6 !important; border-color: #d4e1e9 !important; cursor: default; }
+    }
+    :is(button, select, summary):focus-visible { outline: 2px solid #086b9f !important; outline-offset: 2px !important; }
+    .room-card__enter { width: 100%; margin-top: 12px; font-weight: 600; }
+    .alert-task-panel__filters {
+      display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; padding: 4px; width: 100%;
+      background: #eaf5fc !important; border: 1px solid var(--room-line) !important; border-radius: 8px;
+      button { min-width: 0; min-height: 40px; padding: 4px; color: var(--room-muted) !important; background: transparent !important; border: 1px solid transparent !important; border-radius: 5px; }
+      button.is-active { color: #07648e !important; background: #fff !important; border-color: #94cce6 !important; box-shadow: none !important; }
+      button strong { color: #316380 !important; background: #dceefa !important; }
+    }
+    .corridor-alerts { padding: 12px; }
+    .corridor-alerts .alert-task-panel__list { gap: 12px; }
+    .corridor-alerts .alert-task { min-height: 0; padding: 12px; border-left: 3px solid var(--task-accent) !important; }
+    .corridor-alerts .alert-task__head strong { font-size: 16px; }
+    .corridor-alerts .alert-task--critical .alert-task__severity { color: var(--room-alert) !important; background: #fff0f3 !important; }
+    .corridor-alerts .alert-task--high .alert-task__severity { color: var(--room-warn) !important; background: #fff3dc !important; }
+    .corridor-alerts .alert-task__main > p, .alert-task__meta, .alert-task__recovery-tip, .alert-task-panel__summary { color: var(--room-muted) !important; overflow-wrap: anywhere; }
+    .corridor-alerts .alert-task__actions { gap: 8px; flex-wrap: wrap; border-color: var(--room-line); }
+    .alert-task-panel__more { background: transparent !important; border: 0 !important; padding: 12px 0 0; }
+    .alert-task-panel__more button { flex: 1; font-size: 14px; font-weight: 600; }
+    .alert-task-panel__more-arrow { color: inherit !important; background: transparent !important; }
+    .alert-task-panel__empty { background: var(--room-inset) !important; border-color: var(--room-line) !important; }
+    .alert-task-panel__empty strong { color: var(--room-ink) !important; }
+    .alert-task-panel__empty span { color: var(--room-muted) !important; }
+
+    .ward-info-panel > .ward-info-panel__header { background: #edf8ff !important; border-left: 3px solid #0798ce !important; }
+    .ward-info-panel__header h2 { padding-right: 0; font-size: 24px; overflow-wrap: anywhere; }
+    .ward-info-panel__stats { background: transparent !important; border: 0 !important; }
+    .ward-info-panel__stats .stat-chip { background: #fff !important; box-shadow: none !important; }
+    .ward-bed-nav {
+      --ward-nav-accent: #087bad;
+      background: #f5fbff !important; backdrop-filter: none;
+      &::before { display: none; }
+      select { color-scheme: light; }
+    }
+    .ward-call-list li { padding: 12px; margin-bottom: 8px; border: 1px solid var(--room-line); border-radius: 6px; background: #f5fbff; }
+    .ward-care-summary .patient-info { background: #f5fbff !important; }
+    .patient-info dt, .vitals-grid small, .vitals-card__note { color: var(--room-muted) !important; }
+    .patient-info dd:not([style]), .vitals-grid strong, .bed-detail-identity h3 { color: var(--room-ink) !important; }
+    .vitals-grid > span { background: #fff !important; border-color: var(--room-line) !important; }
+    .vitals-card h4 { color: var(--room-ink) !important; font-size: 14px; }
+    .bed-detail-identity > span { color: var(--room-muted) !important; }
+    .ward-info-panel__bed .call-alert { color: var(--room-alert) !important; background: #fff0f3 !important; border-color: #e9a9ba !important; }
+    .bed-detail-section__title { color: var(--room-accent) !important; }
+    .ward-info-panel__inspection { border-left: 3px solid var(--room-accent) !important; }
+    // Keep warning semantics distinct from the new blue structural palette.
+    .ward-info-panel__inspection--overdue, .ward-info-panel__task--critical { border-left: 3px solid var(--room-alert) !important; }
+    .ward-info-panel__inspection--due, .ward-info-panel__env--warning { border-left: 3px solid var(--room-warn) !important; }
+    .ward-info-panel__env--danger { border-left: 3px solid var(--room-alert) !important; }
+    .env-item--alert { background: #fff7e8 !important; border-color: #ead5af !important; .env-value { color: var(--room-warn) !important; } }
+    .ward-info-panel__env--danger .env-item--alert .env-value { color: var(--room-alert) !important; }
+    .ward-info-panel__inspection--normal .inspection-card__head strong { color: var(--room-ok) !important; }
+    .ward-info-panel__inspection--due .inspection-card__head strong { color: var(--room-warn) !important; }
+    .ward-info-panel__inspection--overdue .inspection-card__head strong { color: var(--room-alert) !important; }
+    .status-history li { font-size: 12px; gap: 6px; border-color: var(--room-line); }
+    @media (max-width: 380px) {
+      .area-dashboard, .ward-info-panel { padding: 12px; }
+      .ward-bed-nav { padding: 10px; }
+      .ward-bed-nav__controls { gap: 4px; }
+      .ward-bed-nav button { min-width: 48px; padding: 4px; }
+      .alert-task-panel__filters button { display: flex; flex-direction: column; gap: 2px; min-height: 48px; }
+      .status-history li { grid-template-columns: 42px 28px minmax(0,1fr); }
+      .status-history .label { grid-column: 2/-1; }
+    }
+  }
+}

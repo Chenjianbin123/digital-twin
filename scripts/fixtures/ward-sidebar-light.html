@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>走廊与病房侧栏 · 合成数据验证</title><link rel="icon" href="data:,">
+<div id="app"></div>
+<script type="module">
+import { createApp, defineAsyncComponent, h, ref } from 'vue';
+import { createPinia } from 'pinia';
+import { useTwinStore } from '/src/stores/twin-store.ts';
+import WardCommandWorkspace from '/src/components/dashboard/WardCommandWorkspace.vue';
+import AreaInfoPanel from '/src/components/AreaInfoPanel.vue';
+import WardInfoPanel from '/src/components/WardInfoPanel.vue';
+import HospitalIntroPanel from '/src/components/HospitalIntroPanel.vue';
+import { summarizeArea } from '/src/core/area-summary.ts';
+import { resolveBedStatus } from '/src/core/bed-status.ts';
+import { analyzeEnvAlert } from '/src/core/env-alert.ts';
+import '/src/styles/dashboard-theme.scss';
+import '/src/styles/global.scss';
+const rooms = [0, 1].map(index => ({
+  sickroomCode: `SYNTHETIC-${index}`, sickroomId: `TEST-${index}`, sickroomName: index ? '102房（合成）' : '101房（合成）', deviceCode: `TEST-DOOR-${index}`, isOnline: true,
+  doorStaff: { deptDirectorName: '测试医生', areaHeadNurseName: '测试护士' },
+  doorEnvData: { temp: '25', relativeHumid: '55%', airQuality: '18', noiseLevel: '35' }, envSync: { lastSuccessAt: Date.now(), failed: false },
+  beds: [0, 1, 2].map(bedIndex => ({
+    bedCode: `TEST-${index}-${bedIndex}`, bedName: `0${bedIndex + 1}床`, deviceCode: `TEST-DEVICE-${index}-${bedIndex}`, position: { x: bedIndex, z: 0 },
+    isOccupied: bedIndex < 2, isOnline: true, isCalling: !index && !bedIndex,
+    statusBarInfo: { status: bedIndex === 1 ? '300' : '' },
+    sickInfo: bedIndex < 2 ? { sickName: '测试患者', sickNo: 'SYNTHETIC-ONLY', sickSex: '男', sickAge: '40', nursingLevel: '二级护理', sickAllergy: '资料待核对', visitDoctorName: '测试医生', dutyNurseName: '测试护士', sickInTime: '2026-09-21 08:00', sickDiet: '普通饮食' } : undefined,
+    latestVitals: bedIndex < 2 ? { temp: '36.5℃', pulse: '72次/分', breath: '18次/分', bloodPressure: '120/80mmHg', bloodOxygen: '98%', recordTime: '2026-09-21 10:30' } : undefined,
+  })),
+}));
+const area = { areaName: '合成测试病区', areaCode: 'TEST', deptName: '测试科室', rooms };
+const tasks = Array.from({ length: 6 }, (_, i) => ({ id: `TEST-CALL-${i}`, source: 'swp-call', type: 'call', severity: i === 1 ? 'high' : 'critical', status: 'pending', title: '合成测试患者呼叫', description: '用于界面回归验证，不包含真实患者信息。', roomCode: rooms[0].sickroomCode, roomName: rooms[0].sickroomName, bedCode: rooms[0].beds[0].bedCode, bedName: '01床', canLocate: i !== 1, actionText: '定位床位', startedAt: '2026-09-21 10:30:00' }));
+const inspections = rooms.map((room, index) => ({ roomIndex: index, roomCode: room.sickroomCode, roomName: room.sickroomName, state: index ? 'due' : 'overdue', stateLabel: index ? '待关注' : '巡视超时', latestAt: '2026-09-21 10:00:00', latestNurseName: '测试护士', records: [], normalCount: 0, dueCount: 0, overdueCount: 1 }));
+const history = [{ id: 'TEST-HISTORY', category: 'call', time: '10:30', roomName: '101房', bedName: '01床', label: '合成呼叫记录' }];
+const integrated = new URLSearchParams(location.search).has('integrated');
+const Workspace = defineAsyncComponent(() => import('/src/components/workspace/DigitalTwinWorkspace.vue'));
+const app = createApp({ setup() {
+  const theme = ref('light'), scene = ref('corridor'), bed = ref(rooms[0].beds[0]), empty = ref(false), stale = ref(false), focused = ref(0);
+  const store = useTwinStore();
+  if (integrated) {
+    store.dataSource = 'mock'; store.selectedAreaId = 999999; store.area = area; store.currentRoomIndex = 0; store.sceneType = 'ward';
+    store.swpEvents = tasks.map(task => ({ ...task, areaId: 999999, taskType: 'call', sickroomCode: task.roomCode }));
+    store.swpEventSync = { phase: 'ready', lastSyncedAt: new Date().toISOString(), error: null, warning: null };
+  }
+  window.wardSidebarFixture = { events: [], setTheme: value => theme.value = value, setScene: value => { scene.value = value; if (integrated) store.sceneType = value === 'room' ? 'ward-interior' : value === 'station' ? 'nurse-station' : 'ward'; }, setEmpty: value => empty.value = value, setStale: value => stale.value = value };
+  const record = (name, value) => window.wardSidebarFixture.events.push([name, value]);
+  return () => integrated ? h(Workspace, { theme: theme.value, operatorName: '合成测试', operatorRole: '测试' }) : h('main', { class: 'digital-twin', 'data-theme': theme.value }, [
+    h('aside', { class: 'digital-twin__panel digital-twin__panel--overlay fixture-panel' }, [
+      h(WardCommandWorkspace, { kind: scene.value, title: scene.value === 'corridor' ? '病房走廊工作台' : '病房护理工作台', subtitle: `测试科室 · 合成测试病区${scene.value === 'room' ? ' · 101房' : ''}`, metrics: scene.value === 'corridor'
+        ? [{ key: 'pending', label: '待处理', value: empty.value ? 0 : tasks.length, unit: '项' }, { key: 'handling', label: '处理中', value: 0, unit: '项' }]
+        : [{ key: 'occupied', label: '已入住', value: 2, unit: '床' }, { key: 'empty', label: '空床', value: 1, unit: '床' }], }, { default: () => [
+      ...(scene.value === 'corridor' ? [h(HospitalIntroPanel, { info: { hospitalName: '合成测试医院', hospitalNote: '本页仅验证界面样式与交互，所有患者、病房与事件均为合成测试数据。'.repeat(8) } })] : []),
+      h('div', { class: 'digital-twin__panel-body' }, [scene.value === 'corridor'
+        ? h(AreaInfoPanel, { lightCommand: theme.value === 'light', area: empty.value ? { ...area, rooms: [] } : area, roomSummaries: empty.value ? [] : summarizeArea(rooms), statusHistory: history, focusedRoomIndex: focused.value, alertTasks: empty.value ? [] : tasks, inspectionRoomSummaries: inspections,
+          onFocusRoom: index => { focused.value = index; record('focus', index); }, onEnterRoom: index => record('enter', index), onLocateAlert: id => record('locate', id), onAcknowledgeAlert: id => record('ack', id) })
+        : h(WardInfoPanel, { area, ward: rooms[0], selectedBed: bed.value, selectedStatus: bed.value ? resolveBedStatus(bed.value) : null, dataStatus: stale.value ? 'stale' : 'ready', envAlert: analyzeEnvAlert(rooms[0].doorEnvData), statusHistory: history, callTasks: empty.value ? [] : tasks.slice(0, 2), callSync: { phase: stale.value ? 'error' : 'ready', lastSyncedAt: new Date().toISOString(), error: stale.value ? '合成同步失败' : null }, inspectionSummary: inspections[0],
+          onBedClick: value => { bed.value = value; record('bed', value.bedCode); }, onClose: () => { bed.value = null; record('close'); }, onLocateCall: id => record('locate', id) })]),
+      ] }),
+    ]),
+  ]);
+} });
+app.use(createPinia()); app.mount('#app');
+</script>
+<style>
+html,body,#app,main{width:100%;height:100%;margin:0}main{display:flex;justify-content:flex-end;background:#dbe7ed}
+.fixture-panel{width:min(100%,580px);height:100%;display:flex;flex-direction:column;min-width:0}
+.fixture-panel>.hospital-intro{flex-shrink:0;margin:0 0 12px}.digital-twin__panel-body{flex:1;min-height:0}.fixture-panel .area-dashboard,.fixture-panel .ward-info-panel{padding:0!important}
+</style>
+</html>

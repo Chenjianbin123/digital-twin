@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>场景切换 loading · 合成测试</title>
+<link rel="icon" href="data:,">
+<div id="app"></div>
+<script type="module">
+import { createApp, h, ref } from 'vue';
+import SceneSwitchLoader from '/src/components/SceneSwitchLoader.vue';
+import { useSceneLoading } from '/src/core/use-scene-loading.ts';
+createApp({ setup() {
+  const scope = ref('synthetic-area');
+  const target = ref('nurse-station');
+  const { scenes, feedback, retry } = useSceneLoading(scope, target);
+  scenes.value['nurse-station'].onState('ready');
+  return () => h('main', [
+    h('nav', [
+      ...['nurse-station', 'ward', 'ward-interior'].map((type, index) =>
+        h('button', { onClick: () => { target.value = type; } }, ['护士站', '病房走廊', '病房内'][index])),
+      h('button', { onClick: () => scenes.value[target.value].onState('ready') }, '模型就绪'),
+      h('button', { onClick: () => scenes.value[target.value].onState('fallback') }, '模拟失败'),
+    ]),
+    h('p', { class: 'notice' }, '合成状态测试：复用实际 loading 组件与场景状态逻辑，不加载业务数据或三维模型。'),
+    h(SceneSwitchLoader, { feedback: feedback.value, onRetry: retry, onReturnStation: () => { target.value = 'nurse-station'; } }),
+  ]);
+} }).mount('#app');
+</script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#122835;color:#eef8ff;font-family:'Microsoft YaHei',sans-serif}nav{position:relative;z-index:30;display:flex;gap:8px;height:56px;padding:8px;overflow:auto}button{flex-shrink:0;color:inherit;background:#234857;border:1px solid #76b5c3;border-radius:5px;padding:4px 10px}.notice{padding:24px}
+</style>
+</html>

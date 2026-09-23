@@ -17,7 +17,7 @@ test('场景切换使用独立的全区域加载层并展示路径信息', async
   assert.match(loader, /scene-switch-loader__route/);
   assert.match(loader, /scene-switch-loader--\$\{feedback\.tone\}/);
   assert.match(app, /import SceneSwitchLoader from ['"]@\/components\/SceneSwitchLoader\.vue['"]/);
-  assert.match(app, /<SceneSwitchLoader[\s\S]*:feedback="sceneSwitchFeedback"/);
+  assert.match(app, /<SceneSwitchLoader[\s\S]*:feedback="startupLoading \? null : sceneSwitchFeedback"/);
   assert.doesNotMatch(app, /class="digital-twin__scene-switch"/);
   assert.match(transition, /fromLabel:/);
   assert.match(transition, /toLabel:/);

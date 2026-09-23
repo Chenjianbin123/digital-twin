@@ -323,6 +323,34 @@ function alertTime(value?: string) {
 
 
 
+    <section v-if="ward && bedStats" class="ward-info-panel__stats">
+
+      <div class="stat-chip">
+
+        <span class="stat-chip__val">{{ bedStats.total }}</span>
+
+        <span class="stat-chip__label">总床位</span>
+
+      </div>
+
+      <div class="stat-chip stat-chip--occupied">
+
+        <span class="stat-chip__val">{{ bedStats.occupied }}</span>
+
+        <span class="stat-chip__label">在院</span>
+
+      </div>
+
+      <div class="stat-chip stat-chip--empty">
+
+        <span class="stat-chip__val">{{ bedStats.empty }}</span>
+
+        <span class="stat-chip__label">空床</span>
+
+      </div>
+
+    </section>
+
     <WardBedNavigator v-if="ward" :ward="ward" :selected-bed="selectedBed" @select="emit('bedClick', $event)" />
     <WardCallList v-if="ward && callTasks" :ward="ward" :tasks="callTasks" :sync="callSync" @locate="emit('locateCall', $event)" />
     <section
@@ -549,33 +577,7 @@ function alertTime(value?: string) {
 
 
     </section>
-    <section v-if="ward && bedStats" class="ward-info-panel__stats">
 
-      <div class="stat-chip">
-
-        <span class="stat-chip__val">{{ bedStats.total }}</span>
-
-        <span class="stat-chip__label">总床位</span>
-
-      </div>
-
-      <div class="stat-chip stat-chip--occupied">
-
-        <span class="stat-chip__val">{{ bedStats.occupied }}</span>
-
-        <span class="stat-chip__label">在院</span>
-
-      </div>
-
-      <div class="stat-chip stat-chip--empty">
-
-        <span class="stat-chip__val">{{ bedStats.empty }}</span>
-
-        <span class="stat-chip__label">空床</span>
-
-      </div>
-
-    </section>
 
 
 

@@ -1,0 +1,43 @@
+// 深色界面的文字层级统一在这里配置；状态色由业务组件继续管理。
+@mixin render {
+  .digital-twin[data-theme='dark'] {
+    --text-primary: #eaf5fc;
+    --text-secondary: #c5dae8;
+    --text-muted: #a7bdce;
+    --text-accent: #73d4f4;
+    --sidebar-ink: var(--text-primary);
+    --sidebar-muted: var(--text-muted);
+    --sidebar-accent: var(--text-accent);
+    color: var(--text-secondary);
+
+    .dash-header .dash-header__title,
+    .area-switcher .area-switcher__header h2,
+    .area-switcher .area-switcher__row-name { color: var(--text-primary) !important; }
+    .dash-header :is(.dash-header__dept,.dash-header__operator,.dash-header__kicker),
+    .area-switcher :is(.area-switcher__row-code,.area-switcher__list-head,.area-switcher__header p) { color: var(--text-muted) !important; }
+    .dash-header :is(.dash-header__theme,.dash-header__refresh,.dash-header__area),
+    .area-switcher :is(.area-switcher__close,.area-switcher__search input) { color:var(--text-secondary) !important; }
+    .area-switcher .area-switcher__search input::placeholder { color:var(--text-muted) !important; }
+
+    .dash-bottom.dash-bottom :is(button,.dash-bottom__label,.dash-bottom__scene-icon) { color:var(--text-secondary) !important; }
+    .dash-bottom.dash-bottom :is(.dash-bottom__item--active,.dash-bottom__sub-item--active),
+    .dash-bottom.dash-bottom .dash-bottom__item--active :is(.dash-bottom__label,.dash-bottom__scene-icon) { color:var(--text-primary) !important; }
+
+    :is(.nurse-panel.nurse-workspace.nurse-workspace,.digital-twin__panel.digital-twin__panel--overlay) {
+      :is(.station-hero__eyebrow,.station-section-title,.dash-head__title,.queue-list-heading strong,.alert-task__head strong,.hospital-intro__name,.room-card__name,.ward-info-panel__header h2) { color:var(--text-primary) !important; }
+      :is(.alert-task__subtitle,.hospital-intro__text,.patient-info dd,.staff-role-card__name) { color:var(--text-secondary) !important; }
+      :is(.alert-task__time,.queue-sync,.queue-list-heading span,.alert-task-panel__remaining,.hospital-intro__note,.person-card__label,.person-card__sub,.patient-info dt,.queue-wait small) { color:var(--text-muted) !important; }
+      :is(.station-hero__alert-toggle,.station-hero__wallboard-toggle,.alert-task-panel__more button,.alert-task__details summary,.room-card__enter,.area-dashboard__back-station) { color:var(--text-secondary) !important; }
+      :is(.station-hero__alert-toggle,.station-hero__wallboard-toggle,.alert-task-panel__more button,.alert-task__details summary) :is(span,svg) { color:inherit !important; }
+      .workspace-tabs button { color:var(--text-muted) !important; }
+      .workspace-tabs button[aria-selected='true'] { color:var(--text-primary) !important; }
+      .alert-task-panel__filters button { color:var(--text-muted) !important; }
+      .alert-task-panel__filters button.is-active { color:var(--text-primary) !important; }
+    }
+    @media (hover:hover) {
+      .dash-bottom.dash-bottom button:hover,
+      .dash-bottom.dash-bottom button:hover :is(.dash-bottom__label,.dash-bottom__scene-icon),
+      :is(.nurse-panel.nurse-workspace.nurse-workspace,.digital-twin__panel.digital-twin__panel--overlay) :is(.alert-task-panel__more button,.alert-task__details summary):hover { color:var(--text-primary) !important; }
+    }
+  }
+}

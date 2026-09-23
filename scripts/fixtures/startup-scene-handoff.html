@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>首次加载衔接 · 合成测试</title><link rel="icon" href="data:,">
+<div id="app"></div>
+<script type="module">
+import { createApp, h, ref } from 'vue';
+import { createPinia } from 'pinia';
+import StartupLoader from '/src/components/StartupLoader.vue';
+import { defineRecoverableComponent } from '/src/core/define-recoverable-component.ts';
+import { useWorkspaceBootstrap } from '/src/core/use-workspace-bootstrap.ts';
+import { useTwinStore } from '/src/stores/twin-store.ts';
+const Workspace = defineRecoverableComponent(() => import('/src/components/workspace/DigitalTwinWorkspace.vue'));
+const app = createApp({ setup() {
+  const store = useTwinStore();
+  store.dataSource = 'mock';
+  const theme = ref('dark');
+  const loggedIn = ref(true);
+  let finish;
+  const boot = useWorkspaceBootstrap(context => new Promise(resolve => {
+    context.onPhase(74, '恢复合成测试病区');
+    finish = withArea => {
+      if (withArea) enterArea();
+      resolve(null);
+    };
+  }), { waitForScene: () => !!store.area });
+  function enterArea() {
+    store.selectedAreaId = 999999;
+    store.area = { areaName: '合成测试病区', areaCode: 'SYNTHETIC', deptName: '测试', rooms: [] };
+  }
+  function logout() { boot.cancel(); store.clearSessionState(); loggedIn.value = false; }
+  window.startupFixture = {
+    finishData: (withArea = true) => finish(withArea), enterArea,
+    switchScene: type => { store.sceneType = type; },
+    setTheme: value => { theme.value = value; },
+    getState: () => ({ visible: boot.visible.value, progress: boot.progress.value, error: boot.sceneError.value, loggedIn: loggedIn.value }),
+  };
+  void boot.start();
+  return () => !loggedIn.value ? h('p', '已退出合成测试会话') : h('main', { 'data-theme': theme.value }, [
+    boot.visible.value ? h(StartupLoader, {
+      theme: theme.value, progress: boot.progress.value, phase: boot.phase.value,
+      error: boot.sceneError.value, waitingForScene: boot.waitingForScene.value,
+      recovery: boot.scene.value.state === 'component-error' ? 'reload' : 'retry',
+      onRetry: boot.retryScene, onCancel: logout,
+      onToggleTheme: () => { theme.value = theme.value === 'dark' ? 'light' : 'dark'; },
+    }) : null,
+    store.area ? h(Workspace, {
+      theme: theme.value, operatorName: '测试操作员', operatorRole: '测试',
+      startupLoading: boot.visible.value, startupRetryKey: boot.scene.value.key,
+      onModelState: boot.visible.value ? boot.scene.value.onState : undefined,
+      onLogout: logout,
+    }) : h('p', { 'data-testid': 'area-selection', inert: boot.visible.value }, '选择合成测试病区'),
+  ]);
+} });
+app.use(createPinia()); app.mount('#app');
+</script>
+<style>*{box-sizing:border-box}html,body,#app,#app>main{margin:0;width:100%;height:100%;font-family:'Microsoft YaHei',sans-serif}body{background:#102635;color:#edf8ff}</style>
+</html>

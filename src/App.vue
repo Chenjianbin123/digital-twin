@@ -28,7 +28,9 @@ const { area, areaOptions, preferredAreaId, rememberedAreaId, isAreaListLoading,
   isAreaSwitching, pendingAreaId, areaSwitchError, areaListError } = storeToRefs(store);
 const { progress: bootProgress, visible: showStartupLoader, phase: bootPhase,
   error: bootError, busy: isBootRetrying, start: bootstrapDigitalTwin,
-  retry: retryAreaSelection, cancel: cancelBootstrap } = useWorkspaceBootstrap(loadAreaSelectionContext);
+  retry: retryAreaSelection, cancel: cancelBootstrap,
+  scene: startupScene, waitingForScene, sceneError, retryScene: retryStartupScene,
+} = useWorkspaceBootstrap(loadAreaSelectionContext, { waitForScene: () => !!area.value });
 
 async function loadAreaSelectionContext(context: BootstrapContext) {
   const useRemoteDeviceApi = store.dataSource === 'remote';
@@ -113,10 +115,17 @@ onBeforeUnmount(() => {
     </template>
     <template v-else>
       <Transition name="startup-fade">
-        <StartupLoader v-if="showStartupLoader" :theme="theme" :progress="bootProgress" :phase="bootPhase" @toggle-theme="toggleTheme" />
+        <StartupLoader
+          v-if="showStartupLoader"
+          :theme="theme" :progress="bootProgress" :phase="bootPhase"
+          :error="sceneError" :recovery="startupScene.state === 'component-error' ? 'reload' : 'retry'"
+          :waiting-for-scene="waitingForScene"
+          @toggle-theme="toggleTheme" @retry="retryStartupScene" @cancel="handleLogout"
+        />
       </Transition>
       <AreaSelectionView
         v-if="!area"
+        :inert="showStartupLoader"
         :theme="theme"
         :areas="areaOptions"
         :preferred-area-id="preferredAreaId"
@@ -131,6 +140,9 @@ onBeforeUnmount(() => {
       />
       <DigitalTwinWorkspace
         v-else
+        :startup-loading="showStartupLoader"
+        :startup-retry-key="startupScene.key"
+        :onModelState="showStartupLoader ? startupScene.onState : undefined"
         :theme="theme"
         :operator-name="authSession.user.userRealname || authSession.user.userName"
         :operator-role="authSession.role.roleName"

@@ -1,3 +1,11 @@
+@use './dashboard-dark-controls' as darkControls;
+@use './dashboard-dark-typography' as darkTypography;
+@use './sidebar-command-theme' as sidebarCommand;
+@use './nurse-workspace-dark' as nurseDark;
+@use './nurse-command-light' as command;
+@use './ward-sidebar-light' as wardSidebar;
+@use './ward-command-workspace' as wardCommand;
+
 /* Shared paper/ink tokens used by light theme surfaces (anti-slop: tinted, not pure bw). */
 .digital-twin {
   --dash-paper: #f7fbfd;
@@ -2135,170 +2143,52 @@
   .alert-task__meta .alert-task__meta-live { color: #276b59 !important; background: #e5f3ec; }
 }
 
-/* 护士站待办：参考图 HUD 告警卡 - 细霓虹红边 + 同心圆 + 冷青角标。 */
-.digital-twin[data-theme='dark'] .nurse-workspace .alert-task--workspace.alert-task--swp-call {
-  --task-accent: #ff5d72;
-  border: 1px solid rgba(255, 96, 112, 0.72) !important;
+/* 深色呼叫卡：蓝灰玻璃承载信息，告警色仅强调等级。 */
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .alert-task--workspace.alert-task--swp-call {
+  --task-accent: #75bfcb;
+  --call-line: #79aaba38;
+  border: 1px solid var(--call-line) !important;
   border-radius: 10px;
-  background:
-    radial-gradient(circle at 14% 20%, rgba(255, 79, 101, 0.14), transparent 38%),
-    linear-gradient(110deg, rgba(42, 16, 32, 0.62), rgba(7, 27, 41, 0.58) 48%, rgba(9, 43, 59, 0.52)) !important;
-  backdrop-filter: blur(16px) saturate(112%) brightness(1.03);
-  -webkit-backdrop-filter: blur(16px) saturate(112%) brightness(1.03);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 230, 235, 0.08),
-    0 0 0 1px rgba(255, 88, 105, 0.1),
-    0 0 18px rgba(255, 72, 96, 0.12),
-    0 9px 18px rgba(0, 8, 18, 0.3),
-    0 18px 34px rgba(0, 8, 18, 0.28) !important;
-  &.alert-task--waiting-attention {
-    --task-accent: #ffb05c;
-    border-color: rgba(255, 176, 92, 0.78) !important;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 236, 210, 0.08),
-      0 0 0 1px rgba(255, 176, 92, 0.1),
-      0 0 16px rgba(255, 160, 70, 0.1),
-      0 9px 18px rgba(0, 8, 18, 0.28),
-      0 18px 34px rgba(0, 8, 18, 0.26) !important;
-  }
-  &.alert-task--waiting-urgent,
-  &.alert-task--critical {
-    --task-accent: #ff5d72;
-    border-color: rgba(255, 91, 108, 0.9) !important;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 230, 235, 0.1),
-      0 0 0 1px rgba(255, 88, 105, 0.16),
-      0 0 20px rgba(255, 72, 96, 0.16),
-      0 9px 18px rgba(0, 8, 18, 0.32),
-      0 18px 36px rgba(0, 8, 18, 0.3) !important;
-  }
-  .alert-task__scan { display: none !important; }
+  background: linear-gradient(115deg, rgba(37, 67, 83, .82), rgba(17, 42, 58, .88)) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: inset 0 1px 0 #cbf0ff09, 0 3px 10px #020d161a !important;
+  &.alert-task--critical, &.alert-task--waiting-urgent { --task-accent: #e98594; }
+  &.alert-task--waiting-attention { --task-accent: #d9b67a; }
   &::before {
-    display: block !important;
-    content: '';
-    position: absolute;
-    z-index: 0;
-    top: 50%;
-    right: 64px;
-    width: 108px;
-    height: 108px;
-    border: 1px solid rgba(96, 211, 255, 0.12);
-    border-radius: 50%;
-    box-shadow:
-      0 0 0 14px rgba(96, 211, 255, 0.04),
-      0 0 0 30px rgba(96, 211, 255, 0.025);
-    transform: translate(50%, -50%);
-    pointer-events: none;
+    content: ''; display: block !important; position: absolute; left: 0; right: auto; top: 18px;
+    width: 3px; height: 30px; border: 0; border-radius: 0 3px 3px 0;
+    background: var(--task-accent); box-shadow: none; transform: none; pointer-events: none;
   }
-  &::after {
-    display: block !important;
-    content: '';
-    position: absolute;
-    z-index: 2;
-    right: 8px;
-    bottom: 7px;
-    width: 14px;
-    height: 8px;
-    border: 0;
-    border-right: 1px solid rgba(111, 222, 255, 0.55);
-    border-bottom: 1px solid rgba(111, 222, 255, 0.55);
-    border-radius: 0;
-    background: none;
-    box-shadow: none;
-    pointer-events: none;
-  }
+  &::after, .alert-task__scan { display: none !important; }
   .alert-task__signal {
-    width: 22px; height: 22px; flex-basis: 22px;
-    color: #ff7a8a !important;
-    border: 1px solid rgba(255, 107, 119, 0.62);
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 79, 97, 0.28), rgba(255, 79, 97, 0.05) 72%);
-    box-shadow: 0 0 10px rgba(255, 69, 91, 0.28);
-    &::before,
-    &::after {
-      display: block !important;
-      content: '';
-      position: absolute;
-      inset: -1px;
-      border: 1px solid rgba(255, 106, 120, 0.45);
-      border-radius: inherit;
-      background: none;
-      box-shadow: none;
-      pointer-events: none;
-      animation: alert-call-ring 2.4s ease-out infinite;
-    }
-    &::after { animation-delay: 1.2s; }
-    svg { width: 12px; height: 12px; color: inherit; }
+    width: 28px; height: 28px; flex-basis: 28px; color: var(--task-accent) !important;
+    border: 1px solid color-mix(in srgb, var(--task-accent) 30%, transparent);
+    border-radius: 8px; background: #c0deeb08; box-shadow: none;
+    &::before, &::after { display: none !important; }
+    svg { width: 15px; height: 15px; }
   }
   .alert-task__severity {
-    color: #f7fbfd !important;
-    background: rgba(255, 72, 90, 0.86) !important;
-    border-radius: 999px;
-    padding: 2px 8px;
-    font-weight: 700;
+    color: var(--task-accent) !important; background: color-mix(in srgb, var(--task-accent) 10%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--task-accent) 24%, transparent);
+    border-radius: 5px; padding: 3px 8px; font-weight: 600;
   }
-  &.alert-task--waiting-attention .alert-task__severity {
-    color: #fff8ec !important;
-    background: rgba(196, 118, 36, 0.9) !important;
-  }
-  .alert-task__head strong { color: #f6fbff !important; }
-  .alert-task__subtitle, .alert-task__main > p { color: rgba(210, 228, 238, 0.9) !important; }
-  .alert-task__meta span { color: rgba(186, 210, 222, 0.9); }
-  .alert-task__meta-live {
-    color: #8fe0c8 !important;
-    border-color: rgba(127, 212, 188, 0.34);
-    background: rgba(42, 110, 96, 0.28);
-  }
+  .alert-task__head strong { color: #edf5f8 !important; font-size: 16px; }
   .alert-task__main { min-width: 0; position: relative; z-index: 1; }
-  .alert-task__subtitle {
-    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
-    overflow: hidden; margin: 6px 0 8px; font-size: 13px; line-height: 1.6;
-  }
-  .alert-task__location-note { margin-left: 8px; color: rgba(157, 184, 196, 0.78); font-size: 12px; }
-  .alert-task__meta { padding-top: 7px; }
-  .alert-task__details summary {
-    padding: 5px 10px; border: 1px solid rgba(126, 202, 216, 0.28); border-radius: 6px;
-    background: rgba(126, 202, 216, 0.08); color: #9ad4e0; white-space: nowrap;
-  }
-  .alert-task__details[open] { padding-top: 8px; }
-  .alert-task__details[open] summary { margin-bottom: 8px; }
-  .alert-task__actions {
-    position: relative;
-    z-index: 1;
-    border-left: 1px solid rgba(105, 211, 244, 0.16);
-  }
-  .alert-task__unlocated {
-    position: relative;
-    color: rgba(255, 218, 180, 0.92) !important;
-    background: rgba(151, 74, 38, 0.16);
-    border: 1px dashed rgba(255, 184, 127, 0.42);
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-size: 12px;
-    font-weight: 600;
-    &::after {
-      content: '';
-      position: absolute;
-      right: 4px;
-      bottom: 4px;
-      width: 8px;
-      height: 6px;
-      border-right: 1px solid rgba(111, 222, 255, 0.55);
-      border-bottom: 1px solid rgba(111, 222, 255, 0.55);
-      pointer-events: none;
-    }
-  }
+  .alert-task__subtitle, .alert-task__main > p { color: #bed0dc !important; }
+  .alert-task__subtitle { margin: 8px 0 10px; font-size: 13px; line-height: 1.6; }
+  .alert-task__location-note { margin-left: 8px; font-size: 12px; color: #a6beca; }
+  .alert-task__meta { padding-top: 8px; border-top-color: #90b6c51c; }
+  .alert-task__meta span { color: #abc3d0; background: transparent; }
+  .alert-task__meta .alert-task__meta-live { color: #96dbcb !important; background: #75c9b40c; border-color: #75c9b42e; }
+  .alert-task__details summary { padding: 6px 10px; border: 1px solid #7dafc134; border-radius: 6px; background: #91cddd08; color: #a9dce5; white-space: nowrap; }
+  .alert-task__details[open] { padding-top: 10px; }
+  .alert-task__actions { position: relative; z-index: 1; border-left-color: #7dafc124; }
+  &:hover { border-color: #91c4d15e !important; box-shadow: inset 0 1px 0 #cbf0ff12, 0 5px 14px #020d1626 !important; transform: none; }
 }
-@media (hover: hover) and (pointer: fine) {
-  .digital-twin[data-theme='dark'] .nurse-workspace .alert-task--workspace.alert-task--swp-call:hover {
-    border-color: rgba(255, 112, 125, 0.92) !important;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 230, 235, 0.12),
-      0 0 0 1px rgba(255, 88, 105, 0.18),
-      0 0 22px rgba(255, 72, 96, 0.18),
-      0 12px 28px rgba(0, 8, 18, 0.38) !important;
-    transform: translateY(-1px);
-  }
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .tasks-workspace {
+  animation: none;
+  &::before { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .digital-twin[data-theme='dark'] .nurse-workspace .alert-task--workspace.alert-task--swp-call .alert-task__signal::before,
@@ -2582,175 +2472,48 @@
 @keyframes task-card-reveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes task-detail-reveal { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
 
-/* 护士站浅色终态：降低告警噪声，用清晰的纸面层级替代灰蓝色块堆叠。 */
-.digital-twin[data-theme='light'] .nurse-panel.nurse-workspace {
-  --workspace-surface: #edf3f6;
-  --workspace-ink: #203843;
-  --workspace-muted: #607985;
-  --workspace-line: #c8d7de;
-
-  .station-hero {
-    border-color: #c3d4dc !important;
-    border-radius: 12px !important;
-    background:
-      radial-gradient(circle at 4% 0, rgba(61, 138, 154, .08), transparent 38%),
-      linear-gradient(145deg, rgba(255, 255, 255, .94), rgba(239, 246, 248, .92)) !important;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, .95),
-      0 6px 18px rgba(36, 68, 82, .07) !important;
-
-    &::before {
-      background:
-        linear-gradient(90deg, transparent 31px, rgba(61, 117, 133, .025) 32px) !important;
-      background-size: 32px 100% !important;
-    }
-
-    &::after {
-      box-shadow: inset 3px 0 0 #4b8995 !important;
-    }
-
-    .station-hero__identity-icon {
-      color: #397886 !important;
-      background: #edf5f7 !important;
-      border-color: #c4d8df !important;
-      border-radius: 9px !important;
-    }
-
-    .station-hero__overview-foot {
-      border-color: #cbd9df !important;
-      border-radius: 8px !important;
-      background: rgba(240, 246, 248, .78) !important;
-    }
-
-    .workspace-status--alert {
-      border-color: #e4bdc5 !important;
-      background: linear-gradient(90deg, #fae9ec, rgba(250, 233, 236, .42)) !important;
-    }
-
-    .station-hero__wallboard-toggle,
-    .station-hero__alert-toggle {
-      color: #355863 !important;
-      background: rgba(255, 255, 255, .72) !important;
-      border-color: #c4d5dc !important;
-      border-radius: 8px !important;
-    }
-
-    .station-hero__wallboard-toggle:hover,
-    .station-hero__alert-toggle:hover {
-      background: #e8f1f4 !important;
-      border-color: #7da5b0 !important;
-    }
+/* 运行详情沿用呼叫卡片的蓝灰层次，数字与状态优先于装饰。 */
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace .nurse-panel__details {
+  border: 1px solid #83b5c333; border-radius: 12px;
+  background: rgba(17, 40, 54, .48); box-shadow: inset 0 1px 0 #c7edf509;
+  > summary { padding: 16px; color: #e5f0f5; font-size: 17px; }
+  .nurse-panel__details-body { display: grid; gap: 12px; padding: 0 12px 12px; }
+  .surface-panel {
+    margin: 0; padding: 16px; border: 1px solid #83b5c329; border-radius: 10px;
+    background: linear-gradient(120deg, rgba(36, 64, 80, .82), rgba(17, 41, 57, .88));
+    box-shadow: inset 0 1px 0 #d2f3ff08;
   }
-
-  .workspace-tabs {
-    border-color: #c1d2da !important;
-    border-radius: 10px !important;
-    background: rgba(239, 245, 247, .86) !important;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, .9),
-      0 4px 12px rgba(36, 68, 82, .05) !important;
-
-    button {
-      border-radius: 7px !important;
-    }
-
-    button[aria-selected='true'] {
-      color: #fff !important;
-      background: linear-gradient(135deg, #467f8b, #326c79) !important;
-      border-color: #326c79 !important;
-      box-shadow: 0 3px 9px rgba(50, 108, 121, .18) !important;
-    }
-  }
-
-  .workspace-scroll {
-    scrollbar-color: #9bb2bc transparent;
-  }
-
-  .tasks-workspace {
-    border-color: #c8d8df !important;
-    border-radius: 12px !important;
-    background: rgba(250, 253, 254, .82) !important;
-    box-shadow:
-      inset 0 1px 0 #fff,
-      0 5px 16px rgba(36, 68, 82, .055) !important;
-
-    .alert-task-panel__filters {
-      padding: 4px !important;
-      border-color: #c8d8df !important;
-      border-radius: 9px !important;
-      background: #edf3f6 !important;
-    }
-
-    .alert-task-panel__filters button {
-      min-height: 34px;
-      border-radius: 6px !important;
-    }
-
-    .alert-task-panel__filters button.is-active {
-      color: #285e6a !important;
-      background: #fff !important;
-      border-color: #9ebdc6 !important;
-      box-shadow: 0 2px 6px rgba(36, 68, 82, .07) !important;
-    }
+  .dash-head { margin-bottom: 16px; }
+  .ops-list { display: grid; gap: 16px; }
+  .ops-row { padding: 0; background: transparent; border: 0; box-shadow: none; }
+  .ops-row__head { color: #b9d0dc; font-size: 14px; }
+  .ops-row__head strong { color: #edf5f8; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .ops-row__track { height: 5px; margin-top: 8px; border-radius: 4px; background: #90b5c31c; overflow: hidden; }
+  .ops-row__track i { background: #71becf; box-shadow: none; }
+  .ops-row--green .ops-row__track i { background: #79baa6; }
+  .ops-row--warn .ops-row__track i { background: #d1b27d; }
+  .ops-row--alert .ops-row__track i { background: #d78d9e; }
+  .ops-row p { margin: 6px 0 0; color: #a5bfcc; font-size: 12px; }
+  .env-grid { gap: 8px; }
+  .env-card { min-width: 0; padding: 12px 10px; border: 1px solid #87b2c126; border-radius: 8px; background: #8bb4c50a; box-shadow: none; }
+  .env-card > span { color: #adc5d2; font-size: 13px; }
+  .env-card > strong { margin-top: 12px; color: #e4f1f6; font-size: 26px; font-variant-numeric: tabular-nums; }
+  .env-card small { margin-left: 4px; font-size: 12px; color: #a8c3d0; }
+  .device-line { margin-top: 12px; padding-top: 12px; border-top: 1px solid #86b0c021; gap: 6px 12px; }
+  .device-line > span { color: #a5bdca; font-size: 13px; }
+  .device-line strong { color: #d8eaf2; font-size: 14px; }
+  .device-line em { color: #9bc4be; font-size: 12px; font-style: normal; font-weight: 400; }
+  @container nurse-panel (max-width: 380px) {
+    .surface-panel { padding: 12px; }
+    .env-card { padding: 10px 8px; }
+    .env-card > strong { font-size: 22px; }
   }
 }
 
-.digital-twin[data-theme='light'] .nurse-workspace .alert-task--workspace.alert-task--swp-call {
-  border: 1px solid #d7e2e7 !important;
-  border-left: 3px solid #c94a5c !important;
-  border-radius: 9px !important;
-  background: linear-gradient(100deg, rgba(201, 74, 92, .035), #fff 26%, #f9fcfd) !important;
-  box-shadow: 0 3px 10px rgba(36, 68, 82, .045) !important;
-
-  &::before,
-  &::after {
-    display: none !important;
-  }
-
-  &.alert-task--waiting-attention {
-    border-color: #d7e2e7 !important;
-    border-left-color: #b8893a !important;
-  }
-
-  &.alert-task--waiting-urgent,
-  &.alert-task--critical {
-    border-color: #d7e2e7 !important;
-    border-left-color: #c94a5c !important;
-  }
-
-  .alert-task__signal {
-    color: #b94355 !important;
-    border-color: #e5bdc4 !important;
-    background: #faecef !important;
-    box-shadow: none !important;
-  }
-
-  .alert-task__severity {
-    color: #a73648 !important;
-    background: #f7dfe4 !important;
-    border: 1px solid #ebbdc6 !important;
-    border-radius: 5px !important;
-  }
-
-  .alert-task__actions {
-    border-left-color: #dce6ea !important;
-  }
-
-  .alert-task__details summary {
-    color: #356d79 !important;
-    background: #edf4f6 !important;
-    border-color: #cfdee4 !important;
-  }
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .digital-twin[data-theme='light'] .nurse-workspace .alert-task--workspace.alert-task--swp-call:hover {
-    border-color: #bfcfd6 !important;
-    border-left-color: #c94a5c !important;
-    box-shadow: 0 7px 18px rgba(36, 68, 82, .08) !important;
-    transform: translateY(-1px);
-  }
-}
+/* Final light sidebar design; keep this after the shared source-specific task styles. */
+@include command.render;
+@include wardSidebar.render;
+@include wardCommand.render;
 
 /* 顶部指挥栏浅色终态：提升实体表面对比，避免透明层与 3D 场景混色。 */
 .digital-twin[data-theme='light'] .dash-header.dash-header {
@@ -2841,3 +2604,11 @@
     border-color: #c8a961 !important;
   }
 }
+
+@include nurseDark.render;
+
+@include sidebarCommand.render;
+
+@include darkTypography.render;
+
+@include darkControls.render;

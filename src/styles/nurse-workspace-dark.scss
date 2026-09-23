@@ -1,0 +1,61 @@
+// 深色护士站统一表面与语义色；只在外壳做一次模糊，内容层保持清晰。
+@mixin render {
+.digital-twin[data-theme='dark'] .nurse-panel.nurse-workspace.nurse-workspace {
+  --workspace-ink: #e5eff5; --workspace-muted: #adc2cf; --workspace-line: #87adbe30;
+  --night-surface: rgba(23, 48, 65, .86); --night-inset: rgba(36, 63, 80, .7);
+  --night-line: #87adbe30; --night-good: #97cdbb; --night-warn: #dbc08e; --night-alert: #e29baa;
+  color: var(--workspace-ink); background: rgba(12, 30, 43, .74) !important;
+  backdrop-filter: blur(14px) saturate(105%); -webkit-backdrop-filter: blur(14px) saturate(105%);
+  .station-hero, .workspace-tabs { background: rgba(30, 57, 73, .56) !important; border-color: var(--night-line) !important; box-shadow: none !important; backdrop-filter: none !important; }
+  .workspace-status { background: #e29baa0b !important; border-color: #e29baa2b !important; color: #c6d7df; }
+  .workspace-tabs { border-radius: 0; }
+  .workspace-tabs button { font-size: 15px; color: #adc2cf; }
+  .workspace-tabs button[aria-selected='true'] { background: #78baca16 !important; border-color: #78baca55 !important; color: #b9e8ee !important; box-shadow: none !important; }
+  .workspace-scroll { padding: 14px; background: transparent; }
+  .overview-workspace, .inspection-workspace { gap: 14px; }
+  .tasks-workspace, .nurse-metric-chart, .handoff-card, .data-health, .inspection-overview, .surface-panel--focus, .nurse-panel__details {
+    margin: 0; padding: 16px; border: 1px solid var(--night-line) !important; border-radius: 12px;
+    background: var(--night-surface) !important; box-shadow: inset 0 1px 0 #d1eff808 !important;
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important; animation: none !important;
+  }
+  .tasks-workspace::before { display: none; }
+  .nurse-panel__details { padding: 0; }
+  .station-section-title, .dash-head__title, .nurse-metric-chart__title { font-size: 17px; font-weight: 600; color: #e5eff5; text-shadow: none; }
+  .station-section-icon { color: #8cbccb; }
+  .handoff-card__head, .data-health__head, .inspection-overview__head { margin-bottom: 14px; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .handoff-card__head > strong, .data-health__head > strong { font-size: 12px; font-weight: 500; color: var(--night-warn); }
+  .handoff-card ul { gap: 8px; }
+  .handoff-card li { padding: 11px 12px; font-size: 14px; font-weight: 400 !important; color: #d1e0e8 !important; background: var(--night-inset); border: 1px solid var(--night-line); border-radius: 8px; }
+  .handoff-card li::before { background: #8bbbc7; box-shadow: none; }
+  .handoff-card--attention li:first-child::before { background: var(--night-warn); }
+  .data-health ul { background: transparent; border: 1px solid var(--night-line); border-radius: 8px; overflow: hidden; }
+  .data-health li { padding: 12px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 12px; background: #8bafbf06; border-bottom: 1px solid #87adbe1c; }
+  .data-health li:last-child { border-bottom: 0; }
+  .data-health li > span { color: #d3e1e9; font-size: 14px; font-weight: 500; }
+  .data-health li > small { grid-column: 1/-1; color: #a5bdcb; font-size: 12px; text-align: left; }
+  .data-health__freshness { gap: 10px; margin-top: 14px; padding-top: 0; }
+  .data-health__freshness-item { padding: 12px; gap: 6px; background: var(--night-inset); border: 1px solid var(--night-line); border-radius: 8px; box-shadow: none; }
+  .data-health__freshness-item > span { color: #d3e1e9; font-size: 14px; font-weight: 500; }
+  .data-health__freshness-item > small { color: #a5bdcb; font-size: 12px; }
+  .data-health [class*='data-health__status--'] { font-size: 12px; font-weight: 500; }
+  .data-health__status--ready, .data-health__status--normal { color: var(--night-good) !important; }
+  .data-health__status--warning, .data-health__status--partial, .data-health__status--loading { color: var(--night-warn) !important; }
+  .data-health__status--error, .data-health__status--stale { color: var(--night-alert) !important; }
+  .data-health > p { padding: 10px 12px; margin: 12px 0 0; border: 1px solid #dbc08e30; border-left: 2px solid #dbc08e; border-radius: 6px; color: #dbcba9; background: #dbc08e09; font-size: 12px; font-weight: 400; line-height: 1.7; }
+  .metric-item, .inspection-metric, .focus-room { border: 1px solid var(--night-line) !important; border-radius: 8px; background: var(--night-inset) !important; box-shadow: none !important; }
+  .metric-item::after { display: none; }
+  .metric-item > strong, .inspection-metric strong { color: #dceef5; font-size: 28px; font-weight: 600; text-shadow: none; }
+  .metric-item__label, .inspection-metric > span { color: #b5cad6; font-size: 13px; }
+  .inspection-overview__head p, .inspection-overview__head small { color: #adc2cf; font-size: 12px; }
+  .inspection-overview__empty, .source-capability-note { color: #b5cad6; background: #8bafbf08; border-color: var(--night-line); font-size: 13px; }
+  .focus-room__main strong { color: #e0edf3; }
+  .focus-room__main small, .focus-room__side { color: #afc8d5; }
+  .door-staff-card, .door-staff-cards { box-shadow: none; }
+  :is(button,summary):focus-visible { outline: 2px solid #9ad4e0; outline-offset: 3px; }
+  @container nurse-panel (max-width: 380px) {
+    .handoff-card, .data-health, .inspection-overview, .nurse-metric-chart, .surface-panel--focus { padding: 12px; }
+    .data-health__freshness { grid-template-columns: minmax(0,1fr); }
+  }
+  @media (prefers-reduced-transparency: reduce) { background: #102432 !important; backdrop-filter: none; -webkit-backdrop-filter: none; --night-surface: #173041; --night-inset: #243f50; }
+}
+}

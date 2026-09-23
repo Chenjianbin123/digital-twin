@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import AlertTaskPanel from '@/components/AlertTaskPanel.vue';
 import DoorStaffCards from '@/components/DoorStaffCards.vue';
 import DashSectionHeader from '@/components/dashboard/DashSectionHeader.vue';
@@ -18,6 +18,7 @@ const props = defineProps<{
   statusHistory: StatusHistoryEntry[];
   focusedRoomIndex?: number;
   showBackToStation?: boolean;
+  lightCommand?: boolean;
   alertTasks?: AlertTask[];
   alertAckRecords?: AlertAckRecordMap;
   inspectionRoomSummaries?: InspectionRoomSummary[];
@@ -32,6 +33,8 @@ const emit = defineEmits<{
   acknowledgeAlert: [taskId: string];
   resolveAlert: [taskId: string];
 }>();
+
+const alertFilter = ref<'active' | 'handling' | 'all'>('active');
 
 const areaStats = computed(() => {
   if (!props.area)
@@ -211,16 +214,22 @@ function inspectionTime(value: string | null | undefined) {
 
     <AlertTaskPanel
       class="corridor-alerts"
+      v-model:filter="alertFilter"
       :tasks="alertTasks ?? []"
       :ack-records="alertAckRecords"
       title="异常闭环"
       :max-items="4"
-      compact
+      :compact="!lightCommand"
+      :workspace="lightCommand"
       @locate="emit('locateAlert', $event)"
       @mark-handling="emit('markAlertHandling', $event)"
       @acknowledge="emit('acknowledgeAlert', $event)"
       @resolve="emit('resolveAlert', $event)"
-    />
+    >
+      <template v-if="lightCommand" #queue-heading>
+        <h2 class="command-section-label command-queue-heading"><small>02 /</small><span>事件队列</span><i aria-hidden="true" /></h2>
+      </template>
+    </AlertTaskPanel>
 
     <section v-if="bedMonitorRows.length" class="dash-section">
       <DashSectionHeader title="床位监测" />

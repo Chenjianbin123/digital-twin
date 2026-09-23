@@ -9,9 +9,9 @@ const header = readFileSync(new URL('../src/components/dashboard/DashboardHeader
 test('root app gates ward bootstrap behind a confirmed authentication session', () => {
   assert.match(app, /const SwpLoginGate = defineRecoverableComponent/);
   assert.match(app, /readAuthSession/);
-  assert.match(app, /useWorkspaceBootstrap\(loadAreaSelectionContext\)/);
+  assert.match(app, /useWorkspaceBootstrap\(loadAreaSelectionContext,/);
   assert.match(app, /if \(authSession\.value\)[\s\S]*?bootstrapDigitalTwin\(\)/);
-  assert.match(app, /<SwpLoginGate[\s\S]*?v-if="!authSession"[\s\S]*?@authenticated="handleAuthenticated"/);
+  assert.match(app, /<template v-if="!authSession">[\s\S]*?<SwpLoginGate[\s\S]*?@authenticated="handleAuthenticated"/);
 });
 
 test('root app handles session expiry and logout', () => {

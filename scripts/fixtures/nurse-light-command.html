@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>护士站浅色指挥台 · 合成数据验证</title><link rel="icon" href="data:,">
+<div id="app"></div>
+<script type="module">
+import { createApp, defineAsyncComponent, h, computed, ref } from 'vue';
+import { createPinia } from 'pinia';
+import { useTwinStore } from '/src/stores/twin-store.ts';
+import NurseStationPanel from '/src/components/NurseStationPanel.vue';
+import { buildNurseStationViewModel } from '/src/core/nurse-station-view-model.ts';
+import { summarizeArea } from '/src/core/area-summary.ts';
+import '/src/styles/dashboard-theme.scss';
+import '/src/styles/global.scss';
+const integrated = new URLSearchParams(location.search).has('integrated');
+const Workspace = defineAsyncComponent(() => import('/src/components/workspace/DigitalTwinWorkspace.vue'));
+const area = { areaName: '合成测试病区', areaCode: 'SYNTHETIC', deptName: '测试', rooms: [] };
+const inspection = new URLSearchParams(location.search).has('inspection');
+if (inspection) area.rooms = [5, 4, 2].map((count, index) => ({
+  sickroomCode: `TEST-${index}`, sickroomName: ['合成测试病房（较长名称）', '0111房', '0107房'][index],
+  beds: Array.from({ length: count }, (_, bedIndex) => ({ bedCode: `TEST-${index}-${bedIndex}`, isOccupied: bedIndex < 3 })),
+}));
+const sync = { phase: 'ready', lastSyncedAt: '2026-09-21T08:00:00Z', error: null, warning: null };
+const app = createApp({ setup() {
+  const theme = ref('light'), empty = ref(false), wallboard = ref(false), alerts = ref(false), handled = ref(false);
+  const taskOverrides = ref({}), partial = ref(false);
+  const inspectionStates = ref(['no-record', 'no-record', 'no-record']);
+  const events = Array.from({ length: 12 }, (_, i) => ({
+    id: `fixture-${i}`, source: 'swp-call', areaId: 999999, taskType: 'call', severity: i === 1 ? 'high' : 'critical',
+    timestampMs: Date.parse(`2026-09-21T08:${String(24 + i).padStart(2, '0')}:00Z`),
+    title: '合成测试患者呼叫', description: '用于验证界面布局的合成事件，不包含真实患者信息。',
+    location: {}, locationStatus: 'unmatched', locationLabel: '位置待匹配',
+  }));
+  if (integrated) {
+    const store = useTwinStore();
+    store.dataSource = 'mock'; store.selectedAreaId = 999999; store.area = area;
+    store.swpEvents = events.map((event, i) => ({ ...event, location: undefined, startedAt: `2026-09-21 16:${24 + i}:00` }));
+    store.swpEventSync = sync; store.swpResponseSync = sync;
+  }
+  const vm = computed(() => {
+    const model = buildNurseStationViewModel({ areaId: 999999, area, roomSummaries: summarizeArea(area.rooms), swpEvents: empty.value ? [] : events,
+      inspectionRoomSummaries: inspection ? area.rooms.map((room, index) => ({
+        roomIndex: index, roomCode: room.sickroomCode, roomName: room.sickroomName,
+        state: inspectionStates.value[index], stateLabel: { normal: '已巡视', due: '待关注', overdue: '巡视超时', 'no-record': '暂无记录' }[inspectionStates.value[index]],
+        latestAt: null, latestNurseName: null, overdueCount: 0, dueCount: 0, normalCount: 0, records: [],
+      })) : [],
+      alertTasks: empty.value ? [] : events.map((event, i) => ({ id: event.id, source: event.source, type: 'call',
+        severity: event.severity, status: 'pending', title: event.title, description: event.description,
+        startedAt: `2026-09-21 16:${String(24 + i).padStart(2, '0')}:00`, canLocate: false, actionText: '定位' })),
+      swpEventSync: sync, swpResponseSync: sync, inspectionSync: sync, wardDataStatus: 'ready', wardDataSyncedAtMs: Date.now() });
+    if (handled.value && model.alertTasks[0]) model.alertTasks[0].status = 'handling';
+    model.alertTasks.forEach((task, index) => Object.assign(task, taskOverrides.value[index]));
+    if (partial.value) model.realtime = { ...model.realtime, status: 'warning', label: '部分同步', detail: '病区数据部分同步，已有数值请核对' };
+    return model;
+  });
+  window.commandFixture = { setTheme: value => theme.value = value, setEmpty: value => empty.value = value,
+    setHandled: value => handled.value = value, setPartial: value => partial.value = value,
+    setInspectionStates: value => inspectionStates.value = value,
+    setTask: (index, patch) => taskOverrides.value = { ...taskOverrides.value, [index]: { ...taskOverrides.value[index], ...patch } }, events: [] };
+  return () => integrated ? h(Workspace, { theme: theme.value, operatorName: '测试操作员', operatorRole: '测试' }) : h('main', { class: 'digital-twin fixture-root', 'data-theme': theme.value }, [
+    h('aside', { class: 'fixture-panel' }, [h(NurseStationPanel, { viewModel: vm.value, dataSource: 'remote',
+      wallboard: wallboard.value, callAlertsEnabled: alerts.value,
+      onSetWallboard: value => wallboard.value = value, onSetCallAlertsEnabled: value => alerts.value = value,
+      onLocateAlert: id => window.commandFixture.events.push(['locate', id]),
+      onAcknowledgeAlert: id => window.commandFixture.events.push(['acknowledge', id]),
+      onFocusRoom: index => window.commandFixture.events.push(['focus-room', index]),
+    })]),
+  ]);
+} });
+app.use(createPinia()); app.mount('#app');
+</script>
+<style>
+*{box-sizing:border-box}html,body,#app,main{margin:0;width:100%;height:100%;font-family:'Microsoft YaHei',sans-serif}
+.fixture-root{background:#dbe7ed;padding:8px;display:flex;justify-content:flex-end}.fixture-root[data-theme=dark]{background:#102635}
+.fixture-panel{width:min(100%,580px);height:100%;min-width:0;container-type:inline-size;container-name:nurse-panel}
+</style>
+</html>

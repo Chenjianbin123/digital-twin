@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { defineRecoverableComponent } from '@/core/define-recoverable-component';
+import type { StartupSceneState } from '@/core/use-workspace-bootstrap';
 import NurseStationSceneInfo from './NurseStationSceneInfo.vue';
 import type { AreaModelState } from '@/core/area-scene';
 import type { NurseStationViewModel } from '@/core/nurse-station-view-model';
 
-const AreaScene3D = defineAsyncComponent(() => import('@/components/AreaScene3D.vue'));
+const AreaScene3D = defineRecoverableComponent(() => import('@/components/AreaScene3D.vue'));
 
 defineProps<{
   theme?: 'light' | 'dark';
@@ -16,7 +17,7 @@ defineProps<{
 
 const emit = defineEmits<{
   roomClick: [roomIndex: number];
-  modelState: [state: AreaModelState];
+  modelState: [state: StartupSceneState];
 }>();
 </script>
 

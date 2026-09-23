@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, useId } from 'vue';
 import { taskDisplayTitle, taskPriorityLabel } from '@/core/task-presentation';
 import DashSectionHeader from '@/components/dashboard/DashSectionHeader.vue';
+import TaskTimelineTime from '@/components/dashboard/TaskTimelineTime.vue';
 import {
   formatAlertWaitingTime,
   formatBedLabel,
@@ -18,6 +19,8 @@ const props = withDefaults(defineProps<{
   maxItems?: number;
   compact?: boolean;
   workspace?: boolean;
+  commandQueue?: boolean;
+  syncedAt?: string | null;
   filter?: AlertTaskFilter;
   ackRecords?: AlertAckRecordMap;
 }>(), {
@@ -47,12 +50,31 @@ const taskCounts = computed(() => ({
   handling: props.tasks.filter(task => task.status === 'handling').length,
   all: props.tasks.length,
 }));
-const filteredTasks = computed(() => {
+const category = ref("all");
+const categories = [{ key: "call", label: "患者呼叫" }, { key: "infusion", label: "输液待办" }, { key: "other", label: "其他待办" }];
+function categoryOf(task: AlertTask) { return task.type === "call" || task.type === "infusion" ? task.type : "other"; }
+const categoryCounts = computed(() => categories.map(item => ({ ...item, count: props.tasks.filter(task => task.status === "pending" && categoryOf(task) === item.key).length })));
+function selectCategory(key: string) { category.value = category.value === key ? "all" : key; showAllTasks.value = false; }
+function elapsed(task: AlertTask) {
+  const start = Date.parse(task.startedAt ?? "");
+  const minutes = Math.floor((waitingNow.value.getTime() - start) / 60000);
+  if (!Number.isFinite(minutes) || minutes < 0) return "--";
+  if (minutes >= 1440) return `${Math.floor(minutes / 1440)}天`;
+  if (minutes >= 60) return `${Math.floor(minutes / 60)}小时${minutes % 60}分`;
+  return `${minutes}分钟`;
+}
+const statusTasks = computed(() => {
   if (props.filter === 'handling')
     return props.tasks.filter(task => task.status === 'handling');
   if (props.filter === 'all')
     return props.tasks;
   return props.tasks.filter(task => task.status === 'pending');
+});
+const filteredTasks = computed(() => {
+  if (!props.commandQueue) return statusTasks.value;
+  const rank = { critical: 0, high: 1, medium: 2 };
+  return statusTasks.value.filter(task => category.value === 'all' || categoryOf(task) === category.value)
+    .sort((a, b) => rank[a.severity] - rank[b.severity] || (Date.parse(a.startedAt ?? '') || Infinity) - (Date.parse(b.startedAt ?? '') || Infinity));
 });
 const hasExpandableTasks = computed(() => filteredTasks.value.length > props.maxItems);
 const visibleTasks = computed(() =>
@@ -112,7 +134,7 @@ function waitingLabel(task: AlertTask) {
 
 function formatTaskOccurredAt(task: AlertTask) {
   const value = task.startedAt ?? '';
-  if (!isDisplayOnlySwpCall(task))
+  if (!props.commandQueue && !isDisplayOnlySwpCall(task))
     return value;
   const match = value.match(/^\d{4}-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
   return match ? `${match[1]}-${match[2]} ${match[3]}:${match[4]}` : value;
@@ -221,6 +243,7 @@ function taskStatusText(task: AlertTask) {
     :class="{
       'alert-task-panel--compact': compact,
       'alert-task-panel--workspace': workspace,
+      'alert-task-panel--command-queue': commandQueue,
     }"
   >
     <div class="alert-task-panel__heading">
@@ -228,7 +251,14 @@ function taskStatusText(task: AlertTask) {
       <DashSectionHeader :title="title" :count="filteredTasks.length" />
     </div>
 
+    <div v-if="commandQueue" class="queue-categories" aria-label="按待办类型筛选">
+      <button v-for="item in categoryCounts" :key="item.key" :aria-pressed="category === item.key" @click="selectCategory(item.key)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path v-if="item.key === 'call'" d="m5 3 4 1 1 5-3 2a15 15 0 0 0 6 6l2-3 5 1 1 4c-1 5-8 2-12-2S2 6 5 3Z"/><path v-else-if="item.key === 'infusion'" d="M9 3h6m-3 0v3M7 6h10v10a5 5 0 0 1-10 0ZM12 21v3M7 10h10"/><path v-else d="M7 3h10v3h3v16H4V6h3Zm0 0v5h10V3M8 12h8m-8 5h8"/></svg>
+        <span>{{ item.label }}<strong>{{ item.count }}</strong></span>
+      </button>
+    </div>
     <div class="alert-task-panel__toolbar">
+      <slot name="queue-heading" />
       <div class="alert-task-panel__filters" role="tablist" aria-label="告警任务筛选">
         <button
           v-for="(option, optionIndex) in filterOptions"
@@ -263,7 +293,8 @@ function taskStatusText(task: AlertTask) {
         <span>系统会自动汇总呼叫、生命体征、环境、设备和输液异常</span>
       </div>
 
-      <ul v-else class="alert-task-panel__list">
+      <div v-if="commandQueue && visibleTasks.length" class="queue-list-heading"><strong>重点待办</strong><span>按优先级 · 等待时间排序</span></div>
+      <ul v-if="visibleTasks.length" class="alert-task-panel__list">
       <li
         v-for="task in visibleTasks"
         :key="task.id"
@@ -283,14 +314,16 @@ function taskStatusText(task: AlertTask) {
           class="alert-task__scan"
           aria-hidden="true"
         />
+        <TaskTimelineTime v-if="workspace" :value="task.startedAt" />
         <div class="alert-task__main">
+          <div v-if="commandQueue" class="queue-wait" :title="task.startedAt"><small>{{ task.status === 'handling' ? '事件已持续' : '等待' }}</small><strong>{{ elapsed(task) }}</strong></div>
           <div class="alert-task__head">
             <span
-              v-if="isDisplayOnlySwpCall(task) || isVitalWarning(task)"
+              v-if="commandQueue || isDisplayOnlySwpCall(task) || isVitalWarning(task)"
               class="alert-task__signal"
               :aria-label="isVitalWarning(task) ? '生命体征预警信号' : '活动呼叫信号'"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="isVitalWarning(task)" d="M3 12h4l3-7 4 14 3-7h4" /><path v-else d="m5 3 4 1 1 5-3 2a15 15 0 0 0 6 6l2-3 5 1 1 4c-1 5-8 2-12-2S2 6 5 3Z" /></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="isVitalWarning(task)" d="M3 12h4l3-7 4 14 3-7h4" /><path v-else-if="commandQueue && task.type === 'infusion'" d="M7 5h10v11a5 5 0 0 1-10 0ZM12 2v3m0 16v3M7 10h10" /><path v-else d="m5 3 4 1 1 5-3 2a15 15 0 0 0 6 6l2-3 5 1 1 4c-1 5-8 2-12-2S2 6 5 3Z" /></svg>
             </span>
             <span class="alert-task__severity">{{ workspace ? taskPriorityLabel(task) : severityLabel(task.severity) }}</span>
             <strong>{{ workspace ? taskDisplayTitle(task) : task.title }}</strong>
@@ -299,7 +332,7 @@ function taskStatusText(task: AlertTask) {
             </span>
           </div>
           <p v-if="!workspace">{{ task.description }}</p>
-          <p v-else class="alert-task__subtitle">{{ task.type === 'call' ? '患者呼叫' : typeLabel(task.type) }}<span v-if="task.canLocate === false"> · 位置待匹配</span></p>
+          <p v-else class="alert-task__subtitle">{{ task.description || task.title }}<span v-if="task.canLocate === false"> · 位置待匹配</span></p>
           <details v-if="workspace" class="alert-task__details"><summary>事件详情</summary><p>{{ task.title }}</p><p>{{ task.description }}</p><small v-if="task.canLocate === false">当前事件尚未匹配到模型中的位置。</small></details>
           <div class="alert-task__meta">
             <span v-if="!workspace && task.roomName && task.canLocate !== false">{{ task.roomName }}</span>
@@ -309,7 +342,7 @@ function taskStatusText(task: AlertTask) {
               {{ isDisplayOnlySwpCall(task) ? '呼叫' : isVitalWarning(task) ? '预警' : task.source === 'swp-inspection' ? '巡视' : '发生' }}
               {{ formatTaskOccurredAt(task) }}
             </span>
-            <span v-if="waitingLabel(task)" class="alert-task__meta-wait">
+            <span v-if="!commandQueue && waitingLabel(task)" class="alert-task__meta-wait">
               {{ waitingLabel(task) }}
             </span>
             <span :class="{ 'alert-task__meta-live': isDisplayOnlySwpCall(task) }">
@@ -377,18 +410,31 @@ function taskStatusText(task: AlertTask) {
     <div v-if="hasExpandableTasks" class="alert-task-panel__more">
       <span v-if="overflowCount" class="alert-task-panel__remaining">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-        <span>还有 <strong>{{ overflowCount }}</strong> 项告警</span>
+        <span v-if="commandQueue">显示 <strong>{{ visibleTasks.length }} / {{ filteredTasks.length }}</strong> 项待办</span><span v-else>还有 <strong>{{ overflowCount }}</strong> 项告警</span>
       </span>
       <button type="button" :aria-expanded="showAllTasks" @click="showAllTasks = !showAllTasks">
-        {{ showAllTasks ? '收起任务' : '查看全部任务' }}
+        <span class="alert-task-panel__more-label">{{ showAllTasks ? '收起任务' : '查看全部任务' }}</span>
+        <span v-if="workspace" class="command-more-label">{{ showAllTasks ? '收起任务' : '查看更多事件' }}</span>
         <span class="alert-task-panel__more-arrow" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" :class="{ 'is-expanded': showAllTasks }"><path d="M4 10h12m-5-5 5 5-5 5" /></svg></span>
       </button>
     </div>
-
+    <div v-if="commandQueue" class="queue-sync">{{ syncedAt || '暂无同步记录' }}</div>
   </section>
 </template>
 
 <style scoped lang="scss">
+.command-more-label { display: none; }
+.queue-categories { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
+.queue-categories button { display:flex; align-items:center; gap:8px; padding:12px; border:1px solid #b7d7e4; border-radius:8px; background:#e9f5fa; color:#285369; cursor:pointer; }
+.queue-categories button[aria-pressed='true'] { border-color:#2688ab; }
+.queue-categories svg { width:24px; height:24px; flex-shrink:0; }
+.queue-categories span { font-size:13px; text-align:left; }
+.queue-categories strong { display:block; font-size:24px; }
+.queue-list-heading { display:flex; justify-content:space-between; gap:8px; margin:14px 0; }
+.queue-list-heading span { font-size:12px; }
+.queue-sync { margin-top:16px; padding-top:12px; border-top:1px solid #78aac333; font-size:12px; opacity:.8; }
+:global(.digital-twin[data-theme='light'] .queue-wait) { display:none; }
+
 .alert-task-panel {
   position: relative;
   overflow: hidden;
