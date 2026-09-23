@@ -173,21 +173,56 @@ export function createReferenceClockTexture(now = new Date(), target?: THREE.Can
   canvas.width = canvas.height = 512;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('无法创建护士站时钟画布');
-  ctx.fillStyle = '#faf9f4'; ctx.fillRect(0, 0, 512, 512);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 512, 512);
+  ctx.beginPath();
+  ctx.arc(256, 256, 252, 0, Math.PI * 2);
+  ctx.fillStyle = '#faf9f4';
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(256, 256, 252, 0, Math.PI * 2);
+  ctx.clip();
   ctx.translate(256, 256);
   ctx.fillStyle = ctx.strokeStyle = '#203c43';
-  ctx.font = '36px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '36px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   for (let hour = 1; hour <= 12; hour++) {
     const angle = hour * Math.PI / 6;
     ctx.fillText(String(hour), Math.sin(angle) * 202, -Math.cos(angle) * 202);
   }
-  const seconds = now.getSeconds();
-  const minutes = now.getMinutes() + seconds / 60;
-  const hours = now.getHours() % 12 + minutes / 60;
-  for (const [angle, length, width] of [[hours * Math.PI / 6, 116, 14], [minutes * Math.PI / 30, 174, 9], [seconds * Math.PI / 30, 182, 3]]) {
-    ctx.beginPath(); ctx.lineWidth = width; ctx.lineCap = 'round';
-    ctx.moveTo(0, 0); ctx.lineTo(Math.sin(angle) * length, -Math.cos(angle) * length); ctx.stroke();
+  for (let tick = 0; tick < 60; tick++) {
+    const angle = tick * Math.PI / 30;
+    const outer = 238;
+    const inner = tick % 5 === 0 ? 214 : 226;
+    ctx.beginPath();
+    ctx.lineWidth = tick % 5 === 0 ? 3 : 1.5;
+    ctx.moveTo(Math.sin(angle) * inner, -Math.cos(angle) * inner);
+    ctx.lineTo(Math.sin(angle) * outer, -Math.cos(angle) * outer);
+    ctx.stroke();
   }
+  const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
+  const minutes = now.getMinutes() + seconds / 60;
+  const hours = (now.getHours() % 12) + minutes / 60;
+  for (const [angle, length, width, color] of [
+    [hours * Math.PI / 6, 116, 14, '#203c43'],
+    [minutes * Math.PI / 30, 174, 9, '#203c43'],
+    [seconds * Math.PI / 30, 198, 3, '#c43c3c'],
+  ] as const) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.sin(angle) * length, -Math.cos(angle) * length);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.fillStyle = '#c43c3c';
+  ctx.arc(0, 0, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
   const texture = target ?? new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.needsUpdate = true;

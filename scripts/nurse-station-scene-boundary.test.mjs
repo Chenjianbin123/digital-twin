@@ -46,6 +46,8 @@ assert.match(sceneConfig, /initialAngle: \{ azimuthDeg: -?\d+(?:\.\d+)?, elevati
 assert.match(areaScene, /const STATION_CAM_DIR = new THREE\.Vector3\([\s\S]*?Math\.sin\(STATION_INITIAL_AZIMUTH\)/);
 assert.match(areaScene, /private attachNurseStationTextureOverlay\(/);
 assert.match(areaScene, /new THREE\.PlaneGeometry\(overlayWidth, overlayHeight\)/);
+assert.match(areaScene, /kind === 'clock'[\s\S]*?new THREE\.CircleGeometry/);
+assert.match(areaScene, /return createReferenceClockTexture\(new Date\(\), target\)/);
 assert.match(areaScene, /overlay\.name = `nurse-station-screen-overlay-\$\{kind\}`/);
 assert.match(areaScene, /depthWrite: false/);
 assert.doesNotMatch(areaScene, /this\.replaceMeshMaterialWithTexture\(object, texture\)/);

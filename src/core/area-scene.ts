@@ -2233,17 +2233,11 @@ export class AreaScene {
     if (kind === 'clock')
       return this.createNurseStationClockTexture(target);
     if (kind === 'corridorArea') {
-      const texture = createCorridorScreenTexture({
+      // 走廊屏朝向护士站正面，模板保持正向；勿再水平镜像。
+      return createCorridorScreenTexture({
         ...this.getCorridorDisplayData(),
         mode: 'area',
       });
-      // 走廊屏模型的可见面朝向与覆盖平面相反；从背面显示时文字会水平镜像。
-      // 仅反转走廊屏纹理，避免影响护士站其它屏幕及病房门口屏。
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.repeat.x = -1;
-      texture.offset.x = 1;
-      texture.needsUpdate = true;
-      return texture;
     }
     // The reference dashboard is authored at its physical wide-screen aspect.
     if (kind === 'dashboard')
@@ -2266,39 +2260,8 @@ export class AreaScene {
   }
 
   private createNurseStationClockTexture(target?: THREE.CanvasTexture) {
-    if (IS_REFERENCE_STATION)
-      return createReferenceClockTexture(new Date(), target);
-    const canvas = document.createElement('canvas');
-    canvas.width = 640;
-    canvas.height = 192;
-    const ctx = canvas.getContext('2d')!;
-    const now = new Date();
-    const time = now.toLocaleTimeString('zh-CN', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-    const date = now.toLocaleDateString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      weekday: 'short',
-    });
-
-    ctx.fillStyle = '#050708';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.shadowColor = '#ff2d2d';
-    ctx.shadowBlur = 16;
-    ctx.fillStyle = '#ff3b30';
-    ctx.font = '700 124px ui-monospace, SFMono-Regular, Menlo, monospace';
-    ctx.fillText(time, canvas.width / 2, 76);
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#d6dde0';
-    ctx.font = '34px "Microsoft YaHei", sans-serif';
-    ctx.fillText(date, canvas.width / 2, 158);
-    return this.makeBoardTexture(canvas);
+    // legacy / reference 统一用实时指针表盘；每秒刷新。
+    return createReferenceClockTexture(new Date(), target);
   }
 
   private createHealthEducationVideoTexture() {
@@ -2488,12 +2451,16 @@ export class AreaScene {
         backgroundMaterialIndexes,
       );
 
+    const overlayGeometry = kind === 'clock'
+      ? new THREE.CircleGeometry(Math.min(overlayWidth, overlayHeight) / 2, 64)
+      : new THREE.PlaneGeometry(overlayWidth, overlayHeight);
     const overlay = new THREE.Mesh(
-      new THREE.PlaneGeometry(overlayWidth, overlayHeight),
+      overlayGeometry,
       new THREE.MeshBasicMaterial({
         map: texture,
         side: THREE.DoubleSide,
         toneMapped: false,
+        transparent: kind === 'clock',
         // 覆盖层仍保持高渲染顺序，但参与深度测试，避免不同屏幕在斜视角下互相遮挡。
         depthTest: true,
         depthWrite: false,
@@ -3220,7 +3187,11 @@ export class AreaScene {
         summaries: this.getNurseStationSummaries(),
         areaName: this.nurseStationViewModel?.area.areaName ?? this.area?.areaName ?? '护士站',
         darkTheme: this.darkTheme,
-      }, Date.now()) : null;
+      }, Date.now())
+      : {
+        // legacy 屏内容多数静态；时钟按秒重绘指针。
+        clock: String(Math.floor(Date.now() / 1000)),
+      };
     for (const display of this.nurseStationBoardDisplays) {
       if (display.video)
         continue;

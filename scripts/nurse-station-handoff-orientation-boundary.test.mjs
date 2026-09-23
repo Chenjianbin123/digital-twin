@@ -17,6 +17,12 @@ test('护理交班覆盖层只修正自身的 180 度纹理方向', () => {
     overlay,
     /if \(kind === 'whiteboard'\)\s*\{\s*texture\.wrapS = THREE\.RepeatWrapping;\s*texture\.repeat\.x = -1;\s*texture\.offset\.x = 1;/s,
   );
+  // 走廊屏朝向护士站正面，模板保持正向，不能再做水平镜像。
+  const corridorBranch = areaScene.slice(
+    areaScene.indexOf("if (kind === 'corridorArea')"),
+    areaScene.indexOf("if (kind === 'dashboard')"),
+  );
+  assert.doesNotMatch(corridorBranch, /repeat\.x\s*=\s*-1/);
 });
 
 console.log('Nurse-station handoff orientation checks passed.');
