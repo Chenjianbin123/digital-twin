@@ -6,9 +6,9 @@ const sceneConfig = await readFile(
   'utf8',
 );
 
-assert.match(sceneConfig, /target: \{ x: 0, y: 1\.35, z: -1\.2 \}/);
-assert.match(sceneConfig, /initialDistance: 10\.5/);
-assert.match(sceneConfig, /initialAngle: \{ azimuthDeg: -13\.15, elevationDeg: 0\.78 \}/);
+assert.match(sceneConfig, /target: \{ x: 0\.752, y: 0\.455, z: 0\.764 \}/);
+assert.match(sceneConfig, /initialDistance: 2\.507/);
+assert.match(sceneConfig, /initialAngle: \{ azimuthDeg: -80\.8, elevationDeg: 0\.35 \}/);
 // Both constrained presentation and unrestricted camera calibration are supported.
 assert.match(sceneConfig, /limitsEnabled:\s*(?:true|false)/);
 assert.match(sceneConfig, /deskFov: 38/);

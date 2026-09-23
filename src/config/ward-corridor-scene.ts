@@ -183,6 +183,8 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
         "灰白": 0xf8f5f0,
         "椅子.003": 0x7cbdee,
         "椅子.001": 0x7cbdee,
+        /** 护士站门扇比走廊椅面略深，避免和门套洗成一块平面。 */
+        "深蓝": 0x3a7eaa,
         "门周": 0x679ac1,
         "窗": 0x679ac1,
         "材质.008": 0xff9a14,
@@ -193,6 +195,7 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
         "灰白": 0x8ab4c4,
         "椅子.003": 0x4a7290,
         "椅子.001": 0x4a7290,
+        "深蓝": 0x355f78,
         "门周": 0x3d6480,
         "窗": 0x457890,
         "材质.008": 0xe89818,

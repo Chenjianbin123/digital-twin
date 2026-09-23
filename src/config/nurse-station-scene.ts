@@ -45,7 +45,12 @@ export interface NurseStationSceneConfig {
       floorMesh: string;
       ceilingMesh: string;
       wallMeshes: [string, string];
-      /** 远离柜台的大厅端墙；用于限制滚轮后退，避免穿出房间。 */
+      /**
+       * 端头挡墙（当前为 立方体.005）。
+       * 与左右墙一起围成可活动盒：贴边滑动，不能穿到端头背面。
+       */
+      endWallMesh?: string;
+      /** @deprecated 旧大厅端墙字段；护士站改用 endWallMesh。 */
       farWallMesh?: string;
       margins: {
         floor: number;
@@ -99,11 +104,11 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
     target: { x: 0.752, y: 0.455, z: 0.764 },
     initialDistance: 2.507,
     initialAngle: { azimuthDeg: -80.8, elevationDeg: 0.35 },
-    /** 换模调试阶段先关闭，便于自由看清内部；构图定稿后再打开。 */
-    limitsEnabled: false,
-    pan: { xLimit: 0.42, yMin: 0.42, yMax: 1.35 },
-    distance: { min: 0.6, max: 12 },
-    azimuthLimit: Math.PI / 12,
+    /** C：在 墙壁/墙壁2/立方体.005 内侧活动；贴边滑动，不穿出、不瞬移。 */
+    limitsEnabled: true,
+    pan: { xLimit: 2.8, yMin: 0.3, yMax: 1.85 },
+    distance: { min: 0.5, max: 12 },
+    azimuthLimit: Math.PI * 2 / 3,
     polar: { min: Math.PI / 6, max: Math.PI / 1.8 },
     ceilingY: 3.34,
     ceilingCameraMargin: 0.12,
@@ -111,13 +116,15 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
     floorCameraMargin: 0.18,
     viewBounds: {
       floorMesh: "地板",
-      ceilingMesh: "Ceiling",
+      /** 当前 GLB 无天花网格；找不到时回退模型顶，禁止用顶栏当房间顶。 */
+      ceilingMesh: "天花板",
       wallMeshes: ["墙壁", "墙壁2"],
+      endWallMesh: "立方体.005",
       margins: {
-        floor: 0.28,
-        ceiling: 0.7,
-        wall: 0.28,
-        depth: 0.45,
+        floor: 0.16,
+        ceiling: 0.35,
+        wall: 0.12,
+        depth: 0.12,
       },
     },
   },

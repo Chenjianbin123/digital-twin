@@ -36,7 +36,7 @@ const lightPalette: Record<string, string> = {
 const LIGHT_OAK_TINT = "#ced8d5";
 const LIGHT_OAK_MAP_COLOR = "#edf2f0";
 /** 房门：偏蓝青、对比清楚。 */
-const LIGHT_WARD_DOOR = "#4f7f9a";
+const LIGHT_WARD_DOOR = "#3a7eaa";
 const LIGHT_NURSE_COUNTER_ACCENT = "#6ea5b4";
 
 const themedMaterialNames = new Set([
@@ -254,7 +254,7 @@ export function createStationTheme() {
             mesh.name.startsWith("Corridor_Inner_Wall")
           )
             material.color.set("#6aa0b4");
-          if (mesh.name.startsWith("Ward_Door_")) material.color.set("#3d6f88");
+          if (mesh.name.startsWith("Ward_Door_")) material.color.set("#355f78");
           if (
             ["Nurse_Counter_Top", "Staff_Worktop", "Back_Cabinet_Top"].includes(
               mesh.name,
@@ -381,6 +381,9 @@ export function createStationTheme() {
           if (mesh.name === "Counter_Lettering_Rule")
             material.color.set("#3d8a9a");
           if (material.name === "灰白") {
+            material.map = null;
+            material.normalMap = null;
+            material.roughnessMap = null;
             material.roughness = 0.72;
             material.metalness = 0.02;
             material.envMapIntensity = 0.45;

@@ -106,7 +106,7 @@ test('approved architecture colors keep shared paint and counter surfaces indepe
     ['Nurse_Counter', surface, '5a92a8'],
     ['Nurse_Counter_Top', surface, 'e6eef0'],
     ['Station_Canopy', surface, '5c96ac'],
-    ['Ward_Door_1_0', wood, '3d6f88'],
+    ['Ward_Door_1_0', wood, '355f78'],
     ['Oak_Wall_Panel_00', wood, 'd8e1df'],
   ] as const;
   const lightCases = [
@@ -117,7 +117,7 @@ test('approved architecture colors keep shared paint and counter surfaces indepe
     ['Nurse_Counter', 'eee8e0'],
     ['Nurse_Counter_Top', 'e3eae8'],
     ['Station_Canopy', '2b6c82'],
-    ['Ward_Door_1_0', '4f7f9a'],
+    ['Ward_Door_1_0', '3a7eaa'],
     ['Oak_Wall_Panel_00', 'ced8d5'],
   ] as const;
   for (const [name, material] of darkCases) {

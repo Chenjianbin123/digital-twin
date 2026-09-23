@@ -15,6 +15,10 @@ function corridorThemeMaterialNames() {
   return new Set([...Object.keys(light), ...Object.keys(dark)]);
 }
 
+function isWindowBlindMaterial(meshName: string, materialName: string) {
+  return materialName === '天花板杆' && /^窗/.test(meshName);
+}
+
 /** 仅压暗未纳入主题映射的高饱和色带；主题色带由 createCorridorTheme 统一上色。 */
 export function dimHospitalCorridorFloorStripes(root: THREE.Object3D) {
   const meshName = wardCorridorSceneConfig.appearance.floorMeshName;
@@ -66,7 +70,8 @@ export function createCorridorTheme() {
       if (!prepared.has(object)) {
         const clone = (material: THREE.Material) => {
           const std = material as THREE.MeshStandardMaterial;
-          return std.isMeshStandardMaterial && themedNames.has(std.name)
+          return std.isMeshStandardMaterial
+            && (themedNames.has(std.name) || isWindowBlindMaterial(object.name, std.name))
             ? std.clone()
             : material;
         };
@@ -79,20 +84,41 @@ export function createCorridorTheme() {
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of materials) {
         const std = material as THREE.MeshStandardMaterial;
-        if (!std.isMeshStandardMaterial || palette[std.name] === undefined)
+        if (!std.isMeshStandardMaterial)
+          continue;
+        if (isWindowBlindMaterial(object.name, std.name)) {
+          // 窗上的天花板杆是金属百叶，护士站左侧补光下会反白；压成哑光灰蓝。
+          std.color.setHex(dark ? 0x5c6a74 : 0xb0bcc6);
+          std.metalness = 0.06;
+          std.roughness = 0.6;
+          std.envMapIntensity = 0.24;
+          std.needsUpdate = true;
+          continue;
+        }
+        if (palette[std.name] === undefined)
           continue;
         if (!originals.has(std))
           originals.set(std, std.color.clone());
         std.color.setHex(palette[std.name]!);
         // 门/椅保留一点反光层次，避免塑料哑光发灰。
-        if (std.name.startsWith('椅子.')) {
+        if (std.name === '深蓝') {
+          std.metalness = 0.16;
+          std.roughness = 0.36;
+          std.envMapIntensity = 0.82;
+        }
+        else if (std.name.startsWith('椅子.')) {
           std.metalness = 0.04;
           std.roughness = 0.66;
           std.envMapIntensity = 0.52;
         }
         else if (std.name === '灰白') {
-          std.roughness = 0.76;
-          std.envMapIntensity = 0.4;
+          // 护士站墙体贴了灰白漫反射，走廊是纯色纸白；清贴图后两边同色。
+          std.map = null;
+          std.normalMap = null;
+          std.roughnessMap = null;
+          std.metalness = 0.02;
+          std.roughness = 0.72;
+          std.envMapIntensity = 0.45;
         }
         else if (std.name === '门周') {
           std.roughness = 0.52;

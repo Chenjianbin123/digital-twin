@@ -9,8 +9,8 @@ const [app, visualScene, areaScene, sceneConfig] = await Promise.all([
   readFile(new URL('../src/config/nurse-station-scene.ts', import.meta.url), 'utf8'),
 ]);
 
-assert.match(sceneConfig, /distance: \{ min: 0\.6, max: 12 \}/);
-assert.match(sceneConfig, /azimuthLimit: Math\.PI \/ 12/);
+assert.match(sceneConfig, /distance: \{ min: 0\.5, max: 12 \}/);
+assert.match(sceneConfig, /azimuthLimit: Math\.PI \* 2 \/ 3/);
 // Both constrained presentation and unrestricted camera calibration are supported.
 assert.match(sceneConfig, /limitsEnabled:\s*(?:true|false)/);
 assert.match(sceneConfig, /floorCameraMargin: 0\.18/);
@@ -18,16 +18,16 @@ assert.match(areaScene, /this\.controls\.enableRotate = true;/);
 assert.match(areaScene, /this\.controls\.enableZoom = true;/);
 assert.match(areaScene, /this\.controls\.enablePan = true;/);
 assert.match(areaScene, /this\.controls\.screenSpacePanning = true;/);
-assert.match(sceneConfig, /pan: \{ xLimit: 0\.42, yMin: 0\.42, yMax: 1\.35 \}/);
+assert.match(sceneConfig, /pan: \{ xLimit: 2\.8, yMin: 0\.3, yMax: 1\.85 \}/);
 assert.match(areaScene, /this\.controls\.minAzimuthAngle = -Infinity;/);
 assert.match(areaScene, /this\.controls\.maxAzimuthAngle = Infinity;/);
 assert.match(areaScene, /this\.controls\.minDistance = 0\.1;/);
 assert.match(areaScene, /this\.controls\.maxDistance = 1000;/);
 assert.match(areaScene, /const STATION_CAMERA_LIMITS_ENABLED = nurseStationSceneConfig\.camera\.limitsEnabled;/);
 assert.match(areaScene, /private applyStationOrbitCeilingConstraint\(\)\s*\{[\s\S]*?if \(!STATION_CAMERA_LIMITS_ENABLED\)/);
-assert.match(areaScene, /this\.controls\.screenSpacePanning = STATION_CAMERA_LIMITS_ENABLED \? false : true;/);
-assert.match(areaScene, /RIGHT: STATION_CAMERA_LIMITS_ENABLED \? THREE\.MOUSE\.ROTATE : THREE\.MOUSE\.PAN,/);
-assert.match(areaScene, /TWO: STATION_CAMERA_LIMITS_ENABLED \? THREE\.TOUCH\.DOLLY_ROTATE : THREE\.TOUCH\.DOLLY_PAN,/);
+assert.match(areaScene, /this\.controls\.screenSpacePanning = true;/);
+assert.match(areaScene, /RIGHT: THREE\.MOUSE\.PAN,/);
+assert.match(areaScene, /TWO: THREE\.TOUCH\.DOLLY_PAN,/);
 
 assert.match(app, /useWorkspacePanels\(sceneType, wardInteriorView, sceneScope\)/);
 assert.match(app, /v-if="isNurseStation \|\| isWard \|\| isWardInterior"/);

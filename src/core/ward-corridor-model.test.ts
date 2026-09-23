@@ -413,26 +413,76 @@ test('dims only the high-chroma guide stripes on the corridor floor mesh', () =>
 
 test('unifies corridor door and chair blues with the nurse-station light theme', () => {
   const doorPanel = new THREE.MeshStandardMaterial({ name: '椅子.003', color: 0x092875 });
+  const stationLeaf = new THREE.MeshStandardMaterial({ name: '深蓝', color: 0x021624 });
+  const surround = new THREE.MeshStandardMaterial({ name: '门周', color: 0x5a8494 });
   const wall = new THREE.MeshStandardMaterial({ name: '灰白', color: 0xd0e5ff });
   const stripe = new THREE.MeshStandardMaterial({ name: '材质.008', color: 0xff5701 });
   const door = new THREE.Mesh(new THREE.BoxGeometry(), [doorPanel, wall]);
   door.name = '门1';
+  const stationDoor = new THREE.Mesh(new THREE.BoxGeometry(), [stationLeaf, surround]);
+  stationDoor.name = '门把手';
   const floor = new THREE.Mesh(new THREE.BoxGeometry(), stripe);
   floor.name = '地板';
   const root = new THREE.Group();
-  root.add(door, floor);
+  root.add(door, stationDoor, floor);
 
   const apply = createCorridorTheme();
   apply(root, false);
   const doorMats = door.material as THREE.MeshStandardMaterial[];
+  const stationMats = stationDoor.material as THREE.MeshStandardMaterial[];
   assert.equal(doorMats[0].color.getHex(), 0x7cbdee);
   assert.equal(doorMats[1].color.getHex(), 0xf8f5f0);
+  assert.equal(doorMats[1].map, null);
+  assert.equal(doorMats[1].roughness, 0.72);
+  assert.equal(stationMats[0].color.getHex(), 0x3a7eaa);
+  assert.equal(stationMats[1].color.getHex(), 0x679ac1);
+  assert.ok(stationMats[0].roughness < doorMats[0].roughness);
+  assert.ok(stationMats[0].metalness > doorMats[0].metalness);
   assert.equal((floor.material as THREE.MeshStandardMaterial).color.getHex(), 0xff9a14);
 
   apply(root, true);
   assert.equal(doorMats[0].color.getHex(), 0x4a7290);
+  assert.equal(stationMats[0].color.getHex(), 0x355f78);
   apply(root, false);
   assert.equal(doorMats[0].color.getHex(), 0x7cbdee);
+  assert.equal(stationMats[0].color.getHex(), 0x3a7eaa);
+});
+
+test('tones down metallic window slats so station left wall does not blow out', () => {
+  const slat = new THREE.MeshStandardMaterial({ name: '天花板杆', color: 0xffffff, metalness: 0.69, roughness: 0.5 });
+  const fixture = slat.clone();
+  const window = new THREE.Mesh(new THREE.BoxGeometry(), slat);
+  window.name = '窗1';
+  const rod = new THREE.Mesh(new THREE.BoxGeometry(), fixture);
+  rod.name = '顶支架.002';
+  const root = new THREE.Group();
+  root.add(window, rod);
+  const apply = createCorridorTheme();
+  apply(root, false);
+  const windowMat = window.material as THREE.MeshStandardMaterial;
+  const rodMat = rod.material as THREE.MeshStandardMaterial;
+  assert.notEqual(windowMat, slat);
+  assert.equal(windowMat.color.getHex(), 0xb0bcc6);
+  assert.ok(windowMat.metalness < 0.2);
+  assert.equal(rodMat.metalness, 0.69);
+  assert.equal(rodMat.color.getHex(), 0xffffff);
+});
+
+test('strips nurse-station 灰白 wall maps so paint matches the corridor paper white', () => {
+  const map = new THREE.Texture();
+  const paint = new THREE.MeshStandardMaterial({ name: '灰白', color: 0xffffff, map });
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(), paint);
+  wall.name = '墙壁';
+  const root = new THREE.Group();
+  root.add(wall);
+  const apply = createCorridorTheme();
+  apply(root, false);
+  const mat = wall.material as THREE.MeshStandardMaterial;
+  assert.notEqual(mat, paint);
+  assert.equal(mat.map, null);
+  assert.equal(mat.color.getHex(), 0xf8f5f0);
+  assert.equal(mat.roughness, 0.72);
+  assert.equal(mat.envMapIntensity, 0.45);
 });
 
 test('polishes corridor floor materials for subtle reflection', () => {
