@@ -81,7 +81,7 @@ test('approved palette separates shared wood surfaces in dark and light themes',
     assert.equal(lightWall.map, null);
     assert.equal(lightWall.normalMap, normalMap);
     assert.equal(lightWall.color.getHexString(), 'ced8d5');
-    assert.equal(lightCounter.color.getHexString(), '6ea5b4');
+    assert.equal(lightCounter.color.getHexString(), '4a9aaf');
     assert.equal(lightCounter.map, null);
     apply(root, undefined, true);
     assert.equal(wall.material, darkWall);
@@ -110,13 +110,13 @@ test('approved architecture colors keep shared paint and counter surfaces indepe
     ['Oak_Wall_Panel_00', wood, 'd8e1df'],
   ] as const;
   const lightCases = [
-    ['Ceiling', 'f6f1e8'],
+    ['Ceiling', '7eb4c4'],
     ['墙壁', 'f8f5f0'],
     ['Corridor_Inner_Wall_1', 'f8f5f0'],
     ['Back_Wall', 'f3eee6'],
     ['Nurse_Counter', 'eee8e0'],
     ['Nurse_Counter_Top', 'e3eae8'],
-    ['Station_Canopy', '2b6c82'],
+    ['Station_Canopy', '06547d'],
     ['Ward_Door_1_0', '3a7eaa'],
     ['Oak_Wall_Panel_00', 'ced8d5'],
   ] as const;
@@ -165,5 +165,5 @@ test('legacy corridor architecture materials use warm paper instead of glTF whit
   apply(root, undefined, false);
   assert.equal((wall.material as THREE.MeshStandardMaterial).color.getHexString(), 'f8f5f0');
   assert.equal((floor.material as THREE.MeshStandardMaterial).color.getHexString(), 'efe8dc');
-  assert.equal((header.material as THREE.MeshStandardMaterial).color.getHexString(), 'f6f1e8');
+  assert.equal((header.material as THREE.MeshStandardMaterial).color.getHexString(), '7eb4c4');
 });

@@ -1,5 +1,12 @@
 import * as THREE from "three";
 
+/** 柜台青锚色：顶栏正面与之同系。 */
+export const STATION_TEAL_ACCENT = "#06547d";
+/** 柜台立面：比锚色淡，避免整块发闷跳色。 */
+export const STATION_TEAL_COUNTER = "#4a9aaf";
+/** 顶栏底面：同色相、更高明度。 */
+export const STATION_TEAL_SOFT = "#7eb4c4";
+
 /** 深色：冷青对比更硬，贴合侧栏。 */
 const darkPalette: Record<string, string> = {
   Warm_White_Solid_Surface: "#e6eef0",
@@ -23,7 +30,7 @@ const lightPalette: Record<string, string> = {
   Warm_Grey_Vinyl: "#c8c0b4",
   Floor_Border: "#8a8074",
   Natural_Oak: "#ced8d5",
-  Sign_Teal: "#1a5f6e",
+  Sign_Teal: STATION_TEAL_COUNTER,
   V2_Exterior_Daylight: "#d8e8ee",
   Warm_LED: "#eaf4f6",
   Brushed_Stainless: "#7e9398",
@@ -37,7 +44,7 @@ const LIGHT_OAK_TINT = "#ced8d5";
 const LIGHT_OAK_MAP_COLOR = "#edf2f0";
 /** 房门：偏蓝青、对比清楚。 */
 const LIGHT_WARD_DOOR = "#3a7eaa";
-const LIGHT_NURSE_COUNTER_ACCENT = "#6ea5b4";
+const LIGHT_NURSE_COUNTER_ACCENT = STATION_TEAL_COUNTER;
 
 const themedMaterialNames = new Set([
   ...Object.keys(darkPalette),
@@ -345,12 +352,12 @@ export function createStationTheme() {
             material.metalness = 0;
             material.envMapIntensity = original.envMapIntensity * 0.28;
           }
-          if (mesh.name === "Station_Canopy") material.color.set("#2b6c82");
+          if (mesh.name === "Station_Canopy") material.color.set(STATION_TEAL_ACCENT);
           if (mesh.name === "Ceiling" || mesh.name === "顶栏") {
             if (/Equipment_White|White_Stone/i.test(material.name))
-              material.color.set("#2b6c82");
+              material.color.set(STATION_TEAL_ACCENT);
             else
-              material.color.set("#f6f1e8");
+              material.color.set(/天花板/i.test(material.name) ? STATION_TEAL_SOFT : STATION_TEAL_SOFT);
           }
           if (
             ["墙壁", "墙壁2"].includes(mesh.name) ||
@@ -376,8 +383,13 @@ export function createStationTheme() {
             material.roughness = 0.38;
             material.metalness = 0.62;
           }
-          if (mesh.name === "Wall_Motto" || mesh.name === "Counter_Lettering")
-            material.color.set("#1a5f6e");
+          if (mesh.name === "Wall_Motto" || mesh.name === "Counter_Lettering") {
+            material.color.set("#f4fbfd");
+            if ("emissive" in material) {
+              material.emissive.set("#d7eef2");
+              material.emissiveIntensity = 0.28;
+            }
+          }
           if (mesh.name === "Counter_Lettering_Rule")
             material.color.set("#3d8a9a");
           if (material.name === "灰白") {
@@ -439,7 +451,7 @@ export function createStationTheme() {
             material.envMapIntensity = original.envMapIntensity * 0.42;
           }
           if (material.name === "Sign_Teal") {
-            material.color.set("#1a5f6e");
+            material.color.set(STATION_TEAL_COUNTER);
           }
           if (material.name === "Brushed_Stainless") {
             material.color.set("#6e848a");

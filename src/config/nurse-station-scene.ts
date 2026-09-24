@@ -84,15 +84,15 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
     background: 0xf8f0e4,
     /** 首屏视野角：数值越小，模型越大；数值越大，看到的环境越多。 */
     deskFov: 38,
-    /** 比走廊略提曝光，病房白天亮度，阴影仍能落下来。 */
-    exposure: 1.34,
+    /** 略压曝光，让柜台青与顶栏同阶，墙地不发飘。 */
+    exposure: 1.26,
     /**
      * 仅 legacy 布局会覆盖材质 envMapIntensity。
      * reference-v2/v3 保留 glTF 作者值，避免整体发灰发亮。
      */
     envMapIntensity: 0.46,
-    /** 环境贴图回一点亮度，墙地暖色仍压住冷灰。 */
-    environmentIntensity: 0.4,
+    /** 环境贴图略收，暖纸墙地不被洗白。 */
+    environmentIntensity: 0.34,
   },
   camera: {
     /**

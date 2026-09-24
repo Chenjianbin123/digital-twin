@@ -1,4 +1,4 @@
-import { createStationTheme } from '@/core/station-theme';
+import { createStationTheme, STATION_TEAL_ACCENT, STATION_TEAL_COUNTER, STATION_TEAL_SOFT } from '@/core/station-theme';
 import { WardCorridorLayout, type CorridorLayoutState, type CorridorSlot } from './ward-corridor-layout';
 import { WardCorridorScreenCache } from './ward-corridor-screen-cache';
 import { CorridorMarker } from './ward-corridor-markers';
@@ -4125,12 +4125,16 @@ export class AreaScene {
     model.position.set(-center.x, -fittedBox.min.y + 0.03, -center.z);
   }
 
-  /** 顶栏给足色相，导台文字保持可读；顶灯自发光但不洗掉接触影。 */
+  /** 顶栏/柜台同色阶：正面锚色对齐柜台青，底面同相略浅。 */
   private highlightNurseStationSignage(model: THREE.Object3D) {
     const signage = /^(Station_Header|Station_Header_Motto|Counter_Lettering)$/;
-    const headerTitle = /^Station_Header(_Motto)?$/;
+    // 顶栏「护士站」与柜台「关爱、专业…」同一套白字参数。
+    const whiteLettering = /^(Station_Header(_Motto)?|Counter_Lettering)$/;
     const ceilingLights: THREE.RectAreaLight[] = [];
     const dark = this.darkTheme;
+    const tealAccent = dark ? '#5a92a8' : STATION_TEAL_ACCENT;
+    const tealCounter = dark ? '#6ea5b4' : STATION_TEAL_COUNTER;
+    const tealSoft = dark ? '#3a5360' : STATION_TEAL_SOFT;
     model.updateMatrixWorld(true);
     model.traverse((object) => {
       if (!(object instanceof THREE.Mesh))
@@ -4149,17 +4153,18 @@ export class AreaScene {
           if (!('color' in material))
             return material;
           const lit = material.clone();
+          // Equipment_White* = 正面/侧立面；天花板材质片 = 底面灯槽侧。
           const fascia = /Equipment_White|White_Stone/i.test(material.name);
           if (fascia) {
-            lit.color.set(dark ? '#3f7384' : '#2b6c82');
+            lit.color.set(tealAccent);
             if ('roughness' in lit)
-              lit.roughness = 0.52;
+              lit.roughness = 0.5;
             if ('metalness' in lit)
               lit.metalness = 0.08;
           } else {
-            lit.color.set(dark ? '#2c3c42' : '#f6f1e8');
+            lit.color.set(tealSoft);
             if ('roughness' in lit)
-              lit.roughness = 0.92;
+              lit.roughness = 0.9;
           }
           if ('emissive' in lit) {
             lit.emissive.set('#000000');
@@ -4170,20 +4175,41 @@ export class AreaScene {
         });
         object.material = Array.isArray(object.material) ? next : next[0]!;
       }
+      // 柜台青材质单独淡一档，顶栏正面仍用锚色。
+      {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        let changed = false;
+        const next = materials.map((material) => {
+          if (!('color' in material) || !/^(更淡-青蓝|Sign_Teal|青蓝)(\.\d+)?$/i.test(material.name))
+            return material;
+          const lit = material.clone();
+          lit.color.set(tealCounter);
+          if ('roughness' in lit)
+            lit.roughness = 0.55;
+          if ('metalness' in lit)
+            lit.metalness = 0.06;
+          lit.needsUpdate = true;
+          changed = true;
+          return lit;
+        });
+        if (changed)
+          object.material = Array.isArray(object.material) ? next : next[0]!;
+      }
       if (sign) {
         const materials = Array.isArray(object.material) ? object.material : [object.material];
-        const title = headerTitle.test(object.name) || headerTitle.test(object.parent?.name ?? '');
+        const white =
+          whiteLettering.test(object.name) || whiteLettering.test(object.parent?.name ?? '');
         const next = materials.map((material) => {
           if (!('emissive' in material) || !('color' in material))
             return material;
           const lit = material.clone();
-          if (title) {
+          if (white) {
             lit.color.set(dark ? '#e7f7fa' : '#f4fbfd');
             lit.emissive.set(dark ? '#c5e6ec' : '#d7eef2');
             lit.emissiveIntensity = 0.28;
           } else {
-            lit.color.set(dark ? '#8fd0dc' : '#16586a');
-            lit.emissive.set(dark ? '#4a8a96' : '#16586a');
+            lit.color.set(dark ? '#8fd0dc' : STATION_TEAL_COUNTER);
+            lit.emissive.set(dark ? '#4a8a96' : STATION_TEAL_COUNTER);
             lit.emissiveIntensity = 0.12;
           }
           if ('roughness' in lit)
