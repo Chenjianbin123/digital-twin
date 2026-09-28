@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>页头主题验证 · 合成数据</title><link rel="icon" href="data:,">
+<div id="app"></div>
+<script type="module">
+import { createApp, h, ref } from 'vue';
+import DashboardHeader from '/src/components/dashboard/DashboardHeader.vue';
+import '/src/styles/global.scss';
+import '/src/styles/dashboard-theme.scss';
+createApp({ setup() {
+  const theme = ref('light'), long = ref(false), busy = ref(false), status = ref('warning');
+  const events = [];
+  window.headerFixture = { events, setTheme: value => theme.value = value, setLong: value => long.value = value, setBusy: value => busy.value = value, setStatus: value => status.value = value };
+  return () => h('main', { class: 'digital-twin', 'data-theme': theme.value }, [
+    h(DashboardHeader, { theme: theme.value, areaName: long.value ? '合成测试超长病区名称用于检查文字边界' : '病区一', deptName: long.value ? '超长综合护理科室名称' : '普通外科', operatorName: long.value ? '超长测试用户名称' : '超级管理员', operatorRole: '合成测试', dataSource: 'remote', dataStatus: status.value, canSwitchArea: true, isLoading: busy.value, isAreaSwitching: busy.value,
+      onToggleTheme: () => { theme.value = theme.value === 'light' ? 'dark' : 'light'; events.push('theme'); }, onRefresh: () => events.push('refresh'), onOpenAreaSwitch: () => events.push('area'), onLogout: () => events.push('logout') }),
+    h('p', { class: 'fixture-note' }, '实际组件 · 合成数据，仅用于布局验证'),
+  ]);
+} }).mount('#app');
+</script>
+<style>
+html,body,#app,main{width:100%;height:100%;margin:0}main{position:relative;background:#e7eff3}main[data-theme='dark']{background:#0e2231}.fixture-note{position:absolute;top:calc(var(--dashboard-header-space) + 20px);left:24px;font:14px sans-serif;color:#648396}
+</style>

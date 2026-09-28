@@ -1,0 +1,22 @@
+<!doctype html><html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>场景导航与加载配色 · 合成验证</title><link rel="icon" href="data:,"><div id="app"></div>
+<script type="module">
+import {createApp,h,ref,computed} from 'vue';
+import DashboardBottomNav from '/src/components/dashboard/DashboardBottomNav.vue';
+import SceneSwitchLoader from '/src/components/SceneSwitchLoader.vue';
+import {resolveSceneSwitchFeedback} from '/src/core/scene-transition.ts';
+import '/src/styles/dashboard-theme.scss';
+import '/src/styles/global.scss';
+createApp({setup(){
+  const theme=ref('light'),scene=ref('ward-interior'),view=ref('3d');
+  const feedback=computed(()=>resolveSceneSwitchFeedback(scene.value==='nurse-station'?'ward':'nurse-station',scene.value));
+  window.navFixture={setTheme:value=>theme.value=value,setScene:value=>scene.value=value};
+  return()=>h('main',{class:'digital-twin','data-theme':theme.value},[
+    h(SceneSwitchLoader,{feedback:feedback.value,onReturnStation:()=>scene.value='nurse-station'}),
+    h(DashboardBottomNav,{sceneType:scene.value,wardInteriorView:view.value,dataSource:'remote',onSetSceneType:value=>scene.value=value,onSetWardInteriorView:value=>view.value=value})
+  ]);
+}}).mount('#app');
+</script>
+<style>*{box-sizing:border-box}body{margin:0}.digital-twin{position:relative;height:100dvh;--mobile-panel-height:0px;background:#dbe8ef}.digital-twin[data-theme=dark]{background:#071725}.scene-switch-loader{inset:0 0 150px!important}</style>
+</html>

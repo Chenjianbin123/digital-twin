@@ -43,18 +43,13 @@ $control-theme: (
     @each $key,$value in $control-theme { --command-control-#{$key}: #{$value}; }
   }
   .digital-twin[data-theme='dark'][data-theme='dark'] {
-    .dash-header :is(.dash-header__area,.dash-header__theme,.dash-header__refresh),
     .area-switcher :is(.area-switcher__close,.area-switcher__confirm),
     :is(.area-scene-3d__reset,.ward-legend__toggle,.ward-scene-3d__actions button,.station-info__tools button,.scene-switch-loader__actions button) { @include control; }
     .area-switcher .area-switcher__row--candidate { @include selected; }
-    .dash-bottom.dash-bottom {
-      button { @include control; }
-      :is(.dash-bottom__item--active,.dash-bottom__sub-item--active) { @include selected; }
-    }
     :is(.nurse-panel.nurse-workspace.nurse-workspace,.digital-twin__panel.digital-twin__panel--overlay) {
       :is(.station-hero__alert-toggle,.station-hero__wallboard-toggle,.alert-task-panel__more button,.alert-task__details summary,.alert-task__locate,.alert-task__ghost,.room-card__enter,.area-dashboard__back-station,.task-card__actions button) { @include control; }
       .workspace-tabs button[aria-selected='true'],.alert-task-panel__filters button.is-active,
-      .queue-categories button[aria-pressed='true'],.ward-bed-nav__item[aria-selected='true'] { @include selected; }
+      .ward-bed-nav__item[aria-selected='true'] { @include selected; }
     }
   }
   .swp-login[data-theme='dark'][data-theme='dark'] {

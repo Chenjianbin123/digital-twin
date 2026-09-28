@@ -1,0 +1,24 @@
+// The header and floating workspace surfaces share a single top safe area.
+@mixin render {
+  .digital-twin { --dashboard-header-space: 80px; }
+  @media (min-width: 2200px) { .digital-twin { --dashboard-header-space: 92px; } }
+  @media (max-width: 1099px) { .digital-twin { --dashboard-header-space: 120px; } }
+  @media (max-width: 767px) { .digital-twin { --dashboard-header-space: 180px; } }
+  .digital-twin .digital-twin__main .digital-twin__scene .ward-overview {
+    top: calc(var(--dashboard-header-space) + 8px) !important;
+  }
+  .digital-twin .nurse-station-visual__info,
+  .digital-twin .dash-left,
+  .digital-twin .corridor-tools,
+  .digital-twin .digital-twin__locate-banner,
+  .digital-twin .digital-twin__locate-notice {
+    top: calc(var(--dashboard-header-space) + 8px) !important;
+  }
+  @media (min-width: 1024px) {
+    .digital-twin[data-theme] .digital-twin__main .digital-twin__panel {
+      top: var(--dashboard-header-space);
+      padding-top: 0;
+      --panel-line-top: 0px;
+    }
+  }
+}

@@ -5,6 +5,7 @@ import { useLiveClock } from '@/composables/use-live-clock';
 import WardCallList from '@/components/WardCallList.vue';
 import type { SwpEventSyncState } from '@/types/swp-events';
 import WardBedNavigator from '@/components/WardBedNavigator.vue';
+import NurseDetailIcon from '@/components/dashboard/NurseDetailIcon.vue';
 import { wardField, wardDataNotice } from '@/core/ward-presentation';
 import { wardBedPatientKey } from '@/core/ward-data-binding';
 import type { DataStatus } from '@/core/data-status';
@@ -326,6 +327,7 @@ function alertTime(value?: string) {
     <section v-if="ward && bedStats" class="ward-info-panel__stats">
 
       <div class="stat-chip">
+        <NurseDetailIcon name="beds" />
 
         <span class="stat-chip__val">{{ bedStats.total }}</span>
 
@@ -334,6 +336,7 @@ function alertTime(value?: string) {
       </div>
 
       <div class="stat-chip stat-chip--occupied">
+        <NurseDetailIcon name="arrived" />
 
         <span class="stat-chip__val">{{ bedStats.occupied }}</span>
 
@@ -342,6 +345,7 @@ function alertTime(value?: string) {
       </div>
 
       <div class="stat-chip stat-chip--empty">
+        <NurseDetailIcon name="beds" />
 
         <span class="stat-chip__val">{{ bedStats.empty }}</span>
 
@@ -469,7 +473,7 @@ function alertTime(value?: string) {
 
       </div>
       <section v-if="selectedBed.isOccupied && selectedBed.latestVitals" class="vitals-card" aria-label="最新体征">
-        <h4>最新体征</h4>
+        <h4 class="ward-clinical-heading"><NurseDetailIcon name="devices" />最新体征</h4>
         <div class="vitals-grid">
           <span>
             <small>体温</small>
@@ -636,7 +640,7 @@ function alertTime(value?: string) {
 
     >
 
-      <h3>环境数据</h3>
+      <h3 class="ward-clinical-heading"><NurseDetailIcon name="environment" />环境数据</h3>
       <p class="env-label">{{ envSyncText }}</p>
 
       <div class="ward-info-panel__env-grid">

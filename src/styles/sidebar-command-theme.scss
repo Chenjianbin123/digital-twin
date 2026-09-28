@@ -19,12 +19,6 @@ $sidebar-theme: (
 
 @mixin render {
 .digital-twin[data-theme='dark'] {
-  .dash-bottom.dash-bottom {
-    :is(.dash-bottom__main,.dash-bottom__sub) { background:#0a2033ed !important; border-color:#31516b !important; box-shadow:inset 0 1px 0 #83cfff20,0 5px 18px #020e2344 !important; }
-    button { background:transparent !important; border-color:transparent !important; }
-    :is(.dash-bottom__item--active,.dash-bottom__sub-item--active) { background:var(--command-control-active) !important; border-color:#64bfe688 !important; box-shadow:inset 0 -2px 0 #73d4f4,0 0 10px #318bc922 !important; }
-    @media (hover:hover) { button:hover { background:var(--command-control-active) !important; border-color:#64bfe688 !important; } }
-  }
 
   @each $key, $value in $sidebar-theme { --sidebar-#{$key}: #{$value}; }
   :is(.nurse-panel.nurse-workspace.nurse-workspace, .digital-twin__panel.digital-twin__panel--overlay) {
@@ -163,12 +157,6 @@ $sidebar-theme: (
     .room-card__enter, .area-dashboard__back-station { color: #c4efff !important; border: 1px solid #69c7ee66; background: linear-gradient(180deg,#23678c88,#12476499) !important; border-radius: 7px; }
 
     .alert-task-panel--command-queue {
-      .queue-categories { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-bottom: 18px; }
-      .queue-categories button { display:flex; align-items:center; gap:12px; padding:16px 12px; text-align:left; color:var(--sidebar-ink); border:1px solid var(--sidebar-line); border-radius:10px; background:linear-gradient(130deg,#225e7b55,#0b253744); cursor:pointer; }
-      .queue-categories button[aria-pressed='true'] { border-color:var(--sidebar-accent); box-shadow:inset 0 -2px var(--sidebar-accent); }
-      .queue-categories svg { width:28px; height:28px; flex-shrink:0; color:var(--sidebar-accent); }
-      .queue-categories span { font-size:14px; }
-      .queue-categories strong { display:block; font-size:28px; line-height:1.3; font-variant-numeric:tabular-nums; }
       .queue-list-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:18px 0 12px; }
       .queue-list-heading strong { font-size:18px; color:var(--sidebar-ink); }
       .queue-list-heading span { font-size:12px; color:var(--sidebar-muted); }
@@ -179,7 +167,7 @@ $sidebar-theme: (
         &::before, &::after, .alert-task__signal::before, .alert-task__signal::after { display:none !important; content:none !important; }
         .alert-task__head strong, .alert-task__subtitle, .alert-task__time { text-shadow:none !important; }
         .alert-task__severity { color:var(--sidebar-alert) !important; background:#f2948814 !important; border:1px solid #f2948844 !important; border-radius:5px; }
-        .alert-task__time { font-size:12px !important; font-weight:400 !important; background:transparent !important; }
+        .alert-task__time { font-size:var(--sidebar-font-caption, 14px) !important; font-weight:400 !important; background:transparent !important; }
         .alert-task__details summary { min-width:96px; min-height:32px; justify-content:center; border:1px solid var(--sidebar-line); border-radius:5px; background:#17658c30; font-size:14px; }
         .alert-task__main { display:grid; grid-template-columns:minmax(0,1fr) 112px; grid-template-rows:auto auto auto; gap:8px 14px; }
         .alert-task__head { grid-column:1; grid-row:1; display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
@@ -201,11 +189,6 @@ $sidebar-theme: (
     }
     @container nurse-panel (max-width:440px) {
       .alert-task-panel--command-queue {
-        .queue-categories { gap:6px; }
-        .queue-categories button { padding:10px 8px; gap:6px; }
-        .queue-categories svg { width:18px; }
-        .queue-categories span { font-size:12px; }
-        .queue-categories strong { font-size:24px; }
         .queue-list-heading { align-items:flex-start; flex-direction:column; gap:4px; }
         .alert-task.alert-task--workspace .alert-task__main { grid-template-columns:minmax(0,1fr) 90px; gap:8px; }
         .alert-task.alert-task--workspace .alert-task__head strong { font-size:16px; }
@@ -221,18 +204,6 @@ $sidebar-theme: (
           radial-gradient(ellipse at 15% 0,#267ba54d,transparent 65%),#0a2334cc !important;
       }
       .command-depth-mark { filter: drop-shadow(0 0 9px #61cfff44); }
-      .queue-categories button {
-        position:relative; border-radius:6px;
-        background: linear-gradient(135deg,#205b7977,#092237cc);
-        box-shadow:inset 0 1px 0 #a2e8ff26,0 4px 12px #020d1922;
-        transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;
-      }
-      .queue-categories button::after {
-        content:''; position:absolute; right:7px; bottom:7px; width:12px; height:8px;
-        border-right:1px solid #78d9ff88; border-bottom:1px solid #78d9ff88; pointer-events:none;
-      }
-      .queue-categories svg { filter:drop-shadow(0 0 5px #53ccff55); }
-      .queue-categories strong { color:#def5ff; text-shadow:0 0 14px #5bcbff33; }
       .queue-list-heading strong { display:flex; align-items:center; gap:9px; }
       .queue-list-heading strong::before {
         content:''; width:5px; height:16px; background:var(--sidebar-accent);
@@ -252,12 +223,11 @@ $sidebar-theme: (
         .alert-task__details summary { box-shadow:inset 0 1px 0 #91dfff19; transition:background .2s ease,border-color .2s ease; }
       }
       @media (hover:hover) {
-        .queue-categories button:hover { transform:translateY(-2px); border-color:var(--sidebar-accent); box-shadow:inset 0 1px 0 #a2e8ff40,0 5px 16px #2396cc24; }
         .alert-task-panel--command-queue .alert-task.alert-task--workspace:hover { border-color:#70cbea99 !important; box-shadow:inset 0 1px 0 #a7eaff26,0 4px 14px #258bbd20 !important; }
         .alert-task__details summary:hover { background:#22638b66; border-color:var(--sidebar-accent); }
       }
       @media (prefers-reduced-motion:reduce) {
-        .queue-categories button,.alert-task-panel--command-queue .alert-task.alert-task--workspace,.alert-task__details summary { transition:none; transform:none; }
+        .alert-task-panel--command-queue .alert-task.alert-task--workspace,.alert-task__details summary { transition:none; transform:none; }
       }
     }
     // 走廊复用同一组深色 token，避免医院介绍和运行面板各用一套青绿色。
@@ -292,7 +262,7 @@ $sidebar-theme: (
       .corridor-alerts {
         .alert-task-panel__list { max-height:none !important; overflow:visible !important; gap:12px; padding:0; }
         .alert-task { padding:14px !important; border-radius:7px !important; background:linear-gradient(115deg,#12394faa,#071e30ee) !important; box-shadow:inset 0 1px 0 #a7eaff12 !important; }
-        .alert-task__head strong { font-size:17px !important; color:var(--sidebar-ink) !important; }
+        .alert-task__head strong { font-size:var(--sidebar-font-heading, 18px) !important; color:var(--sidebar-ink) !important; }
         .alert-task p { color:var(--sidebar-muted) !important; font-size:14px; }
         .alert-task__actions { border-color:var(--sidebar-line) !important; gap:8px; padding-top:10px !important; }
         .alert-task__recovery-tip { color:var(--sidebar-muted) !important; font-size:12px; }
@@ -339,7 +309,7 @@ $sidebar-theme: (
       .ward-info-panel__header { background:linear-gradient(120deg,#21516a77,#0a2033cc) !important; }
       .ward-info-panel__header h2 { margin:0 0 6px; font-size:24px; color:var(--sidebar-ink); }
       .ward-info-panel__subtitle { margin:0; font-size:13px; line-height:1.6; }
-      .ward-bed-nav__controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(80px,1fr)); gap:8px; margin-top:12px; }
+      .ward-bed-nav__controls { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:8px; margin-top:12px; }
       .ward-bed-nav__controls button { min-height:40px; padding:8px 10px; background:var(--command-control-bg) !important; border:1px solid var(--command-control-line) !important; color:var(--sidebar-ink) !important; border-radius:6px; }
       .ward-bed-nav__controls button[aria-pressed='true'] { background:var(--command-control-active) !important; border-color:var(--sidebar-accent) !important; box-shadow:inset 0 -2px var(--sidebar-accent); }
       .ward-info-panel__stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }

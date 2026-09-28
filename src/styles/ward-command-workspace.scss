@@ -1,4 +1,3 @@
-@use './nurse-command-queue' as queue;
 @use './command-frame-layout' as frame;
 
 @mixin render {
@@ -93,21 +92,6 @@
       .ward-call-list__count { margin-left: auto; }
       .door-staff-cards__title::before { content: '03 /'; margin-right: 8px; }
       .ward-info-panel__env h3::before { content: '04 /'; margin-right: 8px; }
-      .corridor-alerts {
-        @include queue.render;
-        .alert-task-panel__heading, .alert-task-panel__summary { display: none; }
-        .alert-task-panel__list { max-height: none; overflow: visible; padding: 0; }
-        .alert-task { min-height: 0; }
-        .alert-task--workspace::before, .alert-task--workspace::after { content: '' !important; }
-        .alert-task__head strong { font-size: 17px; }
-        .alert-task__actions { border: 0; padding: 0; gap: 8px; }
-        .alert-task__recovery-tip { font-size: 12px; width: 100%; text-align: right; }
-        .alert-task__details summary { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-        .alert-task__details summary::before { content: '›'; }
-        .alert-task__details[open] summary::before { transform: rotate(90deg); }
-        .alert-task__details summary::-webkit-details-marker { display: none; }
-        .alert-task__details p, .alert-task__details small { color: var(--command-muted); font-size: 13px; overflow-wrap: anywhere; }
-      }
     }
     @container nurse-panel (max-width: 450px) {
       .ward-command-mark { width: 38px; height: 44px; flex-basis: 38px; }

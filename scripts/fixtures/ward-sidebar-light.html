@@ -16,6 +16,7 @@ import { resolveBedStatus } from '/src/core/bed-status.ts';
 import { analyzeEnvAlert } from '/src/core/env-alert.ts';
 import '/src/styles/dashboard-theme.scss';
 import '/src/styles/global.scss';
+const roomCardCase = new URLSearchParams(location.search).has('room-cards');
 const rooms = [0, 1].map(index => ({
   sickroomCode: `SYNTHETIC-${index}`, sickroomId: `TEST-${index}`, sickroomName: index ? '102房（合成）' : '101房（合成）', deviceCode: `TEST-DOOR-${index}`, isOnline: true,
   doorStaff: { deptDirectorName: '测试医生', areaHeadNurseName: '测试护士' },
@@ -28,6 +29,12 @@ const rooms = [0, 1].map(index => ({
     latestVitals: bedIndex < 2 ? { temp: '36.5℃', pulse: '72次/分', breath: '18次/分', bloodPressure: '120/80mmHg', bloodOxygen: '98%', recordTime: '2026-09-21 10:30' } : undefined,
   })),
 }));
+if (roomCardCase) {
+  rooms[0].sickroomName = '合成测试长名称病房（仅用于布局验证）';
+  rooms[0].beds[0].bedName = '长床号-008';
+  rooms[0].beds.push(...[3, 4].map(i => ({ ...rooms[0].beds[1], bedCode: `TEST-0-${i}`, bedName: `00${i}床` })));
+  rooms[1].beds = [];
+}
 const area = { areaName: '合成测试病区', areaCode: 'TEST', deptName: '测试科室', rooms };
 const tasks = Array.from({ length: 6 }, (_, i) => ({ id: `TEST-CALL-${i}`, source: 'swp-call', type: 'call', severity: i === 1 ? 'high' : 'critical', status: 'pending', title: '合成测试患者呼叫', description: '用于界面回归验证，不包含真实患者信息。', roomCode: rooms[0].sickroomCode, roomName: rooms[0].sickroomName, bedCode: rooms[0].beds[0].bedCode, bedName: '01床', canLocate: i !== 1, actionText: '定位床位', startedAt: '2026-09-21 10:30:00' }));
 const inspections = rooms.map((room, index) => ({ roomIndex: index, roomCode: room.sickroomCode, roomName: room.sickroomName, state: index ? 'due' : 'overdue', stateLabel: index ? '待关注' : '巡视超时', latestAt: '2026-09-21 10:00:00', latestNurseName: '测试护士', records: [], normalCount: 0, dueCount: 0, overdueCount: 1 }));
@@ -51,7 +58,7 @@ const app = createApp({ setup() {
         : [{ key: 'occupied', label: '已入住', value: 2, unit: '床' }, { key: 'empty', label: '空床', value: 1, unit: '床' }], }, { default: () => [
       ...(scene.value === 'corridor' ? [h(HospitalIntroPanel, { info: { hospitalName: '合成测试医院', hospitalNote: '本页仅验证界面样式与交互，所有患者、病房与事件均为合成测试数据。'.repeat(8) } })] : []),
       h('div', { class: 'digital-twin__panel-body' }, [scene.value === 'corridor'
-        ? h(AreaInfoPanel, { lightCommand: theme.value === 'light', area: empty.value ? { ...area, rooms: [] } : area, roomSummaries: empty.value ? [] : summarizeArea(rooms), statusHistory: history, focusedRoomIndex: focused.value, alertTasks: empty.value ? [] : tasks, inspectionRoomSummaries: inspections,
+        ? h(AreaInfoPanel, { area: empty.value ? { ...area, rooms: [] } : area, roomSummaries: empty.value ? [] : summarizeArea(rooms), statusHistory: history, focusedRoomIndex: focused.value, alertTasks: empty.value ? [] : tasks, inspectionRoomSummaries: inspections,
           onFocusRoom: index => { focused.value = index; record('focus', index); }, onEnterRoom: index => record('enter', index), onLocateAlert: id => record('locate', id), onAcknowledgeAlert: id => record('ack', id) })
         : h(WardInfoPanel, { area, ward: rooms[0], selectedBed: bed.value, selectedStatus: bed.value ? resolveBedStatus(bed.value) : null, dataStatus: stale.value ? 'stale' : 'ready', envAlert: analyzeEnvAlert(rooms[0].doorEnvData), statusHistory: history, callTasks: empty.value ? [] : tasks.slice(0, 2), callSync: { phase: stale.value ? 'error' : 'ready', lastSyncedAt: new Date().toISOString(), error: stale.value ? '合成同步失败' : null }, inspectionSummary: inspections[0],
           onBedClick: value => { bed.value = value; record('bed', value.bedCode); }, onClose: () => { bed.value = null; record('close'); }, onLocateCall: id => record('locate', id) })]),

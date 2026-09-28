@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import AlertTaskPanel from '@/components/AlertTaskPanel.vue';
 import DoorStaffCards from '@/components/DoorStaffCards.vue';
 import DashSectionHeader from '@/components/dashboard/DashSectionHeader.vue';
+import NurseDetailIcon from '@/components/dashboard/NurseDetailIcon.vue';
 import StatusHistory from '@/components/StatusHistory.vue';
 import { resolveBedStatus } from '@/core/bed-status';
 import type { AlertAckRecordMap } from '@/core/alert-ack';
@@ -18,7 +19,6 @@ const props = defineProps<{
   statusHistory: StatusHistoryEntry[];
   focusedRoomIndex?: number;
   showBackToStation?: boolean;
-  lightCommand?: boolean;
   alertTasks?: AlertTask[];
   alertAckRecords?: AlertAckRecordMap;
   inspectionRoomSummaries?: InspectionRoomSummary[];
@@ -219,20 +219,15 @@ function inspectionTime(value: string | null | undefined) {
       :ack-records="alertAckRecords"
       title="异常闭环"
       :max-items="4"
-      :compact="!lightCommand"
-      :workspace="lightCommand"
+      compact
       @locate="emit('locateAlert', $event)"
       @mark-handling="emit('markAlertHandling', $event)"
       @acknowledge="emit('acknowledgeAlert', $event)"
       @resolve="emit('resolveAlert', $event)"
-    >
-      <template v-if="lightCommand" #queue-heading>
-        <h2 class="command-section-label command-queue-heading"><small>02 /</small><span>事件队列</span><i aria-hidden="true" /></h2>
-      </template>
-    </AlertTaskPanel>
+    />
 
     <section v-if="bedMonitorRows.length" class="dash-section">
-      <DashSectionHeader title="床位监测" />
+      <div class="ward-clinical-heading"><NurseDetailIcon name="beds" /><DashSectionHeader title="床位监测" /></div>
       <ul class="monitor-list">
         <li v-for="row in bedMonitorRows" :key="row.key" class="monitor-row" :class="`monitor-row--${row.tone}`">
           <div class="monitor-row__left">
@@ -250,7 +245,7 @@ function inspectionTime(value: string | null | undefined) {
     </section>
 
     <section v-if="personnelStats.length" class="dash-section">
-      <DashSectionHeader title="人员构成" />
+      <div class="ward-clinical-heading"><NurseDetailIcon name="arrived" /><DashSectionHeader title="人员构成" /></div>
       <div class="person-grid">
         <article v-for="item in personnelStats" :key="item.key" class="person-card" :class="`person-card--${item.tone}`">
           <span class="person-card__ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -272,7 +267,7 @@ function inspectionTime(value: string | null | undefined) {
     </section>
 
     <section v-if="roomSummaries.length" class="dash-section dash-section--rooms">
-      <DashSectionHeader title="病房详情" :count="roomSummaries.length" />
+      <div class="ward-clinical-heading"><NurseDetailIcon name="environment" /><DashSectionHeader title="病房详情" :count="roomSummaries.length" /></div>
 
       <div class="room-list">
         <article
@@ -289,13 +284,17 @@ function inspectionTime(value: string | null | undefined) {
           <div class="room-card__body">
             <header class="room-card__top">
               <div class="room-card__title-block">
-                <span class="room-card__name">{{ summary.sickroomName }}</span>
+                <button type="button" class="room-card__name" :aria-label="`定位${summary.sickroomName}`" :aria-pressed="summary.roomIndex === focusedRoomIndex" @click.stop="emit('focusRoom', summary.roomIndex)">{{ summary.sickroomName }}</button>
                 <span class="room-card__priority" :class="`room-card__priority--${summary.priority}`">
                   {{ priorityLabel(summary) }}
                 </span>
               </div>
-              <span class="room-card__badge">{{ summary.occupiedBeds }}/{{ summary.totalBeds }}</span>
+              <div class="room-card__badge"><span>在院</span><strong>{{ summary.occupiedBeds }}</strong><small>/ {{ summary.totalBeds }} 床</small></div>
             </header>
+            <div v-if="summary.totalBeds" class="room-card__capacity">
+              <div class="room-card__capacity-track" aria-hidden="true"><i :style="{ width: `${summary.occupiedBeds / summary.totalBeds * 100}%` }" /></div>
+              <span>空床 <b>{{ summary.totalBeds - summary.occupiedBeds }}</b></span>
+            </div>
             <p class="room-card__status">{{ summary.statusText }}</p>
             <div
               v-if="vitalWarningsForRoom(summary.sickroomCode).length"
@@ -340,12 +339,9 @@ function inspectionTime(value: string | null | undefined) {
             </div>
 
             <template v-if="getRoom(summary.roomIndex)">
-              <DoorStaffCards
-                :staff="getRoom(summary.roomIndex)!.doorStaff"
-                primary-only
-                compact
-              />
-              <ul class="room-card__beds">
+              <div class="room-card__bed-heading"><strong>床位状态</strong><span>列表展示 · {{ getRoom(summary.roomIndex)!.beds.length }} 床</span></div>
+              <p v-if="!getRoom(summary.roomIndex)!.beds.length" class="room-card__empty">暂无床位数据</p>
+              <ul v-else class="room-card__beds">
                 <li
                   v-for="bed in getRoom(summary.roomIndex)!.beds"
                   :key="bed.bedCode"
@@ -361,6 +357,10 @@ function inspectionTime(value: string | null | undefined) {
                   <span class="bed-chip__patient">{{ patientDisplay(bed) }}</span>
                 </li>
               </ul>
+              <details class="room-card__team" @click.stop>
+                <summary><span>医护团队</span><span class="room-card__team-hint">查看人员 <i aria-hidden="true" /></span></summary>
+                <DoorStaffCards :staff="getRoom(summary.roomIndex)!.doorStaff" primary-only compact />
+              </details>
             </template>
 
             <button type="button" class="room-card__enter" @click.stop="emit('enterRoom', summary.roomIndex)">

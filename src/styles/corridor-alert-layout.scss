@@ -1,0 +1,36 @@
+// 走廊普通告警卡片使用右侧操作区；浅色时间线工作区仍由原布局管理。
+@mixin render {
+  .digital-twin[data-theme] .digital-twin__panel.digital-twin__panel--overlay .corridor-alerts {
+    container: corridor-alert-list / inline-size;
+    .alert-task:not(.alert-task--workspace) {
+      .alert-task__main { min-width: 0; }
+      .alert-task__head { flex-wrap: wrap; gap: 6px 8px; }
+      .alert-task__head strong, .alert-task__main > p { overflow-wrap: anywhere; }
+      .alert-task__meta { flex-wrap: wrap; gap: 6px 8px; }
+      .alert-task__recovery-tip { font-size: 14px !important; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; }
+    }
+  }
+
+  @container corridor-alert-list (min-width: 420px) {
+    .digital-twin[data-theme] .digital-twin__panel.digital-twin__panel--overlay .corridor-alerts .alert-task:not(.alert-task--workspace) {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) 144px !important;
+      grid-template-rows: auto !important; min-height: 0;
+      align-items: center; gap: 16px;
+      .alert-task__main { width: auto; padding: 0; }
+      .alert-task__main > p { margin: 10px 0; }
+      .alert-task__actions {
+        display: flex !important; flex-direction: column; align-items: stretch;
+        justify-content: center; gap: 8px; min-width: 0; margin: 0;
+        padding: 0 0 0 14px !important; border-top: 0 !important;
+        border-left: 1px solid var(--sidebar-line, #b5d9ed) !important;
+      }
+      .alert-task__actions > button, .alert-task__unlocated {
+        box-sizing: border-box; width: 100%; min-height: 40px;
+        justify-content: center; margin: 0; padding: 7px 8px;
+        white-space: normal; font-size: var(--sidebar-font-caption, 14px) !important;
+      }
+      .alert-task__recovery-tip { width: 100%; text-align: left; }
+    }
+  }
+}

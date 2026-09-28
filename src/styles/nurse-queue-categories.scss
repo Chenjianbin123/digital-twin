@@ -1,0 +1,52 @@
+// 分类卡使用独立主题 token，避免全局按钮背景与文字规则覆盖统计层级。
+@mixin render {
+  .digital-twin[data-theme='dark'] .nurse-workspace .queue-categories {
+    --category-surface: #102b40;
+    --category-hover: #173d55;
+    --category-selected: #19465f;
+    --category-ink: #edf7ff;
+    --category-muted: #b4ccdf;
+    --category-accent: #73d4f4;
+    --category-line: #365870;
+  }
+  .digital-twin[data-theme='light'] .nurse-workspace .queue-categories {
+    --category-surface: #f1f9ff;
+    --category-hover: #e5f4ff;
+    --category-selected: #dff2ff;
+    --category-ink: #0a3565;
+    --category-muted: #456680;
+    --category-accent: #007baa;
+    --category-line: #b9ddef;
+  }
+  .digital-twin[data-theme] .nurse-panel.nurse-workspace .alert-task-panel--command-queue .queue-categories {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px;
+    button {
+      position: relative; display: flex; align-items: center; min-width: 0; min-height: 84px; gap: 10px; padding: 12px;
+      text-align: left; cursor: pointer; border: 1px solid var(--category-line) !important; border-radius: 8px !important;
+      background: var(--category-surface) !important; color: var(--category-ink) !important;
+      box-shadow: none !important; transform: none; transition: background-color .15s ease, border-color .15s ease;
+      &::after {
+        content: ''; position: absolute; right: 7px; bottom: 7px; width: 9px; height: 6px;
+        border-right: 1px solid var(--category-accent); border-bottom: 1px solid var(--category-accent); opacity: .45; pointer-events: none;
+      }
+      &[aria-pressed='true'] {
+        background: var(--category-selected) !important; border-color: var(--category-accent) !important;
+        box-shadow: inset 0 -3px var(--category-accent) !important;
+      }
+      &:focus-visible { outline: 2px solid var(--category-accent) !important; outline-offset: -4px !important; }
+    }
+    button > span:not(.nurse-workspace-icon) { min-width: 0; font-size: 14px; line-height: 1.5; font-weight: 600; color: var(--category-muted) !important; }
+    strong { display: block; margin-top: 2px; font: 700 28px/1.1 'Bahnschrift', 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; color: var(--category-ink) !important; text-shadow: none; overflow-wrap: anywhere; }
+    @media (hover: hover) {
+      button:hover:not(:disabled) { background: var(--category-hover) !important; border-color: var(--category-accent) !important; }
+      button[aria-pressed='true']:hover { background: var(--category-selected) !important; }
+    }
+    @container nurse-panel (max-width: 440px) {
+      gap: 6px;
+      button { flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 8px; }
+      button > span:not(.nurse-workspace-icon) { font-size: 13px; }
+      strong { font-size: 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+  }
+}

@@ -4,6 +4,7 @@ async page => {
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   const url = 'http://127.0.0.1:5173/scripts/fixtures/nurse-light-command.html';
   await page.goto(url);
+  await page.getByRole('tablist', { name: '护士站工作区' }).getByRole('tab', { name: /^待办/ }).click();
   await page.locator('.alert-task').first().waitFor();
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
   const stats = () => page.locator('.command-telemetry dd').allTextContents();

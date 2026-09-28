@@ -17,9 +17,9 @@ const emit = defineEmits<{
 }>();
 
 const sceneItems = computed(() => [
-  { key: 'nurse-station', label: '护士站', icon: 'station', type: 'nurse-station' as const },
-  { key: 'ward', label: '病房走廊', icon: 'ward', type: 'ward' as const },
-  { key: 'ward-interior', label: '病房内', icon: 'interior', type: 'ward-interior' as const },
+  { key: 'nurse-station', label: '护士站', caption: 'NURSE STATION', icon: 'station', type: 'nurse-station' as const },
+  { key: 'ward', label: '病房走廊', caption: 'CORRIDOR', icon: 'ward', type: 'ward' as const },
+  { key: 'ward-interior', label: '病房内', caption: 'WARD ROOM', icon: 'interior', type: 'ward-interior' as const },
 ]);
 
 const interiorItems = computed(() => [
@@ -29,7 +29,7 @@ const interiorItems = computed(() => [
 </script>
 
 <template>
-  <nav class="dash-bottom" :class="{ 'dash-bottom--compact': props.compact }" aria-label="场景切换">
+  <nav class="dash-bottom" :data-scene="props.sceneType" :class="{ 'dash-bottom--compact': props.compact }" aria-label="场景切换">
     <div class="dash-bottom__main">
       <button
         v-for="item in sceneItems"
@@ -48,7 +48,7 @@ const interiorItems = computed(() => [
           <path v-else-if="item.icon === 'ward'" d="M3 21V3h18v18M8 21V8h8v13M3 3l5 5m13-5-5 5M11 15h1"/>
           <path v-else d="M3 20V6m0 9h18v5M3 11h6v4m0-5h10a2 2 0 0 1 2 2v3M6 8h1"/>
         </svg>
-        <span class="dash-bottom__label">{{ item.label }}</span>
+        <span class="dash-bottom__caption"><span class="dash-bottom__label">{{ item.label }}</span><small aria-hidden="true">{{ item.caption }}</small></span>
       </button>
     </div>
 

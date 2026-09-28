@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, useId } from 'vue';
 import { taskDisplayTitle, taskPriorityLabel } from '@/core/task-presentation';
 import DashSectionHeader from '@/components/dashboard/DashSectionHeader.vue';
 import TaskTimelineTime from '@/components/dashboard/TaskTimelineTime.vue';
+import NurseWorkspaceIcon from '@/components/dashboard/NurseWorkspaceIcon.vue';
 import {
   formatAlertWaitingTime,
   formatBedLabel,
@@ -51,7 +52,7 @@ const taskCounts = computed(() => ({
   all: props.tasks.length,
 }));
 const category = ref("all");
-const categories = [{ key: "call", label: "患者呼叫" }, { key: "infusion", label: "输液待办" }, { key: "other", label: "其他待办" }];
+const categories = [{ key: "call", label: "患者呼叫" }, { key: "infusion", label: "输液待办" }, { key: "other", label: "其他待办" }] as const;
 function categoryOf(task: AlertTask) { return task.type === "call" || task.type === "infusion" ? task.type : "other"; }
 const categoryCounts = computed(() => categories.map(item => ({ ...item, count: props.tasks.filter(task => task.status === "pending" && categoryOf(task) === item.key).length })));
 function selectCategory(key: string) { category.value = category.value === key ? "all" : key; showAllTasks.value = false; }
@@ -252,8 +253,8 @@ function taskStatusText(task: AlertTask) {
     </div>
 
     <div v-if="commandQueue" class="queue-categories" aria-label="按待办类型筛选">
-      <button v-for="item in categoryCounts" :key="item.key" :aria-pressed="category === item.key" @click="selectCategory(item.key)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path v-if="item.key === 'call'" d="m5 3 4 1 1 5-3 2a15 15 0 0 0 6 6l2-3 5 1 1 4c-1 5-8 2-12-2S2 6 5 3Z"/><path v-else-if="item.key === 'infusion'" d="M9 3h6m-3 0v3M7 6h10v10a5 5 0 0 1-10 0ZM12 21v3M7 10h10"/><path v-else d="M7 3h10v3h3v16H4V6h3Zm0 0v5h10V3M8 12h8m-8 5h8"/></svg>
+      <button v-for="item in categoryCounts" :key="item.key" type="button" :aria-pressed="category === item.key" @click="selectCategory(item.key)">
+        <NurseWorkspaceIcon :name="item.key" />
         <span>{{ item.label }}<strong>{{ item.count }}</strong></span>
       </button>
     </div>
@@ -427,7 +428,6 @@ function taskStatusText(task: AlertTask) {
 .queue-categories { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
 .queue-categories button { display:flex; align-items:center; gap:8px; padding:12px; border:1px solid #b7d7e4; border-radius:8px; background:#e9f5fa; color:#285369; cursor:pointer; }
 .queue-categories button[aria-pressed='true'] { border-color:#2688ab; }
-.queue-categories svg { width:24px; height:24px; flex-shrink:0; }
 .queue-categories span { font-size:13px; text-align:left; }
 .queue-categories strong { display:block; font-size:24px; }
 .queue-list-heading { display:flex; justify-content:space-between; gap:8px; margin:14px 0; }

@@ -104,10 +104,10 @@
         &:hover:not(:disabled) { background: #e4f5ff !important; }
       }
       button[aria-selected='true'] {
-        color: #0078ac !important; border-color: #74d0f0 !important; border-right: 0;
+        color: #00678f !important; border-color: #74d0f0 !important; border-right: 0;
         background: linear-gradient(110deg,#d9f4ff,#effbff) !important; box-shadow: inset 0 -4px #00a9d9 !important;
         clip-path: polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%);
-        span, svg { color: #0078ac !important; }
+        span, svg { color: inherit !important; }
         &::after { display: none; }
       }
     }

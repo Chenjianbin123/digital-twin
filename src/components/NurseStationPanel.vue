@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch, useId } from "vue";
+import { computed, ref, watch, useId, nextTick } from "vue";
 import AlertTaskPanel from "@/components/AlertTaskPanel.vue";
 import NurseCommandFrame from "@/components/dashboard/NurseCommandFrame.vue";
-import DoorStaffCards from "@/components/DoorStaffCards.vue";
+import NurseWorkspaceIcon from "@/components/dashboard/NurseWorkspaceIcon.vue";
+import StaffAvatar from "@/components/StaffAvatar.vue";
+import NurseDetailIcon from "@/components/dashboard/NurseDetailIcon.vue";
+import { buildMainStaffList } from "@/core/door-staff";
 import DashSectionHeader from "@/components/dashboard/DashSectionHeader.vue";
 import NurseStationMetricChart from "@/components/dashboard/NurseStationMetricChart.vue";
+import NurseStationOverviewCharts from "@/components/dashboard/NurseStationOverviewCharts.vue";
 import type { AlertAckRecordMap } from "@/core/alert-ack";
 import type { NurseStationViewModel } from "@/core/nurse-station-view-model";
 import type { RoomPriority, RoomSummary } from "@/core/area-summary";
@@ -24,9 +28,9 @@ const props = defineProps<{
   wallboard?: boolean;
 }>();
 
-const workspaceTab = ref<'tasks' | 'overview' | 'inspection'>('tasks');
+const workspaceTab = ref<'tasks' | 'overview' | 'inspection'>('overview');
 const workspaceId = useId();
-const workspaceTabs = [{ key: 'tasks', label: '待办' }, { key: 'overview', label: '概览' }, { key: 'inspection', label: '巡视' }] as const;
+const workspaceTabs = [{ key: 'overview', label: '概览' }, { key: 'tasks', label: '待办' }, { key: 'inspection', label: '巡视' }] as const;
 const activeWorkspaceTab = computed(() => props.wallboard ? 'overview' : workspaceTab.value);
 const stationArea = computed(() => props.viewModel.area);
 const stationRooms = computed(() => props.viewModel.roomSummaries);
@@ -39,7 +43,7 @@ const inspectionSync = computed(() => props.viewModel.inspectionSync);
 const supportsRealtimeNursingData = computed(() => props.dataSource == null || props.dataSource === "remote");
 const pendingTaskCount = computed(() => stationTasks.value.filter(task => task.status === 'pending').length);
 const handlingTaskCount = computed(() => stationTasks.value.filter(task => task.status === 'handling').length);
-watch(() => stationArea.value.areaCode, () => { workspaceTab.value = 'tasks'; });
+watch(() => stationArea.value.areaCode, () => { workspaceTab.value = 'overview'; });
 function onWorkspaceKeydown(event: KeyboardEvent, index: number) {
   let next = index;
   if (event.key === 'ArrowRight') next = (index + 1) % workspaceTabs.length;
@@ -52,6 +56,12 @@ function onWorkspaceKeydown(event: KeyboardEvent, index: number) {
   (event.currentTarget as HTMLElement).parentElement?.querySelectorAll<HTMLButtonElement>('button')[next]?.focus();
 }
 const alertFilter = ref<"active" | "handling" | "all">("active");
+async function openChartTasks() {
+  workspaceTab.value = 'tasks';
+  alertFilter.value = 'active';
+  await nextTick();
+  document.getElementById(`${workspaceId}-tasks`)?.focus();
+}
 
 const emit = defineEmits<{
   focusRoom: [index: number];
@@ -65,6 +75,7 @@ const emit = defineEmits<{
 const primaryWard = computed<TwinWardEntity | null>(
   () => stationArea.value.rooms[0] ?? null,
 );
+const dutyStaff = computed(() => buildMainStaffList(primaryWard.value?.doorStaff, { primaryOnly: true }));
 
 const metrics = computed(() => props.viewModel.metrics);
 const occupancyRate = computed(() => {
@@ -144,7 +155,6 @@ const deviceAttentionDetail = computed(() => {
 
 const operationRows = computed(() => {
   const waitingTasks = stationTasks.value.filter((task) => task.type !== "infusion").length;
-  const pressure = Math.min(100, waitingTasks * 18);
 
   return [
     {
@@ -161,9 +171,9 @@ const operationRows = computed(() => {
     {
       key: "device",
       label: "设备在线率",
-      value: `${metrics.value.deviceHealthRate}%`,
+      value: metrics.value.deviceHealthRate == null ? '--' : `${metrics.value.deviceHealthRate}%`,
       sub: `${metrics.value.deviceOnline}/${metrics.value.deviceTotal} 台在线`,
-      percent: metrics.value.deviceHealthRate ?? 0,
+      percent: metrics.value.deviceHealthRate,
       tone: metrics.value.offlineBeds ? "warn" : "green",
     },
     {
@@ -177,7 +187,7 @@ const operationRows = computed(() => {
         : metrics.value.infusingCount
           ? `${metrics.value.infusingCount} 床输液待巡视`
           : "无紧急呼叫",
-      percent: pressure,
+      percent: null,
       tone: waitingTasks ? "alert" : "blue",
     },
   ];
@@ -250,6 +260,16 @@ const statusTone = computed(() =>
 );
 
 const displayedShiftHandoff = computed(() => props.viewModel.shiftHandoff);
+const handoffSyncNote = computed(() => displayedShiftHandoff.value.items.find(text => text === '实时数据已同步'));
+// Preserve every source message, including failures and future unknown items.
+const handoffRows = computed(() => displayedShiftHandoff.value.items.filter(text => text !== handoffSyncNote.value).map(text => {
+  const match = text.match(/^(.+?)\s+(\d+)\s+(项|床|间)$/);
+  return {
+    text, label: match?.[1] ?? text, count: match?.[2], unit: match?.[3],
+    icon: text.includes('呼叫') ? 'call' : text.includes('输液') ? 'infusion' : 'warning',
+    tone: match ? (text.includes('呼叫') || text.includes('体征') ? 'alert' : text.includes('输液') ? 'accent' : 'warning') : 'note',
+  };
+}));
 
 function dataHealthStatusLabel(status: DataStatus) {
   if (status === "ready") return "正常";
@@ -521,11 +541,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
     <div v-if="!wallboard" class="workspace-tabs" role="tablist" aria-label="护士站工作区">
       <button v-for="(tab, index) in workspaceTabs" :key="tab.key" :id="`${workspaceId}-${tab.key}`" type="button" role="tab" :aria-selected="activeWorkspaceTab === tab.key" :aria-controls="`${workspaceId}-content-${tab.key}`" :tabindex="activeWorkspaceTab === tab.key ? 0 : -1" @click="workspaceTab = tab.key" @keydown="onWorkspaceKeydown($event, index)">
-        <svg class="workspace-tabs__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <template v-if="tab.key === 'tasks'"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2h6v2M9 10h6M9 14h6M9 18h3" /></template>
-          <template v-else-if="tab.key === 'overview'"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 21v-5m3 5v-8m4 8v-11" /></template>
-          <template v-else><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z" /><path d="m8 12 3 3 5-6" /></template>
-        </svg>
+        <NurseWorkspaceIcon :name="tab.key" />
         <span class="workspace-tabs__label">{{ tab.label }}</span>
         <span v-if="tab.key === 'tasks' && pendingTaskCount" class="workspace-tabs__count">{{ pendingTaskCount }}</span>
       </button>
@@ -552,10 +568,12 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
 
 
       </div>
-      <div class="overview-workspace" v-show="activeWorkspaceTab === 'overview'" :id="`${workspaceId}-content-overview`" :role="wallboard ? 'region' : 'tabpanel'" :aria-labelledby="wallboard ? undefined : `${workspaceId}-overview`" :aria-label="wallboard ? '病区展示概览' : undefined" tabindex="0">
-    <NurseStationMetricChart
-      :kpis="stationKpis"
-      :realtime-status="viewModel.realtime"
+      <div class="overview-workspace clinical-overview" v-show="activeWorkspaceTab === 'overview'" :id="`${workspaceId}-content-overview`" :role="wallboard ? 'region' : 'tabpanel'" :aria-labelledby="wallboard ? undefined : `${workspaceId}-overview`" :aria-label="wallboard ? '病区展示概览' : undefined" tabindex="0">
+    <NurseStationOverviewCharts
+      v-if="activeWorkspaceTab === 'overview'"
+      :view-model="viewModel"
+      :wallboard="wallboard"
+      @open-tasks="openChartTasks"
     />
 
     <section
@@ -565,10 +583,13 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       <div class="handoff-card__head">
         <span class="station-section-title"><svg class="station-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h15l-4-4M20 17H5l4 4M19 7l-4 4M5 17l4-4"/></svg>护理交班</span>
         <strong>{{ displayedShiftHandoff.title }}</strong>
+        <span v-if="handoffSyncNote" class="handoff-card__sync">{{ handoffSyncNote }}</span>
       </div>
       <ul>
-        <li v-for="item in displayedShiftHandoff.items" :key="item">
-          {{ item }}
+        <li v-for="item in handoffRows" :key="item.text" :data-tone="item.tone">
+          <NurseDetailIcon v-if="item.count" :name="item.icon" />
+          <span>{{ item.label }}</span>
+          <strong v-if="item.count">{{ item.count }} <small>{{ item.unit }}</small></strong>
         </li>
       </ul>
     </section>
@@ -580,6 +601,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
       </div>
       <ul>
         <li v-for="item in dataHealth.items" :key="item.key">
+          <NurseDetailIcon :name="item.key" />
           <span>{{ item.label }}</span>
           <strong :class="`data-health__status--${item.status}`">{{
             dataHealthStatusLabel(item.status)
@@ -587,27 +609,31 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
           <small>{{ item.detail }}</small>
         </li>
       </ul>
-      <div class="data-health__freshness" aria-label="数据源同步时间">
-        <div
-          v-for="item in dataFreshnessItems"
-          :key="item.key"
-          class="data-health__freshness-item"
-        >
-          <span>{{ item.label }}</span>
-          <strong :class="`data-health__status--${item.status}`">
-            {{ dataHealthStatusLabel(item.status) }}
-          </strong>
-          <small>{{ freshnessTimeLabel(item.syncedAt) }}</small>
+      <details class="clinical-sync">
+        <summary>数据源同步详情</summary>
+        <div class="data-health__freshness" aria-label="数据源同步时间">
+          <div
+            v-for="item in dataFreshnessItems"
+            :key="item.key"
+            class="data-health__freshness-item"
+          >
+            <span>{{ item.label }}</span>
+            <strong :class="`data-health__status--${item.status}`">
+              {{ dataHealthStatusLabel(item.status) }}
+            </strong>
+            <small>{{ freshnessTimeLabel(item.syncedAt) }}</small>
+          </div>
         </div>
-      </div>
+      </details>
       <p v-if="!dataHealth.canDeclareNormal">
         数据未完全同步时，不能据此判断病区无异常，请结合现场设备确认。
       </p>
     </section>
 
-    <details class="nurse-panel__details">
+    <details class="nurse-panel__details" open>
       <summary>运行详情</summary>
       <div class="nurse-panel__details-body">
+        <NurseStationMetricChart :kpis="stationKpis" :realtime-status="viewModel.realtime" />
         <section class="surface-panel">
           <DashSectionHeader title="运行态势" />
           <div class="ops-list">
@@ -615,16 +641,17 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
               v-for="row in operationRows"
               :key="row.key"
               class="ops-row"
-              :class="`ops-row--${row.tone}`"
+              :class="[`ops-row--${row.tone}`, { 'ops-row--count': row.key === 'pressure' }]"
             >
+              <NurseDetailIcon :name="row.key === 'occupancy' ? 'beds' : row.key === 'device' ? 'devices' : 'warning'" />
               <div class="ops-row__head">
                 <span>{{ row.label }}</span
                 ><strong>{{ row.value }}</strong>
               </div>
-              <div class="ops-row__track">
+              <div v-if="row.percent != null" class="ops-row__track" aria-hidden="true">
                 <i
                   :style="{
-                    width: `${Math.max(row.percent, row.percent > 0 ? 5 : 0)}%`,
+                    width: `${Math.max(0, Math.min(100, row.percent))}%`,
                   }"
                 />
               </div>
@@ -637,6 +664,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
           <DashSectionHeader title="设备与环境" />
           <div class="env-grid">
             <article v-for="item in envCards" :key="item.key" class="env-card">
+              <NurseDetailIcon :name="item.key === 'env' ? 'events' : item.key" />
               <span>{{ item.label }}</span
               ><strong
                 >{{ item.value }}<small>{{ item.unit }}</small></strong
@@ -644,7 +672,7 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
             </article>
           </div>
           <div class="device-line">
-            <span>设备在线口径</span>
+            <span><NurseDetailIcon name="settings" />设备在线口径</span>
             <strong
               >{{ metrics.deviceOnline }}/{{ metrics.deviceTotal }} 台</strong
             >
@@ -660,17 +688,18 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
               :key="item.key"
               class="env-card"
             >
+              <NurseDetailIcon :name="item.key" />
               <span>{{ item.label }}</span
               ><strong>{{ item.value }}</strong>
             </article>
           </div>
-          <div class="device-line">
-            <span>响应指标</span>
+          <div class="device-line" :data-state="supportsRealtimeNursingData ? responseSync.phase : 'unsupported'">
+            <span><NurseDetailIcon name="activity" />响应指标</span>
             <strong>{{ responseSourceLabel }}</strong>
             <em>{{ responseSourceDetail }}</em>
           </div>
-          <div class="device-line">
-            <span>实时事件</span>
+          <div class="device-line" :data-state="supportsRealtimeNursingData ? eventSync.phase : 'unsupported'">
+            <span><NurseDetailIcon name="events" />实时事件</span>
             <strong>{{ eventSourceLabel }}</strong>
             <em>{{ eventSourceDetail }}</em>
           </div>
@@ -680,16 +709,16 @@ function setAlertFilter(filter: "active" | "handling" | "all") {
         </section>
 
         <section
-          v-if="primaryWard?.doorStaff || primaryWard?.doorDeptUsers?.length"
-          class="surface-panel"
+          v-if="dutyStaff.length"
+          class="surface-panel surface-panel--staff"
         >
           <DashSectionHeader title="值班医护" />
-          <DoorStaffCards
-            :staff="primaryWard?.doorStaff"
-            :dept-users="primaryWard?.doorDeptUsers"
-            primary-only
-            compact
-          />
+          <ul class="clinical-staff">
+            <li v-for="person in dutyStaff" :key="person.roleKey">
+              <StaffAvatar :pic="person.pic" :name="person.name" size="md" :role="person.roleKey === 'areaHeadNurse' ? 'nurse' : 'director'" />
+              <span>{{ person.role }}</span><strong>{{ person.name }}</strong>
+            </li>
+          </ul>
         </section>
 
         <section class="surface-panel surface-panel--feed">

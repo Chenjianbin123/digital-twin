@@ -593,7 +593,6 @@ onBeforeUnmount(() => {
           <div class="digital-twin__panel-body">
             <AreaInfoPanel
               v-if="isWard"
-              :light-command="theme === 'light'"
               :area="area"
               :room-summaries="roomSummaries"
               :status-history="statusHistory"

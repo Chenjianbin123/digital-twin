@@ -11,7 +11,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="ward-command-workspace" :class="`ward-command-workspace--${kind}`">
+  <div class="ward-command-workspace ward-clinical" :class="`ward-command-workspace--${kind}`">
     <NurseCommandFrame />
     <header class="ward-command-hero">
       <div class="ward-command-eyebrow"><span>01 / 工作台</span><i aria-hidden="true" /></div>

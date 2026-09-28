@@ -1,0 +1,247 @@
+@use './clinical-tokens' as clinical;
+// One theme boundary for the seven clinical overview modules, after legacy themes.
+@mixin render {
+  // The old light-only frame reserved different gutters, changing every card's geometry.
+  .digital-twin[data-theme] .nurse-panel.nurse-workspace.nurse-workspace {
+    @include clinical.dark;
+    padding: 0 !important; border: 1px solid var(--clinical-line) !important; border-radius: 14px !important;
+    background: var(--clinical-surface) !important;
+    > .command-frame { display: none !important; }
+    > .station-hero { padding: 16px !important; margin: 0; }
+    > .workspace-tabs { padding: 8px 12px; margin: 0; }
+    > .workspace-scroll { padding: 12px !important; }
+  }
+  .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace.nurse-workspace { @include clinical.light; }
+  // Keep tab states together so component/HMR ordering cannot split text and surface colors.
+  .digital-twin[data-theme] .nurse-panel.nurse-workspace.nurse-workspace > .workspace-tabs.workspace-tabs {
+    margin: 4px 12px 0 !important; padding: 5px !important; gap: 6px;
+    border: 1px solid var(--clinical-line) !important; border-radius: 14px !important;
+    background: var(--clinical-raised) !important; clip-path: none !important;
+    box-shadow: inset 0 1px 2px var(--clinical-shadow) !important;
+    > button {
+      flex-direction: row !important;
+      min-height: 56px; padding: 8px 10px; gap: 9px; border: 1px solid transparent !important;
+      border-radius: 10px !important; clip-path: none !important;
+      background: transparent !important; color: var(--clinical-muted) !important;
+      font-size: 18px !important; font-weight: 600; line-height: 1.4; text-shadow: none !important;
+      box-shadow: none !important; transform: none !important;
+      transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+      :is(span, svg) { color: inherit !important; }
+      &::after { display: none; }
+      &[aria-selected='true'] {
+        color: var(--clinical-accent) !important; font-weight: 700;
+        border-color: color-mix(in srgb, var(--clinical-accent) 40%, var(--clinical-line)) !important;
+        background: linear-gradient(145deg, var(--clinical-highlight), transparent), var(--clinical-surface) !important;
+        box-shadow: 0 3px 8px var(--clinical-shadow), inset 0 1px 0 var(--clinical-highlight) !important;
+        &::after { content: ''; display: block; position: absolute; left: 28%; right: 28%; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--clinical-accent); box-shadow: none; }
+      }
+      &:focus-visible { outline: 2px solid var(--clinical-accent) !important; outline-offset: 2px; }
+      &:active:not(:disabled) { box-shadow: inset 0 2px 4px var(--clinical-shadow) !important; }
+    }
+    .nurse-workspace-icon {
+      width: 34px; height: 34px; flex: 0 0 34px; border-radius: 9px;
+      border-color: var(--clinical-line) !important; background: var(--clinical-surface) !important;
+      box-shadow: inset 0 1px 0 var(--clinical-highlight) !important;
+      &::after { display: none; }
+      svg { width: 21px; height: 21px; }
+    }
+    .workspace-tabs__count { display: none; }
+    @media (hover: hover) {
+      > button:hover:not(:disabled) { color: var(--clinical-accent) !important; background: color-mix(in srgb, var(--clinical-accent) 9%, var(--clinical-surface)) !important; border-color: var(--clinical-line) !important; }
+    }
+    @container nurse-panel (max-width: 420px) {
+      margin-inline: 10px !important; gap: 4px;
+      > button { padding: 8px 4px; gap: 6px; font-size: 16px !important; min-height: 50px; }
+      .nurse-workspace-icon { width: 28px; height: 28px; flex-basis: 28px; }
+      .nurse-workspace-icon svg { width: 18px; height: 18px; }
+    }
+    @media (prefers-reduced-motion: reduce) { > button { transition: none; } }
+  }
+  .digital-twin[data-theme] .nurse-panel.nurse-workspace .clinical-overview {
+    @include clinical.dark;
+    font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
+    font-size: 14px; line-height: 1.4;
+    gap: 10px !important;
+
+    :is(.handoff-card, .data-health, .surface-panel) {
+      @include clinical.card;
+      margin: 0;
+    }
+    :is(.station-section-title, .dash-head__title) { color: var(--clinical-ink) !important; font-size: 18px !important; font-weight: 700; line-height: 1.5; text-shadow: none; }
+    :is(.handoff-card__head, .data-health__head, .dash-head) { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+    :is(.handoff-card, .data-health) { padding: 14px !important; }
+    :is(.handoff-card__head, .data-health__head) { justify-content: flex-start; gap: 8px 10px; margin-bottom: 12px; }
+    .station-section-icon, .dash-head__mark { display: none; }
+    .dash-head__line { background: linear-gradient(90deg, var(--clinical-line), transparent); }
+    .dash-head__count { color: var(--clinical-accent); border-color: var(--clinical-line); background: var(--clinical-raised); }
+    :is(.handoff-card__head, .data-health__head) > strong {
+      font-size: 13px !important; font-weight: 600; line-height: 1.7; padding: 3px 10px; border-radius: 20px;
+      color: var(--clinical-warn) !important; background: color-mix(in srgb, var(--clinical-warn) 12%, transparent) !important;
+    }
+    .handoff-card--normal .handoff-card__head > strong, .data-health--ready .data-health__head > strong { color: var(--clinical-good) !important; background: color-mix(in srgb, var(--clinical-good) 12%, transparent) !important; }
+    .data-health--error .data-health__head > strong { color: var(--clinical-alert) !important; }
+    .handoff-card__sync { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--clinical-muted) !important; font-size: 14px !important; font-weight: 400; line-height: 1.6; }
+    .handoff-card__sync::before { content: ''; width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--clinical-good); box-shadow: 0 0 0 2px color-mix(in srgb,var(--clinical-good) 10%,transparent); }
+    .clinical-icon { width: 24px; height: 24px; flex-shrink: 0; color: var(--clinical-accent); }
+
+    .handoff-card ul { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .handoff-card li {
+      display: grid; grid-template-columns: 42px minmax(0,1fr); align-items: center; gap: 0 12px;
+      padding: 12px; min-height: 92px; border: 1px solid var(--clinical-line) !important; border-radius: 10px !important;
+      background: var(--clinical-raised) !important; color: var(--clinical-muted) !important; min-width: 0; font-size: 15px !important; line-height: 1.65;
+      box-shadow: inset 0 1px 0 var(--clinical-highlight);
+      &::before { display: none; }
+      .clinical-icon { @include clinical.icon-tile; grid-row: 1 / 3; width: 42px; height: 42px; padding: 9px; }
+      > span { color: var(--clinical-muted) !important; font-weight: 500 !important; }
+      strong { color: var(--clinical-accent) !important; font-size: 30px; font-weight: 700; line-height: 1.3; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+      small { color: var(--clinical-ink) !important; font-size: 14px; font-weight: 500; }
+      &[data-tone='alert'] strong { color: var(--clinical-alert) !important; }
+      &[data-tone='warning'] strong { color: var(--clinical-warn) !important; }
+      &[data-tone='note'] { grid-column: 1 / -1; display: block; min-height: 0; background: transparent !important; border: 0 !important; padding: 4px 0; font-size: 14px !important; box-shadow: none; }
+    }
+
+    .data-health ul { display: grid; grid-template-columns: minmax(0,1fr); margin: 0; padding: 0; gap: 0; border: 0; background: transparent; }
+    .handoff-card ul:has(> li:first-child:not([data-tone='note']) + li[data-tone='note']) > li:first-child { grid-column: 1 / -1; }
+    .data-health li {
+      display: grid; grid-template-columns: 32px minmax(0,1fr) auto; align-items: center; gap: 3px 10px;
+      padding: 12px 6px; min-height: 72px; line-height: 1.6; background: transparent !important; border: 0; border-color: var(--clinical-line) !important; border-radius: 0;
+      + li { border-top: 1px solid var(--clinical-line); }
+      > .clinical-icon { grid-column: 1; grid-row: 1 / 3; }
+      > span { grid-column: 2; grid-row: 1; font-size: 16px !important; font-weight: 700; color: var(--clinical-ink) !important; }
+      > small { grid-column: 2; grid-row: 2; font-size: 14px !important; line-height: 1.6; color: var(--clinical-muted) !important; text-align: left; margin: 0; overflow-wrap: anywhere; }
+      > strong { grid-column: 3; grid-row: 1 / 3; min-width: 84px; text-align: center; }
+    }
+    :is(.data-health li, .data-health__freshness-item) > strong {
+      color: var(--clinical-warn) !important; background: color-mix(in srgb, var(--clinical-warn) 12%, transparent) !important;
+      border: 1px solid color-mix(in srgb, var(--clinical-warn) 25%, transparent); border-radius: 20px; padding: 3px 10px; margin: 0;
+      font-size: 13px !important; font-weight: 600; line-height: 1.7; white-space: nowrap; width: fit-content;
+      &::before { display: none; }
+      &.data-health__status--ready { color: var(--clinical-good) !important; background: color-mix(in srgb, var(--clinical-good) 12%, transparent) !important; border-color: color-mix(in srgb, var(--clinical-good) 25%, transparent); }
+      &.data-health__status--loading { color: var(--clinical-accent) !important; background: var(--clinical-raised) !important; border-color: var(--clinical-line); }
+      &.data-health__status--error { color: var(--clinical-alert) !important; background: color-mix(in srgb, var(--clinical-alert) 10%, transparent) !important; border-color: color-mix(in srgb, var(--clinical-alert) 25%, transparent); }
+    }
+    .clinical-sync { margin-top: 8px; border-top: 1px solid var(--clinical-line); }
+    .clinical-sync > summary { padding: 12px 0 4px; min-height: 44px; cursor: pointer; font-size: 15px; line-height: 1.7; color: var(--clinical-muted); }
+    .data-health__freshness { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 0; padding-top: 12px; }
+    .data-health__freshness-item { grid-template-columns: minmax(0,1fr) auto; background: var(--clinical-raised) !important; border-color: var(--clinical-line) !important; padding: 10px; }
+    .data-health__freshness-item > span { font-size: 14px !important; line-height: 1.7; color: var(--clinical-ink) !important; }
+    .data-health__freshness-item > small { font-size: 13px !important; line-height: 1.7; color: var(--clinical-muted) !important; }
+    .data-health > p { color: var(--clinical-warn) !important; background: color-mix(in srgb,var(--clinical-warn) 7%, transparent) !important; border: 0 !important; border-left: 2px solid var(--clinical-warn) !important; border-radius: 6px; padding: 10px 12px; margin: 12px 0 0; font-size: 14px !important; font-weight: 600 !important; line-height: 1.8; }
+
+    .nurse-panel__details { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0; }
+    .nurse-panel__details > summary { padding: 8px 0 12px; font-size: 14px !important; color: var(--clinical-muted); }
+    .nurse-panel__details-body { padding: 0; display: grid; gap: 14px; }
+    .nurse-panel__details-body .surface-panel { margin: 0; padding: 14px !important; font-size: 15px; line-height: 1.6; }
+    .surface-panel .dash-head { margin-bottom: 12px; }
+    .surface-panel .dash-head__title { font-size: 18px !important; line-height: 1.5; }
+    .ops-list { display: grid; gap: 0; }
+    .ops-row {
+      display: grid; grid-template-columns: 24px minmax(0,1fr) minmax(80px,1fr); gap: 6px 10px; align-items: center;
+      padding: 10px 4px; min-height: 48px; background: transparent !important; border: 0; box-shadow: none;
+      + .ops-row { border-top: 1px solid var(--clinical-line); }
+      > .clinical-icon { grid-column: 1; grid-row: 1; }
+    }
+    .ops-row__head { grid-column: 2 / -1; grid-row: 1; font-size: 15px; color: var(--clinical-ink) !important; font-weight: 600; }
+    .ops-row__head > span { color: var(--clinical-ink) !important; font-weight: 600; }
+    .ops-row__head strong { font-size: 22px; line-height: 1.4; color: var(--clinical-accent) !important; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ops-row__track { grid-column: 2; grid-row: 2; background: var(--clinical-track) !important; height: 8px; margin: 0; border-radius: 8px; }
+    .ops-row__track i { background: linear-gradient(90deg,#079fed,#30d3ee) !important; box-shadow: none; }
+    .ops-row--green .ops-row__track i { background: linear-gradient(90deg,#00b4ee,#35d1fa) !important; }
+    .ops-row--warn .ops-row__track i { background: var(--clinical-warn) !important; }
+    .ops-row p { grid-column: 3; grid-row: 2; margin: 0; text-align: right; font-size: 14px; line-height: 1.6; color: var(--clinical-muted) !important; }
+    .ops-row--count .ops-row__head strong { font-size: 28px; }
+    .ops-row--count.ops-row--alert .ops-row__head strong { color: var(--clinical-alert) !important; }
+    .ops-row--count p { grid-column: 2 / -1; text-align: left; }
+    .ops-row--count.ops-row--alert > .clinical-icon { color: var(--clinical-alert); }
+    @container nurse-panel (min-width: 560px) {
+      .ops-row { grid-template-columns: 24px 80px minmax(40px,1fr) auto auto; gap: 8px; }
+      .ops-row__head { display: contents; }
+      .ops-row__head > span { grid-column: 2; grid-row: 1; }
+      .ops-row__head > strong { grid-column: 4; grid-row: 1; }
+      .ops-row__track { grid-column: 3; grid-row: 1; }
+      .ops-row p { grid-column: 5; grid-row: 1; }
+      .ops-row--count .ops-row__head > strong { grid-column: 3; }
+      .ops-row--count p { grid-column: 4 / -1; text-align: right; }
+    }
+
+    .env-grid { gap: 8px; }
+    .env-card {
+      display: grid; grid-template-columns: 36px minmax(0,1fr); align-items: center; gap: 3px 8px; padding: 12px 10px;
+      background: var(--clinical-raised) !important; border: 1px solid var(--clinical-line) !important; border-radius: 9px !important; box-shadow: inset 0 1px 0 var(--clinical-highlight) !important;
+      > .clinical-icon { @include clinical.icon-tile; grid-column: 1; grid-row: 1 / 3; width: 36px; height: 36px; padding: 7px; }
+      > span { grid-column: 2; font-size: 14px; line-height: 1.6; font-weight: 500; color: var(--clinical-muted) !important; }
+      > strong { grid-column: 2; font-size: 28px; line-height: 1.25; margin: 0; color: var(--clinical-ink) !important; font-weight: 700; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+      small { font-size: 14px; margin-left: 3px; color: var(--clinical-muted) !important; }
+    }
+    .device-line { border-top-color: var(--clinical-line); margin-top: 10px; padding-top: 10px; gap: 6px 12px; line-height: 1.65; }
+    .device-line > span, .device-line > em { font-size: 14px; font-weight: 400; color: var(--clinical-muted) !important; }
+    .device-line > strong { font-size: 16px; font-weight: 700; color: var(--clinical-ink) !important; }
+    .device-line > span { display: inline-flex; align-items: center; gap: 6px; }
+    .device-line > span .clinical-icon { width: 18px; height: 18px; }
+    .device-line[data-state='ready'] > strong { color: var(--clinical-good) !important; }
+    .device-line[data-state='error'] > strong { color: var(--clinical-alert) !important; }
+    .device-line[data-state='partial'] > strong { color: var(--clinical-warn) !important; }
+    .device-line > em { white-space: normal; overflow: visible; }
+    .surface-panel--env .device-line { grid-template-columns: auto auto minmax(0,1fr); }
+    .surface-panel--env .device-line > em { grid-column: 3; text-align: right; }
+    .source-capability-note { color: var(--clinical-muted) !important; }
+    .clinical-staff { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; list-style: none; padding: 0; margin: 0; }
+    .clinical-staff li { display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 2px 12px; align-items: center; min-height: 86px; padding: 12px; border: 1px solid var(--clinical-line); border-radius: 10px; background: var(--clinical-raised); }
+    .clinical-staff .staff-avatar { grid-row: 1 / 3; width: 48px; height: 48px; border: 1px solid var(--clinical-line); box-shadow: 0 2px 5px var(--clinical-shadow); }
+    .clinical-staff span { color: var(--clinical-muted) !important; font-size: 15px; }
+    .clinical-staff strong { color: var(--clinical-ink) !important; font-size: 20px; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+    .feed { gap: 0; padding: 0; margin: 0; list-style: none; }
+    .feed__item { grid-template-columns: 76px 52px minmax(0,1fr); align-items: center; gap: 8px; padding: 10px 0 10px 18px; min-height: 48px; background: transparent !important; border-color: var(--clinical-line) !important; }
+    .feed__item::before { left: 4px; top: 0; bottom: 0; background: var(--clinical-line); }
+    .feed__item:last-child::before { bottom: 50%; }
+    .feed__item:first-child::before { top: 50%; }
+    .feed__item::after { left: 1px; top: calc(50% - 4px); width: 7px; height: 7px; box-sizing: border-box; border: 2px solid var(--clinical-accent); background: var(--clinical-surface); border-radius: 50%; }
+    .feed__time { grid-column: 1; grid-row: 1; font-size: 14px !important; font-variant-numeric: tabular-nums; color: var(--clinical-muted) !important; }
+    .feed__tag { grid-column: 2; grid-row: 1; text-align: center; font-size: 13px !important; line-height: 1.8; color: var(--clinical-warn) !important; background: color-mix(in srgb,var(--clinical-warn) 12%,transparent) !important; border-color: color-mix(in srgb,var(--clinical-warn) 25%,transparent) !important; border-radius: 5px; }
+    .feed__text { grid-column: 3; grid-row: 1; color: var(--clinical-ink) !important; font-size: 16px !important; line-height: 1.7; overflow-wrap: anywhere; }
+    .empty-feed { color: var(--clinical-muted); }
+
+    .station-charts__open {
+      min-height: 48px; border: 1px solid #529eff !important; border-radius: 8px !important;
+      @include clinical.primary-action;
+      font-size: 15px !important; font-weight: 600; transition: background 180ms, box-shadow 180ms, border-color 180ms, transform 180ms;
+    }
+    :is(.clinical-sync, .nurse-panel__details) > summary:focus-visible { outline: 2px solid var(--clinical-accent); outline-offset: 3px; }
+    @media (hover: hover) {
+      :is(.clinical-sync, .nurse-panel__details) > summary:hover { color: var(--clinical-accent); }
+    }
+    @container nurse-panel (max-width: 559px) {
+      .data-health__freshness { grid-template-columns: minmax(0,1fr); }
+      .env-card { grid-template-columns: minmax(0,1fr); gap: 5px; }
+      .env-card > .clinical-icon { grid-row: 1; }
+      .env-card > span, .env-card > strong { grid-column: 1; }
+      .surface-panel--env .device-line { grid-template-columns: minmax(0,1fr) auto; }
+      .surface-panel--env .device-line > em { grid-column: 1 / -1; text-align: left; }
+    }
+    @container nurse-panel (max-width: 420px) {
+      .data-health li { grid-template-columns: 24px minmax(0,1fr) auto; gap: 3px 10px; }
+      .handoff-card__sync { margin-left: 0; flex-basis: 100%; }
+      .env-grid { grid-template-columns: minmax(0,1fr); }
+      .env-card { grid-template-columns: 36px minmax(0,1fr) auto; padding: 10px; gap: 8px; }
+      .env-card > .clinical-icon { grid-column: 1; grid-row: 1; }
+      .env-card > span { grid-column: 2; grid-row: 1; }
+      .env-card > strong { grid-column: 3; grid-row: 1; font-size: 26px; }
+      .clinical-staff li { grid-template-columns: 38px minmax(0,1fr); padding: 10px; gap: 2px 8px; }
+      .clinical-staff .staff-avatar { width: 38px; height: 38px; }
+      .clinical-staff strong { font-size: 18px; }
+      .feed__item { grid-template-columns: 76px minmax(0,1fr); gap: 4px 10px; }
+      .feed__tag { justify-self: start; padding-inline: 8px; }
+      .feed__text { grid-column: 1 / -1; grid-row: 2; }
+    }
+    @container nurse-panel (max-width: 360px) {
+      :is(.handoff-card, .data-health, .surface-panel) { padding: 12px !important; }
+      .handoff-card ul { grid-template-columns: minmax(0,1fr); }
+      .handoff-card li { gap: 2px 12px; }
+      .clinical-staff { grid-template-columns: minmax(0,1fr); }
+    }
+    @media (prefers-reduced-motion: reduce) { .station-charts__open, .station-charts__open:hover, .ops-row__track i { transition: none; transform: none; } }
+  }
+  .digital-twin[data-theme='light'] .nurse-panel.nurse-workspace .clinical-overview {
+    @include clinical.light;
+  }
+}

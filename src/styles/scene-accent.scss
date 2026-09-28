@@ -1,0 +1,11 @@
+@use 'sass:map';
+
+// Loading feedback and navigation must use the same scene identity in each theme.
+$palettes: (
+  dark: (station: #82e8dd, ward: #a3c6ff, interior: #9de7bb),
+  light: (station: #076c85, ward: #34639b, interior: #087151)
+);
+
+@function color($scene, $theme: dark) {
+  @return map.get(map.get($palettes, $theme), $scene);
+}

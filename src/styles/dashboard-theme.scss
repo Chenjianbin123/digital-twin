@@ -1,5 +1,15 @@
 @use './dashboard-dark-controls' as darkControls;
+@use './scene-accent' as scene;
+@use './scene-navigation' as sceneNavigation;
+@use './sidebar-elevation' as sidebarElevation;
+@use './dashboard-header-layout' as headerLayout;
+@use './nurse-clinical-overview' as clinicalOverview;
+@use './ward-clinical-sidebar' as wardClinical;
+@use './nurse-queue-categories' as queueCategories;
 @use './dashboard-dark-typography' as darkTypography;
+@use './sidebar-typography' as sidebarTypography;
+@use './corridor-room-cards' as corridorRoomCards;
+@use './corridor-alert-layout' as corridorAlertLayout;
 @use './sidebar-command-theme' as sidebarCommand;
 @use './nurse-workspace-dark' as nurseDark;
 @use './nurse-command-light' as command;
@@ -47,93 +57,13 @@
   --tech-cyan: #3d7585;
   --tech-cyan-soft: rgba(61, 117, 133, 0.12);
   --tech-cyan-line: rgba(61, 117, 133, 0.28);
-  .dash-header.dash-header {
-    background:
-      radial-gradient(ellipse at 50% -40%, rgba(56, 132, 148, 0.32), transparent 55%),
-      linear-gradient(180deg, rgba(168, 200, 210, 0.96) 0%, rgba(154, 188, 200, 0.9) 70%, rgba(142, 178, 190, 0.68) 100%);
-    border-color: rgba(78, 118, 132, 0.58);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.42),
-      0 10px 24px rgba(24, 44, 52, 0.14);
-    border-bottom-width: 1px;
-    backdrop-filter: blur(24px) saturate(130%);
-    -webkit-backdrop-filter: blur(24px) saturate(130%);
-  }
-  .dash-header__rail {
-    background: linear-gradient(90deg, transparent, #3d8a9a, #5aa8b8, #3d8a9a, transparent) !important;
-    box-shadow: 0 0 10px rgba(61, 138, 154, 0.28) !important;
-  }
-  .dash-header__sheen { opacity: .28 !important; }
-  .dash-header__corner { border-color: #5aa0b0cc !important; }
-  .dash-header__kicker { color: #4a7a88 !important; }
-  .dash-header__title {
-    color: #102830 !important;
-    letter-spacing: .1em !important;
-    font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif !important;
-    font-weight: 700 !important;
-    text-shadow: none !important;
-  }
-  .dash-header__title-glow {
-    background: linear-gradient(90deg, transparent, #5aa8b8, transparent) !important;
-    box-shadow: none !important;
-  }
-  .dash-header__wing {
-    background: linear-gradient(90deg, transparent, #5aa8b8cc) !important;
-  }
-  .dash-header__wing--right {
-    background: linear-gradient(90deg, #5aa8b8cc, transparent) !important;
-  }
-  .dash-header__wing::before { border-color: #5aa8b8aa !important; box-shadow: none !important; }
-  .dash-header__area-cluster,
-  .dash-header__actions {
-    background: linear-gradient(160deg, rgba(228, 238, 242, 0.55), rgba(213, 226, 232, 0.4)) !important;
-    border-color: rgba(154, 175, 184, 0.55) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
-    backdrop-filter: blur(10px);
-  }
-  .dash-header__area-trigger {
-    background: linear-gradient(160deg, rgba(232, 241, 244, 0.72), rgba(216, 229, 235, 0.55)) !important;
-    border-color: rgba(138, 163, 174, 0.55) !important;
-    color: #1e3642 !important;
-  }
-  .dash-header__area-mark {
-    background: linear-gradient(180deg, #4aa0b0, #3d7585) !important;
-    box-shadow: none !important;
-  }
-  .dash-header__area-name { color: #1e3642 !important; }
-  .dash-header__dept, .dash-header__operator strong { color: #5a717c !important; }
-  .dash-header__operator {
-    background: rgba(213, 226, 232, 0.55) !important;
-    border-color: rgba(154, 175, 184, 0.55) !important;
-  }
-  .dash-header__operator-dot {
-    background: #3d9a7a !important;
-    box-shadow: 0 0 6px rgba(61, 154, 122, 0.45) !important;
-  }
-  .dash-header button, .digital-twin__panel-toggle {
+  .digital-twin__panel-toggle {
     background: linear-gradient(165deg, rgba(228, 238, 242, 0.7), rgba(208, 220, 226, 0.55)) !important;
     color: #243944 !important;
     border-color: rgba(154, 175, 184, 0.55) !important;
     border-radius: 8px !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
   }
-  .dash-header__logout {
-    color: #7a5a28 !important;
-    background: linear-gradient(165deg, rgba(235, 224, 200, 0.75), rgba(224, 212, 184, 0.6)) !important;
-    border-color: rgba(196, 173, 130, 0.65) !important;
-  }
-  .dash-header__area-icon { color: var(--tech-cyan) !important; filter: none !important; }
-  .dash-header__chevron i { border-top-color: #3d7585 !important; }
-  .dash-header__tag, .dash-header__data-status {
-    color: #3a6572 !important;
-    background: rgba(207, 220, 226, 0.65) !important;
-    border-color: rgba(154, 175, 184, 0.55) !important;
-    border-radius: 999px !important;
-    font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
-    letter-spacing: .03em;
-  }
-  .dash-header__data-status--warning, .dash-header__tag--mock { color: #7a5a28 !important; background: rgba(235, 224, 200, 0.75) !important; }
-  .dash-header__data-status--error, .dash-header__data-status--stale { color: #8a4554 !important; background: rgba(234, 216, 220, 0.75) !important; }
   .digital-twin__panel, .digital-twin__panel-body, .nurse-panel { background: #d5e0e5 !important; color: #243944; border-color: #9aafb8 !important; box-shadow: none !important; }
   .digital-twin__panel.digital-twin__panel--station {
     background: linear-gradient(180deg, #e6eef1 0%, #dce6ea 100%) !important;
@@ -179,14 +109,6 @@
   .nurse-panel .metric-item__progress i { background: #578e7b !important; }
   .nurse-panel .data-health > p { background: #faf4e8 !important; color: #795c2f !important; }
   .nurse-panel :is(.station-hero__overview-foot, .station-hero__overview-metrics > div, .data-health li, .data-health__freshness, .handoff-card li, .inspection-overview > p) { border-color: #dde6e0 !important; }
-  .dash-bottom :is(.dash-bottom__main, .dash-bottom__sub, .dash-bottom__sim) { background: #f6f8f5f5 !important; border-color: #c9d9ce !important; box-shadow: 0 4px 18px #31493b18 !important; }
-  .dash-bottom button:not(.dash-bottom__item--active):not(.dash-bottom__sub-item--active) { color: #486c61 !important; text-shadow: none !important; }
-  .dash-bottom__item:not(.dash-bottom__item--active) .dash-bottom__label,
-  .dash-bottom__sub-item:not(.dash-bottom__sub-item--active) { color: #486c61 !important; text-shadow: none !important; }
-  .dash-bottom__item--active, .dash-bottom__sub-item--active { color: #f7fbfd !important; background: #3d7585 !important; border-color: #3d7585 !important; box-shadow: none !important; }
-  .dash-bottom__item--active :is(.dash-bottom__label, .dash-bottom__scene-icon, span, svg),
-  .dash-bottom__sub-item--active { color: #f7fbfd !important; }
-  .dash-bottom__icon { background-color: #e7efe8 !important; border-color: #9dbfae !important; box-shadow: none !important; }
 }
 
 /* 工作区布局的主题边界：分组靠间距与分隔线，避免再套一层卡片。 */
@@ -883,10 +805,10 @@
 
 /* 三维场景切换层与工作台主题一致，包含首次加载及失败回退。 */
 .digital-twin[data-theme='light'] .scene-switch-loader {
- --loader-accent: #1287a3; --loader-soft: #1287a318; --loader-glow: #1287a30c;
+ --loader-accent: #{scene.color(station, light)}; --loader-soft: #1287a318; --loader-glow: #1287a30c;
  color: #233e49; background: #eaf2f6e8;
- &--ward { --loader-accent: #3d6fa7; --loader-soft: #3d6fa718; --loader-glow: #3d6fa70c; }
- &--interior { --loader-accent: #1a9a72; --loader-soft: #1a9a7218; --loader-glow: #1a9a720c; }
+ &--ward { --loader-accent: #{scene.color(ward, light)}; --loader-soft: #3d6fa718; --loader-glow: #3d6fa70c; }
+ &--interior { --loader-accent: #{scene.color(interior, light)}; --loader-soft: #1a9a7218; --loader-glow: #1a9a720c; }
  &[data-state='fallback'] { --loader-accent: #c4841a; --loader-soft: #c4841a18; --loader-glow: #c4841a0c; }
  .scene-switch-loader__card {
    border-color: #bfd6e1;
@@ -937,39 +859,8 @@
  .scene-switch-loader__actions button { color: #365e6d; background: #edf5f8; border-color: #bfd6e1; }
  .scene-switch-loader__actions .scene-switch-loader__retry { color: #f7fbfd; background: var(--loader-accent); border-color: var(--loader-accent); }
 }
-.digital-twin[data-theme='light'] .dash-bottom {
- :is(.dash-bottom__main, .dash-bottom__sub) {
-   background: #dce6ea !important;
-   border-color: #9aafb8 !important;
-   border-radius: 14px !important;
-   box-shadow: 0 8px 20px rgba(28, 48, 56, 0.06) !important;
- }
- button {
-   color: #5a717c !important;
-   border-radius: 10px !important;
-   font-family: "Bahnschrift", "Microsoft YaHei UI", sans-serif;
-   letter-spacing: .02em;
- }
- button:hover:not(.dash-bottom__item--active):not(.dash-bottom__sub-item--active) { background: #cfdce2 !important; }
- .dash-bottom__item--active, .dash-bottom__sub-item--active {
-   color: #f7fbfd !important;
-   background: #3d7585 !important;
-   border-color: #3d7585 !important;
-   box-shadow: none !important;
-   text-shadow: none;
- }
- .dash-bottom__item--active :is(.dash-bottom__label, .dash-bottom__scene-icon, span, svg),
- .dash-bottom__sub-item--active {
-   color: #f7fbfd !important;
- }
-}
 @media (prefers-reduced-transparency: reduce) {
  .digital-twin[data-theme='light'] .scene-switch-loader { background: #eaf2f6; backdrop-filter: none; }
- .digital-twin[data-theme='light'] .dash-header.dash-header {
-  background: #f4f7f5;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
- }
 }
 
 /* 走廊与病房侧栏共享语义色阶，避免透明深色卡片叠在浅色外壳上。 */
@@ -2515,95 +2406,6 @@
 @include wardSidebar.render;
 @include wardCommand.render;
 
-/* 顶部指挥栏浅色终态：提升实体表面对比，避免透明层与 3D 场景混色。 */
-.digital-twin[data-theme='light'] .dash-header.dash-header {
-  --hdr-ink: #203843;
-  --hdr-muted: #5c7480;
-  --hdr-cyan: #327889;
-  --hdr-line: #b8cdd5;
-  background:
-    radial-gradient(ellipse at 50% -45%, rgba(61, 138, 154, .12), transparent 48%),
-    linear-gradient(180deg, rgba(176, 206, 214, .96), rgba(154, 188, 200, .9) 70%, rgba(142, 178, 190, .72) 100%) !important;
-  border-bottom-color: #b6cad2 !important;
-  box-shadow:
-    inset 0 1px 0 #fff,
-    0 7px 18px rgba(35, 68, 84, .1) !important;
-  backdrop-filter: blur(18px) saturate(108%);
-  -webkit-backdrop-filter: blur(18px) saturate(108%);
-
-  .dash-header__rail {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #4b8d9a, #327889, #4b8d9a, transparent) !important;
-    box-shadow: 0 0 7px rgba(50, 120, 137, .18) !important;
-  }
-
-  .dash-header__sheen {
-    background:
-      linear-gradient(115deg, transparent 18%, rgba(255, 255, 255, .34) 42%, transparent 58%),
-      repeating-linear-gradient(90deg, transparent 0 31px, rgba(50, 120, 137, .018) 32px) !important;
-    opacity: .8 !important;
-  }
-
-  .dash-header__area-cluster,
-  .dash-header__actions {
-    background: rgba(241, 247, 249, .84) !important;
-    border-color: #c1d3da !important;
-    box-shadow: inset 0 1px 0 #fff, 0 2px 7px rgba(35, 68, 84, .05) !important;
-  }
-
-  .dash-header__area-trigger,
-  .dash-header__theme,
-  .dash-header__refresh {
-    color: #294a56 !important;
-    background: rgba(255, 255, 255, .86) !important;
-    border-color: #bdd0d8 !important;
-    box-shadow: inset 0 1px 0 #fff !important;
-  }
-
-  .dash-header__operator {
-    color: #355762 !important;
-    background: #e8f1f4 !important;
-    border-color: #c3d5dc !important;
-  }
-
-  .dash-header__logout {
-    color: #79551f !important;
-    background: #f6eedc !important;
-    border-color: #ddc58f !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9) !important;
-  }
-
-  .dash-header__tag,
-  .dash-header__data-status {
-    color: #365f6a !important;
-    background: #e6eff2 !important;
-    border-color: #bed1d8 !important;
-  }
-
-  .dash-header__data-status--warning,
-  .dash-header__tag--mock {
-    color: #815c1f !important;
-    background: #f5ecd8 !important;
-    border-color: #dcc58f !important;
-  }
-
-  .dash-header__title {
-    color: #18333f !important;
-  }
-
-  button:hover:not(:disabled) {
-    color: #183b47 !important;
-    background: #e5f0f3 !important;
-    border-color: #7ea7b1 !important;
-    box-shadow: inset 0 1px 0 #fff, 0 2px 8px rgba(35, 68, 84, .08) !important;
-  }
-
-  .dash-header__logout:hover:not(:disabled) {
-    color: #684714 !important;
-    background: #f1e4c8 !important;
-    border-color: #c8a961 !important;
-  }
-}
 
 @include nurseDark.render;
 
@@ -2612,3 +2414,13 @@
 @include darkTypography.render;
 
 @include darkControls.render;
+@include queueCategories.render;
+@include sidebarTypography.render;
+@include corridorRoomCards.render;
+@include corridorAlertLayout.render;
+@include headerLayout.render;
+@include clinicalOverview.render;
+// Keep all three clinical surfaces on the same final theme boundary.
+@include wardClinical.render;
+@include sceneNavigation.render;
+@include sidebarElevation.render;

@@ -1,3 +1,12 @@
+@container nurse-panel (max-width: 440px) {
+  :global(.digital-twin .nurse-panel.nurse-workspace .workspace-tabs > button) {
+    position: relative; flex-direction: column; gap: 4px; min-height: 76px; padding: 6px 4px;
+  }
+  :global(.digital-twin .nurse-panel.nurse-workspace .workspace-tabs__count) {
+    position: absolute; top: 4px; right: 4px; margin: 0;
+  }
+}
+
 .nurse-panel.nurse-workspace {
   --workspace-font: "Microsoft YaHei UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   font-family: var(--workspace-font); font-size: 14px; line-height: 1.6; font-variant-numeric: tabular-nums;

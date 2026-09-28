@@ -88,8 +88,9 @@ function reloadPage() { window.location.reload(); }
 </template>
 
 <style scoped lang="scss">
+@use '@/styles/scene-accent' as scene;
 .scene-switch-loader {
-  --loader-accent: #82e8dd;
+  --loader-accent: #{scene.color(station)};
   --loader-soft: #82e8dd24;
   --loader-glow: #82e8dd0d;
   position: absolute;
@@ -104,8 +105,8 @@ function reloadPage() { window.location.reload(); }
   isolation: isolate;
   pointer-events: auto;
 
-  &--ward { --loader-accent: #a3c6ff; --loader-soft: #a3c6ff24; --loader-glow: #a3c6ff0d; }
-  &--interior { --loader-accent: #9de7bb; --loader-soft: #9de7bb24; --loader-glow: #9de7bb0d; }
+  &--ward { --loader-accent: #{scene.color(ward)}; --loader-soft: #a3c6ff24; --loader-glow: #a3c6ff0d; }
+  &--interior { --loader-accent: #{scene.color(interior)}; --loader-soft: #9de7bb24; --loader-glow: #9de7bb0d; }
   &[data-state='fallback'] { --loader-accent: #f0c489; --loader-soft: #f0c48924; --loader-glow: #f0c4890d; }
   &__backdrop { position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, var(--loader-soft), transparent 65%); }
   &__card { position: relative; width: min(640px, 100%); flex: 0 0 auto; margin: auto; padding: 28px 32px; border: 1px solid #89b7ca40; border-radius: 6px 24px 6px 24px; background: radial-gradient(ellipse at 0 0, var(--loader-soft), transparent 60%), linear-gradient(135deg, #0f2839, #081b2a); box-shadow: 0 28px 80px #00000055, inset 0 1px #e5ffff12; }

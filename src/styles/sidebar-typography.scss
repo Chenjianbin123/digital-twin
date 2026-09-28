@@ -1,0 +1,83 @@
+// 三个场景共用文字等级；不放大 3D 屏幕、装饰英文或已有的大号指标。
+@mixin render {
+  .digital-twin[data-theme] :is(.nurse-panel.nurse-workspace, .digital-twin__panel.digital-twin__panel--overlay) {
+    --sidebar-font-body: clamp(16px, calc(12px + .25vw), 18px);
+    --sidebar-font-caption: clamp(14px, calc(10px + .25vw), 16px);
+    --sidebar-font-heading: clamp(18px, calc(14px + .25vw), 20px);
+    font-size: var(--sidebar-font-body);
+
+    :is(.station-section-title, .dash-head__title, .queue-list-heading strong,
+        .handoff-card h3, .data-health h3, .inspection-overview h3,
+        .ward-call-list header > strong, .door-staff-cards__title,
+        .status-history h3, .ward-care-summary h4, .vitals-card h4) {
+      font-size: var(--sidebar-font-heading) !important;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    :is(.handoff-card li, .data-health li > span, .data-health__freshness-item > span,
+        .hospital-intro__note, .room-card__status, .patient-info dd,
+        .staff-role-card__name, .inspection-overview > p, .feed__text,
+        .ward-call-list li, .ward-info-panel__subtitle, .ward-bed-nav select,
+        .nurse-panel__details > summary, .bed-detail-section__title) {
+      font-size: var(--sidebar-font-body) !important;
+      line-height: 1.65;
+    }
+    .data-health li > span, .data-health__freshness-item > span { font-weight: 650; }
+
+    :is(.handoff-card__head > strong, .data-health__head > strong,
+        .data-health li > strong, .data-health__freshness-item > strong,
+        .data-health li > small, .data-health__freshness-item > small, .data-health > p,
+        .workspace-status__sync, .workspace-context span, .station-hero__chip,
+        .metric-item__detail, .metric-item > span, .metric-item > strong small,
+        .inspection-overview__head small, .inspection-overview__head strong,
+        .inspection-metric span, .inspection-metric small, .source-capability-note,
+        .feed__time, .feed__tag, .queue-sync, .queue-list-heading span,
+        .alert-task__severity, .alert-task-panel__remaining, .queue-wait small,
+        .patient-info dt, .vitals-grid small, .vitals-card__note, .empty-bed-tip,
+        .ward-care-notice, .ward-call-list__note, .ward-call-list__time,
+        .ward-call-list > p, .ward-call-list header > span,
+        .ward-bed-nav label, .ward-bed-nav p, .stat-chip__label, .env-label,
+        .inspection-card__foot, .inspection-card__operator,
+        .person-card__label, .person-card__sub, .monitor-row__tag,
+        .room-card__priority, .room-card__inspection, .bed-chip__state,
+        .hospital-intro__metric-label, .hospital-intro__metric-value small,
+        .staff-role-card__role, .staff-role-card__hint, .staff-role-card__badge,
+        .status-history li) {
+      font-size: var(--sidebar-font-caption) !important;
+      line-height: 1.6;
+    }
+
+    :is(.station-hero__alert-toggle, .station-hero__wallboard-toggle,
+        .alert-task-panel__filters button, .alert-task__details summary,
+        .alert-task__actions button, .room-card__enter, .hospital-intro__expand,
+        .ward-bed-nav button, .area-dashboard__back-station) {
+      font-size: var(--sidebar-font-caption) !important;
+    }
+    .alert-task__head strong { font-size: var(--sidebar-font-heading) !important; }
+    .alert-task__subtitle, .alert-task__main > p { font-size: var(--sidebar-font-body) !important; line-height: 1.65; }
+    .alert-task__meta span { font-size: var(--sidebar-font-caption) !important; }
+    .queue-categories button > span:not(.nurse-workspace-icon) { font-size: var(--sidebar-font-caption) !important; }
+    .ward-bed-nav { container: ward-bed-navigation / inline-size; }
+
+    // 同步说明独占一行，字号增大后不与右侧状态争抢空间。
+    .data-health li { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+    .data-health li > small { grid-column: 1 / -1; text-align: left; }
+    .data-health__freshness-item { min-width: 0; }
+    .data-health__freshness-item > small { white-space: normal; overflow-wrap: anywhere; }
+    .data-health :is(li > span, li > small, li > strong, .data-health__freshness-item > span) { min-width: 0; overflow-wrap: anywhere; }
+  }
+
+  @container ward-bed-navigation (max-width: 400px) {
+    .digital-twin[data-theme] .digital-twin__panel .ward-bed-nav .ward-bed-nav__controls {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      select { grid-column: 1 / -1; grid-row: 1; }
+    }
+  }
+
+  @container nurse-panel (max-width: 380px) {
+    .digital-twin[data-theme] .nurse-panel.nurse-workspace .data-health__freshness {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}

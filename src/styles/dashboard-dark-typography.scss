@@ -10,18 +10,11 @@
     --sidebar-accent: var(--text-accent);
     color: var(--text-secondary);
 
-    .dash-header .dash-header__title,
     .area-switcher .area-switcher__header h2,
     .area-switcher .area-switcher__row-name { color: var(--text-primary) !important; }
-    .dash-header :is(.dash-header__dept,.dash-header__operator,.dash-header__kicker),
     .area-switcher :is(.area-switcher__row-code,.area-switcher__list-head,.area-switcher__header p) { color: var(--text-muted) !important; }
-    .dash-header :is(.dash-header__theme,.dash-header__refresh,.dash-header__area),
     .area-switcher :is(.area-switcher__close,.area-switcher__search input) { color:var(--text-secondary) !important; }
     .area-switcher .area-switcher__search input::placeholder { color:var(--text-muted) !important; }
-
-    .dash-bottom.dash-bottom :is(button,.dash-bottom__label,.dash-bottom__scene-icon) { color:var(--text-secondary) !important; }
-    .dash-bottom.dash-bottom :is(.dash-bottom__item--active,.dash-bottom__sub-item--active),
-    .dash-bottom.dash-bottom .dash-bottom__item--active :is(.dash-bottom__label,.dash-bottom__scene-icon) { color:var(--text-primary) !important; }
 
     :is(.nurse-panel.nurse-workspace.nurse-workspace,.digital-twin__panel.digital-twin__panel--overlay) {
       :is(.station-hero__eyebrow,.station-section-title,.dash-head__title,.queue-list-heading strong,.alert-task__head strong,.hospital-intro__name,.room-card__name,.ward-info-panel__header h2) { color:var(--text-primary) !important; }
@@ -35,8 +28,6 @@
       .alert-task-panel__filters button.is-active { color:var(--text-primary) !important; }
     }
     @media (hover:hover) {
-      .dash-bottom.dash-bottom button:hover,
-      .dash-bottom.dash-bottom button:hover :is(.dash-bottom__label,.dash-bottom__scene-icon),
       :is(.nurse-panel.nurse-workspace.nurse-workspace,.digital-twin__panel.digital-twin__panel--overlay) :is(.alert-task-panel__more button,.alert-task__details summary):hover { color:var(--text-primary) !important; }
     }
   }
