@@ -492,6 +492,25 @@ test('polishes corridor floor materials for subtle reflection', () => {
   const root = new THREE.Group();
   root.add(floor);
   polishHospitalCorridorMaterials(root);
-  assert.ok((floor.material as THREE.MeshStandardMaterial).roughness <= 0.55);
-  assert.ok((floor.material as THREE.MeshStandardMaterial).envMapIntensity >= 0.58);
+  assert.ok((floor.material as THREE.MeshStandardMaterial).roughness <= 0.42);
+  assert.ok((floor.material as THREE.MeshStandardMaterial).envMapIntensity >= 0.8);
+});
+
+test('polishes corridor light-panel materials into cool diffuser panels', () => {
+  const led = new THREE.MeshStandardMaterial({
+    name: '材质.003',
+    color: 0xffee88,
+    emissive: 0xffcc44,
+    emissiveIntensity: 3,
+  });
+  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(), led);
+  ceiling.name = '天花板';
+  const root = new THREE.Group();
+  root.add(ceiling);
+  polishHospitalCorridorMaterials(root);
+  const mat = ceiling.material as THREE.MeshStandardMaterial;
+  assert.equal(mat.color.getHexString(), 'f4f6f8');
+  assert.equal(mat.emissive.getHexString(), 'e8eef4');
+  assert.equal(mat.emissiveIntensity, 0.92);
+  assert.equal(mat.roughness, 0.55);
 });

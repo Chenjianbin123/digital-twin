@@ -172,10 +172,10 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
     /** 暖日光底，避免走廊整幅发冷灰。 */
     lightBackground: 0xf7f3ec,
     fov: 52,
-    /** 微调提亮，保留导向带饱和度。 */
-    exposure: 1.2,
-    envMapIntensity: 0.7,
-    environmentIntensity: 0.36,
+    /** 略收曝光，留给天花面光层次。 */
+    exposure: 1.12,
+    envMapIntensity: 0.72,
+    environmentIntensity: 0.4,
     floorMeshName: "地板",
     floorStripeColorScale: 0.42,
     themeMaterials: {

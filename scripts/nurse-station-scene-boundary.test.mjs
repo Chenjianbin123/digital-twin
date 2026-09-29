@@ -52,8 +52,8 @@ assert.match(areaScene, /overlay\.name = `nurse-station-screen-overlay-\$\{kind\
 assert.match(areaScene, /depthWrite: false/);
 assert.doesNotMatch(areaScene, /this\.replaceMeshMaterialWithTexture\(object, texture\)/);
 assert.match(sceneConfig, /background: 0xf8f0e4/);
-assert.match(sceneConfig, /exposure: 1\.26/);
-assert.match(sceneConfig, /environmentIntensity: 0\.34/);
+assert.match(sceneConfig, /exposure: 1\.22/);
+assert.match(sceneConfig, /environmentIntensity: 0\.44/);
 assert.doesNotMatch(areaScene, /nurseStationHospitalEnvironment/);
 assert.doesNotMatch(areaScene, /buildNurseStationHospitalEnvironment/);
 assert.doesNotMatch(areaScene, /nurse-station-hospital-environment/);

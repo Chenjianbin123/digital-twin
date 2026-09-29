@@ -650,25 +650,27 @@ export class AreaScene {
       return;
     }
 
-    // 走廊白天阳光：略提环境填充与主光，拉开地面/门框亮点。
-    // 护士站环境光略高于走廊，保证白天病房亮度，接触影仍由主光承担。
+    // 走廊/护士站统一「医院顶光」：少环境光、冷白主光、软接触影，避免 CG 平涂。
     const isStation = this.modelKind === 'station';
-    this.scene.add(new THREE.AmbientLight(0xfff6ea, isStation ? 0.21 : 0.16));
+    this.scene.add(new THREE.AmbientLight(0xf4f6f8, isStation ? 0.13 : 0.09));
     this.scene.add(new THREE.HemisphereLight(
-      isStation ? 0xffeed8 : 0xfff2e0,
-      isStation ? 0xa09080 : 0x7a8a94,
-      isStation ? 0.26 : 0.24,
+      isStation ? 0xf2f5f8 : 0xf0f3f6,
+      isStation ? 0x8a9399 : 0x7e878e,
+      isStation ? 0.2 : 0.15,
     ));
 
-    const key = new THREE.DirectionalLight(0xffecd2, isStation ? 1.78 : 1.62);
+    const key = new THREE.DirectionalLight(
+      isStation ? 0xf3f1ec : 0xf1efea,
+      isStation ? 1.55 : 1.38,
+    );
     key.name = 'corridor-key-shadow';
     key.position.set(6, 14, 10);
     key.castShadow = true;
     key.shadow.mapSize.set(4096, 4096);
     key.shadow.bias = -0.00012;
-    key.shadow.normalBias = 0.018;
-    key.shadow.radius = 1.05;
-    key.shadow.intensity = 1.22;
+    key.shadow.normalBias = isStation ? 0.022 : 0.02;
+    key.shadow.radius = isStation ? 2.4 : 2.2;
+    key.shadow.intensity = isStation ? 0.92 : 0.9;
     key.shadow.camera.near = 0.5;
     key.shadow.camera.far = 80;
     key.shadow.camera.left = -24;
@@ -679,11 +681,12 @@ export class AreaScene {
     this.scene.add(key);
     this.scene.add(key.target);
 
-    const fill = new THREE.DirectionalLight(isStation ? 0xffebd6 : 0xdceaf6, isStation ? 0.04 : 0.3);
+    // 顶向填充略弱，主亮度交给天花面光。
+    const fill = new THREE.DirectionalLight(isStation ? 0xe8eef4 : 0xe4ebf2, isStation ? 0.24 : 0.16);
     fill.position.set(isStation ? -6 : -14, 14, isStation ? 2 : 6);
     this.scene.add(fill);
 
-    const corridor = new THREE.DirectionalLight(0xfff8ef, isStation ? 0.2 : 0.24);
+    const corridor = new THREE.DirectionalLight(0xf5f7f9, isStation ? 0.18 : 0.12);
     corridor.position.set(0, 18, -18);
     this.scene.add(corridor);
 
@@ -747,9 +750,9 @@ export class AreaScene {
     camera.top = local.max.y + pad;
     camera.updateProjectionMatrix();
     light.shadow.bias = -0.0001;
-    light.shadow.normalBias = 0.016;
-    light.shadow.radius = 1.25;
-    light.shadow.intensity = this.modelKind === 'station' ? 1.16 : 1.22;
+    light.shadow.normalBias = this.modelKind === 'station' ? 0.022 : 0.02;
+    light.shadow.radius = this.modelKind === 'station' ? 2.6 : 2.4;
+    light.shadow.intensity = this.modelKind === 'station' ? 0.88 : 0.86;
     this.renderer.shadowMap.needsUpdate = true;
   }
 
@@ -775,26 +778,49 @@ export class AreaScene {
       : CORRIDOR_ENVIRONMENT_INTENSITY;
   }
 
-  private setupNurseStationAtmosphereLights() {
-    // 暖补光只铺色，不另投影，接触影交给收紧后的主光。
-    const warmKey = new THREE.DirectionalLight(0xffefd4, 0.18);
-    warmKey.name = 'nurse-station-warm-key';
-    warmKey.position.set(-2.4, 4.1, NURSE_STATION.z + 2.6);
-    warmKey.target.position.set(0.2, 0.35, NURSE_STATION.z);
-    this.scene.add(warmKey, warmKey.target);
+  /**
+   * 走廊天花：用 面光 空节点挂冷白 RectAreaLight，灯盘材质压成漫射罩，
+   * 和护士站同一套医院顶光观感。
+   */
+  private setupCorridorCeilingLights(model: THREE.Object3D) {
+    this.scene.getObjectByName('corridor-ceiling-lamps')?.removeFromParent();
+    model.updateMatrixWorld(true);
+    const lamps: THREE.RectAreaLight[] = [];
+    const world = new THREE.Vector3();
+    model.traverse((object) => {
+      if (!/^面光/.test(object.name))
+        return;
+      object.getWorldPosition(world);
+      const lamp = new THREE.RectAreaLight(0xf2f5f8, 5.6, 1.55, 0.62);
+      lamp.name = 'corridor-ceiling-lamp';
+      lamp.position.set(world.x, world.y - 0.05, world.z);
+      lamp.lookAt(world.x, world.y - 1, world.z);
+      lamps.push(lamp);
+    });
+    if (!lamps.length)
+      return;
+    const group = new THREE.Group();
+    group.name = 'corridor-ceiling-lamps';
+    for (const lamp of lamps)
+      group.add(lamp);
+    this.scene.add(group);
+  }
 
-    const warmBounce = new THREE.DirectionalLight(0xffe6cc, 0.24);
+  private setupNurseStationAtmosphereLights() {
+    // 近景只用弱暖补与柜台 softbox，主照明交给天花面光。
+    const warmBounce = new THREE.DirectionalLight(0xf0ebe4, 0.16);
     warmBounce.name = 'nurse-station-warm-bounce';
     warmBounce.position.set(3.6, 2.9, NURSE_STATION.z - 1.4);
     this.scene.add(warmBounce);
 
-    const counterGlow = new THREE.RectAreaLight(0xffefd4, 0.42, 5.8, 1.2);
+    const counterGlow = new THREE.RectAreaLight(0xf4f1ec, 0.72, 5.8, 1.2);
     counterGlow.name = 'nurse-station-counter-softbox';
     counterGlow.position.set(0, 2.25, NURSE_STATION.z + 0.45);
     counterGlow.rotation.x = -Math.PI / 2.55;
     this.scene.add(counterGlow);
 
-    const screenFill = new THREE.PointLight(0xfff0dc, 0.22, 8.2, 1.85);
+    // 屏幕微弱溢出光，模拟显示器对环境的反照。
+    const screenFill = new THREE.PointLight(0xb8d4e0, 0.16, 6.5, 2);
     screenFill.name = 'nurse-station-screen-fill';
     screenFill.position.set(0, 1.75, NURSE_STATION.z - 0.85);
     this.scene.add(screenFill);
@@ -3385,6 +3411,7 @@ export class AreaScene {
       this.attachNurseStationBoardDisplays(model);
       this.highlightNurseStationSignage(model);
       this.setTheme(this.darkTheme ? 'dark' : 'light');
+      this.hideNurseStationDashboardBackplate(model);
       if (IS_REFERENCE_STATION) {
         // Geometry and lights are static; camera and board texture changes do not invalidate shadows.
         this.scene.getObjectByName('reference-nurse-station-lights')?.traverse(object => {
@@ -3405,6 +3432,7 @@ export class AreaScene {
       // 贴图解码完成后再套一次浅色木纹，避免首次主题应用时漫反射未就绪。
       this.setTheme(this.darkTheme ? 'dark' : 'light');
       this.highlightNurseStationSignage(model);
+      this.hideNurseStationDashboardBackplate(model);
       if (token !== this.nurseStationModelLoadToken)
         return;
       this.renderer.render(this.scene, this.camera);
@@ -3469,6 +3497,7 @@ export class AreaScene {
       this.wardCorridorModelLoaded = true;
       this.scene.add(model);
       this.fitCorridorKeyShadow(model);
+      this.setupCorridorCeilingLights(model);
       this.bindWardCorridorSlots();
       this.updateCorridorImplementationVisibility();
       if (this.viewPhase === 'corridor') {
@@ -4126,6 +4155,36 @@ export class AreaScene {
   }
 
   /** 顶栏/柜台同色阶：正面锚色对齐柜台青，底面同相略浅。 */
+  /**
+   * 去掉大屏后的蓝色装饰背板（Cabinet_Wall.001 / Equipment_White.001）。
+   * 覆盖层比玻璃面大一圈，背后这块青蓝饰面会露边，必须在主题/标牌处理之后再强制移除。
+   */
+  private hideNurseStationDashboardBackplate(model: THREE.Object3D) {
+    const doomed: THREE.Object3D[] = [];
+    const mark = (object: THREE.Object3D) => {
+      if (!doomed.includes(object))
+        doomed.push(object);
+    };
+    const named = model.getObjectByName('Cabinet_Wall.001');
+    if (named)
+      mark(named);
+    model.traverse((object) => {
+      if (!(object instanceof THREE.Mesh))
+        return;
+      if (object.name === 'Cabinet_Wall.001' || /^Cabinet_Wall\.\d+$/.test(object.name)) {
+        mark(object);
+        return;
+      }
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      if (materials.some(material => /Equipment_White\.001/i.test(material.name)))
+        mark(object);
+    });
+    for (const object of doomed) {
+      object.visible = false;
+      object.removeFromParent();
+    }
+  }
+
   private highlightNurseStationSignage(model: THREE.Object3D) {
     const signage = /^(Station_Header|Station_Header_Motto|Counter_Lettering)$/;
     // 顶栏「护士站」与柜台「关爱、专业…」同一套白字参数。
@@ -4228,9 +4287,14 @@ export class AreaScene {
         if (!/Warm_LED|LED/i.test(material.name) || !('emissive' in material))
           return material;
         const lit = material.clone();
-        lit.color.set('#fff4e4');
-        lit.emissive.set('#ffe2b0');
-        lit.emissiveIntensity = 1.7;
+        // 灯盘像漫射罩：冷白、低自发光；真正照亮靠下方 RectAreaLight。
+        lit.color.set('#f4f6f8');
+        lit.emissive.set('#e8eef4');
+        lit.emissiveIntensity = 1.12;
+        if ('roughness' in lit)
+          lit.roughness = 0.55;
+        if ('metalness' in lit)
+          lit.metalness = 0;
         lit.needsUpdate = true;
         return lit;
       });
@@ -4247,7 +4311,8 @@ export class AreaScene {
       ].sort((left, right) => right.size - left.size);
       const width = Math.max(axes[0]?.size ?? 0.4, 0.35);
       const height = Math.max(axes[1]?.size ?? 0.12, 0.08);
-      const lamp = new THREE.RectAreaLight(0xfff3d4, 5.4, width, height);
+      // 医院 LED 面光：略偏冷白、强度按灯盘面积给，软阴影落在柜台/地面。
+      const lamp = new THREE.RectAreaLight(0xf2f5f8, 9.4, width * 1.05, height * 1.05);
       lamp.name = 'nurse-station-ceiling-lamp';
       lamp.position.set(center.x, center.y - 0.03, center.z);
       lamp.lookAt(center.x, center.y - 1, center.z);
