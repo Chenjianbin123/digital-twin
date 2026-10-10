@@ -7,9 +7,9 @@ export function wardField(value: unknown): string {
 }
 
 export function wardDataNotice(status?: DataStatus): string {
-  if (status === 'loading') return '正在同步，当前内容可能为上次数据';
-  if (status === 'error') return '同步失败，当前保留上次数据，请重新同步';
-  if (status === 'stale') return '数据已过期，请重新同步后核对';
-  if (status === 'warning') return '部分数据未完整同步，请核对异常详情';
+  if (status === 'loading') return '正在更新，当前内容可能为上次记录';
+  if (status === 'error') return '信息暂未更新，请重新获取并核对现场情况';
+  if (status === 'stale') return '信息更新延迟，请重新获取后核对';
+  if (status === 'warning') return '信息尚不完整，请核对需关注的事项';
   return '';
 }

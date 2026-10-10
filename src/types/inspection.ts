@@ -61,4 +61,14 @@ export interface InspectionRoomSummary {
   records: NormalizedInspectionRecord[];
 }
 
-export type InspectionSyncState = SwpEventSyncState;
+export interface InspectionAssociation {
+  received: number;
+  matched: number;
+  unmatched: number;
+  issues: Array<{ roomName: string; bedName: string; reason: string; count?: number; currentBeds?: string[]; otherRooms?: string[] }>;
+  omittedIssueCount?: number;
+}
+
+export interface InspectionSyncState extends SwpEventSyncState {
+  association?: InspectionAssociation;
+}

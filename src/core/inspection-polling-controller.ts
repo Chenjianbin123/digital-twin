@@ -1,5 +1,6 @@
 import { createBrowserPollingVisibility, type PollingVisibility } from './polling-visibility.ts';
-import type { NormalizedInspectionRecord } from '../types/inspection.ts';
+import type { InspectionAssociation, NormalizedInspectionRecord } from '../types/inspection.ts';
+import type { SwpRecordPage, SwpPageCoverage } from '../types/swp-events.ts';
 
 export interface InspectionPollingStore {
   selectedAreaId: number | null;
@@ -8,12 +9,14 @@ export interface InspectionPollingStore {
     expectedAreaId: number,
     records: NormalizedInspectionRecord[],
     syncedAt: string,
+    coverage?: SwpPageCoverage,
+    association?: InspectionAssociation,
   ) => boolean;
   failInspectionSync: (expectedAreaId: number, message: string) => boolean;
 }
 
 interface Dependencies {
-  loadRecords: (areaId: number) => Promise<NormalizedInspectionRecord[]>;
+  loadRecords: (areaId: number) => Promise<SwpRecordPage<NormalizedInspectionRecord> & { association?: InspectionAssociation }>;
   schedule?: (callback: () => void, intervalMs: number) => unknown;
   cancelSchedule?: (handle: unknown) => void;
   now?: () => Date;
@@ -70,13 +73,15 @@ export function createInspectionPollingController(dependencies: Dependencies) {
       return false;
     run.refreshing = true;
     try {
-      const records = await dependencies.loadRecords(run.areaId);
+      const page = await dependencies.loadRecords(run.areaId);
       if (!isCurrent(run))
         return false;
       return run.store.applyInspectionSnapshot(
         run.areaId,
-        records,
+        page.records,
         now().toISOString(),
+        page.coverage,
+        page.association,
       );
     }
     catch (error) {

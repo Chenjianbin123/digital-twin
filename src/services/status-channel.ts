@@ -1,25 +1,14 @@
 import type { StatusBarInfo } from '@/types/ward';
+import { MOCK_DOOR_DEVICE_LIST } from '../mock/door-device-list.ts';
 
 export type StatusMessageHandler = (payload: StatusBarInfo) => void;
 
 /** 模拟 WebSocket 推送通道（对齐 JSBridge.setBedDeviceStatus 事件驱动） */
-const PUSH_SCENARIOS: Partial<StatusBarInfo>[] = [
-  { bedCode: '90101', deviceCode: 'SN1001', status: '300' },
-  { bedCode: '90101', deviceCode: 'SN1001', status: '302' },
-  { bedCode: '90102', deviceCode: 'SN1002', status: '300' },
-  { bedCode: '90102', deviceCode: 'SN1002', status: '302' },
-  { bedCode: '90103', deviceCode: 'SN1003', status: '' },
-  { bedCode: '90104', deviceCode: 'SN1004', status: '304' },
-  { bedCode: '90104', deviceCode: 'SN1004', status: '9' },
-  { bedCode: '90205', deviceCode: 'SN1005', status: '300' },
-  { bedCode: '90206', deviceCode: 'SN1006', status: '302' },
-  { bedCode: '90307', deviceCode: 'SN1007', status: '300' },
-  { bedCode: '90308', deviceCode: 'SN1008', status: '' },
-  { bedCode: '90309', deviceCode: 'SN1009', status: '304' },
-  { bedCode: '90410', deviceCode: 'SN1010', status: '300' },
-  { bedCode: '90411', deviceCode: 'SN1011', status: '302' },
-  { bedCode: '90412', deviceCode: 'SN1012', status: '9' },
-];
+const PUSH_SCENARIOS: StatusBarInfo[] = MOCK_DOOR_DEVICE_LIST.data.flatMap(room =>
+  room.bedDeviceList.filter(bed => room.doorSickInfoList.some(patient => patient.bedCode === bed.bedCode))
+    .flatMap(bed => (['300', '302', '304', ''] as const).map(status => ({
+      bedCode: bed.bedCode, deviceCode: bed.deviceCode, status,
+    }))));
 
 let handlers = new Set<StatusMessageHandler>();
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -41,6 +30,7 @@ export function subscribeStatusChannel(handler: StatusMessageHandler): () => voi
 
 export function startStatusChannel(intervalMs = 3500) {
   stopStatusChannel();
+  scenarioIndex = 0;
   timer = setInterval(tick, intervalMs);
 }
 

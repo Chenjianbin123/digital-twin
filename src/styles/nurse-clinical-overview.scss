@@ -80,6 +80,11 @@
     }
     .handoff-card--normal .handoff-card__head > strong, .data-health--ready .data-health__head > strong { color: var(--clinical-good) !important; background: color-mix(in srgb, var(--clinical-good) 12%, transparent) !important; }
     .data-health--error .data-health__head > strong { color: var(--clinical-alert) !important; }
+    .data-health > summary { cursor: pointer; list-style: none; min-height: 32px; }
+    .data-health > summary::-webkit-details-marker { display: none; }
+    .data-health > summary::after { content: '+'; margin-left: auto; color: var(--clinical-accent); font-size: 20px; }
+    .data-health[open] > summary::after { content: '−'; }
+    .data-health:not([open]) > summary { margin-bottom: 0; }
     .handoff-card__sync { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--clinical-muted) !important; font-size: 14px !important; font-weight: 400; line-height: 1.6; }
     .handoff-card__sync::before { content: ''; width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--clinical-good); box-shadow: 0 0 0 2px color-mix(in srgb,var(--clinical-good) 10%,transparent); }
     .clinical-icon { width: 24px; height: 24px; flex-shrink: 0; color: var(--clinical-accent); }
@@ -103,13 +108,13 @@
     .data-health ul { display: grid; grid-template-columns: minmax(0,1fr); margin: 0; padding: 0; gap: 0; border: 0; background: transparent; }
     .handoff-card ul:has(> li:first-child:not([data-tone='note']) + li[data-tone='note']) > li:first-child { grid-column: 1 / -1; }
     .data-health li {
-      display: grid; grid-template-columns: 32px minmax(0,1fr) auto; align-items: center; gap: 3px 10px;
-      padding: 12px 6px; min-height: 72px; line-height: 1.6; background: transparent !important; border: 0; border-color: var(--clinical-line) !important; border-radius: 0;
+      display: grid; grid-template-columns: 36px minmax(0,1fr) auto; align-items: center; gap: 4px 12px;
+      padding: 14px 4px; min-height: 80px; line-height: 1.6; background: transparent !important; border: 0; border-color: var(--clinical-line) !important; border-radius: 0;
       + li { border-top: 1px solid var(--clinical-line); }
-      > .clinical-icon { grid-column: 1; grid-row: 1 / 3; }
+      > .clinical-icon { @include clinical.icon-tile; grid-column: 1; grid-row: 1 / 3; width: 36px; height: 36px; padding: 7px; }
       > span { grid-column: 2; grid-row: 1; font-size: 16px !important; font-weight: 700; color: var(--clinical-ink) !important; }
       > small { grid-column: 2; grid-row: 2; font-size: 14px !important; line-height: 1.6; color: var(--clinical-muted) !important; text-align: left; margin: 0; overflow-wrap: anywhere; }
-      > strong { grid-column: 3; grid-row: 1 / 3; min-width: 84px; text-align: center; }
+      > strong { grid-column: 3; grid-row: 1 / 3; justify-self: end; min-width: 0; text-align: center; }
     }
     :is(.data-health li, .data-health__freshness-item) > strong {
       color: var(--clinical-warn) !important; background: color-mix(in srgb, var(--clinical-warn) 12%, transparent) !important;
@@ -180,7 +185,7 @@
     .device-line > span .clinical-icon { width: 18px; height: 18px; }
     .device-line[data-state='ready'] > strong { color: var(--clinical-good) !important; }
     .device-line[data-state='error'] > strong { color: var(--clinical-alert) !important; }
-    .device-line[data-state='partial'] > strong { color: var(--clinical-warn) !important; }
+    .device-line:is([data-state='partial'], [data-state='warning'], [data-state='stale']) > strong { color: var(--clinical-warn) !important; }
     .device-line > em { white-space: normal; overflow: visible; }
     .surface-panel--env .device-line { grid-template-columns: auto auto minmax(0,1fr); }
     .surface-panel--env .device-line > em { grid-column: 3; text-align: right; }
@@ -219,7 +224,8 @@
       .surface-panel--env .device-line > em { grid-column: 1 / -1; text-align: left; }
     }
     @container nurse-panel (max-width: 420px) {
-      .data-health li { grid-template-columns: 24px minmax(0,1fr) auto; gap: 3px 10px; }
+      .data-health li { grid-template-columns: 28px minmax(0,1fr) auto; gap: 4px 8px; padding-inline: 0; }
+      .data-health li > .clinical-icon { width: 28px; height: 28px; padding: 4px; }
       .handoff-card__sync { margin-left: 0; flex-basis: 100%; }
       .env-grid { grid-template-columns: minmax(0,1fr); }
       .env-card { grid-template-columns: 36px minmax(0,1fr) auto; padding: 10px; gap: 8px; }

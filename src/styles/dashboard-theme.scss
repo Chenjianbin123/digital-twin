@@ -15,6 +15,7 @@
 @use './nurse-command-light' as command;
 @use './ward-sidebar-light' as wardSidebar;
 @use './ward-command-workspace' as wardCommand;
+@use './panel-visibility-control' as panelControl;
 
 /* Shared paper/ink tokens used by light theme surfaces (anti-slop: tinted, not pure bw). */
 .digital-twin {
@@ -2415,7 +2416,6 @@
 
 @include darkControls.render;
 @include queueCategories.render;
-@include sidebarTypography.render;
 @include corridorRoomCards.render;
 @include corridorAlertLayout.render;
 @include headerLayout.render;
@@ -2424,3 +2424,7 @@
 @include wardClinical.render;
 @include sceneNavigation.render;
 @include sidebarElevation.render;
+// Typography is theme-independent and must remain after all scene-specific rules.
+@include sidebarTypography.render;
+
+@include panelControl.render;

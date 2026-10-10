@@ -6,20 +6,17 @@ const header = readFileSync(
   new URL('../src/components/dashboard/DashboardHeader.vue', import.meta.url),
   'utf8',
 );
+const styles = readFileSync(new URL('../src/components/dashboard/dashboard-header.scss', import.meta.url), 'utf8');
 
 function extractBaseOperatorStyles(source) {
-  const marker = '  &__operator {';
-  const start = source.indexOf(marker);
-  assert.notEqual(start, -1, '应能找到顶部用户信息样式');
-
-  const end = source.indexOf('\n  &__actions {', start);
-  assert.notEqual(end, -1, '用户信息样式应在操作按钮样式之前结束');
-
-  return source.slice(start, end);
+  const sharedRule = source.match(/[^{}]*&__operator[^{}]*\{([^}]*display:\s*inline-flex[^}]*)\}/);
+  assert.ok(sharedRule, '应能找到包含用户信息的共用横排样式');
+  return sharedRule[1];
 }
 
 test('dashboard header keeps operator name and role on one horizontal line', () => {
-  const operatorStyles = extractBaseOperatorStyles(header);
+  assert.match(header, /src="@\/components\/dashboard\/dashboard-header.scss"/);
+  const operatorStyles = extractBaseOperatorStyles(styles);
 
   assert.match(operatorStyles, /display:\s*inline-flex/);
   assert.match(operatorStyles, /align-items:\s*center/);

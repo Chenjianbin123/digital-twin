@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN" class="warm-model-preview" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>暖色护士站 · 独立模型验收</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: light; --surface: #f6fbff; --ink: #08275b; --muted: #536775; --line: #aabcc4; --accent: #009ed5; }
+    :root[data-theme="dark"] { color-scheme: dark; --surface: #0d2235; --ink: #e6f2ff; --muted: #b7cbd5; --line: #536e7c; --accent: #62d8f4; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--surface); color: var(--ink); font: 14px/1.5 "Microsoft YaHei", system-ui, sans-serif; }
+    .warm-model-preview, .warm-model-preview body { height: auto; min-height: 100%; overflow: auto; }
+    .warm-preview-toolbar, .warm-preview-footer { padding: 12px 16px; }
+    .warm-preview-toolbar { display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0; font-size: 18px; }
+    p { margin: 0; overflow-wrap: anywhere; }
+    .note, #metrics { color: var(--muted); }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; }
+    .warm-preview-toolbar button, #retry { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--ink); font: inherit; cursor: pointer; }
+    .warm-preview-toolbar button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+    .warm-preview-toolbar button:disabled { opacity: .55; cursor: wait; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .warm-preview-stage { display: grid; grid-template-columns: minmax(0, 1fr); height: max(350px, calc(100dvh - 240px)); }
+    .warm-preview-stage.with-sidebar { grid-template-columns: minmax(0, 1fr) 440px; }
+    #scene { height: 100%; min-width: 0; overflow: hidden; }
+    #theme-sidebar { min-width: 0; height: 100%; overflow: hidden; border-left: 1px solid var(--line); }
+    #scene canvas { display: block; width: 100%; height: 100%; }
+    [hidden] { display: none !important; }
+    @media (max-width: 1100px) { .warm-preview-stage.with-sidebar { grid-template-columns: minmax(0, 1fr) 370px; } }
+    @media (max-width: 767px) {
+      .warm-preview-toolbar, .warm-preview-footer { padding: 12px; }
+      .warm-preview-stage, .warm-preview-stage.with-sidebar { grid-template-columns: minmax(0, 1fr); height: auto; }
+      #scene { height: 60dvh; min-height: 350px; }
+      #theme-sidebar { height: 780px; border-left: 0; border-top: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <header class="warm-preview-toolbar">
+    <div><h1 id="title">暖色护士站 · 模型验收</h1><p class="note">独立预览，未替换正式场景。所有屏幕均为合成 DEMO，不访问医院接口。</p></div>
+    <nav aria-label="模型验收操作">
+      <button id="front" disabled aria-pressed="true">参考全景</button>
+      <button id="detail" disabled aria-pressed="false">柜台细节</button>
+      <button id="screens" disabled>逐屏检查</button>
+      <button id="binding" disabled aria-pressed="false">绑定合成屏幕</button>
+      <button id="update" disabled>仅更新当前屏幕</button>
+      <button id="theme" disabled aria-pressed="false">深色模式</button>
+      <button id="sidebar" disabled aria-pressed="false">显示项目侧边栏</button>
+      <button id="measure" disabled>采样 60 帧</button>
+    </nav>
+  </header>
+  <main class="warm-preview-stage">
+    <div id="scene" aria-label="护士站三维模型，支持拖动旋转及方向键平移" aria-busy="true"></div>
+    <aside id="theme-sidebar" aria-label="项目实际护士站侧边栏，合成演示数据" hidden></aside>
+  </main>
+  <footer class="warm-preview-footer">
+    <p id="status" role="status" aria-live="polite">正在加载模型及其参考机位…</p>
+    <p id="metrics">性能待测。帧间隔包含浏览器调度，非 GPU 耗时或生产性能保证。</p>
+    <button id="retry" hidden>重新加载</button>
+  </footer>
+  <script type="module" src="./nurse-warm-preview.js"></script>
+</body>
+</html>

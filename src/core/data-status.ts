@@ -27,46 +27,57 @@ export interface DataFreshnessItem {
 
 function wardStatusDetail(status: DataStatus): string {
   if (status === 'ready')
-    return '病区数据已同步';
+    return '病区信息已更新';
   if (status === 'warning')
-    return '病区数据部分同步';
+    return '病区信息不完整';
   if (status === 'stale')
-    return '病区数据已延迟';
+    return '病区信息更新延迟';
   if (status === 'error')
-    return '病区数据同步中断';
-  return '病区数据同步中';
+    return '病区信息暂未更新';
+  return '病区信息更新中';
 }
 
-function eventHealth(sync: SwpEventSyncState): Pick<DataHealthItem, 'status' | 'detail'> {
-  if (sync.phase === 'ready')
-    return { status: 'ready', detail: '实时事件已同步' };
+function eventHealth(sync: SwpEventSyncState, nowMs: number): Pick<DataHealthItem, 'status' | 'detail'> {
+  const status = resolveSyncStatus(sync, nowMs);
+  if (status === 'stale')
+    return { status, detail: hasSyncedData(sync) ? '信息暂未更新，当前显示上次记录，请核对现场情况' : '更新时间未提供，当前情况需核对' };
+  if (status === 'ready')
+    return { status: 'ready', detail: '事件信息已更新' };
   if (sync.phase === 'partial')
-    return { status: 'warning', detail: '部分数据可能延迟' };
+    return { status: 'warning', detail: '部分记录尚未更新' };
   if (sync.phase === 'error') {
     return {
       status: 'error',
       detail: sync.lastSyncedAt
-        ? '同步中断，当前显示最近一次数据'
-        : '同步中断，暂未获取数据',
+        ? '信息暂未更新，当前显示上次记录'
+        : '暂未获取信息，请稍后重试',
     };
   }
-  return { status: 'loading', detail: '实时事件同步中' };
+  return { status: 'loading', detail: '事件信息更新中' };
 }
 
 function normalizeSyncedAt(value: string | number | null | undefined): string | null {
   if (value == null || String(value).trim() === '')
     return null;
   const timestamp = new Date(value);
-  return Number.isNaN(timestamp.getTime()) ? String(value) : timestamp.toISOString();
+  return Number.isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
 }
 
-function syncStatus(sync?: SwpEventSyncState): DataStatus {
+export function hasSyncedData(sync?: SwpEventSyncState): boolean {
+  return normalizeSyncedAt(sync?.lastSyncedAt) !== null;
+}
+
+// A transport freshness threshold, not a clinical response deadline.
+export function resolveSyncStatus(sync?: SwpEventSyncState, nowMs = Date.now()): DataStatus {
   if (!sync || sync.phase === 'idle' || sync.phase === 'loading')
     return 'loading';
   if (sync.phase === 'partial')
     return 'warning';
   if (sync.phase === 'error')
     return 'error';
+  const lastSyncedAt = normalizeSyncedAt(sync.lastSyncedAt);
+  if (!lastSyncedAt || Date.parse(lastSyncedAt) > nowMs || nowMs - Date.parse(lastSyncedAt) >= 5 * 60 * 1000)
+    return 'stale';
   return 'ready';
 }
 
@@ -76,6 +87,7 @@ export function buildDataFreshnessItems(input: {
   eventSync?: SwpEventSyncState;
   responseSync?: SwpEventSyncState;
   inspectionSync?: SwpEventSyncState;
+  nowMs?: number;
 }): DataFreshnessItem[] {
   return [
     {
@@ -87,19 +99,19 @@ export function buildDataFreshnessItems(input: {
     {
       key: 'events',
       label: '呼叫报警',
-      status: syncStatus(input.eventSync),
+      status: resolveSyncStatus(input.eventSync, input.nowMs),
       syncedAt: normalizeSyncedAt(input.eventSync?.lastSyncedAt),
     },
     {
       key: 'response',
       label: '响应指标',
-      status: syncStatus(input.responseSync),
+      status: resolveSyncStatus(input.responseSync, input.nowMs),
       syncedAt: normalizeSyncedAt(input.responseSync?.lastSyncedAt),
     },
     {
       key: 'inspection',
       label: '巡视记录',
-      status: syncStatus(input.inspectionSync),
+      status: resolveSyncStatus(input.inspectionSync, input.nowMs),
       syncedAt: normalizeSyncedAt(input.inspectionSync?.lastSyncedAt),
     },
   ];
@@ -108,10 +120,11 @@ export function buildDataFreshnessItems(input: {
 export function buildDataHealthSummary(input: {
   wardStatus: DataStatus;
   eventSync: SwpEventSyncState;
+  nowMs?: number;
 }): DataHealthSummary {
   const wardDetail = wardStatusDetail(input.wardStatus);
-  const sharedDetail = input.wardStatus === 'warning' ? '随病区数据同步' : wardDetail;
-  const event = eventHealth(input.eventSync);
+  const sharedDetail = input.wardStatus === 'warning' ? '部分信息待更新' : wardDetail;
+  const event = eventHealth(input.eventSync, input.nowMs ?? Date.now());
   const items: DataHealthItem[] = [
     { key: 'beds', label: '床位与患者', status: input.wardStatus, detail: wardDetail },
     { key: 'devices', label: '设备状态', status: input.wardStatus, detail: sharedDetail },
@@ -130,12 +143,12 @@ export function buildDataHealthSummary(input: {
           ? 'loading'
           : 'ready';
   const label = level === 'ready'
-    ? '数据同步正常'
+    ? '信息已更新'
     : level === 'loading'
-      ? '数据正在同步'
+      ? '信息更新中'
       : level === 'error'
-        ? '数据同步异常'
-        : '数据同步需关注';
+        ? '信息暂未更新'
+        : '信息需核对';
 
   return {
     level,

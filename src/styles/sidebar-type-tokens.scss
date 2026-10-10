@@ -1,0 +1,29 @@
+// 三种侧边栏的唯一字号配置入口。只改这里，不按场景或主题另设字号。
+// 以护士站的阅读层级为基准；装饰英文、占用率仪表大数字不参与缩放。
+@mixin render {
+  .digital-twin {
+    --sidebar-font-family: 'Microsoft YaHei UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --sidebar-font-title: clamp(22px, calc(4px + 1.25vw), 34px);
+    --sidebar-font-heading: clamp(18px, calc(14px + .25vw), 20px);
+    --sidebar-font-section: 18px;
+    --sidebar-font-body: clamp(16px, calc(12px + .25vw), 18px);
+    --sidebar-font-caption: clamp(14px, calc(10px + .25vw), 16px);
+    --sidebar-font-label: 14px;
+    --sidebar-font-role: 15px;
+    --sidebar-font-name: 18px;
+    --sidebar-font-metric: 26px;
+    --sidebar-weight-title: 800;
+    --sidebar-weight-heading: 700;
+    --sidebar-weight-body: 400;
+    --sidebar-line-title: 1.4;
+    --sidebar-line-heading: 1.5;
+    --sidebar-line-body: 1.65;
+    --sidebar-line-caption: 1.6;
+    --sidebar-line-metric: 1.25;
+    @media (min-width: 1600px) {
+      --sidebar-font-name: 20px;
+      --sidebar-font-metric: 28px;
+    }
+    @media (max-width: 1023px) { --sidebar-font-title: 24px; }
+  }
+}

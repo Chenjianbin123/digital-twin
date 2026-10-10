@@ -6,23 +6,22 @@ import test from 'node:test';
 const app = readWorkspaceSource();
 const header = readFileSync(new URL('../src/components/dashboard/DashboardHeader.vue', import.meta.url), 'utf8');
 
-test('root app gates ward bootstrap behind a confirmed authentication session', () => {
-  assert.match(app, /const SwpLoginGate = defineRecoverableComponent/);
-  assert.match(app, /readAuthSession/);
+test('root app starts local workspace without authentication', () => {
+  assert.doesNotMatch(app, /SwpLoginGate|readAuthSession|authSession|AUTH_EXPIRED_EVENT/);
   assert.match(app, /useWorkspaceBootstrap\(loadAreaSelectionContext,/);
-  assert.match(app, /if \(authSession\.value\)[\s\S]*?bootstrapDigitalTwin\(\)/);
-  assert.match(app, /<template v-if="!authSession">[\s\S]*?<SwpLoginGate[\s\S]*?@authenticated="handleAuthenticated"/);
+  assert.match(app, /onMounted\(\(\) => \{\s*store.setAlertOperator\('操作员'\);\s*void bootstrapDigitalTwin\(\)/);
 });
 
-test('root app handles session expiry and logout', () => {
-  assert.match(app, /AUTH_EXPIRED_EVENT/);
-  assert.match(app, /clearAuthSession\(\)/);
-  assert.match(app, /function handleLogout\(\)/);
-  assert.match(app, /@logout="handleLogout"/);
+test('startup cancellation restarts the local workspace', () => {
+  assert.match(app, /function restartLocalWorkspace\(\)/);
+  assert.match(app, /@cancel="restartLocalWorkspace"/);
+  assert.match(app, /operator-name="操作员"/);
 });
 
-test('dashboard header exposes a clear logout command', () => {
-  assert.match(header, /logout: \[\]/);
-  assert.match(header, /aria-label="退出登录"/);
-  assert.match(header, /emit\('logout'\)/);
+test('local workspace does not subscribe to session expiry', () => {
+  assert.doesNotMatch(readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8'), /auth-session|addEventListener/);
+});
+
+test('dashboard header has no login or logout command', () => {
+  assert.doesNotMatch(header, /aria-label="退出登录"|emit\('logout'\)/);
 });

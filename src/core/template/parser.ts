@@ -1,5 +1,6 @@
 import { getEmptyBedTemplate, pickEmptyBedKey } from './door-empty-bed.ts';
 import { validateTemplateContent } from './template-validation.ts';
+import { parseTP4Template } from './tp4-parser.ts';
 import type { ParsedTemplate, SwpTemplateInfo, TemplateContent, TemplateNode } from '../../types/template.ts';
 
 /** 对齐主项目 AnalyzeTypeEnum.PERCENTAGE_TEMPLATE */
@@ -140,6 +141,24 @@ export function parseTemplateContent(raw: string, analyzeType?: string): ParsedT
 }
 
 export function parseTemplateInfo(info: SwpTemplateInfo): ParsedTemplate {
-  const analyzeType = info.analyzeType != null ? String(info.analyzeType) : undefined;
-  return parseTemplateContent(info.templateContent, analyzeType);
+  const context = {
+    templateId: String(info.id),
+    templateName: info.templateName,
+    systemType: info.systemType == null ? undefined : String(info.systemType),
+    templateType: info.templateType == null ? undefined : String(info.templateType),
+  };
+  // 协议识别和历史格式迁移均由运行库负责，不在宿主按 schemaVersion 分流。
+  try {
+    return parseTP4Template(info.templateContent, context);
+  }
+  catch (error) {
+    // 保留已有本地旧模板的双重转义兼容；有效 JSON 的解析失败不走回退。
+    try { JSON.parse(info.templateContent); }
+    catch {
+      const repaired = info.templateContent.replace(/\\\\(?=")/g, '\\');
+      if (repaired !== info.templateContent)
+        return parseTP4Template(repaired, context);
+    }
+    throw error;
+  }
 }

@@ -7,7 +7,7 @@ import { acquireSceneLoad } from './scene-load-queue';
 import { createWardBedUnit, disposeWardBedUnit, placeWardBedUnit, prepareModularWardRoom, type WardBedUnit } from './ward-bed-unit';
 import { WardRoomExpansion } from './ward-room-expansion';
 import { wardBedPatientKey } from './ward-data-binding';
-import { isWardBedInfusing, selectOccupiedWardBeds, wardInteriorRoomKey } from './ward-interior-beds';
+import { isWardBedInfusing, selectWardBeds, wardInteriorRoomKey } from './ward-interior-beds';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { easeOutCubic } from '@/core/camera-easing';
@@ -37,7 +37,7 @@ import {
   createHospitalFloorTexture,
   createHospitalWallTexture,
 } from '@/core/hospital-scene-details';
-import { loadParsedTemplate } from '@/core/template/template-cache';
+import { getTemplateCacheGeneration, loadParsedTemplate, TEMPLATE_CACHE_TTL_MS } from '@/core/template/template-cache';
 import { getWardRoomSize } from '@/types/twin';
 import { resolveWardBedPose } from '@/core/ward-room-layout';
 import {
@@ -740,12 +740,15 @@ export class WardScene {
 
     // Templates can read arbitrary bed fields. Hash the complete normalized snapshot,
     // keeping a good texture only while the same patient remains on the bed.
-    const signature = JSON.stringify(bed);
+    const templateGeneration = getTemplateCacheGeneration();
+    const signature = JSON.stringify([bed, templateGeneration]);
     const previous = this.terminalSignatures.get(bed.bedCode);
     const patientKey = wardBedPatientKey(bed);
-    if (previous?.value === signature && Date.now() - previous.at < 300_000)
+    if (previous?.value === signature && Date.now() - previous.at < TEMPLATE_CACHE_TTL_MS)
       return;
-    this.terminalSignatures.set(bed.bedCode, { value: signature, at: Date.now(), patientKey });
+    // 在途继续合并重复刷新；有效期从纹理完成时开始，避免早于模板信息缓存过期。
+    const signatureEntry = { value: signature, at: Infinity, patientKey };
+    this.terminalSignatures.set(bed.bedCode, signatureEntry);
     if (previous && previous.patientKey !== patientKey)
       this.applyBedTerminalTexture(meshGroup, createBedTemplateStatusTexture(bed, 'loading'));
     const token = (this.bedTerminalRefreshToken.get(bed.bedCode) ?? 0) + 1;
@@ -756,12 +759,12 @@ export class WardScene {
     if (bed.templateId) {
       try {
         const parsed = await loadParsedTemplate(bed.templateId);
-        if (token !== this.bedTerminalRefreshToken.get(bed.bedCode))
+        if (token !== this.bedTerminalRefreshToken.get(bed.bedCode) || templateGeneration !== getTemplateCacheGeneration())
           return;
         tex = await renderBedTerminalTexture(bed, parsed, status);
       }
       catch (error) {
-        if (token !== this.bedTerminalRefreshToken.get(bed.bedCode))
+        if (token !== this.bedTerminalRefreshToken.get(bed.bedCode) || templateGeneration !== getTemplateCacheGeneration())
           return;
         this.terminalSignatures.set(bed.bedCode, { value: '', at: 0, patientKey });
         tex = createBedTemplateStatusTexture(
@@ -775,12 +778,15 @@ export class WardScene {
       tex = createBedTemplateStatusTexture(bed, 'missing');
     }
 
-    if (token !== this.bedTerminalRefreshToken.get(bed.bedCode) || this.bedMeshes.get(bed.bedCode) !== meshGroup) {
+    if (token !== this.bedTerminalRefreshToken.get(bed.bedCode) || templateGeneration !== getTemplateCacheGeneration()
+      || this.bedMeshes.get(bed.bedCode) !== meshGroup) {
       tex.dispose();
       return;
     }
 
     this.applyBedTerminalTexture(meshGroup, tex);
+    if (this.terminalSignatures.get(bed.bedCode) === signatureEntry)
+      signatureEntry.at = Date.now();
   }
 
   private applyBedTerminalTexture(meshGroup: BedMeshGroup, tex: THREE.CanvasTexture) {
@@ -2792,7 +2798,7 @@ export class WardScene {
     }
     this.ward = ward;
     const dynamicBeds = wardInteriorSceneConfig.modular.unitUrl
-      ? selectOccupiedWardBeds(ward).beds
+      ? selectWardBeds(ward).beds
       : ward.beds.slice(0, WARD_INTERIOR_MAX_BEDS);
     if (!wardInteriorSceneConfig.modular.unitUrl && ward.beds.length > WARD_INTERIOR_MAX_BEDS) {
       console.warn(

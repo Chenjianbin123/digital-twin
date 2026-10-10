@@ -1,4 +1,5 @@
 import { createStationTheme, STATION_TEAL_ACCENT, STATION_TEAL_COUNTER, STATION_TEAL_SOFT } from '@/core/station-theme';
+import { createReferenceDashboardTexture } from './nurse-station-reference-dashboard';
 import { WardCorridorLayout, type CorridorLayoutState, type CorridorSlot } from './ward-corridor-layout';
 import { WardCorridorScreenCache } from './ward-corridor-screen-cache';
 import { CorridorMarker } from './ward-corridor-markers';
@@ -49,7 +50,7 @@ import {
   type CorridorDisplayData,
   type NurseStationDisplayInfo,
 } from '@/core/hospital-scene-details';
-import { loadParsedTemplate } from '@/core/template/template-cache';
+import { clearTemplateCache, getTemplateCacheGeneration, loadParsedTemplate, TEMPLATE_CACHE_TTL_MS } from '@/core/template/template-cache';
 import {
   buildWardCorridorBindingSignature,
   configureWardCorridorCanvasTexture,
@@ -57,6 +58,7 @@ import {
   getHospitalCorridorEntranceDeviceOrder,
   getHospitalCorridorEntranceScreenOrder,
   getHospitalCorridorEntranceScreenMaterialIndex,
+  getHospitalCorridorRoomLabel,
   orientHospitalCorridorScreenUV,
   createHospitalCorridorDisplayGeometry,
   fitHospitalCorridorEntranceScreenGeometry,
@@ -78,6 +80,9 @@ import {
 } from '@/core/ward-corridor-camera';
 import { resolveAreaCorridorControlLimits } from '@/core/area-corridor-controls';
 import { nurseStationSceneConfig } from '@/config/nurse-station-scene';
+import { createSilverStationLights, createSilverStationTheme, prepareSilverStation, SILVER_STATION_LIGHTS, SILVER_STATION_SCREENS } from '@/core/silver-nurse-station';
+import { createReferenceCorridorLights, prepareReferenceCorridor, REFERENCE_CORRIDOR_LIGHTS } from '@/core/reference-corridor';
+import { bindStationEducationVideo } from '@/core/station-education-video';
 import { bindReferenceStationDisplays, createReferenceClockTexture, createReferenceStationLights, prepareReferenceStation, referenceStationFov } from '@/core/reference-nurse-station';
 import { buildReferenceBoardSignatures } from '@/core/nurse-station-board-signatures';
 import { wardCorridorSceneConfig } from '@/config/ward-corridor-scene';
@@ -194,6 +199,8 @@ interface CorridorModelDisplay {
 
 const NURSE_STATION = nurseStationSceneConfig.position;
 const IS_REFERENCE_STATION = nurseStationSceneConfig.model.layout === 'reference-v2';
+const IS_SILVER_STATION = nurseStationSceneConfig.model.layout === 'silver-v1';
+const HAS_AUTHORED_STATION_SCREENS = IS_REFERENCE_STATION || IS_SILVER_STATION;
 const CORRIDOR_GEOMETRY = wardCorridorSceneConfig.fallbackGeometry;
 const CORRIDOR_CEILING_H = CORRIDOR_GEOMETRY.ceilingHeight;
 const NURSE_STATION_MODEL_URL = nurseStationSceneConfig.model.url;
@@ -349,6 +356,8 @@ export class AreaScene {
   private gridHelper: THREE.GridHelper | null = null;
   private nurseGroup: THREE.Group | null = null;
   private stationTheme = createStationTheme();
+  private silverStationTheme = createSilverStationTheme();
+  private stationVideo: ReturnType<typeof bindStationEducationVideo> | null = null;
   private corridorTheme = createCorridorTheme();
   private darkTheme = false;
   private nurseStationModel: THREE.Object3D | null = null;
@@ -370,6 +379,7 @@ export class AreaScene {
   private cameraTransition: CameraTransition | null = null;
   private suppressRoomClick = false;
   private doorRefreshToken = new Map<number, number>();
+  private doorScreenSignatures = new WeakMap<RoomMeshGroup, { value: string; at: number }>();
   private floorTileTexture: THREE.CanvasTexture | null = null;
   private wallPanelTexture: THREE.CanvasTexture | null = null;
   private corridorGroup: THREE.Group | null = null;
@@ -386,7 +396,7 @@ export class AreaScene {
   private wardCorridorBindingSignature = '';
   private corridorLayout: WardCorridorLayout;
   private onCorridorLayout?: (state: CorridorLayoutState) => void;
-  private corridorScreens = new WardCorridorScreenCache();
+  private corridorScreens = new WardCorridorScreenCache({ ttlMs: TEMPLATE_CACHE_TTL_MS });
   private corridorScreenRetryTimer: number | undefined;
   private corridorScreenRetryCount = 0;
   private corridorLoadMetrics = { downloadParseMs: 0, gpuWarmupMs: 0 };
@@ -438,7 +448,7 @@ export class AreaScene {
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = STATION_EXPOSURE;
     this.styleRendererLayers();
@@ -637,14 +647,19 @@ export class AreaScene {
 
   private handleVisibilityChange = () => {
     this.pageHidden = document.hidden;
+    this.syncStationVideoActivity();
     if (!this.pageHidden)
       this.timer.getDelta();
   };
 
   private setupLights() {
     RectAreaLightUniformsLib.init();
-    if (this.modelKind === 'station' && IS_REFERENCE_STATION) {
-      const lights = createReferenceStationLights();
+    if (this.modelKind === 'corridor' && wardCorridorSceneConfig.model.layout === 'reference-v2' && !this.wardCorridorModelFailed) {
+      this.scene.add(createReferenceCorridorLights());
+      return;
+    }
+    if (this.modelKind === 'station' && HAS_AUTHORED_STATION_SCREENS) {
+      const lights = IS_SILVER_STATION ? createSilverStationLights() : createReferenceStationLights();
       lights.position.set(NURSE_STATION.x, 0, NURSE_STATION.z);
       this.scene.add(lights);
       return;
@@ -1687,7 +1702,8 @@ export class AreaScene {
     kind: 'taskQueue' | 'wardStatus' | 'bedMonitor' | 'deviceHealth',
     target?: THREE.CanvasTexture,
   ) {
-    const { canvas, ctx } = this.createBoardCanvas(960, 520, target);
+    const height = IS_SILVER_STATION ? 540 : 520;
+    const { canvas, ctx } = this.createBoardCanvas(960, height, target);
     const stats = this.getAreaBoardStats();
     const sortedRooms = [...this.getNurseStationSummaries()]
       .sort((a, b) => {
@@ -1706,12 +1722,12 @@ export class AreaScene {
       hour12: false,
     });
 
-    const bg = ctx.createLinearGradient(0, 0, 960, 520);
+    const bg = ctx.createLinearGradient(0, 0, 960, height);
     bg.addColorStop(0, '#071521');
     bg.addColorStop(1, '#102c36');
     ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, 960, 520);
-    this.drawTechGrid(ctx, 960, 520, '#4dd0e1');
+    ctx.fillRect(0, 0, 960, height);
+    this.drawTechGrid(ctx, 960, height, '#4dd0e1');
     ctx.fillStyle = '#153b49';
     ctx.fillRect(0, 0, 960, 92);
     ctx.fillStyle = '#7bdff2';
@@ -1910,90 +1926,8 @@ export class AreaScene {
   }
 
   private createReferenceOverviewTexture(target?: THREE.CanvasTexture) {
-    const { canvas, ctx } = this.createBoardCanvas(1600, 500, target);
-    const vm = this.nurseStationViewModel;
-    const available = (key: 'ward' | 'events') => {
-      const source = vm?.dataFreshnessItems.find(item => item.key === key);
-      return Boolean(source && (source.status === 'ready' || source.syncedAt));
-    };
-    const wardReady = available('ward');
-    const eventsReady = available('events');
-    const m = vm?.metrics;
-    const ink = this.darkTheme ? '#dceaf2' : '#24444d';
-    const muted = this.darkTheme ? '#9fb9c9' : '#607d85';
-    const accent = this.darkTheme ? '#91d5df' : '#2f7887';
-    const alert = this.darkTheme ? '#e8a7b3' : '#b64057';
-    const panelStroke = this.darkTheme ? '#638d792b' : '#a8c3ca';
-    const panelFill = this.darkTheme ? '#b4d7c508' : '#ffffffa3';
-    const metricFill = this.darkTheme ? '#a8d4bd0c' : '#f8fbfccc';
-    const metricStroke = this.darkTheme ? '#a8d4bd12' : '#b8cfd6';
-    const text = (value: string, x: number, y: number, size: number, color = ink, max = 1100, weight = 400) => {
-      ctx.fillStyle = color;
-      ctx.font = weight + ' ' + size + 'px "Microsoft YaHei", sans-serif';
-      this.drawTruncatedText(ctx, value, x, y, max);
-    };
-    const bg = ctx.createLinearGradient(0, 0, 1600, 500);
-    if (this.darkTheme) {
-      bg.addColorStop(0, '#102f40');
-      bg.addColorStop(1, '#091d2a');
-    }
-    else {
-      // 浅色场景使用低反差蓝灰屏面，避免整块深色大屏压住空间。
-      bg.addColorStop(0, '#edf5f6');
-      bg.addColorStop(1, '#dce9ec');
-    }
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, 1600, 500);
-    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    const panel = (x: number, y: number, width: number, height: number, fill: string, stroke = panelStroke) => {
-      this.drawBoardRoundRect(ctx, x, y, width, height, 14);
-      ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke();
-    };
-    panel(40, 30, 64, 64, this.darkTheme ? '#a8d4bd12' : '#d7e8ec');
-    ctx.strokeStyle = accent; ctx.lineWidth = 3;
-    ctx.strokeRect(58, 44, 28, 34);
-    ctx.beginPath(); ctx.moveTo(64, 55); ctx.lineTo(80, 55); ctx.moveTo(72, 47); ctx.lineTo(72, 63); ctx.moveTo(68, 78); ctx.lineTo(68, 69); ctx.lineTo(76, 69); ctx.lineTo(76, 78); ctx.stroke();
-    text(vm?.area.areaName ?? this.area?.areaName ?? '护士站', 124, 64, 42, ink, 970, 600);
-    text('护士站  ·  病区运行概览', 124, 99, 24, muted);
-    const syncNormal = vm?.realtime.status === 'ready';
-    const syncColor = syncNormal ? accent : (this.darkTheme ? '#e2bf84' : '#8a641d');
-    panel(1242, 30, 312, 46, syncNormal
-      ? (this.darkTheme ? '#a8d4bd12' : '#dbece8')
-      : (this.darkTheme ? '#e2bf8412' : '#f5ead2'));
-    ctx.fillStyle = syncColor; ctx.beginPath(); ctx.arc(1264, 53, 5, 0, Math.PI * 2); ctx.fill();
-    text(vm?.realtime.label ?? '等待数据', 1284, 63, 27, syncColor, 244, 500);
-    text(syncNormal ? '病区与护理信息同步' : '已有数据请核对', 1252, 108, 23, muted, 300);
-    const line = ctx.createLinearGradient(40, 0, 1560, 0);
-    line.addColorStop(0, this.darkTheme ? '#a4ceb960' : '#6f9da8');
-    line.addColorStop(1, this.darkTheme ? '#a4ceb90d' : '#6f9da81a');
-    ctx.fillStyle = line; ctx.fillRect(40, 128, 1520, 1);
-
-    // Two independent information groups leave the lower middle clear of the desk monitor.
-    panel(32, 151, 704, 313, panelFill);
-    panel(864, 151, 704, 313, panelFill);
-    text('病区概况', 64, 193, 29, accent, 560, 600);
-    text('护理动态', 888, 193, 29, accent, 560, 600);
-    ctx.fillStyle = accent; ctx.fillRect(32, 175, 3, 22); ctx.fillRect(864, 175, 3, 22);
-    panel(58, 210, 216, 181, metricFill, metricStroke);
-    const calling = eventsReady && Boolean(m?.calling);
-    panel(882, 210, 216, 181, calling ? (this.darkTheme ? '#e8a7b310' : '#fcecee') : metricFill, calling ? (this.darkTheme ? '#e8a7b32b' : '#e5b4bc88') : metricStroke);
-    const metric = (label: string, value: string, unit: string, x: number, color = ink, primary = false) => {
-      text(label, x, 247, 28, muted, 185);
-      text(value, x, 335, primary ? 91 : 79, color, 185, 500);
-      text(unit, x, 371, 23, muted, 185);
-    };
-    metric('在床患者', wardReady && m ? String(m.occupied) : '—', '人', 76, accent, true);
-    metric('总床位', wardReady && m ? String(m.totalBeds) : '—', '床', 322);
-    metric('病房数量', wardReady && m ? String(m.rooms) : '—', '间', 554);
-    metric('患者呼叫', eventsReady && m ? String(m.calling) : '—', '项', 900, calling ? alert : accent, true);
-    metric('在线设备', wardReady && m ? String(m.deviceOnline) : '—', '台', 1134);
-    metric('体征预警', eventsReady && m ? String(m.vitalWarnings) : '—', '项', 1366, eventsReady && m?.vitalWarnings ? alert : ink);
-    ctx.fillStyle = this.darkTheme ? '#638d7938' : '#b9cdd2'; ctx.fillRect(56, 407, 656, 1); ctx.fillRect(888, 407, 656, 1);
-    text(wardReady && m ? '空余床位   ' + m.empty + ' 床' : '病区数据待同步', 76, 441, 24, muted, 574);
-    text(wardReady && m ? '接入设备   ' + m.deviceTotal + ' 台' : '设备数据待同步', 900, 441, 24, muted, 574);
-    const texture = this.makeBoardTexture(canvas, target);
-    // The wall display occupies a small portion of the full scene; mipmaps keep text stable at a distance.
-    texture.generateMipmaps = true;
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    const texture = createReferenceDashboardTexture(target);
+    texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
     return texture;
   }
 
@@ -2241,7 +2175,7 @@ export class AreaScene {
     }
     // The reference dashboard is authored at its physical wide-screen aspect.
     if (kind === 'dashboard')
-      return IS_REFERENCE_STATION ? this.createReferenceOverviewTexture(target) : this.createNurseRearDashboardTexture();
+      return HAS_AUTHORED_STATION_SCREENS ? this.createReferenceOverviewTexture(target) : this.createNurseRearDashboardTexture();
     if (kind === 'whiteboard')
       return this.createNurseRearShiftTexture();
     if (kind === 'roomStatus')
@@ -2944,8 +2878,12 @@ export class AreaScene {
 
   private attachNurseStationBoardDisplays(model: THREE.Object3D) {
     this.disposeNurseStationBoardDisplays();
-    if (IS_REFERENCE_STATION) {
-      this.nurseStationBoardDisplays = bindReferenceStationDisplays(model, kind => this.createNurseStationBoardTexture(kind));
+    if (HAS_AUTHORED_STATION_SCREENS) {
+      this.nurseStationBoardDisplays = bindReferenceStationDisplays(model, kind => this.createNurseStationBoardTexture(kind), IS_SILVER_STATION ? SILVER_STATION_SCREENS : undefined);
+      if (IS_SILVER_STATION) {
+        this.stationVideo = bindStationEducationVideo(model, nurseStationSceneConfig.educationVideoUrl);
+        this.syncStationVideoActivity();
+      }
       return;
     }
     this.hideNurseStationStaticBoardContent(model);
@@ -3180,7 +3118,7 @@ export class AreaScene {
     if (!this.isActive || !this.nurseStationBoardDisplays.length)
       return;
 
-    const signatures: Partial<Record<NurseStationBoardKind, string>> | null = IS_REFERENCE_STATION
+    const signatures: Partial<Record<NurseStationBoardKind, string>> | null = HAS_AUTHORED_STATION_SCREENS
       ? buildReferenceBoardSignatures({
         viewModel: this.nurseStationViewModel,
         metrics: this.getNurseStationLiveData(),
@@ -3215,6 +3153,8 @@ export class AreaScene {
   }
 
   private disposeNurseStationBoardDisplays() {
+    this.stationVideo?.dispose();
+    this.stationVideo = null;
     for (const display of this.nurseStationBoardDisplays) {
       if (display.video) {
         display.video.pause();
@@ -3371,23 +3311,26 @@ export class AreaScene {
       }
 
       model.name = 'blender-nurse-station';
+      // 先接管资源：布局校验失败也必须由 catch 释放已解码的 GLB。
+      this.nurseStationModel = model;
       this.prepareLoadedModel(model, {
         envMapIntensity: STATION_ENV_MAP_INTENSITY,
-        preserveEnvMapIntensity: IS_REFERENCE_STATION,
+        preserveEnvMapIntensity: HAS_AUTHORED_STATION_SCREENS,
       });
       this.fitNurseStationModel(model);
       // 先挂到护士站根节点，再计算覆盖层相对相机的正面方向，
       // 让 root.worldToLocal() 使用包含护士站整体位移的完整世界矩阵。
       parent.add(model);
-      this.nurseStationModel = model;
-      this.configureCorridorShadowCasters(model);
-      this.fitCorridorKeyShadow(model);
+      if (!IS_SILVER_STATION) {
+        this.configureCorridorShadowCasters(model);
+        this.fitCorridorKeyShadow(model);
+      }
       this.attachNurseStationBoardDisplays(model);
       this.highlightNurseStationSignage(model);
       this.setTheme(this.darkTheme ? 'dark' : 'light');
-      if (IS_REFERENCE_STATION) {
+      if (HAS_AUTHORED_STATION_SCREENS) {
         // Geometry and lights are static; camera and board texture changes do not invalidate shadows.
-        this.scene.getObjectByName('reference-nurse-station-lights')?.traverse(object => {
+        this.scene.getObjectByName(IS_SILVER_STATION ? SILVER_STATION_LIGHTS : 'reference-nurse-station-lights')?.traverse(object => {
           if (object instanceof THREE.SpotLight || object instanceof THREE.DirectionalLight)
             object.shadow.needsUpdate = true;
         });
@@ -3402,7 +3345,8 @@ export class AreaScene {
         // this.logStationCameraView('模型就绪');
       }
       await this.warmGpu();
-      // 贴图解码完成后再套一次浅色木纹，避免首次主题应用时漫反射未就绪。
+      if (token !== this.nurseStationModelLoadToken) return;
+      // GPU 预热期间主题可能切换；首帧使用最新主题。
       this.setTheme(this.darkTheme ? 'dark' : 'light');
       this.highlightNurseStationSignage(model);
       if (token !== this.nurseStationModelLoadToken)
@@ -3453,7 +3397,7 @@ export class AreaScene {
 
       model.name = 'blender-ward-corridor';
       this.prepareLoadedModel(model, { envMapIntensity: CORRIDOR_ENV_MAP_INTENSITY });
-      this.configureCorridorShadowCasters(model);
+      if (!prepareReferenceCorridor(model)) this.configureCorridorShadowCasters(model);
       dimHospitalCorridorFloorStripes(model);
       this.corridorTheme(model, this.darkTheme);
       polishHospitalCorridorMaterials(model);
@@ -3486,6 +3430,13 @@ export class AreaScene {
         return;
       this.wardCorridorModelFailed = true;
       this.wardCorridorBoundMeshes = null;
+      const referenceLights = this.scene.getObjectByName(REFERENCE_CORRIDOR_LIGHTS);
+      if (referenceLights) {
+        // 生成式备用走廊沿用自己的方向光，不套用只覆盖精修模型范围的顶灯。
+        this.scene.remove(referenceLights);
+        this.setupLights();
+        this.renderer.shadowMap.needsUpdate = true;
+      }
       this.onCorridorState?.('fallback');
       console.warn('[AreaScene] failed to load ward corridor GLB, using generated fallback', error);
       this.updateCorridorImplementationVisibility();
@@ -3544,8 +3495,10 @@ export class AreaScene {
       }
       binding.door = door as THREE.Mesh;
       const doorRoot = this.wardCorridorModel!.getObjectByName(binding.slot.doorNode) ?? door;
+      const deviceRoot = this.wardCorridorModel!.getObjectByName(binding.slot.deviceNode);
+      const nativeLabel = getHospitalCorridorRoomLabel(deviceRoot);
       const volume = this.wardCorridorBoundMeshes ? getWardCorridorPaddedBounds(this.wardCorridorBoundMeshes) : null;
-      if (binding.slot.interactive) binding.marker = new CorridorMarker(doorRoot, volume ? new THREE.Box3(
+      if (binding.slot.interactive && !nativeLabel) binding.marker = new CorridorMarker(doorRoot, volume ? new THREE.Box3(
         new THREE.Vector3(volume.minX, volume.minY, volume.minZ),
         new THREE.Vector3(volume.maxX, volume.maxY, volume.maxZ),
       ) : undefined, this.wardCorridorBoundMeshes?.widthAxis);
@@ -3557,7 +3510,6 @@ export class AreaScene {
       doorRoot.userData.role = binding.door.userData.role;
       doorRoot.userData.roomIndex = binding.slot.roomIndex;
       if (!binding.slot.interactive) return;
-      const deviceRoot = this.wardCorridorModel!.getObjectByName(binding.slot.deviceNode);
       if (deviceRoot) {
         deviceRoot.visible = true;
         deviceRoot.userData.role = 'wardCorridorEntranceDevice';
@@ -3615,8 +3567,9 @@ export class AreaScene {
 
     for (const binding of bindings) {
       if (!binding.slot.interactive) continue;
-      binding.labelTexture = this.createWardCorridorLabelTexture(binding.slot.label, binding.slot.interactive);
-      if (binding.label)
+      if (!binding.label?.userData.hospitalCorridorRoomLabel)
+        binding.labelTexture = this.createWardCorridorLabelTexture(binding.slot.label, binding.slot.interactive);
+      if (binding.label && binding.labelTexture)
         this.applyWardCorridorTexture(binding.label, binding.labelTexture);
       const room = binding.slot.roomIndex == null ? undefined : rooms[binding.slot.roomIndex];
       this.applyWardCorridorScreenPresentation(
@@ -3717,7 +3670,7 @@ export class AreaScene {
         this.raiseEntranceDeviceFrameLayers(entranceDevice);
         return {
           screen: entranceDevice as THREE.Mesh,
-          label: undefined,
+          label: getHospitalCorridorRoomLabel(entranceDevice),
           screenMaterialIndex,
           screenAspect: orientHospitalCorridorScreenUV(entranceDevice),
         };
@@ -3840,8 +3793,10 @@ export class AreaScene {
       // 模型门口屏必须参与深度测试，斜视时由真实门框遮挡模板边缘，
       // 避免模板穿过门框显示；独立兜底平面仍保持顶层显示。
       depthTest: shouldDepthTestHospitalCorridorScreen(mesh),
-      depthWrite: false,
-      polygonOffset: !!mesh.userData.hospitalCorridorTemplateDevice,
+      // Native panels are opaque surfaces. Write depth so a chassis drawn later
+      // cannot paint over its own screen; generated fallback overlays stay flat.
+      depthWrite: !!(mesh.userData.hospitalCorridorTemplateDevice || mesh.userData.hospitalCorridorRoomLabel),
+      polygonOffset: !!(mesh.userData.hospitalCorridorTemplateDevice || mesh.userData.hospitalCorridorRoomLabel),
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -1,
     });
@@ -3880,18 +3835,29 @@ export class AreaScene {
     }
   }
 
-  private createWardCorridorLabelTexture(label: string, interactive: boolean) {
+  private createWardCorridorLabelTexture(label: string, interactive: boolean, nativePlate = false, state = '', focused = false) {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
-    canvas.height = 256;
+    canvas.height = nativePlate ? 320 : 256;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = interactive ? '#f7faf8' : '#eef1ef';
+    ctx.fillStyle = nativePlate ? (focused ? '#245267' : '#182a33') : interactive ? '#f7faf8' : '#eef1ef';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = interactive ? '#176b63' : '#66736f';
+    ctx.fillStyle = nativePlate ? '#edf7fa' : interactive ? '#176b63' : '#66736f';
     ctx.font = '700 104px "PingFang SC", "Microsoft YaHei", sans-serif';
+    if (nativePlate) {
+      const measured = ctx.measureText(label).width;
+      if (measured > 464) ctx.font = `700 ${104 * 464 / measured}px "Microsoft YaHei", sans-serif`;
+    }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, canvas.width / 2, canvas.height / 2 + 4);
+    ctx.fillText(label, canvas.width / 2, nativePlate && state ? 108 : canvas.height / 2 + 4);
+    if (nativePlate && state) {
+      ctx.fillStyle = '#ffdba1';
+      ctx.font = '48px "Microsoft YaHei", sans-serif';
+      const measured = ctx.measureText(state).width;
+      if (measured > 464) ctx.font = `${48 * 464 / measured}px "Microsoft YaHei", sans-serif`;
+      ctx.fillText(state, canvas.width / 2, 235);
+    }
     return new THREE.CanvasTexture(canvas);
   }
 
@@ -3921,6 +3887,7 @@ export class AreaScene {
     if (!area || !this.isActive || !this.wardCorridorBindings.length)
       return;
     const bindings = this.wardCorridorBindings;
+    const templateGeneration = getTemplateCacheGeneration();
     let failed = false;
     await Promise.all(this.wardCorridorBindings.map(async (binding) => {
       const roomIndex = binding.slot.roomIndex;
@@ -3937,6 +3904,10 @@ export class AreaScene {
             horizontal = result.horizontal;
             return result.texture;
           }, texture => {
+            if (templateGeneration !== getTemplateCacheGeneration()) {
+              texture.dispose();
+              return;
+            }
             binding.screenTexture?.dispose();
             binding.screenTexture = texture;
             binding.screenReady = true;
@@ -3946,7 +3917,7 @@ export class AreaScene {
       }
       catch {
         // Keep the last valid screen and retry on the next refresh.
-        if (!this.wardCorridorBindings.includes(binding)) return;
+        if (templateGeneration !== getTemplateCacheGeneration() || !this.wardCorridorBindings.includes(binding)) return;
         failed = true;
         if (!binding.screenReady) {
           binding.screenTexture?.dispose();
@@ -3958,6 +3929,7 @@ export class AreaScene {
           '部分门口屏模板加载失败，自动重试最多3次；若仍未恢复，请检查图片服务并刷新数据'] });
       }
     }));
+    if (templateGeneration !== getTemplateCacheGeneration()) return;
     if (failed && this.isActive && bindings === this.wardCorridorBindings
       && this.corridorScreenRetryTimer === undefined && this.corridorScreenRetryCount < 3) {
       this.corridorScreenRetryCount++;
@@ -3971,6 +3943,8 @@ export class AreaScene {
   }
 
   retryCorridorScreens() {
+    clearTemplateCache();
+    this.corridorScreens.clear();
     window.clearTimeout(this.corridorScreenRetryTimer);
     this.corridorScreenRetryTimer = undefined;
     this.corridorScreenRetryCount = 0;
@@ -4090,6 +4064,10 @@ export class AreaScene {
   }
 
   private fitNurseStationModel(model: THREE.Object3D) {
+    if (IS_SILVER_STATION) {
+      prepareSilverStation(model);
+      return;
+    }
     if (IS_REFERENCE_STATION) {
       prepareReferenceStation(model);
       return;
@@ -4127,6 +4105,7 @@ export class AreaScene {
 
   /** 顶栏/柜台同色阶：正面锚色对齐柜台青，底面同相略浅。 */
   private highlightNurseStationSignage(model: THREE.Object3D) {
+    if (IS_SILVER_STATION) return;
     const signage = /^(Station_Header|Station_Header_Motto|Counter_Lettering)$/;
     // 顶栏「护士站」与柜台「关爱、专业…」同一套白字参数。
     const whiteLettering = /^(Station_Header(_Motto)?|Counter_Lettering)$/;
@@ -4403,6 +4382,16 @@ export class AreaScene {
   /** 从 GLB 命名网格读取原始边界；失败时回退到模型总包围盒。 */
   private captureNurseStationViewBounds(model: THREE.Object3D) {
     model.updateMatrixWorld(true);
+    const local = STATION_VIEW_BOUNDS.localBox;
+    if (local) {
+      const box = new THREE.Box3(new THREE.Vector3(...local.min), new THREE.Vector3(...local.max)).applyMatrix4(model.matrixWorld);
+      this.nurseStationBoundMeshes = {
+        floorMaxY: box.min.y, ceilingMinY: box.max.y,
+        wallMinX: box.min.x, wallMaxX: box.max.x,
+        floorMinZ: box.min.z, floorMaxZ: box.max.z,
+      };
+      return;
+    }
     const floor = model.getObjectByName(STATION_VIEW_BOUNDS.floorMesh);
     const ceiling = model.getObjectByName(STATION_VIEW_BOUNDS.ceilingMesh)
       ?? model.getObjectByName('天花板');
@@ -4603,7 +4592,7 @@ export class AreaScene {
     };
     this.controls.zoomSpeed = 0.9;
     this.controls.rotateSpeed = 0.55;
-    this.camera.fov = IS_REFERENCE_STATION ? referenceStationFov(this.camera.aspect, STATION_DESK_FOV) : STATION_DESK_FOV;
+    this.camera.fov = HAS_AUTHORED_STATION_SCREENS ? referenceStationFov(this.camera.aspect, STATION_DESK_FOV) : STATION_DESK_FOV;
     this.camera.position.copy(position);
     this.controls.target.copy(target);
     this.controls.minPolarAngle = STATION_MIN_POLAR_ANGLE;
@@ -4630,6 +4619,7 @@ export class AreaScene {
 
   setViewPhase(phase: AreaViewPhase, animate = true) {
     this.viewPhase = phase;
+    this.syncStationVideoActivity();
     const count = Math.max(this.area?.rooms.length ?? 1, 1);
     const showCorridor = phase === 'corridor';
     this.updateThemeBackground();
@@ -4836,15 +4826,29 @@ export class AreaScene {
   private async refreshDoorScreen(roomIndex: number) {
     if (this.modelKind === 'station' || !this.isActive || this.shouldShowWardCorridorModel()) return;
     const meshGroup = this.roomMeshes.get(roomIndex);
-    const room = this.area?.rooms[roomIndex];
+    const area = this.area;
+    const room = area?.rooms[roomIndex];
     const summary = this.summaries[roomIndex];
-    if (!meshGroup?.doorScreen || !room || !summary)
+    if (!meshGroup?.doorScreen || !area || !room || !summary)
       return;
 
+    const signature = corridorScreenSignature(room, area);
+    const previous = this.doorScreenSignatures.get(meshGroup);
+    if (previous?.value === signature && Date.now() - previous.at < TEMPLATE_CACHE_TTL_MS)
+      return;
+    // 绑定级缓存避免重建门口机后误用旧签名，在途请求仍合并。
+    const signatureEntry = { value: signature, at: Infinity };
+    this.doorScreenSignatures.set(meshGroup, signatureEntry);
     const token = (this.doorRefreshToken.get(roomIndex) ?? 0) + 1;
     this.doorRefreshToken.set(roomIndex, token);
+    const templateGeneration = getTemplateCacheGeneration();
+    const isCurrent = () => token === this.doorRefreshToken.get(roomIndex)
+      && templateGeneration === getTemplateCacheGeneration()
+      && this.roomMeshes.get(roomIndex) === meshGroup
+      && this.doorScreenSignatures.get(meshGroup) === signatureEntry;
 
     let tex: THREE.CanvasTexture;
+    let failed = false;
     if (room.templateId) {
       try {
         const loadingTexture = createDoorTemplateStatusTexture(room, 'loading');
@@ -4854,26 +4858,27 @@ export class AreaScene {
         loadingMat.map = loadingTexture;
         loadingMat.needsUpdate = true;
         const parsed = await loadParsedTemplate(room.templateId);
-        if (token !== this.doorRefreshToken.get(roomIndex))
+        if (!isCurrent())
           return;
         const layout = getDoorTerminalScreenLayout(room, parsed);
         if (layout.isHorizontal !== meshGroup.doorIsHorizontal) {
           this.mountDoorTerminal(meshGroup, room, summary, layout.isHorizontal);
-          if (token !== this.doorRefreshToken.get(roomIndex))
+          if (!isCurrent())
             return;
         }
         tex = await renderDoorTerminalTexture(room, summary, parsed, {
-          areaName: this.area?.areaName,
-          deptName: this.area?.deptName,
+          areaName: area.areaName,
+          deptName: area.deptName,
         });
-        if (token !== this.doorRefreshToken.get(roomIndex)) {
+        if (!isCurrent()) {
           tex.dispose();
           return;
         }
       }
       catch (error) {
-        if (token !== this.doorRefreshToken.get(roomIndex))
+        if (!isCurrent())
           return;
+        failed = true;
         tex = createDoorTemplateStatusTexture(
           room,
           'error',
@@ -4888,7 +4893,7 @@ export class AreaScene {
       tex = createDoorTemplateStatusTexture(room, 'missing');
     }
 
-    if (token !== this.doorRefreshToken.get(roomIndex)) {
+    if (!isCurrent()) {
       tex.dispose();
       return;
     }
@@ -4899,6 +4904,10 @@ export class AreaScene {
     const screenMat = meshGroup.doorScreen.material as THREE.MeshBasicMaterial;
     screenMat.map = tex;
     screenMat.needsUpdate = true;
+    if (failed)
+      this.doorScreenSignatures.delete(meshGroup);
+    else
+      signatureEntry.at = Date.now();
   }
 
   private syncDoorTemplates() {
@@ -5044,6 +5053,7 @@ export class AreaScene {
   }
 
   private disposeRoomGroup(meshGroup: RoomMeshGroup) {
+    this.doorScreenSignatures.delete(meshGroup);
     if (meshGroup.doorScreenTexture)
       meshGroup.doorScreenTexture.dispose();
     meshGroup.doorDisplayBladeTexture?.dispose();
@@ -5342,6 +5352,20 @@ export class AreaScene {
     for (const binding of this.wardCorridorBindings) {
       const index = binding.slot.roomIndex;
       const room = index == null ? undefined : this.area?.rooms[index];
+      if (binding.label?.userData.hospitalCorridorRoomLabel) {
+        const summary = index == null ? undefined : this.summaries[index];
+        const state = room?.isOnline === false ? '门口机离线'
+          : summary?.priority === 'calling' ? summary.statusText : '';
+        const label = room?.sickroomName ?? binding.slot.label;
+        const focused = index != null && index === this.focusedRoomIndex;
+        const signature = JSON.stringify([label, state, focused]);
+        if (!binding.labelTexture || binding.label.userData.presentationSignature !== signature) {
+          binding.label.userData.presentationSignature = signature;
+          binding.labelTexture?.dispose();
+          binding.labelTexture = this.createWardCorridorLabelTexture(label, true, true, state, focused);
+          this.applyWardCorridorTexture(binding.label, binding.labelTexture);
+        }
+      }
       binding.marker?.update(room?.sickroomName ?? binding.slot.label,
         index == null ? undefined : this.summaries[index],
         room?.isOnline === false, index !== null && index === this.focusedRoomIndex, this.darkTheme);
@@ -5642,7 +5666,7 @@ export class AreaScene {
     if (width < 2 || height < 2)
       return;
     this.camera.aspect = width / height;
-    if (IS_REFERENCE_STATION && this.viewPhase === 'station')
+    if (HAS_AUTHORED_STATION_SCREENS && this.viewPhase === 'station')
       this.camera.fov = referenceStationFov(this.camera.aspect, STATION_DESK_FOV);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
@@ -5667,13 +5691,17 @@ export class AreaScene {
     this.updateCorridorMarkers();
     this.refreshCorridorDisplays();
     this.corridorTheme(this.wardCorridorModel, this.darkTheme);
-    this.corridorTheme(this.nurseStationModel, this.darkTheme);
+    if (!IS_SILVER_STATION) this.corridorTheme(this.nurseStationModel, this.darkTheme);
     if (this.wardCorridorModel)
       polishHospitalCorridorMaterials(this.wardCorridorModel);
-    if (this.nurseStationModel)
+    if (this.nurseStationModel && !IS_SILVER_STATION)
       polishHospitalCorridorMaterials(this.nurseStationModel);
-    if (this.modelKind !== 'station' || !IS_REFERENCE_STATION) return;
-    this.stationTheme(this.nurseStationModel, this.scene.getObjectByName('reference-nurse-station-lights'), this.darkTheme);
+    if (this.modelKind !== 'station' || !HAS_AUTHORED_STATION_SCREENS) return;
+    if (IS_SILVER_STATION) {
+      this.silverStationTheme(this.nurseStationModel, this.scene.getObjectByName(SILVER_STATION_LIGHTS), this.darkTheme);
+      this.stationVideo?.setTheme(this.darkTheme);
+    }
+    else this.stationTheme(this.nurseStationModel, this.scene.getObjectByName('reference-nurse-station-lights'), this.darkTheme);
 
     if (this.nurseStationModel) {
       this.refreshNurseStationBoardDisplays();
@@ -5681,10 +5709,15 @@ export class AreaScene {
     }
   }
 
+  private syncStationVideoActivity() {
+    this.stationVideo?.setActive(this.isActive && !this.pageHidden && this.viewPhase === 'station');
+  }
+
   setActive(active: boolean) {
     if (this.isActive === active)
       return;
     this.isActive = active;
+    this.syncStationVideoActivity();
     if (!active) {
       window.clearTimeout(this.corridorScreenRetryTimer);
       this.corridorScreenRetryTimer = undefined;
@@ -5848,6 +5881,8 @@ export class AreaScene {
   }
 
   dispose() {
+    this.doorRefreshToken.clear();
+    this.doorScreenSignatures = new WeakMap();
     this.nurseStationModelLoadToken++;
     this.nurseStationViewModel = null;
     this.wardCorridorModelLoadToken++;

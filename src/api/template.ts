@@ -26,6 +26,8 @@ export async function queryTemplateById(id: number): Promise<SwpTemplateInfo> {
       templateName: mock.name,
       templateContent: mock.content,
       analyzeType: '1',
+      systemType: '2',
+      templateType: mock === MOCK_TEMPLATES[1] ? 'bed' : 'door',
     };
   }
 

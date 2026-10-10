@@ -16,7 +16,7 @@ assert.match(panel, /viewModel: NurseStationViewModel/);
 assert.match(panel, /props\.viewModel\.metrics/);
 assert.match(panel, /props\.viewModel\.swpResponseMetrics/);
 assert.match(panel, /props\.viewModel\.inspectionRoomSummaries/);
-assert.match(panel, /当前数据源不提供护士站呼叫事件与响应时效/);
+assert.match(panel, /暂无法查看呼叫与响应信息，请留意呼叫设备/);
 assert.match(app, /:data-source="dataSource"/);
 assert.doesNotMatch(panel, /buildNurseStationMetrics/);
 assert.match(metrics, /buildNurseStationLiveData/);

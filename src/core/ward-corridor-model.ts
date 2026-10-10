@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { wardCorridorSceneConfig } from '../config/ward-corridor-scene.ts';
+import { createReferenceCorridorTheme, isReferenceCorridor } from './reference-corridor.ts';
 
 export const WARD_CORRIDOR_MODEL_URL = wardCorridorSceneConfig.model.url;
 export const WARD_CORRIDOR_SLOT_COUNT = wardCorridorSceneConfig.model.slotCount;
@@ -51,12 +52,14 @@ export function dimHospitalCorridorFloorStripes(root: THREE.Object3D) {
 
 /** 走廊门板/座椅/墙面/导向带与护士站浅色主题对齐；可重复切换不叠加。 */
 export function createCorridorTheme() {
+  const referenceTheme = createReferenceCorridorTheme();
   const prepared = new WeakSet<THREE.Mesh>();
   const originals = new WeakMap<THREE.MeshStandardMaterial, THREE.Color>();
 
   return (root: THREE.Object3D | null, dark: boolean) => {
     if (!root)
       return;
+    if (referenceTheme(root, dark)) return;
 
     const palette = dark
       ? wardCorridorSceneConfig.appearance.themeMaterials.dark
@@ -143,6 +146,7 @@ export function createCorridorTheme() {
 
 /** 地砖/墙面补一点环境反射，拉开灰白哑光与高级感。 */
 export function polishHospitalCorridorMaterials(root: THREE.Object3D) {
+  if (isReferenceCorridor(root)) return;
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh))
       return;
@@ -310,6 +314,18 @@ export function getHospitalCorridorEntranceScreenMaterialIndex(mesh: THREE.Mesh)
     material.name.includes('门口机内')
     || (material.name.includes('门口机') && /屏|screen|display/i.test(material.name)),
   );
+}
+
+/** Optional wall-mounted identity plate; legacy GLBs keep their hanging markers. */
+export function getHospitalCorridorRoomLabel(deviceOrScreen: THREE.Object3D | undefined): THREE.Mesh | undefined {
+  let device = deviceOrScreen;
+  while (device && !/^门口机\d+$/.test(device.name)) device = device.parent ?? undefined;
+  if (!device) return;
+  const label = device.getObjectByName(`DoorLabel_${device.name.slice(3)}`);
+  if (!(label instanceof THREE.Mesh)) return;
+  label.userData.hospitalCorridorRoomLabel = true;
+  orientHospitalCorridorScreenUV(label);
+  return label;
 }
 
 /** 提取走廊屏可见面并按模型 Y/Z 轴重新生成完整横屏 UV。 */

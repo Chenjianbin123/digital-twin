@@ -316,6 +316,11 @@ try {
       areaCode: 'A',
       areaOutCode: '',
       isEnable: '1',
+      roomCount: 0,
+      bedCount: 0,
+      occupiedCount: 0,
+      peopleCount: 0,
+      deviceCount: 0,
     }]);
     assert.equal(store.rememberedAreaId, null);
     assert.equal(store.preferredAreaId, 1);

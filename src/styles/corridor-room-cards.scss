@@ -6,6 +6,7 @@
     --room-card-ink: var(--sidebar-ink, #063365);
     --room-card-muted: var(--sidebar-muted, #44678e);
     --room-card-accent: var(--sidebar-accent, #087fae);
+    --room-card-patient: color-mix(in srgb, var(--room-card-accent) 80%, var(--room-card-ink));
     container: corridor-room-card / inline-size;
     font-family: 'Microsoft YaHei UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     border-radius: 4px 12px 4px 12px !important;
@@ -16,12 +17,12 @@
     .room-card__title-block { flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; gap: 8px; }
     .room-card__name { font-size: clamp(20px, calc(16px + .25vw), 24px) !important; font-weight: 750; line-height: 1.45; overflow-wrap: anywhere; }
     .room-card__priority { font-size: var(--sidebar-font-caption) !important; padding: 2px 8px; line-height: 1.5; }
-    .room-card__badge { display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 0 4px; min-width: 64px; padding: 8px 12px; border: 0; border-left: 1px solid var(--room-card-line); border-radius: 0; background: transparent !important; text-shadow: none; }
+    .room-card__badge { display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 0 4px; min-width: 64px; padding: 8px 12px; border: 1px solid var(--room-card-line); border-radius: 8px; background: color-mix(in srgb, var(--room-card-accent) 5%, var(--room-card-inset)) !important; text-shadow: none; }
     .room-card__badge > span { grid-column: 1 / -1; color: var(--room-card-muted) !important; font-size: var(--sidebar-font-caption); }
     .room-card__badge strong { color: var(--room-card-accent) !important; font: 700 32px/1.25 'Bahnschrift', 'Segoe UI', sans-serif; }
     .room-card__badge small { font-size: var(--sidebar-font-caption); color: var(--room-card-muted) !important; }
     .room-card__capacity { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
-    .room-card__capacity-track { flex: 1; height: 4px; background: var(--room-card-line); overflow: hidden; border-radius: 2px; }
+    .room-card__capacity-track { flex: 1; height: 6px; background: var(--room-card-line); overflow: hidden; border-radius: 4px; }
     .room-card__capacity-track i { display: block; height: 100%; background: var(--room-card-accent); }
     .room-card__capacity > span { flex-shrink: 0; color: var(--room-card-muted) !important; font-size: var(--sidebar-font-caption); }
     .room-card__capacity b { color: var(--room-card-ink) !important; }
@@ -38,7 +39,7 @@
     .staff-role-card__name { font-size: var(--sidebar-font-body) !important; font-weight: 700; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; }
     .staff-role-card__badge { font-size: var(--sidebar-font-caption) !important; padding: 0; background: transparent !important; border: 0; line-height: 1.5; }
 
-    .room-card__bed-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--room-card-line); }
+    .room-card__bed-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 4px 0 12px; }
     .room-card__bed-heading strong { color: var(--room-card-ink) !important; font-size: var(--sidebar-font-body); font-weight: 650; }
     .room-card__bed-heading { flex-wrap: wrap; }
     .room-card__bed-heading span, .room-card__empty { color: var(--room-card-muted) !important; font-size: var(--sidebar-font-caption); }
@@ -58,8 +59,9 @@
     .bed-chip .bed-chip__state { font-size: var(--sidebar-font-caption) !important; padding: 1px 4px; align-self: start; }
     .bed-chip__patient { grid-column: 1 / -1; text-align: left; padding-top: 8px; border-top: 1px solid var(--room-card-line); color: var(--room-card-ink) !important; font-weight: 500; }
     .bed-chip--empty .bed-chip__patient { color: var(--room-card-muted) !important; }
-    .room-card__team { margin: 0 0 12px; border-top: 1px solid var(--room-card-line); border-bottom: 1px solid var(--room-card-line); }
-    .room-card__team summary { min-height: 44px; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; cursor: pointer; list-style: none; color: var(--room-card-ink) !important; font-size: var(--sidebar-font-body); font-weight: 600; }
+    .room-card__team { margin: 12px 0; border: 1px solid var(--room-card-line); border-radius: 8px; background: color-mix(in srgb, var(--room-card-inset) 45%, transparent); }
+    .room-card__team summary { min-height: 44px; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; box-sizing: border-box; cursor: pointer; list-style: none; color: var(--room-card-ink) !important; font-size: var(--sidebar-font-body); font-weight: 600; }
+    .room-card__team[open] > .door-staff-cards { padding: 0 12px 12px !important; margin: 0 !important; }
     .room-card__team summary::-webkit-details-marker { display: none; }
     .room-card__team-hint { display: inline-flex; align-items: center; gap: 8px; color: var(--room-card-muted) !important; font-size: var(--sidebar-font-caption); font-weight: 400; }
     .room-card__team-hint i { width: 6px; height: 6px; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(45deg); }
@@ -76,6 +78,38 @@
       .room-card__beds { grid-template-columns: minmax(0, 1fr); }
       .bed-chip { grid-template-columns: minmax(0, 1fr) auto; }
       .bed-chip__patient { grid-column: 1 / -1; text-align: left; }
+    }
+  }
+  // 单行床位便于护士横向对照；更具体的类只覆盖走廊，不影响病房内。
+  .digital-twin[data-theme] .digital-twin__panel.digital-twin__panel--overlay .area-dashboard .room-card {
+    .room-card__bed-table { border: 1px solid var(--room-card-line); border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--room-card-inset) 40%, transparent); }
+    .room-card__bed-columns, .room-card__beds.room-card__beds--rows .bed-chip {
+      display: grid; grid-template-columns: minmax(0,.95fr) minmax(0,1.25fr) minmax(0,.9fr); gap: 12px;
+      align-items: center; padding: 12px;
+    }
+    .room-card__bed-columns { padding-block: 8px; color: var(--room-card-muted); font-size: var(--sidebar-font-caption); font-weight: 500; border-bottom: 1px solid var(--room-card-line); background: color-mix(in srgb, var(--room-card-accent) 6%, var(--room-card-inset)); }
+    .room-card__bed-columns > :last-child { text-align: right; }
+    .room-card__beds.room-card__beds--rows { display: block !important; margin: 0; }
+    .room-card__beds.room-card__beds--rows .bed-chip {
+      min-height: 52px; border: 0 !important; border-bottom: 1px solid color-mix(in srgb, var(--room-card-line) 65%, transparent) !important;
+      border-radius: 0 !important; background: transparent !important;
+      &:nth-child(even) { background: color-mix(in srgb, var(--room-card-accent) 3%, transparent) !important; }
+      &:last-child { border-bottom: 0 !important; }
+      .bed-chip__patient { grid-column: auto; border: 0; padding: 0; color: var(--room-card-muted) !important; font-weight: 400; }
+      // 姓名强调与呼叫、输液等状态色分离；空床和缺少姓名的占位文字不强调。
+      .bed-chip__patient--named { color: var(--room-card-patient) !important; font-weight: 700; }
+      .bed-chip__state { justify-self: end; align-self: center; width: auto; padding: 2px 8px; border-radius: 5px; text-align: right; }
+    }
+  }
+  @container corridor-room-card (max-width: 340px) {
+    .digital-twin[data-theme] .digital-twin__panel.digital-twin__panel--overlay .area-dashboard .room-card {
+      .room-card__bed-columns { display: none; }
+      .room-card__beds.room-card__beds--rows .bed-chip {
+        grid-template-columns: minmax(0, 1fr) auto;
+        .bed-chip__no { grid-column: 1; grid-row: 1; }
+        .bed-chip__state { grid-column: 2; grid-row: 1; }
+        .bed-chip__patient { grid-column: 1 / -1; grid-row: 2; }
+      }
     }
   }
 }

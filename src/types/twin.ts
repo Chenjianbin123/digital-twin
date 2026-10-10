@@ -117,6 +117,10 @@ export type HistoryCategory = 'infusion' | 'env' | 'call' | 'device' | 'vital';
 
 export interface StatusHistoryEntry {
   id: string;
+  /** 生成记录时的业务范围；旧记录缺失时只展示，不猜测定位。 */
+  areaCode?: string;
+  roomCode?: string;
+  canLocate?: boolean;
   time: string;
   category: HistoryCategory;
   bedCode: string;

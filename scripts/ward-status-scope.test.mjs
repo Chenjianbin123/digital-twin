@@ -36,7 +36,7 @@ globalThis.fetch = async (url, options = {}) => {
   }
   if (path.includes('bedDevice/queryBaseDeviceInfo')) {
     if (holdSecond) await new Promise(resolve => { releaseSecond = resolve; });
-    if (failSecond) throw Error('接口请求超时（6秒）：/synthetic/bed-info');
+    if (failSecond) throw new DOMException('Synthetic timeout', 'AbortError');
     return reply({ bedDeviceInfoVo: { deviceCode: 'SN2', bedCode: '99', bedName: '99床', templateId: 1 },
       bedSickInfoVo: { sickName: 'Synthetic', sickNo: 'TEST2' } });
   }
@@ -88,11 +88,11 @@ try {
     await store.refreshCurrentArea({ preserveScene: true, silent: true });
     assert.deepEqual(store.bedDetailsIssues, []);
     assert.equal(status(), 'warning');
-    assert.match(await render(), /本病房门口机详情刷新失败/);
+    assert.match(await render(), /本病房信息暂未更新/);
     failedDoor = 'DOOR-1';
     await store.refreshCurrentArea({ preserveScene: true, silent: true });
     assert.equal(status(), 'ready');
-    assert.doesNotMatch(await render(), /本病房门口机详情刷新失败/);
+    assert.doesNotMatch(await render(), /本病房信息暂未更新/);
     failedDoor = ''; await store.refreshCurrentArea({ preserveScene: true, silent: true });
   });
   await test('occupied empty label warns without changing occupancy; a truly vacant record clears the warning', async () => {
@@ -105,7 +105,7 @@ try {
     assert.match(html, /已入住 1 床/);
     assert.match(html, /未关联床头机设备/);
     assert.match(html, /名称与入住记录不一致/);
-    assert.doesNotMatch(html, /患者数据已同步/);
+    assert.doesNotMatch(html, /患者信息已更新/);
     store.enterRoom(1); await settle();
     assert.equal(status(), 'ready');
     assert.doesNotMatch(await render(), /名称与入住记录不一致/);

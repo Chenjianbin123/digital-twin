@@ -7,6 +7,21 @@ export interface SwpPageData<T> {
   pageSize?: number;
   current?: number;
   size?: number;
+  pages?: number;
+}
+
+export interface SwpPageCoverage {
+  received: number;
+  total: number | null;
+  current: number | null;
+  size: number | null;
+  pages: number | null;
+  complete: boolean;
+}
+
+export interface SwpRecordPage<T> {
+  records: T[];
+  coverage: SwpPageCoverage;
 }
 
 interface SwpEventLocationFields {
@@ -105,6 +120,7 @@ export type NormalizedVitalMetric =
   | 'unknown';
 
 export interface NormalizedSwpEvent {
+  retained?: boolean;
   id: string;
   source: SwpEventSource;
   areaId: number;
@@ -136,6 +152,7 @@ export interface SwpResponseMetrics {
 export type SwpEventSyncPhase = 'idle' | 'loading' | 'ready' | 'partial' | 'error';
 
 export interface SwpEventSyncState {
+  coverage?: Array<SwpPageCoverage & { label: string }>;
   phase: SwpEventSyncPhase;
   lastSyncedAt: string | null;
   error: string | null;

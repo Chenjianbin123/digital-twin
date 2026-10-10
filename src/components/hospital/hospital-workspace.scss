@@ -1,0 +1,37 @@
+.hospital-workspace {
+  --hospital-bg: #dce8ed;
+  --hospital-surface: #f3f8fa;
+  --hospital-ink: #153440;
+  --hospital-muted: #526e7c;
+  --hospital-line: #b7cdd6;
+  --hospital-accent: #087f93;
+  width: 100%; height: 100%; position: relative;
+  color: var(--hospital-ink); background: var(--hospital-bg);
+  &[data-theme='dark'] {
+    --hospital-bg: #122330; --hospital-surface: #162e3d;
+    --hospital-ink: #e6f3f8; --hospital-muted: #a7c0ce;
+    --hospital-line: #345366; --hospital-accent: #62d6e4;
+  }
+  &__overview button, &__return button { font: inherit; cursor: pointer; }
+  &__overview { height: 100%; display: flex; flex-direction: column; }
+  &__return button {
+    border: 1px solid var(--hospital-line); color: var(--hospital-ink); background: var(--hospital-surface);
+    padding: 10px 14px; border-radius: 8px; font-size: 13px; white-space: nowrap;
+    &:hover { border-color: var(--hospital-accent); }
+  }
+  &__scenes { flex: 1; min-height: 0; position: relative; }
+  &__return { position: absolute; bottom: 24px; left: 24px; z-index: 50; display: flex; gap: 8px; }
+  @media (max-width: 900px) {
+    &__return { bottom: 94px; left: 12px; }
+  }
+  @media (max-width: 520px) {
+    &__return { gap: 6px; }
+    &__return button { padding: 10px; font-size: 12px; min-height: 44px; }
+  }
+}
+.hospital-stage-enter-active, .hospital-stage-leave-active { transition: opacity .45s ease, transform .45s ease; }
+.hospital-stage-enter-from { opacity: 0; transform: scale(.97); }
+.hospital-stage-leave-to { opacity: 0; transform: scale(1.04); }
+@media (prefers-reduced-motion: reduce) {
+  .hospital-stage-enter-active, .hospital-stage-leave-active { transition: none; }
+}

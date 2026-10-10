@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import EntranceThemeToggle from './EntranceThemeToggle.vue';
+import ApiDiagnostics from './dashboard/ApiDiagnostics.vue';
+import { ApiError, API_FAILURE_INFO, type ApiFailureKind } from '@/core/api-failure';
+import { NURSING_LOGIN_FAILURES } from '@/core/nursing-copy';
 import type { DashboardTheme } from '@/core/use-dashboard-theme';
 import { computed, onMounted, ref } from "vue";
 import { confirmSwpRole, loginSwpUser } from "@/api/auth";
@@ -34,6 +37,7 @@ const pendingUser = ref<AuthUser | null>(null);
 const selectedRoleId = ref("");
 const isSubmitting = ref(false);
 const errorMessage = ref("");
+const failureKind = ref<ApiFailureKind | null>(null);
 
 const displayName = computed(
   () =>
@@ -43,7 +47,16 @@ const displayName = computed(
 );
 
 function errorText(error: unknown, fallback: string): string {
+  failureKind.value = error instanceof ApiError ? error.kind : null;
+  if (error instanceof ApiError) return NURSING_LOGIN_FAILURES[error.kind];
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function recoverRequest() {
+  if (isSubmitting.value) return;
+  if (failureKind.value && API_FAILURE_INFO[failureKind.value].action === 'login') restartLogin();
+  else if (pendingUser.value) void submitRole();
+  else void submitCredentials();
 }
 
 function selectRole(role: AuthRole) {
@@ -52,6 +65,8 @@ function selectRole(role: AuthRole) {
 }
 
 async function submitCredentials() {
+  if (isSubmitting.value) return;
+  failureKind.value = null;
   errorMessage.value = "";
   const normalizedName = userName.value.trim();
   if (!normalizedName || !password.value) {
@@ -118,6 +133,7 @@ async function submitRole() {
 }
 
 function restartLogin() {
+  failureKind.value = null;
   clearAuthSession();
   pendingUser.value = null;
   selectedRoleId.value = "";
@@ -380,6 +396,12 @@ onMounted(() => {
           <i aria-hidden="true">!</i>
           <span>{{ errorMessage || props.notice }}</span>
         </p>
+        <div v-if="errorMessage && failureKind" class="swp-login__recovery">
+          <button class="swp-login__back" type="button" :disabled="isSubmitting" @click="recoverRequest">
+            {{ API_FAILURE_INFO[failureKind].action === 'login' ? '重新登录' : API_FAILURE_INFO[failureKind].action === 'check' ? '核对后重试' : '重试本次操作' }}
+          </button>
+        </div>
+        <ApiDiagnostics />
 
         <footer class="swp-login__card-foot">
           <span>仅展示当前账号授权病区</span>

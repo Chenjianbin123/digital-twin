@@ -5,6 +5,7 @@ import test from 'node:test';
 
 const app = readWorkspaceSource();
 const header = readFileSync(new URL('../src/components/dashboard/DashboardHeader.vue', import.meta.url), 'utf8');
+const headerStyles = readFileSync(new URL('../src/components/dashboard/dashboard-header.scss', import.meta.url), 'utf8');
 const bottomNav = readFileSync(new URL('../src/components/dashboard/DashboardBottomNav.vue', import.meta.url), 'utf8');
 const areaSelection = readFileSync(new URL('../src/components/AreaSelectionView.vue', import.meta.url), 'utf8');
 const nursePanel = readFileSync(new URL('../src/components/NurseStationPanel.vue', import.meta.url), 'utf8');
@@ -18,9 +19,11 @@ test('main workspace scales panel widths and reserves safe viewport space', () =
 });
 
 test('dashboard header compresses before changing to the compact two-row layout', () => {
-  assert.match(header, /@media \(min-width: 1024px\) and \(max-width: 1199px\)/);
-  assert.match(header, /font-size:\s*clamp\(17px,\s*1\.8vw,\s*20px\)/);
-  assert.match(header, /max-width:\s*min\(220px,\s*24vw\)/);
+  assert.match(header, /src="@\/components\/dashboard\/dashboard-header.scss"/);
+  assert.match(headerStyles, /@media \(min-width: 1100px\) and \(max-width: 1279px\)[\s\S]*?\.dash-header__action-label \{ display: none; \}/);
+  assert.match(headerStyles, /@media \(max-width: 1099px\)[\s\S]*?grid-template-rows: 48px 44px/);
+  assert.match(headerStyles, /&__operator strong[^}]*text-overflow: ellipsis; white-space: nowrap/);
+  assert.match(headerStyles, /@media \(max-width: 767px\)[\s\S]*?grid-template-rows: 64px 40px 40px/);
 });
 
 test('bottom navigation stays above the panel on compact desktop and mobile viewports', () => {

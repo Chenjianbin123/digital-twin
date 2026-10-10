@@ -14,6 +14,7 @@ function handleStatusMessage(store: TwinStore, payload: StatusBarInfo) {
   if (!match || !store.updateBedStatus(store.selectedAreaId, payload.bedCode, payload)) return;
   const meta = resolveBedStatus(match.bed);
   store.pushHistory({
+    roomCode: match.room.sickroomCode,
     category: 'infusion', bedCode: match.bed.bedCode, bedName: match.bed.bedName,
     label: meta.label, roomName: match.room.sickroomName,
   });

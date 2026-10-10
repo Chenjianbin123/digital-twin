@@ -1,17 +1,18 @@
 import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
+import { nurseStationSceneConfig } from '../src/config/nurse-station-scene.ts';
 
 const config = await readFile(new URL('../src/config/nurse-station-scene.ts', import.meta.url), 'utf8');
-const modelPath = new URL('../public/models/smart-ward-nurse-station/nurse-station.glb', import.meta.url);
+const modelPath = new URL(`../public${nurseStationSceneConfig.model.url.split('?')[0]}`, import.meta.url);
 
 assert.match(config, /url:\s*['"]\/models\/smart-ward-nurse-station\/nurse-station\.glb\?v=20260921['"]/);
-assert.match(config, /layout: "legacy"/);
+assert.equal(nurseStationSceneConfig.model.layout, 'silver-v1');
 
 await access(modelPath);
 const model = await readFile(modelPath);
 assert.equal(model.subarray(0, 4).toString('ascii'), 'glTF');
 assert.equal(model.readUInt32LE(4), 2);
-assert.ok(model.length > 40_000_000 && model.length < 80_000_000, `unexpected nurse-station model size: ${model.length}`);
+assert.ok(model.length < 16 * 1024 * 1024, `unexpected nurse-station model size: ${model.length}`);
 
 const jsonLength = model.readUInt32LE(12);
 const jsonType = model.readUInt32LE(16);
@@ -26,18 +27,20 @@ for (const name of [
   'Clock_Display',
   'Ceiling',
   '地板',
-  '墙壁',
-  '墙壁2',
-  '走廊屏_1',
-  '导台',
-  'Station_Header',
+  'NurseStationSilverV1',
+  'Screen_Video',
+  'TV_Wall_Mount',
+  'Screen_Service',
+  'Screen_Work_01',
+  'Screen_Work_02',
+  'Screen_Work_03',
+  'Screen_Work_04',
 ])
   assert.ok(nodeNames.has(name), `missing required nurse-station node: ${name}`);
 
-assert.equal(nodeNames.has('Screen_Work_01'), false, 'work screens are not part of this model contract');
-assert.equal(nodeNames.has('Lobby_Back_Wall'), false);
+assert.ok(![...nodeNames].some(name => name.startsWith('Preview_')), 'No baked synthetic business data');
 
-for (const name of ['Monitor_Bezel', 'Screen_Glass', '门口机内', 'Warm_LED'])
+for (const name of ['SilverV1_silver_AO', 'SilverV1_white_AO', 'SilverV1_cyan_AO', 'SilverV1_screen'])
   assert.ok(materialNames.has(name), `missing required nurse-station material: ${name}`);
 
 console.log('Nurse-station model replacement boundary checks passed.');

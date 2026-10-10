@@ -25,7 +25,7 @@ test('data completion keeps one startup loader until the actual first scene is r
   assert.equal(boot.busy.value, true);
   assert.equal(boot.waitingForScene.value, true);
   assert.ok(boot.progress.value < 100);
-  assert.match(boot.phase.value, /护士站.*首帧/);
+  assert.match(boot.phase.value, /医院场景.*首帧/);
   assert.equal(scenes.feedback.value?.status, 'loading');
   scenes.scenes.value['nurse-station'].onState('ready');
   boot.scene.value.onState(scenes.scenes.value['nurse-station'].state);
@@ -75,7 +75,7 @@ test('model failure retries only the scene and rejects old attempt callbacks', a
   old.onState('fallback');
   t.mock.timers.tick(5000);
   assert.equal(boot.visible.value, true);
-  assert.match(boot.sceneError.value, /模型加载失败/);
+  assert.match(boot.sceneError.value, /场景加载失败/);
   boot.retryScene();
   const current = boot.scene.value;
   assert.notEqual(current.key, old.key);

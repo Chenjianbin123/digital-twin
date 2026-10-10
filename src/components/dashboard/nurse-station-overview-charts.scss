@@ -20,8 +20,72 @@
   container-type: inline-size;
 
   &__heading, .station-chart__heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  &__heading {
+    position: relative;
+    min-height: 48px;
+    padding: 8px 12px 10px 14px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--chart-line);
+    background:
+      repeating-linear-gradient(90deg, transparent 0 31px, color-mix(in srgb, var(--chart-accent) 5%, transparent) 32px),
+      linear-gradient(90deg, var(--chart-wash), transparent 72%);
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 9px;
+      bottom: 11px;
+      left: 0;
+      width: 3px;
+      background: var(--chart-accent);
+      box-shadow: 0 0 10px var(--chart-glow);
+    }
+
+    h2 {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+
+      small {
+        display: inline-flex;
+        align-items: center;
+        flex: 0 0 auto;
+        margin: 0;
+        padding: 0 10px 0 2px;
+        box-sizing: border-box;
+        border-right: 1px solid var(--chart-accent);
+        font: 700 13px/1.4 Consolas, monospace;
+        letter-spacing: .12em;
+      }
+
+      i {
+        position: relative;
+        flex: 1;
+        min-width: 24px;
+        height: 1px;
+        margin-left: 4px;
+        background:
+          repeating-linear-gradient(90deg, var(--chart-accent) 0 8px, transparent 8px 12px),
+          linear-gradient(90deg, var(--chart-accent), transparent);
+        opacity: .62;
+
+        &::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          right: 1px;
+          width: 5px;
+          height: 5px;
+          border: 1px solid var(--chart-accent);
+          transform: translateY(-50%) rotate(45deg);
+        }
+      }
+    }
+  }
   h2, h3, p, dl, dd, ol { margin: 0; }
-  h2 { font-size: 20px; line-height: 1.5; small { color: var(--chart-accent); font-size: 14px; margin-right: 4px; } }
+  h2 { font-size: 21px; line-height: 1.5; }
   h3 { display: flex; align-items: center; gap: 8px; font-size: 19px; line-height: 1.5; font-weight: 750; }
   &__sync { color: var(--chart-muted); font-size: 12px; &[data-status='warning'], &[data-status='loading'], &[data-status='stale'] { color: var(--chart-amber); } &[data-status='error'] { color: #f5a6b9; } }
   &__open { display: flex; justify-content: center; align-items: center; gap: 16px; width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--chart-line); border-radius: 4px; background: var(--chart-inset); color: var(--chart-accent); font: inherit; font-weight: 700; cursor: pointer; }
@@ -56,6 +120,7 @@
 .station-charts.station-charts {
   :is(h2, h3, strong, b, dd, .event-meter__label) { color: var(--chart-ink) !important; }
   :is(p, small, dt, .station-chart__heading > span) { color: var(--chart-muted) !important; }
+  .station-charts__title { color: var(--chart-ink) !important; font-weight: 750; letter-spacing: .06em; white-space: nowrap; text-shadow: 0 0 12px var(--chart-glow); }
   .station-charts__sync { color: var(--chart-muted) !important; }
   .station-charts__sync:is([data-status='loading'], [data-status='warning'], [data-status='stale']) { color: var(--chart-amber) !important; }
   .station-charts__sync[data-status='error'] { color: var(--chart-error, #f5a6b9) !important; }
@@ -68,7 +133,6 @@
   .event-meter__count { color: var(--row-ink) !important; }
   .event-meter[data-empty='true'] .event-meter__count { color: var(--chart-muted) !important; }
   .event-meter__label { font-size: 15px; font-weight: 600; }
-  .station-chart__total strong { color: var(--chart-call-ink) !important; }
   .station-chart__notice[data-tone='warning'] { color: var(--chart-amber) !important; font-weight: 600; background: var(--chart-notice-bg); border-left: 3px solid var(--chart-amber); }
 }
 
@@ -88,9 +152,7 @@
   &__bed-stats [data-kind='empty'] { border-left-color: var(--chart-available); }
   dt { display: flex; align-items: center; gap: 6px; color: var(--chart-muted); font-size: 14px; font-weight: 600; svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; flex-shrink: 0; } }
   dd { margin-top: 4px; font: 700 34px/1.2 Arial, sans-serif; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; small { font-size: 13px; font-weight: 400; } }
-  &__total { display: flex; align-items: baseline; justify-content: flex-end; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding: 8px 12px; border: 1px solid var(--chart-line); border-radius: 6px; background: var(--chart-inset); color: var(--chart-muted); font-size: 15px; font-weight: 600; strong { color: var(--chart-ink); font: 750 30px/1.3 Arial, sans-serif; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; min-width: 0; } }
-  &__caption, &__notice { color: var(--chart-muted); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
-  .station-chart__caption { margin-top: 6px; }
+  &__notice { color: var(--chart-muted); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
   .station-chart__notice { margin-top: 12px; padding: 8px 10px; border: 1px solid var(--chart-line); border-radius: 4px; background: var(--chart-inset); }
 }
 .usage-gauge {
@@ -136,4 +198,15 @@
 @container (max-width: 240px) {
   .station-chart__bed-layout { grid-template-columns: minmax(0, 1fr); }
   .station-chart__bed-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+// 护士站与走廊共享同一套语义字号，仪表大数字保留图形刻度尺寸。
+.station-charts.station-charts {
+  font-family: var(--sidebar-font-family);
+  h3 { font-size: var(--sidebar-font-section, 18px); font-weight: var(--sidebar-weight-heading, 700); }
+  .station-chart__notice, .usage-gauge p,
+  .station-chart dt, .station-chart dd small { font-size: var(--sidebar-font-caption, 14px); }
+  .station-chart dd { font-size: var(--sidebar-font-metric, 26px); }
+  .event-meter__label { font-size: var(--sidebar-font-body, 16px); }
+  .event-meter__count { font-size: var(--sidebar-font-metric, 26px); }
 }

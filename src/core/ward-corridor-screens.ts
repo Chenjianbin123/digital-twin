@@ -2,12 +2,14 @@ import type { CanvasTexture } from 'three';
 import type { TwinAreaEntity, TwinWardEntity } from '../types/twin';
 import type { RoomSummary } from './area-summary';
 import type { ParsedTemplate } from '../types/template';
-import { loadParsedTemplate } from './template/template-cache';
+import { getTemplateCacheGeneration, loadParsedTemplate } from './template/template-cache';
 import { createDoorTemplateStatusTexture, getDoorTerminalScreenLayout, renderDoorTerminalTexture } from './template/door-terminal-texture';
 
 /** Include all template inputs: staff/patient-only changes must invalidate the screen too. */
 export function corridorScreenSignature(room: TwinWardEntity, area: TwinAreaEntity, aspect?: number) {
-  return JSON.stringify([room, area.areaName, area.deptName, aspect]);
+  // 接收时间和失败状态只用于同步提示，不改变模板实际显示的数据。
+  const { envSync: _envSync, ...templateRoom } = room;
+  return JSON.stringify([templateRoom, area.areaName, area.deptName, aspect, getTemplateCacheGeneration()]);
 }
 
 /** Corridor content follows the template, never an optional/stale device direction. */

@@ -11,7 +11,6 @@
     --room-ink: var(--clinical-ink); --room-muted: var(--clinical-muted);
     --room-line: var(--clinical-line); --room-inset: var(--clinical-raised);
     --room-accent: var(--clinical-accent); --room-alert: var(--clinical-alert);
-    --sidebar-font-body: 15px; --sidebar-font-caption: 13px; --sidebar-font-heading: 17px;
     display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0;
     padding: 0 !important; overflow: hidden; position: relative;
     container: ward-clinical / inline-size;
@@ -161,10 +160,26 @@
       .alert-task-panel__toolbar { display: block; margin: 0 0 12px; }
       .alert-task-panel__summary { display: none; }
       .alert-task-panel__heading-icon { color: var(--clinical-accent) !important; background: var(--clinical-raised); border-color: var(--clinical-line); }
-      .alert-task-panel__filters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); padding: 4px; gap: 4px; background: var(--clinical-raised) !important; border: 1px solid var(--clinical-line) !important; border-radius: 9px !important; }
-      .alert-task-panel__filters button { min-height: 38px; padding: 6px 4px; font-size: 13px !important; border-radius: 6px !important; color: var(--clinical-muted) !important; background: transparent !important; }
-      .alert-task-panel__filters button.is-active { color: var(--clinical-accent) !important; background: var(--clinical-surface) !important; border-color: var(--clinical-accent) !important; box-shadow: 0 2px 4px var(--clinical-shadow) !important; }
-      .alert-task-panel__filters button strong { color: inherit !important; background: color-mix(in srgb,var(--clinical-accent) 10%,transparent) !important; }
+      .alert-task-panel__heading .dash-head { flex-wrap: wrap; row-gap: 8px; }
+      .alert-task-panel__sync-badge { display: inline-flex; align-items: center; flex: none; gap: 6px; padding: 2px 8px; border: 1px solid color-mix(in srgb,var(--clinical-warn) 40%,var(--sidebar-line)); border-radius: 5px; color: var(--clinical-warn); background: color-mix(in srgb,var(--clinical-warn) 7%,var(--sidebar-inset)); font-size: var(--sidebar-font-caption); font-weight: 500; line-height: 1.5; }
+      .alert-task-panel__sync-badge::before { content: ''; width: 4px; height: 4px; flex: none; border-radius: 50%; background: currentColor; }
+      .alert-task-panel__filters { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); padding: 4px; gap: 4px; background: var(--sidebar-inset) !important; border: 1px solid var(--sidebar-line) !important; border-radius: 10px !important; }
+      .alert-task-panel__filters button {
+        position: relative; display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 6px;
+        min-width: 0; min-height: 52px; padding: 8px 4px; font-size: var(--sidebar-font-caption) !important; font-weight: 500;
+        border: 1px solid transparent !important; border-radius: 4px 8px 4px 8px !important;
+        color: var(--sidebar-muted) !important; background: transparent !important; box-shadow: none !important; transform: none;
+        transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+      }
+      .alert-task-panel__filter-label { min-width: 0; line-height: 1.5; white-space: nowrap; }
+      .alert-task-panel__filters button::after { content: ''; position: absolute; bottom: 3px; left: 50%; width: 20px; height: 2px; border-radius: 2px; background: var(--sidebar-accent); transform: translateX(-50%); opacity: 0; }
+      .alert-task-panel__filters button.is-active { color: var(--sidebar-accent) !important; font-weight: 700; background: linear-gradient(135deg,color-mix(in srgb,var(--sidebar-accent) 14%,var(--sidebar-surface)),var(--sidebar-surface)) !important; border-color: color-mix(in srgb,var(--sidebar-accent) 60%,var(--sidebar-line)) !important; box-shadow: inset 0 1px 0 color-mix(in srgb,var(--sidebar-accent) 20%,transparent),0 2px 6px var(--clinical-shadow) !important; }
+      .alert-task-panel__filters button.is-active::after { opacity: 1; }
+      .alert-task-panel__filters button strong { flex: none; min-width: 22px; max-width: 100%; margin: 0; padding: 2px 5px; border: 1px solid var(--sidebar-line); border-radius: 5px; color: var(--sidebar-muted) !important; background: var(--sidebar-surface) !important; font-size: inherit; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+      .alert-task-panel__filters button.is-active strong { color: var(--sidebar-accent) !important; border-color: color-mix(in srgb,var(--sidebar-accent) 35%,var(--sidebar-line)); background: color-mix(in srgb,var(--sidebar-accent) 12%,var(--sidebar-surface)) !important; }
+      @media (hover: hover) { .alert-task-panel__filters button:not(.is-active):hover { color: var(--sidebar-ink) !important; border-color: var(--sidebar-line) !important; background: color-mix(in srgb,var(--sidebar-accent) 5%,var(--sidebar-surface)) !important; } }
+      @media (prefers-reduced-motion: reduce) { .alert-task-panel__filters button { transition: none; } }
+      @container ward-clinical (max-width: 480px) { .alert-task-panel__filters { grid-template-columns: repeat(2,minmax(0,1fr)); } }
       .alert-task-panel__list { max-height: 540px !important; padding: 2px; overflow: auto !important; gap: 10px; }
       .alert-task { background: var(--clinical-raised) !important; border: 1px solid var(--clinical-line) !important; border-left: 3px solid var(--clinical-alert) !important; border-radius: 9px !important; padding: 12px !important; box-shadow: none !important; min-height: 0; }
       .alert-task--high { border-left-color: var(--clinical-warn) !important; }
@@ -253,12 +268,8 @@
     }
     .staff-role-card__inline-info { min-width: 0; }
     .door-staff-cards__subhead { color: var(--clinical-muted) !important; font-size: 13px; }
-    .status-history ul { max-height: 240px; }
-    .status-history li { display: grid; grid-template-columns: 52px auto minmax(0,1fr); gap: 4px 8px; padding: 12px 0; border-color: var(--clinical-line); }
-    .status-history :is(.time,.category,.room,.bed,.label) { color: var(--clinical-muted) !important; font-size: 13px !important; line-height: 1.6; overflow-wrap: anywhere; }
-    .status-history .category { color: var(--clinical-accent) !important; }
-    .status-history .bed { grid-column: 3; }
-    .status-history .label { grid-column: 2 / -1; color: var(--clinical-ink) !important; }
+    .status-history ul { max-height: 320px; }
+    .status-history li { display: block; padding: 6px 0; border: 0; }
 
     @container ward-clinical (max-width: 420px) {
       .ward-command-content,.ward-command-hero { padding: 12px !important; }

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>护士站业务闭环 · 隔离合成数据验收</title><link rel="icon" href="data:,">
+<div id="app"></div>
+<script type="module">
+import { createApp, h, ref, computed, onBeforeUnmount } from 'vue';
+import { createPinia } from 'pinia';
+import { useTwinStore } from '/src/stores/twin-store.ts';
+import NurseStationPanel from '/src/components/NurseStationPanel.vue';
+import { buildNurseStationViewModel } from '/src/core/nurse-station-view-model.ts';
+import { summarizeArea } from '/src/core/area-summary.ts';
+import { createSwpEventSnapshotLoader } from '/src/core/swp-event-loader.ts';
+import { createSwpEventPollingController } from '/src/core/swp-event-polling-controller.ts';
+import { fetchActiveSwpCalls, fetchActiveSwpAlarms, fetchProcessedSwpCalls, fetchProcessedSwpAlarms } from '/src/api/swp-events.ts';
+import '/src/styles/dashboard-theme.scss';
+import '/src/styles/global.scss';
+const backend = { call: [], alarm: [] };
+// Every API operation stays in memory. Unexpected URLs are rejected, never forwarded.
+window.fetch = async (url, options) => {
+  const source = String(url).includes('querySwpCallInfo') ? 'call' : String(url).includes('querySwpAlarmInfo') ? 'alarm' : null;
+  if (!source) throw Error('合成验收禁止访问其他接口');
+  const query = JSON.parse(options.body);
+  const records = backend[source].filter(item => item.areaId === query.areaId && item.eventStatus === query.eventStatus);
+  return new Response(JSON.stringify({code:200,data:{records,total:query.eventStatus==='0'?501:records.length,current:query.pageNum,size:200,pages:query.eventStatus==='0'?3:1}}),{status:200,headers:{'Content-Type':'application/json'}});
+};
+const app = createApp({setup(){
+  const store = useTwinStore(), theme = ref('light'), ready = ref(false);
+  store.selectedAreaId=999999;
+  store.area={areaName:'隔离验收病区',areaCode:'TEST',deptName:'合成数据',rooms:[{sickroomId:'1',sickroomCode:'TEST-R1',sickroomName:'合成病房',beds:[{bedCode:'TEST-B1',bedName:'1床',isOccupied:false,isOnline:true,deviceCode:'TEST-D1',position:{x:0,z:0}}]}]};
+  const vm=computed(()=>buildNurseStationViewModel({areaId:store.selectedAreaId,area:store.area,roomSummaries:summarizeArea(store.area.rooms),alertTasks:store.alertTasks,swpEvents:store.swpEvents,swpEventSync:store.swpEventSync}));
+  const controller=createSwpEventPollingController({loadSnapshot:createSwpEventSnapshotLoader({fetchCalls:fetchActiveSwpCalls,fetchAlarms:fetchActiveSwpAlarms,fetchProcessedCalls:fetchProcessedSwpCalls,fetchProcessedAlarms:fetchProcessedSwpAlarms}),schedule:()=>1,cancelSchedule:()=>{},visibility:{isVisible:()=>true,subscribe:()=>()=>{}}});
+  async function refresh(){ ready.value=false; await controller.refreshNow(); ready.value=true; }
+  void controller.start(store).then(()=>{ready.value=true;});
+  onBeforeUnmount(controller.stop);
+  function add(){
+    backend.call=[{id:101,areaId:999999,sickroomId:1,bedCode:'TEST-B1',eventStatus:'0',callStartTime:'2026-09-30 09:00:00',callModeName:'闭环合成呼叫'}];
+    backend.alarm=[{id:201,areaId:999999,sickroomId:1,bedCode:'TEST-B1',eventStatus:'0',alarmStartTime:'2026-09-30 09:00:00',alarmType:'304'}];
+    void refresh();
+  }
+  return ()=>h('main',{class:'digital-twin','data-theme':theme.value},[
+    h('header',{class:'test-controls'},[
+      h('strong','隔离合成数据验收，不连接医院后台'),
+      h('button',{onClick:add},'加入合成未处理事件'),
+      h('button',{onClick:()=>{backend.call.forEach(item=>item.eventStatus='1');backend.alarm.forEach(item=>item.eventStatus='1');void refresh();}},'合成后台标记已处理'),
+      h('button',{onClick:()=>theme.value=theme.value==='light'?'dark':'light'},'切换验收主题'),
+      h('output',{'data-testid':'closure-state'},`${ready.value?'已同步':'查询中'} · 当前事件 ${store.swpEvents.length} · 任务 ${vm.value.alertTasks.filter(task=>task.source?.startsWith('swp-')).length}`),
+    ]),
+    h('aside',{class:'fixture-panel'},[h(NurseStationPanel,{viewModel:vm.value,dataSource:'remote',callAlertsEnabled:false,onMarkAlertHandling:id=>store.markAlertHandling(id),onAcknowledgeAlert:id=>store.markAlertHandling(id)})]),
+  ]);
+}});
+app.use(createPinia());app.mount('#app');
+</script>
+<style>
+*{box-sizing:border-box}html,body,#app{margin:0;height:100%;font-family:'Microsoft YaHei',sans-serif}.digital-twin{height:100%;display:flex;flex-direction:column;background:#dbe7ed}.digital-twin[data-theme=dark]{background:#102635}.test-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;background:#edf7ff;color:#123e6c}.test-controls button{padding:8px;min-height:40px}.fixture-panel{width:min(100%,580px);flex:1;min-height:0;margin-left:auto;container-type:inline-size;container-name:nurse-panel}
+</style>
+</html>

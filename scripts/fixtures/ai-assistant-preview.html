@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 助手 · 隔离演示验收</title><link rel="icon" href="data:,">
+<div id="app"></div>
+<script type="module">
+import { createApp, h, ref } from 'vue';
+import { createPinia } from 'pinia';
+import { useTwinStore } from '/src/stores/twin-store.ts';
+import Workspace from '/src/components/workspace/DigitalTwinWorkspace.vue';
+import '/src/styles/global.scss';
+import '/src/styles/dashboard-theme.scss';
+const app = createApp({ setup() {
+  const store = useTwinStore(), theme = ref('dark');
+  store.dataSource = 'mock';
+  store.selectedAreaId = 999999;
+  store.area = { areaName: '助手演示病区', areaCode: 'AI-DEMO', deptName: '隔离测试', rooms: [305, 306].map((id, index) => ({
+    sickroomName: `${id}房间`, sickroomCode: `DEMO-R${id}`, sickroomId: String(id), deviceCode: `DEMO-D${id}`,
+    isOnline: true, beds: [1, 2].map(n => ({ bedCode: `DEMO-R${id}-B${n}`, bedName: `${String(n).padStart(2, '0')}床`,
+      deviceCode: '', position: { x: n === 1 ? -3.4 : 3.4, z: 0 }, isOccupied: false, isOnline: true })),
+  })) };
+  window.assistantFixture = {
+    setTheme: value => theme.value = value,
+    setScene: value => { if (value === 'ward-interior') store.enterRoom(0); else store.setSceneType(value); },
+    switchScope: () => { store.selectedAreaId = 888888; store.area = { ...store.area, areaCode: 'OTHER', areaName: '另一个演示病区' }; },
+    selected: () => ({ scene: store.sceneType, room: store.currentWard?.sickroomCode, bed: store.selectedBed?.bedCode }),
+  };
+  return () => h(Workspace, { theme: theme.value, operatorName: '演示护士', operatorRole: '测试', onToggleTheme: () => theme.value = theme.value === 'dark' ? 'light' : 'dark' });
+} });
+app.use(createPinia()); app.mount('#app');
+</script>
+<style>html,body,#app{margin:0;width:100%;height:100%;overflow:hidden}</style>
+</html>

@@ -5,6 +5,6 @@ const dataSource = readFileSync(new URL('../src/core/data-source.ts', import.met
 
 assert.match(
   dataSource,
-  /return value === 'mock' \|\| value === 'database' \? value : 'remote';/,
-  '未显式配置 mock 时应默认使用真实 SWP 后端接口',
+  /return 'mock';/,
+  '本地模拟分支必须固定使用 mock',
 );

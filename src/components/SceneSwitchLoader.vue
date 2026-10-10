@@ -1,9 +1,14 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { SceneSwitchFeedback } from '@/core/scene-transition';
 
-const { feedback } = defineProps<{
+const { feedback, fullScreen = false, progress } = defineProps<{
   feedback: SceneSwitchFeedback | null;
+  fullScreen?: boolean;
+  progress?: number;
 }>();
+const percentage = computed(() => typeof progress === 'number' && Number.isFinite(progress)
+  ? Math.max(0, Math.min(100, Math.round(progress))) : null);
 defineEmits<{ retry: []; returnStation: [] }>();
 function reloadPage() { window.location.reload(); }
 </script>
@@ -13,7 +18,7 @@ function reloadPage() { window.location.reload(); }
     <div
       v-if="feedback"
       class="scene-switch-loader"
-      :class="`scene-switch-loader--${feedback.tone}`"
+      :class="[`scene-switch-loader--${feedback.tone}`, { 'scene-switch-loader--full-screen': fullScreen }]"
       :data-state="feedback.status ?? 'loading'"
       :data-phase="feedback.phase ?? 'loading'"
       role="status"
@@ -35,6 +40,7 @@ function reloadPage() { window.location.reload(); }
             <span class="scene-switch-loader__visual-plane" />
             <div class="scene-switch-loader__icon">
               <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <slot name="icon">
                 <template v-if="feedback.tone === 'station'">
                   <path d="M10 35h44v18H10zM7 53h50M17 35V16h30v19M22 21h20v10H22zM27 35v-4m10 4v-4M24 44h16M32 40v8" />
                 </template>
@@ -44,6 +50,7 @@ function reloadPage() { window.location.reload(); }
                 <template v-else>
                   <path d="M9 25v29m46-17v17M9 46h46M9 38h46M30 38V27h18a7 7 0 0 1 7 7v4M16 30h8v8h-8zM38 10v10m-5-5h10" />
                 </template>
+                </slot>
               </svg>
             </div>
             <span class="scene-switch-loader__visual-caption">{{ feedback.toLabel }}</span>
@@ -69,17 +76,26 @@ function reloadPage() { window.location.reload(); }
         <div class="scene-switch-loader__progress-wrap">
           <div class="scene-switch-loader__progress-meta">
             <span>{{ feedback.recovery === 'reload' ? '页面资源未就绪，请刷新页面' : feedback.status === 'fallback' ? '模型加载未完成，请重试' : feedback.phase === 'switching' ? '正在切换场景视角' : '正在加载模型与场景资源' }}</span>
-            <span v-if="feedback.status !== 'fallback'" class="scene-switch-loader__activity" aria-hidden="true"><i /><i /><i /></span>
+            <span v-if="feedback.status !== 'fallback' && percentage !== null">{{ percentage }}%</span>
+            <span v-else-if="feedback.status !== 'fallback'" class="scene-switch-loader__activity" aria-hidden="true"><i /><i /><i /></span>
           </div>
-          <div v-if="feedback.status !== 'fallback'" class="scene-switch-loader__progress" aria-hidden="true"><span /></div>
+          <div v-if="feedback.status !== 'fallback'" class="scene-switch-loader__progress"
+            :class="{ 'scene-switch-loader__progress--measured': percentage !== null }"
+            :role="percentage !== null ? 'progressbar' : undefined" :aria-hidden="percentage === null ? true : undefined"
+            :aria-valuenow="percentage ?? undefined" :aria-valuemin="percentage !== null ? 0 : undefined"
+            :aria-valuemax="percentage !== null ? 100 : undefined" :aria-label="percentage !== null ? '三维模型加载进度' : undefined">
+            <span :style="percentage !== null ? { width: `${percentage}%` } : undefined" />
+          </div>
         </div>
 
         <footer class="scene-switch-loader__card-foot">
-          <p>{{ feedback.recovery === 'reload' ? '刷新后将重新进入工作空间。' : feedback.status === 'fallback' ? '业务数据仍可使用，可重新尝试加载场景。' : feedback.phase === 'switching' ? '场景资源已就绪，正在切换视角。' : '首次进入需加载三维资源，请稍候。' }}</p>
-          <div v-if="feedback.status === 'fallback' || feedback.tone !== 'station'" class="scene-switch-loader__actions">
+          <p><slot name="footnote">{{ feedback.recovery === 'reload' ? '刷新后将重新进入工作空间。' : feedback.status === 'fallback' ? '业务数据仍可使用，可重新尝试加载场景。' : feedback.phase === 'switching' ? '场景资源已就绪，正在切换视角。' : '首次进入需加载三维资源，请稍候。' }}</slot></p>
+          <div v-if="$slots.actions || feedback.status === 'fallback' || feedback.tone !== 'station'" class="scene-switch-loader__actions">
+            <slot name="actions">
             <button v-if="feedback.tone !== 'station'" type="button" @click="$emit('returnStation')">返回护士站</button>
             <button v-if="feedback.status === 'fallback' && feedback.recovery === 'reload'" type="button" @click="reloadPage">刷新页面</button>
             <button v-if="feedback.status === 'fallback' && feedback.recovery !== 'reload'" type="button" class="scene-switch-loader__retry" @click="$emit('retry')">重试加载 <span aria-hidden="true">↻</span></button>
+            </slot>
           </div>
         </footer>
       </section>
@@ -104,6 +120,7 @@ function reloadPage() { window.location.reload(); }
   backdrop-filter: blur(10px);
   isolation: isolate;
   pointer-events: auto;
+  &--full-screen { inset: 0; }
 
   &--ward { --loader-accent: #{scene.color(ward)}; --loader-soft: #a3c6ff24; --loader-glow: #a3c6ff0d; }
   &--interior { --loader-accent: #{scene.color(interior)}; --loader-soft: #9de7bb24; --loader-glow: #9de7bb0d; }
@@ -202,14 +219,15 @@ function reloadPage() { window.location.reload(); }
     box-shadow: 0 0 12px var(--loader-soft);
     animation: scene-resource-flow 1.8s ease-in-out infinite;
   }
+  &__progress--measured span { animation: none; background: var(--loader-accent); transition: width .2s ease; }
   &__card-foot { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 16px; margin-top: 22px; padding-top: 16px; border-top: 1px solid #92bac91c; }
   &__card-foot p { flex: 1 1 220px; font-size: 12px; line-height: 1.65; color: #7f9aab; }
   &__actions { display: flex; gap: 10px; flex-wrap: wrap; }
-  &__actions button { min-height: 40px; padding: 8px 14px; border: 1px solid #729eb450; border-radius: 5px; color: #cce0eb; background: #133044; font: inherit; font-size: 12px; cursor: pointer; }
-  &__actions button:hover { border-color: var(--loader-accent); }
-  &__actions button:focus-visible { outline: 2px solid var(--loader-accent); outline-offset: 3px; }
-  &__actions .scene-switch-loader__retry { border-color: var(--loader-accent); color: #1e2b32; background: var(--loader-accent); font-weight: 600; }
-  &__retry span { padding-left: 8px; font-size: 16px; }
+  &__actions :deep(button) { min-height: 40px; padding: 8px 14px; border: 1px solid #729eb450; border-radius: 5px; color: #cce0eb; background: #133044; font: inherit; font-size: 12px; cursor: pointer; }
+  &__actions :deep(button:hover) { border-color: var(--loader-accent); }
+  &__actions :deep(button:focus-visible) { outline: 2px solid var(--loader-accent); outline-offset: 3px; }
+  &__actions :deep(.scene-switch-loader__retry) { border-color: var(--loader-accent); color: #1e2b32; background: var(--loader-accent); font-weight: 600; }
+  &__actions :deep(.scene-switch-loader__retry span) { padding-left: 8px; font-size: 16px; }
 }
 .scene-switch-loader-enter-active, .scene-switch-loader-leave-active { transition: opacity .2s ease; }
 .scene-switch-loader-enter-from, .scene-switch-loader-leave-to { opacity: 0; }
@@ -257,6 +275,7 @@ function reloadPage() { window.location.reload(); }
   .scene-switch-loader__status i,
   .scene-switch-loader__activity i { animation: none; }
   .scene-switch-loader-enter-active, .scene-switch-loader-leave-active { transition: none; }
+  .scene-switch-loader__progress--measured span { transition: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .scene-switch-loader { backdrop-filter: none; background: #061521; }

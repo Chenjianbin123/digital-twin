@@ -82,16 +82,6 @@ const emit = defineEmits<{
     </div>
 
     <div class="ward-toolbar__actions">
-      <template v-if="dataSource === 'mock'">
-        <button
-          class="btn btn--ghost"
-          :class="{ 'btn--active': isSimulating }"
-          :disabled="isLoading"
-          @click="emit('toggleSimulation')"
-        >
-          {{ isSimulating ? '停止模拟' : '模拟推送' }}
-        </button>
-      </template>
       <button
         class="btn btn--ghost"
         :disabled="isLoading"

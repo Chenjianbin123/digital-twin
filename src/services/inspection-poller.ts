@@ -3,7 +3,7 @@ import {
   createInspectionPollingController,
   type InspectionPollingStore,
 } from '@/core/inspection-polling-controller';
-import { normalizeInspectionRecords } from '@/core/inspection';
+import { associateInspectionRecords } from '@/core/inspection';
 import type { TwinAreaEntity } from '@/types/twin';
 
 type Store = InspectionPollingStore & {
@@ -18,11 +18,11 @@ export function startInspectionPoller(store: Store, intervalMs = 60_000) {
     async loadRecords(areaId) {
       const area = store.area;
       if (!area)
-        return [];
-      const records = await fetchSwpInspectionRecords(areaId);
+        throw new Error('当前病区未就绪');
+      const page = await fetchSwpInspectionRecords(areaId);
       if (store.area !== area)
-        return [];
-      return normalizeInspectionRecords(records, area);
+        throw new Error('病区已切换，忽略旧巡视结果');
+      return { ...page, ...associateInspectionRecords(page.records, area, areaId) };
     },
   });
   return activeController.start(store, intervalMs);

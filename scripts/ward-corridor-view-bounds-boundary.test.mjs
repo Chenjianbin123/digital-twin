@@ -1,16 +1,15 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { wardCorridorSceneConfig as config } from '../src/config/ward-corridor-scene.ts';
 
 const areaScene = readFileSync(new URL('../src/core/area-scene.ts', import.meta.url), 'utf8');
-const config = readFileSync(new URL('../src/config/ward-corridor-scene.ts', import.meta.url), 'utf8');
 const camera = readFileSync(new URL('../src/core/ward-corridor-camera.ts', import.meta.url), 'utf8');
 
 test('corridor viewBounds config uses named floor / walls / ceiling meshes', () => {
-  assert.match(config, /viewBounds:\s*\{/);
-  assert.match(config, /floorMesh: '地板'/);
-  assert.match(config, /ceilingMesh: '天花板'/);
-  assert.match(config, /wallMeshes: \['墙壁', '墙壁2'\]/);
+  assert.equal(config.camera.viewBounds.floorMesh, '地板');
+  assert.equal(config.camera.viewBounds.ceilingMesh, '天花板');
+  assert.deepEqual(config.camera.viewBounds.wallMeshes, ['墙壁', '墙壁2']);
 });
 
 test('corridor camera helpers capture and clamp against named meshes', () => {

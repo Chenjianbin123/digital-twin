@@ -34,7 +34,7 @@ function reloadPage() { window.location.reload(); }
       <h1>正在准备<br />您的病区工作台</h1>
       <p class="startup-loader__description">连接病区数据，让空间、设备与护理信息在同一视野中呈现。</p>
       <div class="startup-loader__progress-head">
-        <span role="status">{{ error ? '护士站暂未就绪' : phase }}</span>
+        <span role="status">{{ error ? '医院场景暂未就绪' : phase }}</span>
         <strong v-if="!error">{{ displayProgress }}<small>%</small></strong>
       </div>
       <progress v-if="!error" :value="displayProgress" max="100" aria-label="系统初始化进度" />

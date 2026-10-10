@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import { createInspectionPollingController } from './inspection-polling-controller.ts';
 import type { NormalizedInspectionRecord } from '../types/inspection.ts';
+import type { SwpRecordPage } from '../types/swp-events.ts';
+import { readSwpRecordPage } from './swp-page-coverage.ts';
 
 function inspection(id: string): NormalizedInspectionRecord {
   return {
@@ -20,7 +22,7 @@ function inspection(id: string): NormalizedInspectionRecord {
 }
 
 test('loads immediately and rejects a stale area inspection response', async () => {
-  let resolveLoad!: (records: NormalizedInspectionRecord[]) => void;
+  let resolveLoad!: (records: SwpRecordPage<NormalizedInspectionRecord>) => void;
   const applied: string[] = [];
   const store = {
     selectedAreaId: 8 as number | null,
@@ -40,7 +42,7 @@ test('loads immediately and rejects a stale area inspection response', async () 
 
   const startPromise = controller.start(store, 60_000);
   store.selectedAreaId = 9;
-  resolveLoad([inspection('old-area')]);
+  resolveLoad(readSwpRecordPage({ records: [inspection('old-area')], total: 1, current: 1 }));
 
   assert.equal(await startPromise, false);
   assert.deepEqual(applied, []);
@@ -63,7 +65,7 @@ test('prevents overlapping inspection refreshes and refreshes after visibility r
       loadCount += 1;
       if (loadCount === 1)
         await new Promise<void>(resolve => { release = resolve; });
-      return [];
+      return readSwpRecordPage<NormalizedInspectionRecord>({ records: [], total: 0, current: 1 });
     },
     schedule: () => 1,
     cancelSchedule: () => {},

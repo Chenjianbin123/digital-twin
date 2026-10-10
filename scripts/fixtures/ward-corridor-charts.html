@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>走廊图表与床位排版 · 合成数据验证</title><link rel="icon" href="data:,">
+<div id="app"></div>
+<script type="module">
+import { createApp, h, ref } from 'vue';
+import { createPinia } from 'pinia';
+import AreaInfoPanel from '/src/components/AreaInfoPanel.vue';
+import HospitalIntroPanel from '/src/components/HospitalIntroPanel.vue';
+import WardCommandWorkspace from '/src/components/dashboard/WardCommandWorkspace.vue';
+import { summarizeArea } from '/src/core/area-summary.ts';
+import '/src/styles/dashboard-theme.scss';
+import '/src/styles/global.scss';
+
+const cases = [
+  ['11房',3,3], ['18',5,4], ['0107房',2,2], ['0110房',0,0],
+  ['0111房',4,3], ['112房',0,0], ['测试病房测试病房测试',5,3], ['W测试用病房',1,0],
+];
+const rooms = cases.map(([name,total,occupied],index) => ({
+  sickroomCode: `TEST-${index}`, sickroomId: `TEST-${index}`, sickroomName: name,
+  deviceCode: `TEST-DOOR-${index}`, isOnline: true, doorStaff: { deptDirectorName: '测试医生', areaHeadNurseName: '测试护士' },
+  beds: Array.from({length:total},(_,n)=>({bedCode:`TEST-${index}-${n}`,bedName:n === 0 ? '长床号-008' : `${n+1}床`,deviceCode:`TEST-BED-${index}-${n}`,position:{x:n,z:0},
+    isOccupied:n < occupied,isOnline:true,isCalling:!index&&!n,statusBarInfo:{status:''},sickInfo:n < occupied?{sickName:'测试患者',visitDoctorName:'测试医生',dutyNurseName:'测试护士'}:undefined})),
+}));
+const area={areaCode:'TEST',areaName:'合成验证病区',deptName:'合成科室',rooms};
+const inspections=rooms.map((room,index)=>({roomIndex:index,roomCode:room.sickroomCode,roomName:room.sickroomName,state:index===2?'no-record':'normal',stateLabel:index===2?'暂无记录':'有记录',latestAt:index===2?null:'2026-09-30 10:20:00',latestNurseName:'测试护士',overdueCount:0,dueCount:0,normalCount:0,records:[]}));
+const app=createApp({setup(){
+  const theme=ref('dark'),scenario=ref('ready'),focused=ref(0),action=ref('暂无操作');
+  const taskCount=ref(5);
+  const showHistory=ref(true);
+  const callOnly=ref(false),areaCode=ref('TEST');
+  const historyExamples=[
+    {category:'call',roomCode:'TEST-0',bedCode:'TEST-0-0',roomName:'11房',bedName:'长床号-008',label:'正常呼叫'},
+    {category:'env',roomCode:'TEST-1',bedCode:'',roomName:'18',bedName:'',label:'温湿度数据已更新'},
+    {category:'infusion',roomCode:'TEST-6',bedCode:'TEST-6-0',roomName:'测试病房测试病房测试',bedName:'长床号-008',label:'输液状态更新：这是一条用于验证自动换行的较长合成事件记录'},
+    {category:'device',roomName:'',bedName:'',label:'设备状态已更新'},
+    {category:'vital',areaCode:'OTHER-AREA',roomCode:'TEST-0',bedCode:'TEST-0-0',roomName:'11房',bedName:'1床',label:'体征数据已更新（其他病区同名房，不可定位）'},
+  ];
+  const history=Array.from({length:30},(_,index)=>({id:`TEST-HISTORY-${index}`,time:'14:13:03',areaCode:'TEST',bedCode:'',...historyExamples[index%historyExamples.length]}));
+  const makeTask=index=>({id:`TEST-CALL-${index}`,type:'call',severity:'critical',status:'pending',source:'swp-call',roomIndex:0,roomName:'11房',roomCode:'TEST-0',bedCode:'TEST-0-0',bedName:'1床',title:'合成患者呼叫',description:'交互验证，不连接业务接口',actionText:'本机确认',canLocate:false});
+  return ()=>h('main',{class:'digital-twin','data-theme':theme.value},[
+    h('div',{class:'fixture-tools'},[
+      h('strong','合成数据 · 正式组件验证'),
+      h('button',{type:'button',onClick:()=>theme.value=theme.value==='dark'?'light':'dark'},theme.value==='dark'?'切换浅色':'切换深色'),
+      h('button',{type:'button',onClick:()=>taskCount.value++},'追加模拟告警'),
+      h('label',['测试告警数量 ',h('select',{'aria-label':'测试告警数量',value:taskCount.value,onChange:e=>taskCount.value=Number(e.target.value)},[5,400,2000].map(value=>h('option',{value},`${value} 条`)))]),
+      h('button',{type:'button',onClick:()=>showHistory.value=!showHistory.value},showHistory.value?'清空模拟事件':'恢复模拟事件'),
+      h('button',{type:'button',onClick:()=>callOnly.value=!callOnly.value},callOnly.value?'恢复全部类别':'仅保留呼叫记录'),
+      h('button',{type:'button',onClick:()=>areaCode.value=areaCode.value==='TEST'?'OTHER-TEST':'TEST'},'切换验证病区'),
+      h('label',['验证状态 ',h('select',{'aria-label':'验证状态',value:scenario.value,onChange:e=>scenario.value=e.target.value},[
+        ['ready','已同步'],['loading','更新中'],['warning','部分同步'],['error','同步失败'],['stale','已过期'],['empty','零房间'],['zero','零床位'],['missing','无巡视记录'],
+      ].map(([value,label])=>h('option',{value},label)))]),
+      h('output',{'aria-live':'polite'},action.value),
+    ]),
+    h('aside',{class:'digital-twin__panel digital-twin__panel--overlay fixture-panel'},[
+      h(WardCommandWorkspace,{kind:'corridor',title:'病房走廊工作台',subtitle:'合成数据，不连接业务接口',metrics:[]},{default:()=>[
+        h(HospitalIntroPanel,{collapsible:true,info:{hospitalName:'合成验证医院',hospitalNote:'用于验证医院介绍折叠和文本独立展开。'.repeat(12)},keyMetrics:[{key:'rooms',label:'病区房间',value:rooms.length,unit:'间'},{key:'patient',label:'在院患者',value:15,unit:'人'}]}),
+        h('div',{class:'digital-twin__panel-body'},[
+        h(AreaInfoPanel,{area:{...area,areaCode:areaCode.value,rooms:scenario.value==='empty'?[]:scenario.value==='zero'?rooms.map(r=>({...r,beds:[]})):rooms},
+          roomSummaries:summarizeArea(scenario.value==='empty'?[]:scenario.value==='zero'?rooms.map(r=>({...r,beds:[]})):rooms),statusHistory:showHistory.value?history.filter(item=>!callOnly.value||item.category==='call'):[],
+          wardDataStatus:['empty','zero','missing'].includes(scenario.value)?'ready':scenario.value,inspectionDataStatus:['empty','zero','missing'].includes(scenario.value)?'ready':scenario.value,
+          inspectionRoomSummaries:scenario.value==='missing'?[]:inspections,alertDataStatus:['loading','warning','error','stale'].includes(scenario.value)?scenario.value:'ready',alertTasks:Array.from({length:taskCount.value},(_,index)=>makeTask(index)),focusedRoomIndex:focused.value,
+          onAcknowledgeAlert:id=>action.value=`模拟确认 ${id}`,
+          onFocusRoom:index=>{focused.value=index;action.value=`定位房间 ${rooms[index].sickroomName}`},onEnterRoom:index=>action.value=`进入房间 ${rooms[index].sickroomName}`}),
+      ])]}),
+    ]),
+  ]);
+}});
+app.use(createPinia());app.mount('#app');
+</script>
+<style>
+html{scrollbar-gutter:stable}
+html,body,#app{margin:0;min-height:100%;width:100%;height:auto!important;overflow:auto!important}.digital-twin{position:relative!important;overflow:visible!important;min-height:100vh;height:auto!important;display:block!important;background:#d9e5eb!important}
+.fixture-tools{position:sticky;top:0;z-index:10;display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:12px;background:#edf6fb;color:#16364b;font:14px/1.5 sans-serif}.fixture-tools button,.fixture-tools select{font:inherit;padding:8px;min-height:36px}.fixture-tools output{flex-basis:100%}
+.digital-twin .fixture-panel{position:relative!important;inset:auto!important;width:min(100%,580px)!important;height:auto!important;max-height:none!important;margin:16px auto!important;display:block!important;transform:none!important;padding:0!important}
+.fixture-panel .ward-command-workspace.ward-clinical{height:auto!important}.fixture-panel .ward-command-content{overflow:visible!important}.fixture-panel .ward-command-metrics{display:none!important}
+</style>
+</html>

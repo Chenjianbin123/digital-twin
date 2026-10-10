@@ -1,38 +1,19 @@
 import type { ApiResponse } from '@/types/ward';
+import { assertRemoteRequestsAllowed } from '@/core/data-source';
 import { AUTH_EXPIRED_EVENT, clearAuthSession, getSessionToken } from '@/core/auth-session';
 import { getApiBaseUrl, getApiToken } from '@/utils/device-cache';
+import { ApiError, httpFailureKind, normalizeApiFailure } from '@/core/api-failure';
+import { safeApiPath, sanitizeApiRecord, type SafeApiRequestRecord } from '@/core/api-diagnostics';
 
-export class ApiError extends Error {
-  constructor(message: string, public status?: number) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
+export { ApiError } from '@/core/api-failure';
 
-export interface ApiRequestRecord {
-  path: string;
-  startedAt: string;
-  durationMs: number;
-  status?: number;
-  ok: boolean;
-  error?: string;
-}
+export interface ApiRequestRecord extends SafeApiRequestRecord {}
 
 const MAX_REQUEST_RECORDS = 60;
 const recentApiRequests: ApiRequestRecord[] = [];
 
-function requestPath(url: string): string {
-  try {
-    return new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
-      .pathname;
-  }
-  catch {
-    return url.split('?')[0] || url;
-  }
-}
-
 function recordApiRequest(record: ApiRequestRecord): void {
-  recentApiRequests.unshift(record);
+  recentApiRequests.unshift(sanitizeApiRecord(record));
   if (recentApiRequests.length > MAX_REQUEST_RECORDS)
     recentApiRequests.length = MAX_REQUEST_RECORDS;
 }
@@ -82,11 +63,14 @@ export async function postJson<T>(
   body: unknown,
   options: PostJsonOptions = {},
 ): Promise<ApiResponse<T>> {
+  assertRemoteRequestsAllowed();
   const controller = new AbortController();
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const requestedTimeout = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeoutMs = Number.isFinite(requestedTimeout) && requestedTimeout > 0 ? requestedTimeout : 6_000;
   const startedAt = Date.now();
   let responseStatus: number | undefined;
-  let requestError: string | undefined;
+  let requestError: ApiError | undefined;
+  let businessCode: number | undefined;
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   const headers = buildHeaders(options.auth);
 
@@ -101,37 +85,44 @@ export async function postJson<T>(
 
     if (res.status === 401 || res.status === 403) {
       expireAuthentication('登录已过期，请重新登录', headers.token);
-      throw new ApiError(`HTTP ${res.status}: ${res.statusText}`, res.status);
+      throw new ApiError(httpFailureKind(res.status), res.status);
     }
 
     if (!res.ok)
-      throw new ApiError(`HTTP ${res.status}: ${res.statusText}`, res.status);
+      throw new ApiError(httpFailureKind(res.status), res.status);
 
-    const payload = await res.json() as ApiResponse<T>;
-    if (payload.code === 401 || payload.code === 403) {
-      expireAuthentication(payload.message || '登录已过期，请重新登录', headers.token);
-      throw new ApiError(payload.message || '登录已过期，请重新登录', payload.code);
+    let payload: ApiResponse<T>;
+    try { payload = await res.json() as ApiResponse<T>; }
+    catch (error) {
+      if (controller.signal.aborted) throw error;
+      throw new ApiError('invalid-response');
     }
+    if (!payload || typeof payload !== 'object' || !Number.isSafeInteger(payload.code))
+      throw new ApiError('invalid-response');
+    businessCode = payload.code;
+    if (payload.code === 401 || payload.code === 403) {
+      expireAuthentication('登录已失效或访问受限，请重新登录', headers.token);
+      throw new ApiError(httpFailureKind(payload.code), undefined, payload.code);
+    }
+    if (payload.code !== 200) throw new ApiError('business', undefined, payload.code);
 
     return payload;
   }
   catch (error) {
-    requestError = error instanceof Error ? error.message : String(error);
-    if (error instanceof ApiError)
-      throw error;
-    if (error instanceof DOMException && error.name === 'AbortError')
-      throw new ApiError(`接口请求超时（${Math.round(timeoutMs / 1000)}秒）：${url}`);
-    throw error;
+    requestError = normalizeApiFailure(error);
+    throw requestError;
   }
   finally {
     window.clearTimeout(timer);
     recordApiRequest({
-      path: requestPath(url),
+      path: safeApiPath(url),
       startedAt: new Date(startedAt).toISOString(),
       durationMs: Date.now() - startedAt,
       status: responseStatus,
       ok: !requestError,
-      error: requestError,
+      businessCode,
+      kind: requestError?.kind,
+      error: requestError?.message,
     });
   }
 }

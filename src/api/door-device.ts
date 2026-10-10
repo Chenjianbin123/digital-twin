@@ -55,6 +55,10 @@ async function fetchMockDoorDeviceList(): Promise<ApiResponse<DoorDeviceInfo[]>>
 }
 
 export async function fetchDoorEnvData(sickroomId: string | number): Promise<DoorDeviceInfo['doorEnvData']> {
+  if (getDataSource() === 'mock') {
+    return structuredClone(MOCK_DOOR_DEVICE_LIST.data.find(device =>
+      String(device.doorDeviceInfo.sickroomId) === String(sickroomId))?.doorEnvData);
+  }
   const response = await postJson<Array<{ deviceActionCode: string; deviceActionValue: string }>>(
     apiUrl(ENV_INFO_PATH),
     { sickroomId: Number(sickroomId) },
@@ -96,7 +100,7 @@ async function fetchRemoteDoorDeviceList(
   assertDeviceRuntimeConfigured();
 
   if (!isDeviceRuntimeConfigured() || !isSwpDiscoverConfigured())
-    throw new Error('请配置 VITE_DEVICE_HOST 与 VITE_API_TOKEN');
+    throw new Error('请检查后端地址配置与登录状态');
 
   try {
     const records = await fetchDoorDeviceListOnce({ areaId, forceRefresh: refreshDeviceList });
@@ -154,7 +158,7 @@ async function fetchRemoteDoorDeviceList(
   catch (e) {
     const message = e instanceof Error ? e.message : '查询门口机列表失败';
     if (/failed to fetch|networkerror|load failed/i.test(message))
-      throw new Error(`${message}。请检查 VITE_DEVICE_HOST 与网络`);
+      throw new Error(`${message}。请检查后端地址配置与网络`);
     throw new Error(message);
   }
 }

@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import {
   collectInspectionAlertTasks,
+  associateInspectionRecords,
+  mergeInspectionRecords,
   normalizeInspectionRecords,
   summarizeInspectionRooms,
 } from './inspection.ts';
@@ -70,6 +72,69 @@ test('normalizes a real inspection record to an exact room and bed', () => {
   assert.equal(normalized.nurseName, '王护士');
   assert.equal(normalized.state, 'overdue');
   assert.equal(normalized.occurredAt, '2026-09-03 09:10:00');
+});
+
+test('matches the documented name-only inspection record within a unique room', () => {
+  const [item] = normalizeInspectionRecords([record({ sickroomId: undefined, bedCode: undefined })], area);
+  assert.equal(item?.roomCode, '18_03');
+  assert.equal(item?.bedCode, 'bed-1');
+});
+
+test('reports duplicate names and foreign-area records without leaking patient details', () => {
+  const duplicateArea = { ...area, rooms: [...area.rooms, { ...area.rooms[0], sickroomId: '202', sickroomCode: 'other' }] };
+  const result = associateInspectionRecords([
+    record({ sickroomId: undefined, bedCode: undefined }),
+    record({ areaId: 99 }),
+  ], duplicateArea, 8);
+  assert.equal(result.records.length, 0);
+  assert.equal(result.association.unmatched, 2);
+  assert.equal(result.association.issues[0].reason, '病房信息不唯一');
+  assert.equal(result.association.issues[1].reason, '记录不属于当前病区');
+  assert.equal(JSON.stringify(result.association).includes('张三'), false);
+});
+
+test('counts associated history before deduplication and caps diagnostics', () => {
+  const result = associateInspectionRecords([record(), record({ id: 10 }), ...Array.from({ length: 30 }, (_, index) => record({ sickroomId: 999, bedName: `unknown-${index}` }))], area, 8);
+  assert.equal(result.records.length, 1);
+  assert.equal(result.association.matched, 2);
+  assert.equal(result.association.unmatched, 30);
+  assert.equal(result.association.issues.length, 20);
+  assert.equal(result.association.omittedIssueCount, 10);
+});
+
+test('groups repeated mismatches and explains current beds without silently relocating', () => {
+  const differentRoom = { ...area.rooms[0], sickroomId: '202', sickroomCode: 'other', sickroomName: '另一病房', beds: [{ ...area.rooms[0].beds[0], bedCode: 'other-bed', bedName: '208床' }] };
+  const result = associateInspectionRecords(Array.from({ length: 61 }, () => record({ bedCode: undefined, bedName: '208床' })), { ...area, rooms: [...area.rooms, differentRoom] }, 8);
+  assert.equal(result.records.length, 0);
+  assert.equal(result.association.issues.length, 1);
+  assert.equal(result.association.issues[0].count, 61);
+  assert.deepEqual(result.association.issues[0].currentBeds, ['1', '2']);
+  assert.deepEqual(result.association.issues[0].otherRooms, ['另一病房']);
+  assert.equal(result.association.omittedIssueCount, 0);
+});
+
+test('ambiguous inspection timestamps cannot silently close an overdue state', () => {
+  const overdue = normalizeInspectionRecords([record()], area)[0];
+  const normal = {...overdue,id:'new',state:'normal' as const,stateLabel:'已巡视'};
+  assert.equal(mergeInspectionRecords([overdue],[normal])[0].state,'overdue');
+  assert.equal(mergeInspectionRecords([{...overdue,timestampMs:-Infinity}],[{...normal,timestampMs:-Infinity}])[0].state,'overdue');
+  assert.equal(mergeInspectionRecords([overdue],[{...normal,timestampMs:overdue.timestampMs+1}])[0].state,'normal');
+  const conflicting = normalizeInspectionRecords([record({swipeState:'正常'}),record({id:10,swipeState:'异常'})],area);
+  assert.equal(conflicting[0].state,'overdue');
+});
+
+test('rejects conflicting and duplicate bed names; supports room-only records', () => {
+  assert.equal(associateInspectionRecords([record({ bedName: '2' })], area).association.unmatched, 1);
+  const duplicateArea = { ...area, rooms: [{ ...area.rooms[0], beds: [...area.rooms[0].beds, { ...area.rooms[0].beds[0], bedCode: 'duplicate' }] }] };
+  assert.equal(associateInspectionRecords([record({ bedCode: undefined })], duplicateArea).association.unmatched, 1);
+  const result = associateInspectionRecords([record({ sickroomId: undefined, bedCode: undefined, bedName: '' })], area, 8);
+  assert.equal(result.association.matched, 1);
+  assert.equal(result.records[0].bedCode, undefined);
+});
+
+test('rejects conflicting room identifiers instead of selecting the first match', () => {
+  const other = { ...area.rooms[0], sickroomId: '202', sickroomCode: 'other', sickroomName: '另一病房' };
+  assert.deepEqual(normalizeInspectionRecords([record({ sickroomCode: 'other' })], { ...area, rooms: [...area.rooms, other] }), []);
 });
 
 test('supports the actual inspection fields and normal/abnormal states returned by swp-admin', () => {

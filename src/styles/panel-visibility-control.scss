@@ -1,0 +1,51 @@
+@mixin render {
+  .digital-twin[data-theme] .digital-twin__main .digital-twin__panel-toggle {
+    --toggle-bg: #102e42;
+    --toggle-ink: #def5ff;
+    --toggle-line: #4f849e;
+    --toggle-accent: #7ee2ff;
+    --toggle-shadow: #06152266;
+    box-sizing: border-box;
+    width: 30px;
+    height: 30px;
+    min-height: 30px;
+    gap: 0;
+    padding: 0;
+    justify-content: center;
+    border: 1px solid var(--toggle-line) !important;
+    border-radius: 3px 7px 3px 7px !important;
+    background: var(--toggle-bg) !important;
+    color: var(--toggle-ink);
+    box-shadow: inset 0 1px 0 #ffffff14, 0 6px 18px var(--toggle-shadow) !important;
+    font-family: var(--sidebar-font-family, 'Microsoft YaHei', sans-serif);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: .04em;
+    opacity: 1;
+    &::before, &::after { content: ''; position: absolute; width: 4px; height: 4px; pointer-events: none; }
+    &::before { left: 2px; bottom: 2px; border-left: 1px solid var(--toggle-accent); border-bottom: 1px solid var(--toggle-accent); }
+    &::after { right: 2px; top: 2px; border-right: 1px solid var(--toggle-accent); border-top: 1px solid var(--toggle-accent); }
+    &:hover { border-color: var(--toggle-accent) !important; transform: translateY(-1px); }
+    &:focus-visible { outline: 2px solid var(--toggle-accent); outline-offset: 4px; }
+    .digital-twin__panel-toggle-icon {
+      width: 14px; height: 12px; border-radius: 2px; color: var(--toggle-accent);
+      i { top: 2px; left: 2px; width: 3px; height: 6px; border-radius: 1px; transform: none; }
+      &::after { display: none; }
+    }
+    &[aria-pressed='true'] .digital-twin__panel-toggle-icon i { height: 2px; top: 4px; width: 8px; }
+    @media (max-width: 767px) {
+      top: calc(var(--dashboard-header-space) + 12px);
+      right: 12px;
+      bottom: auto;
+    }
+    @media (prefers-reduced-motion: reduce) { transition: none; &:hover { transform: none; } }
+  }
+  .digital-twin[data-theme='light'] .digital-twin__main .digital-twin__panel-toggle {
+    --toggle-bg: #f2f9fd;
+    --toggle-ink: #19485f;
+    --toggle-line: #8ebacc;
+    --toggle-accent: #087fa6;
+    --toggle-shadow: #24546b1a;
+  }
+}

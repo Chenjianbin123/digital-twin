@@ -2,7 +2,7 @@
 
 import WardLegend from '@/components/WardLegend.vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { wardInteriorRoomKey, selectOccupiedWardBeds } from '@/core/ward-interior-beds';
+import { wardInteriorRoomKey, selectWardBeds } from '@/core/ward-interior-beds';
 import { wardInteriorSceneConfig } from '@/config/ward-interior-scene';
 import type { DataStatus } from '@/core/data-status';
 
@@ -50,7 +50,7 @@ const containerRef = ref<HTMLElement | null>(null);
 
 let scene: WardScene | null = null;
 function resetCamera() { scene?.setCameraPreset('door'); }
-const occupied = computed(() => selectOccupiedWardBeds(props.ward));
+const occupied = computed(() => selectWardBeds(props.ward));
 const capacity = wardInteriorSceneConfig.modular.slots.length;
 const expanded = computed(() => occupied.value.beds.length > capacity);
 const terminalDialog = ref<HTMLDialogElement | null>(null);
@@ -110,8 +110,8 @@ const selectionNotShown = computed(() => props.selectedBedCode
 const dataNotice = computed(() => {
   if (props.dataStatus === 'loading') return '患者数据同步中，当前画面可能为上次结果';
   if (props.dataStatus && props.dataStatus !== 'ready') return '患者数据未完整同步，当前画面仅供参考';
-  if (occupied.value.invalidCount && !occupied.value.beds.length) return '入住数据缺少有效床号，暂无法生成床位';
-  return occupied.value.beds.length ? '' : '当前病房暂无已入住床位';
+  if (occupied.value.invalidCount && !occupied.value.beds.length) return '床位数据缺少有效床号，暂无法生成床位';
+  return occupied.value.beds.length ? '' : '当前病房暂无床位';
 });
 
 
@@ -239,8 +239,8 @@ onUnmounted(() => {
       <div v-if="!sharedStatus" aria-live="polite">
         <strong>入住记录 {{ occupied.occupiedCount }} 条 · 已展示 {{ occupied.beds.length }} 床</strong>
         <p v-if="dataNotice">{{ dataNotice }}</p>
-        <p v-if="expanded">房间按入住数量扩展，尺寸为展示示意。</p>
-        <p v-if="occupied.invalidCount">{{ occupied.invalidCount }} 条入住床位数据缺少唯一床号，暂未展示。</p>
+        <p v-if="expanded">房间按床位数量扩展，尺寸为展示示意。</p>
+        <p v-if="occupied.invalidCount">{{ occupied.invalidCount }} 条床位数据缺少唯一床号，暂未展示。</p>
         <p v-if="selectionNotShown">当前选择的床位未在 3D 展示，可通过详情面板或平面图查看。</p>
       </div>
       <p v-if="sharedStatus && selectionNotShown">当前选择的床位未在 3D 展示，可通过详情面板查看。</p>

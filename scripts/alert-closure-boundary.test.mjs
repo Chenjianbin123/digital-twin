@@ -15,8 +15,8 @@ assert.match(store, /setAlertOperator/);
 assert.match(store, /'synced'/);
 assert.match(store, /'failed'/);
 assert.match(store, /'local'/);
-assert.match(panel, /同步失败/);
-assert.match(panel, /本地保存/);
+assert.match(panel, /记录未提交/);
+assert.match(panel, /仅在本工作台确认关注/);
 assert.match(app, /setAlertOperator/);
 
 console.log('Alert closure boundary checks passed.');

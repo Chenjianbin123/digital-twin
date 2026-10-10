@@ -267,6 +267,17 @@ test('uses a readable infusion title when alarm type is a dictionary code', () =
   assert.match(events[0].description, /报警代码 2/);
 });
 
+test('uses only explicit unprocessed status for calls and alarms, regardless of end time', () => {
+  const statuses = [0, '0', 1, '1', '', undefined, '2'];
+  const events = normalizeSwpEvents({
+    area: makeArea(), areaId: 8,
+    calls: statuses.map((eventStatus, id) => ({ id, areaId: 8, eventStatus, callEndTime: '2026-09-30 09:00:00' })),
+    alarms: statuses.map((eventStatus, id) => ({ id, areaId: 8, eventStatus, alarmProcessTime: '2026-09-30 09:00:00' })),
+  });
+  assert.equal(events.filter(event => event.source === 'swp-call').length, 2);
+  assert.equal(events.filter(event => event.source === 'swp-alarm').length, 2);
+});
+
 test('ignores non-active and cross-area records defensively', () => {
   const calls: SwpCallRecord[] = [
     { id: 1, areaId: 8, eventStatus: '1', callStartTime: '2026-08-21 10:00:00' },

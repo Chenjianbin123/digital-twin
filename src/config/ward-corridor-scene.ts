@@ -5,6 +5,7 @@ export interface WardCorridorSceneConfig {
   areaLayouts: Record<string, readonly CorridorRoomBinding[]>;
   model: {
     url: string;
+    layout?: 'reference-v2';
     rotationX: number;
     slotCount: number;
     doorNodeNames: readonly string[];
@@ -93,7 +94,7 @@ export interface WardCorridorSceneConfig {
 }
 
 /** 十门模型契约。实际房号由病区配置或会话内稳定展示槽位绑定。 */
-export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
+export const legacyWardCorridorSceneConfig: WardCorridorSceneConfig = {
   areaLayouts: {},
   model: {
     url: "/models/hospital-corridor/3-v4.glb?v=20260827-3v1-model-v1",
@@ -211,5 +212,29 @@ export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
     doorWidth: 2.1,
     doorHeight: 2.5,
     facadeDepth: 0.48,
+  },
+};
+
+/** 参考图精修版，保持十组业务槽位；旧版配置与资源保留用于回退。 */
+export const wardCorridorSceneConfig: WardCorridorSceneConfig = {
+  ...legacyWardCorridorSceneConfig,
+  model: {
+    ...legacyWardCorridorSceneConfig.model,
+    layout: 'reference-v2',
+    url: '/models/hospital-corridor/corridor-reference-v2.glb?v=20260929-refined',
+  },
+  camera: {
+    ...legacyWardCorridorSceneConfig.camera,
+    initial: {
+      target: { x: .1, y: 1.65, z: -2 },
+      initialDistance: 14.8,
+      initialAngle: { azimuthDeg: 0, elevationDeg: 0 },
+    },
+  },
+  appearance: {
+    ...legacyWardCorridorSceneConfig.appearance,
+    fov: 48,
+    exposure: 1.1,
+    environmentIntensity: .55,
   },
 };

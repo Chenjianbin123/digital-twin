@@ -2,6 +2,26 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as dataStatusModule from './data-status.ts';
 import { resolveDataStatus } from './data-status.ts';
+import { resolveSyncStatus, hasSyncedData, buildDataHealthSummary } from './data-status.ts';
+
+test('freshness expires at five minutes without a new network result', () => {
+  const now = Date.parse('2026-09-28T08:00:00Z');
+  const sync = { phase: 'ready' as const, lastSyncedAt: new Date(now).toISOString(), error: null, warning: null };
+  assert.equal(resolveSyncStatus(sync, now + 299_999), 'ready');
+  assert.equal(resolveSyncStatus(sync, now + 300_000), 'stale');
+  assert.equal(buildDataHealthSummary({ wardStatus: 'ready', eventSync: sync, nowMs: now + 300_000 }).canDeclareNormal, false);
+  assert.equal(resolveSyncStatus({ ...sync, phase: 'error' }, now + 300_000), 'error');
+  assert.equal(resolveSyncStatus({ ...sync, phase: 'partial' }, now), 'warning');
+  assert.equal(hasSyncedData({ ...sync, phase: 'error' }), true);
+});
+
+test('missing, malformed and future successful timestamps cannot claim fresh data', () => {
+  const now = Date.parse('2026-09-28T08:00:00Z');
+  for (const lastSyncedAt of [null, '', 'not-a-date', new Date(now + 1).toISOString()]) {
+    assert.equal(resolveSyncStatus({ phase: 'ready', lastSyncedAt, error: null, warning: null }, now), 'stale');
+  }
+  assert.equal(hasSyncedData({ phase: 'error', lastSyncedAt: null, error: 'failed', warning: null }), false);
+});
 
 test('resolves loading, warning, stale and error data states', () => {
   assert.equal(resolveDataStatus({ phase: 'loading', hasWarnings: false, lastFetchedAtMs: null, nowMs: 0 }), 'loading');
@@ -21,14 +41,14 @@ test('builds source-level health without pretending shared ward data is independ
     eventSync: { phase: 'error', lastSyncedAt: '2026-08-25T09:00:00', error: '接口失败', warning: null },
   }), {
     level: 'error',
-    label: '数据同步异常',
+    label: '信息暂未更新',
     canDeclareNormal: false,
     items: [
-      { key: 'beds', label: '床位与患者', status: 'warning', detail: '病区数据部分同步' },
-      { key: 'devices', label: '设备状态', status: 'warning', detail: '随病区数据同步' },
-      { key: 'environment', label: '病房环境', status: 'warning', detail: '随病区数据同步' },
-      { key: 'infusion', label: '输液状态', status: 'warning', detail: '随病区数据同步' },
-      { key: 'events', label: '呼叫与报警', status: 'error', detail: '同步中断，当前显示最近一次数据' },
+      { key: 'beds', label: '床位与患者', status: 'warning', detail: '病区信息不完整' },
+      { key: 'devices', label: '设备状态', status: 'warning', detail: '部分信息待更新' },
+      { key: 'environment', label: '病房环境', status: 'warning', detail: '部分信息待更新' },
+      { key: 'infusion', label: '输液状态', status: 'warning', detail: '部分信息待更新' },
+      { key: 'events', label: '呼叫与报警', status: 'error', detail: '信息暂未更新，当前显示上次记录' },
     ],
   });
 });
@@ -41,6 +61,7 @@ test('allows normal-operation wording only when ward and event data are current'
 
   const result = builder({
     wardStatus: 'ready',
+    nowMs: Date.parse('2026-08-25T10:00:00'),
     eventSync: { phase: 'ready', lastSyncedAt: '2026-08-25T10:00:00', error: null, warning: null },
   });
   assert.equal(result.level, 'ready');
@@ -56,6 +77,7 @@ test('builds source freshness rows for the nurse station', () => {
   const result = builder({
     wardStatus: 'ready',
     wardSyncedAtMs: Date.parse('2026-09-07T09:00:00+08:00'),
+    nowMs: Date.parse('2026-09-07T09:00:10+08:00'),
     eventSync: {
       phase: 'ready',
       lastSyncedAt: '2026-09-07T09:00:10+08:00',

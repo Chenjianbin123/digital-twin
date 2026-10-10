@@ -28,6 +28,8 @@ try {
         materials.add(material);
         assert.equal(material.map, texture, 'new template must reach the original screen');
         assert.equal(material.name, '门口机内', 'placeholder must not erase screen identity');
+        assert.equal(material.depthTest, true, 'native templates must stay behind walls');
+        assert.equal(material.depthWrite, true, 'a later-rendered chassis must not paint over an opaque native screen');
         if (multiMaterial) assert.equal(mesh.material[0], shell, 'frame must be untouched');
       }
       // A scene already affected by an earlier unnamed replacement must recover too.
@@ -43,6 +45,57 @@ try {
       materials.forEach(material => material.dispose());
       mesh.geometry.dispose();
     }
+  }
+  const fallback = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshBasicMaterial());
+  fallback.userData.generatedHospitalCorridorOverlay = true;
+  const fallbackTexture = new THREE.CanvasTexture();
+  const fallbackOriginalMaterial = fallback.material;
+  try {
+    AreaScene.prototype.applyWardCorridorTexture.call({}, fallback, fallbackTexture);
+    assert.equal(fallback.material.depthWrite, false, 'generated overlays must retain their existing depth policy');
+    assert.equal(fallback.material.depthTest, false);
+  }
+  finally {
+    fallbackOriginalMaterial.dispose();
+    fallback.material.dispose();
+    fallback.geometry.dispose();
+    fallbackTexture.dispose();
+  }
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshBasicMaterial());
+  label.userData.hospitalCorridorRoomLabel = true;
+  const binding = { slot: { roomIndex: 0, label: '301' }, label };
+  const draws = [];
+  const markerContext = {
+    wardCorridorBindings: [binding], area: { rooms: [{ sickroomName: '301 病房', isOnline: true }] },
+    summaries: [{ priority: 'normal', statusText: '' }], focusedRoomIndex: -1,
+    createWardCorridorLabelTexture(...args) { draws.push(args); return new THREE.CanvasTexture(); },
+    applyWardCorridorTexture: AreaScene.prototype.applyWardCorridorTexture,
+  };
+  try {
+    const refresh = () => AreaScene.prototype.updateCorridorMarkers.call(markerContext);
+    refresh();
+    assert.equal(label.material.depthWrite, true);
+    refresh();
+    assert.equal(draws.length, 1, 'unchanged native labels must not allocate new textures');
+    markerContext.area.rooms[0].isOnline = false;
+    refresh();
+    assert.equal(draws.at(-1)[3], '门口机离线');
+    markerContext.area.rooms[0].isOnline = true;
+    markerContext.summaries[0] = { priority: 'calling', statusText: '患者呼叫' };
+    refresh();
+    assert.equal(draws.at(-1)[3], '患者呼叫');
+    markerContext.focusedRoomIndex = 0;
+    refresh();
+    assert.equal(draws.at(-1)[4], true);
+    binding.labelTexture.dispose();
+    binding.labelTexture = undefined;
+    refresh();
+    assert.ok(binding.labelTexture, 'rebinding must recreate a disposed texture even with the same signature');
+  }
+  finally {
+    binding.labelTexture?.dispose();
+    label.material.dispose();
+    label.geometry.dispose();
   }
 }
 finally { await server.close(); }

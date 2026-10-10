@@ -1,11 +1,13 @@
 export interface NurseStationSceneConfig {
   model: {
     url: string;
-    layout: "legacy" | "reference-v2";
-    /** 仅 legacy 布局按包围盒缩放；reference-v2 保留建模单位。 */
+    layout: "legacy" | "reference-v2" | "silver-v1";
+    /** 仅 legacy 布局按包围盒缩放，其余布局保留建模单位。 */
     maxSize: { x: number; y: number; z: number };
   };
   position: { x: number; z: number };
+  /** 未配置时显示“暂无视频”；有素材后填同源或允许跨域的宣教视频地址。 */
+  educationVideoUrl?: string;
   appearance: {
     background: number;
     deskFov: number;
@@ -42,6 +44,8 @@ export interface NurseStationSceneConfig {
     floorCameraMargin: number;
 
     viewBounds: {
+      /** 合并建筑网格不能代表单面墙；使用建模坐标中的可活动内边界。 */
+      localBox?: { min: [number, number, number]; max: [number, number, number] };
       floorMesh: string;
       ceilingMesh: string;
       wallMeshes: [string, string];
@@ -68,7 +72,7 @@ export interface NurseStationSceneConfig {
 }
 
 /** 护士站模型、构图和交互限制。调整护士站外观时优先修改这里。 */
-export const nurseStationSceneConfig: NurseStationSceneConfig = {
+export const legacyNurseStationSceneConfig: NurseStationSceneConfig = {
   model: {
     url: "/models/smart-ward-nurse-station/nurse-station.glb?v=20260921",
     /**
@@ -132,5 +136,35 @@ export const nurseStationSceneConfig: NurseStationSceneConfig = {
     backZ: 5.45,
     halfWidth: 5.55,
     halfDepth: 4.85,
+  },
+};
+
+/** 银白护士站正式配置；旧配置与 GLB 保留，可整体切回，勿只换 URL。 */
+export const nurseStationSceneConfig: NurseStationSceneConfig = {
+  ...legacyNurseStationSceneConfig,
+  model: {
+    url: "/models/smart-ward-nurse-station/nurse-station-silver-v2.glb?v=20260929-refined",
+    layout: "silver-v1",
+    maxSize: { x: 15, y: 3.5, z: 28 },
+  },
+  // 本地 6 秒护理主题循环，降低网络、解码和视频纹理更新负担。
+  educationVideoUrl: "/videos/nurse-station-care-loop.mp4?v=20260929-visible",
+  appearance: {
+    background: 0xd9e2e5, deskFov: 36.7, exposure: 1.0,
+    envMapIntensity: 1, environmentIntensity: 0.44,
+  },
+  camera: {
+    ...legacyNurseStationSceneConfig.camera,
+    target: { x: 1, y: 1.65, z: -1.2 },
+    initialDistance: 12.35,
+    initialAngle: { azimuthDeg: -29.9, elevationDeg: 2.32 },
+    pan: { xLimit: 5.8, yMin: 0.7, yMax: 2.6 },
+    distance: { min: 0.5, max: 16 },
+    ceilingY: 3.44,
+    viewBounds: {
+      floorMesh: "地板", ceilingMesh: "Ceiling", wallMeshes: ["", ""],
+      localBox: { min: [-7.14, 0, -3.25], max: [7.14, 3.44, 10] },
+      margins: { floor: 0.22, ceiling: 0.25, wall: 0.16, depth: 0.2 },
+    },
   },
 };

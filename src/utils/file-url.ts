@@ -1,7 +1,10 @@
 import { getFileUrlPrefix, isFileUrlPrefixLoading } from '@/utils/file-prefix';
+import { resolveLocalAsset } from '@/core/local-asset';
+import { resolveDataSource } from '@/core/data-source';
 
 /** 对齐主项目：fileUrlPrefix + path */
 export function resolveFileUrl(path?: string): string {
+  if (resolveDataSource() === 'mock') return resolveLocalAsset(path);
   if (!path)
     return '';
 

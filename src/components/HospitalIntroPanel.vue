@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import DashSectionHeader from './dashboard/DashSectionHeader.vue';
+import SidebarSectionToggle from './dashboard/SidebarSectionToggle.vue';
 import type { HospitalInfo } from '@/types/hospital';
 import { htmlToPlainText } from '@/utils/html-text';
 import { resolveFileUrl } from '@/utils/file-url';
@@ -13,7 +14,11 @@ const props = defineProps<{
   loading?: boolean;
   error?: string | null;
   keyMetrics?: KeyMetric[];
+  collapsible?: boolean;
 }>();
+
+const collapsed = ref(false);
+const bodyId = useId();
 
 const introText = computed(() => htmlToPlainText(props.info?.hospitalNote));
 const introExpanded = ref(false);
@@ -61,14 +66,15 @@ const hasContent = computed(() =>
 </script>
 
 <template>
-  <section v-if="hasContent" class="hospital-intro" aria-label="医院介绍">
+  <section v-if="hasContent" class="hospital-intro" :class="{ 'sidebar-section--collapsed': collapsible && collapsed }" aria-label="医院介绍">
     <div class="hospital-intro__head">
       <svg class="hospital-intro__heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 21V4h14v17M3 21h18M9 21v-5h6v5M10 8h4m-2-2v4M8 13h2m4 0h2" />
       </svg>
-      <DashSectionHeader title="医院介绍" />
+      <DashSectionHeader title="医院介绍"><template v-if="collapsible" #actions><SidebarSectionToggle v-model="collapsed" label="医院介绍" :controls="bodyId" /></template></DashSectionHeader>
     </div>
 
+    <div :id="bodyId" v-show="!collapsible || !collapsed" class="sidebar-section-body">
     <div v-if="loading" class="hospital-intro__loading">加载医院介绍...</div>
 
     <template v-else>
@@ -117,6 +123,7 @@ const hasContent = computed(() =>
 
 
     </template>
+    </div>
   </section>
 </template>
 

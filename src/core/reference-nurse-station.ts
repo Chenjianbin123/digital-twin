@@ -16,8 +16,9 @@ export function referenceStationFov(aspect: number, baseFov: number) {
 export function bindReferenceStationDisplays(
   model: THREE.Object3D,
   createTexture: (kind: ReferenceBoardKind) => THREE.Texture,
+  screens: ReadonlyArray<readonly [Exclude<ReferenceBoardKind, 'clock'>, string]> = REFERENCE_SCREENS,
 ) {
-  const faces = REFERENCE_SCREENS.map(([kind, name]) => {
+  const faces = screens.map(([kind, name]) => {
     const source = model.getObjectByName(name);
     if (!(source instanceof THREE.Mesh) || !source.geometry.getAttribute('uv'))
       throw new Error(`护士站模型缺少独立屏幕或 UV: ${name}`);
@@ -32,6 +33,7 @@ export function bindReferenceStationDisplays(
     texture.flipY = false;
     const screen = new THREE.Mesh(source.geometry.clone(), new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
     screen.name = `nurse-station-reference-display-${kind}`;
+    screen.userData.sourceScreen = source.name;
     screen.position.copy(source.position);
     screen.quaternion.copy(source.quaternion);
     screen.scale.copy(source.scale);

@@ -152,6 +152,7 @@ function createDemoWardRoom(roomNumber: number, index: number): DoorDeviceInfo {
   const roomName = `${roomNumber}房`;
   const firstBedCode = `${roomNumber}01`;
   const secondBedCode = `${roomNumber}02`;
+  const thirdBedCode = `${roomNumber}03`;
   const isVacantRoom = roomNumber === 306 || roomNumber === 310;
   const firstStatus = DEMO_STATUSES[index % DEMO_STATUSES.length];
   const firstOnline = roomNumber === 305 ? '0' : '1';
@@ -174,6 +175,7 @@ function createDemoWardRoom(roomNumber: number, index: number): DoorDeviceInfo {
       ? [
           { bedName: '01', bedCode: firstBedCode, deviceCode: `BED-${firstBedCode}`, status: '', isOnline: '1' },
           { bedName: '02', bedCode: secondBedCode, deviceCode: `BED-${secondBedCode}`, status: '', isOnline: '1' },
+          { bedName: '03', bedCode: thirdBedCode, deviceCode: `BED-${thirdBedCode}`, status: '', isOnline: '1' },
         ]
       : [
           {
@@ -189,6 +191,7 @@ function createDemoWardRoom(roomNumber: number, index: number): DoorDeviceInfo {
             },
           },
           { bedName: '02', bedCode: secondBedCode, deviceCode: `BED-${secondBedCode}`, status: '', isOnline: '1' },
+          { bedName: '03', bedCode: thirdBedCode, deviceCode: `BED-${thirdBedCode}`, status: '', isOnline: '1' },
         ],
   });
 }

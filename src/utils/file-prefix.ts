@@ -2,6 +2,7 @@ import { apiUrl, postJson } from '@/api/http-client';
 import { deriveFileHostFromDeviceHost } from '@/utils/device-cache';
 import { shallowRef } from 'vue';
 import { measureLoadStage } from '@/core/load-timing';
+import { deploymentFilePrefix } from '@/core/deployment-endpoints';
 
 /** 对齐主项目 FILE_FRONT_URL_HEAD 系统参数 */
 const FILE_PARAM_KEY = 'FILE_FRONT_URL_HEAD';
@@ -55,7 +56,7 @@ export function initFileUrlPrefix(): Promise<void> {
     const value = response.code === 200
       ? response.data?.find(row => row.paramKey === FILE_PARAM_KEY)?.paramValue : '';
     if (!value?.trim()) throw new Error('文件资源地址未配置');
-    if (session === generation) setFileUrlPrefix(value);
+    if (session === generation) setFileUrlPrefix(deploymentFilePrefix(value, deriveFileHostFromDeviceHost()));
   }).catch(() => {
     if (session === generation) setFileUrlPrefix(deriveFileHostFromDeviceHost());
   }).finally(() => {

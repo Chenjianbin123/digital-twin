@@ -23,7 +23,7 @@ test('nurse station exposes a concise real inspection overview', () => {
   assert.match(nurseStation, /inspectionRoomSummaries/);
   assert.match(nurseStation, /巡视总览/);
   assert.match(nurseStation, /巡视超时/);
-  assert.match(nurseStation, /数据同步/);
+  assert.match(nurseStation, /inspectionSyncLabel/);
 });
 
 test('corridor room cards expose latest inspection status', () => {

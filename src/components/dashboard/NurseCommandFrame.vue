@@ -1,23 +1,45 @@
-<script setup lang="ts">
-import { useId } from 'vue';
-const glowId = `command-frame-${useId()}`;
-</script>
-
 <template>
-  <svg class="command-frame" viewBox="0 0 1000 1600" preserveAspectRatio="none" fill="none" aria-hidden="true">
-    <defs><linearGradient :id="glowId" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#004779"/><stop offset=".5" stop-color="#00c9f4"/><stop offset="1" stop-color="#0073ae"/></linearGradient></defs>
-    <path d="M62 4H940L994 58V1538L942 1594H58L6 1542V62Z" fill="#f8fcff" fill-opacity=".94" stroke="#99d9f5" />
-    <path d="M70 16H923L978 70V1530L928 1580H88L28 1520V634L52 612V50Z" stroke="#0076b7" stroke-width="1.4"/>
-    <path d="M88 34H913L960 80V1517L916 1560H105L48 1503V651M70 598V67L99 38" stroke="#80ceee"/>
-    <path d="M944 18H966L980 32V64ZM23 1525L76 1578H41L23 1560Z" :fill="`url(#${glowId})`" />
-    <path d="M52 153V286L62 275V165ZM978 322V448L968 460V334ZM978 1360V1468L967 1480V1372Z" :fill="`url(#${glowId})`" />
-    <path d="M24 110H34M24 306H34M24 351H34M24 432H34M24 565H34M80 84V60L106 34M148 1575H180L194 1562M806 1562L820 1575H852" stroke="#00a4db" stroke-width="3" />
-    <path d="M24 704V1335M974 520V1280" stroke="#4bbce4" stroke-width="2" />
-    <path d="M218 1575h58m448 0h58" stroke="#22b4df" stroke-width="2" stroke-dasharray="4 5" />
-  </svg>
+  <div class="command-frame" aria-hidden="true">
+    <i class="command-frame__rail command-frame__rail--outer" />
+    <i class="command-frame__rail command-frame__rail--inner" />
+    <i class="command-frame__corner command-frame__corner--top" />
+    <i class="command-frame__corner command-frame__corner--bottom" />
+    <i class="command-frame__ticks command-frame__ticks--left" />
+    <i class="command-frame__ticks command-frame__ticks--right" />
+    <i class="command-frame__footer" />
+  </div>
 </template>
 
 <style scoped>
-.command-frame { display: none; }
-path { vector-effect: non-scaling-stroke; }
+/* Fixed-size cuts prevent the frame stretching on tall and narrow panels. */
+.command-frame {
+  --frame-cut: 24px;
+  display: none; pointer-events: none;
+  background: var(--frame-line); clip-path: var(--frame-shape);
+}
+.command-frame, .command-frame__rail {
+  --frame-shape: polygon(var(--frame-cut) 0, calc(100% - var(--frame-cut)) 0, 100% var(--frame-cut), 100% calc(100% - var(--frame-cut)), calc(100% - var(--frame-cut)) 100%, var(--frame-cut) 100%, 0 calc(100% - var(--frame-cut)), 0 var(--frame-cut));
+}
+.command-frame::before, .command-frame__rail::before {
+  content: ''; position: absolute; inset: 1px;
+  background: var(--frame-paper); clip-path: var(--frame-shape);
+}
+.command-frame__rail { position: absolute; clip-path: var(--frame-shape); }
+.command-frame__rail--outer { inset: 6px; --frame-cut: 21px; background: var(--frame-accent); }
+.command-frame__rail--inner { inset: 12px; --frame-cut: 18px; background: var(--frame-line); }
+.command-frame__corner { position: absolute; width: 26px; height: 26px; background: var(--frame-accent); }
+.command-frame__corner--top { top: 7px; right: 7px; clip-path: polygon(0 0, 45% 0, 100% 55%, 100% 100%); }
+.command-frame__corner--bottom { bottom: 7px; left: 7px; clip-path: polygon(0 0, 100% 100%, 55% 100%, 0 45%); }
+.command-frame__ticks { position: absolute; top: 70px; bottom: 60px; width: 4px; background: repeating-linear-gradient(to bottom,var(--frame-accent) 0 4px,transparent 4px 96px); }
+.command-frame__ticks--left { left: 3px; }
+.command-frame__ticks--right { right: 3px; top: 124px; }
+.command-frame__footer { position: absolute; bottom: 6px; left: 22%; right: 22%; height: 3px; background: repeating-linear-gradient(90deg,var(--frame-accent) 0 4px,transparent 4px 9px); }
+@media (max-width: 1023px) {
+  .command-frame { --frame-cut: 16px; }
+  .command-frame__rail--outer { inset: 4px; --frame-cut: 13px; }
+  .command-frame__rail--inner { inset: 8px; --frame-cut: 10px; }
+  .command-frame__corner { width: 16px; height: 16px; }
+  .command-frame__ticks { width: 2px; }
+  .command-frame__footer { bottom: 4px; }
+}
 </style>
