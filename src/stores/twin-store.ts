@@ -1,4 +1,5 @@
 import { findUniqueStatusBed } from '@/core/ward-data-binding';
+import { runtimeStorageKey } from '@/core/runtime-config';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { syncAlertAck } from '@/api/alert-ack';
@@ -18,12 +19,18 @@ import { clearFileUrlPrefix } from '@/utils/file-prefix';
 import { clearLoadTimings, measureLoadStage, startLoadStage } from '@/core/load-timing';
 import { mapDoorListToTwinArea } from '@/types/twin';
 import { analyzeEnvAlert } from '@/core/env-alert';
+import { retainEnvironmentReadings } from '@/core/environment-state';
 import { resolveBedStatus } from '@/core/bed-status';
 import { summarizeArea } from '@/core/area-summary';
 import { normalizeRealtimeVitalMessage } from '@/core/realtime-vital-warning';
-import { normalizeSwpEvents } from '@/core/swp-event-normalizer';
+import { normalizeSwpEvents, summarizeSwpResponseMetrics } from '@/core/swp-event-normalizer';
+import { associateInspectionRecords } from '@/core/inspection';
+import { mockCalls, mockAlarms, mockResponses, mockInspections, mockPage } from '@/mock/clinical-records';
+import { mergeSwpEventSnapshot, MAX_RETAINED_EVENTS } from '@/core/swp-event-snapshot';
+import { pageCoverageLabel } from '@/core/swp-page-coverage';
 import {
   collectInspectionAlertTasks,
+  mergeInspectionRecords,
   summarizeInspectionRooms,
 } from '@/core/inspection';
 import {
@@ -67,7 +74,6 @@ import { startSwpEventPoller, stopSwpEventPoller } from '@/services/swp-event-po
 import { startInspectionPoller, stopInspectionPoller } from '@/services/inspection-poller';
 import {
   disableSwpCallAlerts,
-  enableSwpCallAlerts,
   loadSwpCallAlertsEnabled,
   notifyNewSwpCalls,
 } from '@/services/swp-call-notifier';
@@ -94,10 +100,12 @@ import type {
   NormalizedSwpEvent,
   SwpEventSource,
   SwpEventSyncState,
+  SwpPageCoverage,
   SwpResponseMetrics,
 } from '@/types/swp-events';
 import type {
   InspectionSyncState,
+  InspectionAssociation,
   NormalizedInspectionRecord,
 } from '@/types/inspection';
 
@@ -120,7 +128,7 @@ function readStoredAreaId(): string | null {
   if (typeof window === 'undefined')
     return null;
   try {
-    return window.localStorage.getItem(AREA_STORAGE_KEY);
+    return window.localStorage.getItem(runtimeStorageKey(AREA_STORAGE_KEY));
   }
   catch {
     return null;
@@ -131,7 +139,7 @@ function removeStoredAreaId(): void {
   if (typeof window === 'undefined')
     return;
   try {
-    window.localStorage.removeItem(AREA_STORAGE_KEY);
+    window.localStorage.removeItem(runtimeStorageKey(AREA_STORAGE_KEY));
   }
   catch {
     // Browser storage may be unavailable; ward selection must remain usable.
@@ -142,7 +150,7 @@ function writeStoredAreaId(areaId: number): void {
   if (typeof window === 'undefined')
     return;
   try {
-    window.localStorage.setItem(AREA_STORAGE_KEY, String(areaId));
+    window.localStorage.setItem(runtimeStorageKey(AREA_STORAGE_KEY), String(areaId));
   }
   catch {
     // Persistence is optional and must not invalidate a successful ward load.
@@ -369,14 +377,21 @@ export const useTwinStore = defineStore('twin', () => {
       const currentTaskIds = tasks.map(task => task.id);
       const currentTaskIdSet = new Set(currentTaskIds);
       const recoveredTasks = previousTasks.filter(task => !currentTaskIdSet.has(task.id));
+      // Eviction from a bounded, partial snapshot is not evidence of recovery.
+      const recoveryConfirmed = (task: AlertTask) => task.source === 'swp-inspection'
+        ? inspectionSync.value.phase === 'ready'
+        : task.source === 'swp-call' || task.source === 'swp-alarm'
+          ? swpEventSync.value.phase === 'ready' : true;
       for (const task of recoveredTasks) {
         const taskId = task.id;
         if (isAlertFocusForTask(alertFocus.value, taskId)) {
           clearAlertFocusSelection();
         }
-        if (alertAckRecords.value[taskId]?.status === 'handling') {
+        if (recoveryConfirmed(task) && alertAckRecords.value[taskId]?.status === 'handling') {
           pushHistory({
             category: categoryForAlert(task),
+            roomCode: task.roomCode,
+            canLocate: task.canLocate,
             bedCode: task.bedCode ?? '',
             bedName: task.bedName ?? '-',
             label: `状态已恢复：${task.title}`,
@@ -386,7 +401,7 @@ export const useTwinStore = defineStore('twin', () => {
       }
       alertAckRecords.value = clearRecoveredAlertAckRecords(
         alertAckRecords.value,
-        previousTasks.map(task => task.id),
+        recoveredTasks.filter(recoveryConfirmed).map(task => task.id),
         currentTaskIds,
       );
     },
@@ -703,6 +718,8 @@ export const useTwinStore = defineStore('twin', () => {
       const previousRoom = currentWard.value;
       const previousBedCode = selectedBedCode.value;
       const previousInteriorView = wardInteriorView.value;
+      if (dataSource.value === 'remote')
+        retainEnvironmentReadings(snapshot.area.rooms, area.value?.rooms ?? []);
       area.value = snapshot.area;
       deviceCodes.value = snapshot.deviceCodes;
       if (snapshot.hospitalInfo !== undefined) hospitalInfo.value = snapshot.hospitalInfo;
@@ -796,6 +813,17 @@ export const useTwinStore = defineStore('twin', () => {
         warnings.push(...bedResult.warnings);
         dataWarnings.value = warnings;
         area.value = nextArea;
+        selectedAreaId.value = Number(result.devices[0].doorDeviceInfo.areaId);
+        const areaId = selectedAreaId.value;
+        const syncedAt = new Date().toISOString();
+        applySwpEventSnapshot(areaId, {
+          events: normalizeSwpEvents({ area: nextArea, areaId, calls: mockCalls(areaId), alarms: mockAlarms(areaId) }),
+          refreshedSources: ['swp-call', 'swp-alarm'], syncedAt,
+        });
+        applySwpResponseMetrics(areaId, summarizeSwpResponseMetrics(mockResponses(areaId)), syncedAt);
+        const page = mockPage(mockInspections(areaId));
+        const inspection = associateInspectionRecords(page.records, nextArea, areaId);
+        applyInspectionSnapshot(areaId, inspection.records, syncedAt, page.coverage, inspection.association);
       }
       else {
         throw new Error('请选择病区后再加载病房数据');
@@ -887,6 +915,7 @@ export const useTwinStore = defineStore('twin', () => {
 
   async function setAlertTaskStatus(taskId: string, status: AlertTaskStatus) {
     const task = alertTasks.value.find(item => item.id === taskId);
+    if (!task) return;
     const taskAreaId = selectedAreaId.value;
     const taskSelectionGeneration = selectionGeneration;
     alertAckRecords.value = upsertAlertAckRecord(
@@ -896,14 +925,8 @@ export const useTwinStore = defineStore('twin', () => {
       alertOperator.value,
       task?.startedAt,
     );
-    if (!task)
-      return;
 
-    const sourceManagedHandlingLabel = task.type === 'call'
-      ? `确认响应：${task.title}`
-      : task.type === 'vital'
-        ? `确认关注：${task.title}`
-        : `确认知悉：${task.title}`;
+    const sourceManagedHandlingLabel = `本机确认（未同步后台）：${task.title}`;
     const label = status === 'handling'
       ? isSourceManagedTask(task) ? sourceManagedHandlingLabel : `开始处理：${task.title}`
       : status === 'resolved'
@@ -912,6 +935,8 @@ export const useTwinStore = defineStore('twin', () => {
 
     pushHistory({
       category: categoryForAlert(task),
+      roomCode: task.roomCode,
+      canLocate: task.canLocate,
       bedCode: task.bedCode ?? '',
       bedName: task.bedName ?? '-',
       label,
@@ -933,6 +958,8 @@ export const useTwinStore = defineStore('twin', () => {
             title: task.title,
           });
         }
+        if (selectedAreaId.value !== taskAreaId || selectionGeneration !== taskSelectionGeneration
+          || alertAckRecords.value[taskId] !== record) return;
         alertAckRecords.value = updateAlertAckSyncState(
           alertAckRecords.value,
           taskId,
@@ -943,6 +970,7 @@ export const useTwinStore = defineStore('twin', () => {
         if (
           selectedAreaId.value !== taskAreaId
           || selectionGeneration !== taskSelectionGeneration
+          || alertAckRecords.value[taskId] !== record
         )
           return;
         alertAckRecords.value = updateAlertAckSyncState(
@@ -953,6 +981,8 @@ export const useTwinStore = defineStore('twin', () => {
         );
         pushHistory({
           category: categoryForAlert(task),
+          roomCode: task.roomCode,
+          canLocate: task.canLocate,
           bedCode: task.bedCode ?? '',
           bedName: task.bedName ?? '-',
           label: `处理记录待同步：${e instanceof Error ? e.message : '同步失败'}`,
@@ -977,7 +1007,7 @@ export const useTwinStore = defineStore('twin', () => {
     const task = alertTasks.value.find(item => item.id === taskId);
     if (!task || !isSourceManagedTask(task) || task.status === 'handling')
       return;
-    // 仅记录护士已响应/知悉；活动任务只能由真实来源状态恢复后自动结束。
+    // 仅记录本机确认，不代表到场或后台处理；活动任务由真实来源状态恢复后结束。
     void setAlertTaskStatus(taskId, 'handling');
   }
 
@@ -985,15 +1015,9 @@ export const useTwinStore = defineStore('twin', () => {
     alertAckRecords.value = loadAlertAckRecords();
   }
 
-  async function setCallAlertsEnabled(enabled: boolean) {
-    callAlertsEnabled.value = enabled;
-    if (enabled) {
-      await enableSwpCallAlerts();
-      await notifyNewSwpCalls(swpEvents.value);
-    }
-    else {
-      disableSwpCallAlerts();
-    }
+  async function setCallAlertsEnabled(_enabled: boolean) {
+    callAlertsEnabled.value = false;
+    disableSwpCallAlerts();
   }
 
   function reloadCallAlertsEnabled() {
@@ -1047,6 +1071,7 @@ export const useTwinStore = defineStore('twin', () => {
         bed.isCalling = calling;
         pushHistory({
           category: 'call',
+          roomCode: room.sickroomCode,
           bedCode,
           bedName: bed.bedName,
           label: calling ? '床位呼叫' : '呼叫解除',
@@ -1097,6 +1122,7 @@ export const useTwinStore = defineStore('twin', () => {
   function pushHistory(entry: Omit<StatusHistoryEntry, 'id' | 'time'>) {
     statusHistory.value.unshift({
       ...entry,
+      areaCode: area.value?.areaCode,
       id: `${Date.now()}-${historySequence += 1}-${entry.bedCode || 'env'}`,
       time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
     });
@@ -1128,6 +1154,8 @@ export const useTwinStore = defineStore('twin', () => {
     expectedAreaId: number,
     snapshot: {
       events: NormalizedSwpEvent[];
+      resolvedEventIds?: string[];
+      coverage?: SwpEventSyncState['coverage'];
       refreshedSources?: SwpEventSource[];
       syncedAt?: string;
       warning?: string;
@@ -1135,16 +1163,14 @@ export const useTwinStore = defineStore('twin', () => {
   ) {
     if (selectedAreaId.value !== expectedAreaId || !area.value)
       return false;
-    const refreshedSources = new Set(snapshot.refreshedSources ?? ['swp-call', 'swp-alarm']);
-    const nextEvents = [
-      ...swpEvents.value.filter(event => !refreshedSources.has(event.source)),
-      ...snapshot.events,
-    ];
+    const nextEvents = mergeSwpEventSnapshot(swpEvents.value, snapshot);
     const previousIds = new Set(swpEvents.value.map(event => event.id));
     for (const event of [...nextEvents].reverse()) {
       if (previousIds.has(event.id))
         continue;
       pushHistory({
+        roomCode: event.location?.roomCode,
+        canLocate: !!event.location,
         category: event.taskType === 'call'
           ? 'call'
           : event.taskType === 'vital'
@@ -1157,12 +1183,15 @@ export const useTwinStore = defineStore('twin', () => {
       });
     }
     swpEvents.value = nextEvents;
-    void notifyNewSwpCalls(nextEvents);
+    void notifyNewSwpCalls(nextEvents.filter(event => !event.retained));
+    const warning = [snapshot.warning, nextEvents.length >= MAX_RETAINED_EVENTS
+      ? `本地列表已达 ${MAX_RETAINED_EVENTS} 条上限，仅保留本次及最近历史记录，请到原系统复核全部事件` : null].filter(Boolean).join('；');
     swpEventSync.value = {
-      phase: snapshot.warning ? 'partial' : 'ready',
+      phase: warning ? 'partial' : 'ready',
       lastSyncedAt: snapshot.syncedAt ?? new Date().toISOString(),
       error: null,
-      warning: snapshot.warning ?? null,
+      warning: warning || null,
+      coverage: snapshot.coverage,
     };
     return true;
   }
@@ -1186,6 +1215,8 @@ export const useTwinStore = defineStore('twin', () => {
     if (!previous) {
       pushHistory({
         category: 'vital',
+        roomCode: event.location?.roomCode,
+        canLocate: !!event.location,
         bedCode: event.location?.bedCode ?? '',
         bedName: event.location?.bedName ?? '-',
         label: event.title,
@@ -1196,12 +1227,7 @@ export const useTwinStore = defineStore('twin', () => {
       ...swpEvents.value.filter(item => item.id !== event.id),
       event,
     ].sort((a, b) => b.timestampMs - a.timestampMs || a.id.localeCompare(b.id));
-    swpEventSync.value = {
-      phase: 'ready',
-      lastSyncedAt: new Date().toISOString(),
-      error: null,
-      warning: null,
-    };
+    // A single pushed event cannot certify the completeness or freshness of the whole list.
     return true;
   }
 
@@ -1272,15 +1298,24 @@ export const useTwinStore = defineStore('twin', () => {
     expectedAreaId: number,
     records: NormalizedInspectionRecord[],
     syncedAt: string,
+    coverage?: SwpPageCoverage,
+    association?: InspectionAssociation,
   ) {
     if (selectedAreaId.value !== expectedAreaId || !area.value)
       return false;
-    inspectionRecords.value = records;
+    inspectionRecords.value = coverage && !coverage.complete
+      ? mergeInspectionRecords(inspectionRecords.value, records)
+      : records;
     inspectionSync.value = {
-      phase: 'ready',
+      phase: (coverage && !coverage.complete) || association?.unmatched ? 'partial' : 'ready',
       lastSyncedAt: syncedAt,
       error: null,
-      warning: null,
+      warning: [
+        coverage && !coverage.complete ? `${pageCoverageLabel('巡视记录', coverage)}；缺失病房不能据此判定已巡视，最多保留最近 2000 条历史记录供复核` : '',
+        association?.unmatched ? `${association.unmatched} 条巡视记录无法关联，请核对病房和床位信息` : '',
+      ].filter(Boolean).join('；') || null,
+      association,
+      coverage: coverage ? [{ ...coverage, label: '巡视记录' }] : undefined,
     };
     return true;
   }
@@ -1402,6 +1437,7 @@ export const useTwinStore = defineStore('twin', () => {
 
   async function reset() {
     stopSimulation();
+    clearTemplateCache();
     const resetAreaId = selectedAreaId.value;
     const operationToken = remoteServiceOperationGuard.begin();
     stopRemoteServiceInstances();

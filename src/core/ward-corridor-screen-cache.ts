@@ -1,9 +1,16 @@
 /** Coalesce queued room updates and cap Canvas rendering; stale textures never reach a new binding. */
 export class WardCorridorScreenCache {
-  private entries = new Map<string, { signature: string }>();
+  private entries = new Map<string, { signature: string; expiresAt: number }>();
   private pending = new Map<string, { run(): Promise<void>; cancel(): void }>();
   private active = 0;
+  private readonly ttlMs: number;
+  private readonly now: () => number;
   readonly stats = { rendered: 0, skipped: 0, discarded: 0 };
+
+  constructor(options: { ttlMs?: number; now?: () => number } = {}) {
+    this.ttlMs = options.ttlMs ?? Number.POSITIVE_INFINITY;
+    this.now = options.now ?? Date.now;
+  }
 
   clear() {
     this.entries.clear();
@@ -13,11 +20,13 @@ export class WardCorridorScreenCache {
 
   update<T extends { dispose(): void }>(key: string, signature: string,
     render: () => Promise<T>, apply: (texture: T) => void): Promise<void> {
-    if (this.entries.get(key)?.signature === signature) {
+    const cached = this.entries.get(key);
+    if (cached?.signature === signature && cached.expiresAt > this.now()) {
       this.stats.skipped++;
       return Promise.resolve();
     }
-    const entry = { signature };
+    // Queued and active work must finish before its refresh interval starts.
+    const entry = { signature, expiresAt: Number.POSITIVE_INFINITY };
     this.entries.set(key, entry);
     this.pending.get(key)?.cancel();
     const result = new Promise<void>((resolve, reject) => {
@@ -32,6 +41,7 @@ export class WardCorridorScreenCache {
             }
             else {
               apply(texture);
+              entry.expiresAt = this.now() + this.ttlMs;
               this.stats.rendered++;
             }
             resolve();

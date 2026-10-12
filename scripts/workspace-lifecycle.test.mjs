@@ -177,13 +177,13 @@ test('panel visibility remembers each view independently and resets with the are
   assert.equal(panelsVisible.value, true);
   panelsVisible.value = false;
   scene.value = 'ward'; assert.equal(panelsVisible.value, true);
-  scene.value = 'ward-interior'; interior.value = 'plan'; assert.equal(panelsVisible.value, false);
-  panelsVisible.value = true;
+  scene.value = 'ward-interior'; interior.value = 'plan'; assert.equal(panelsVisible.value, true);
+  panelsVisible.value = false;
   interior.value = '3d'; assert.equal(panelsVisible.value, true);
-  interior.value = 'plan'; assert.equal(panelsVisible.value, true, 'explicit plan preference survives');
+  interior.value = 'plan'; assert.equal(panelsVisible.value, false, 'explicit plan preference survives');
   scene.value = 'nurse-station'; assert.equal(panelsVisible.value, false, 'explicit station preference survives');
   area.value = 'area:2'; assert.equal(panelsVisible.value, true);
-  scene.value = 'ward-interior'; assert.equal(panelsVisible.value, false);
+  scene.value = 'ward-interior'; assert.equal(panelsVisible.value, true);
 });
 
 const area = { areaName: 'Test', areaCode: 'A', deptName: 'Test', rooms: [{

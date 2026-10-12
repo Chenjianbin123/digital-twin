@@ -1,8 +1,10 @@
 /**
- * Web 端通过 .env 配置 Host / Token / 病区 ID
+ * 开发环境通过 .env 配置地址，生产环境通过启动时加载的 config.json 配置地址。
  */
 import type { DeviceCacheInfo } from '@/utils/device-cache.types';
 import { getSessionToken } from '@/core/auth-session';
+import { configuredDeviceHost, deploymentEndpoints } from '@/core/deployment-endpoints';
+import { getRuntimeDeviceHost } from '@/core/runtime-config';
 
 export type { DeviceCacheInfo, DeviceCacheField } from '@/utils/device-cache.types';
 
@@ -13,34 +15,14 @@ let cache: DeviceCacheInfo | null = null;
 
 /** 对齐主项目：Android host + :9700/swp（强制 9700，避免误用静态站 8093） */
 export function normalizeDeviceHost(raw?: string): string {
-  const value = raw?.trim();
-  if (!value)
-    return '';
-
-  const trimmed = value.replace(/\/+$/, '');
-  if (/^\/swp$/i.test(trimmed))
-    return '/swp';
-
-  try {
-    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
-    const url = new URL(withProtocol.replace(/\/swp\/?$/i, ''));
-    url.port = '9700';
-    url.pathname = '/swp';
-    url.search = '';
-    url.hash = '';
-    return url.toString().replace(/\/+$/, '');
-  }
-  catch {
-    return '';
-  }
+  try { return deploymentEndpoints(raw).apiBase; }
+  catch { return ''; }
 }
 
 function readEnvDeviceInfo(): DeviceCacheInfo {
   const areaId = import.meta.env.VITE_AREA_ID?.trim() || '';
   const deptId = import.meta.env.VITE_DEPT_ID?.trim() || '';
-  const rawHost = import.meta.env.VITE_DEVICE_HOST?.trim()
-    || import.meta.env.VITE_API_BASE_URL?.trim()
-    || '';
+  const rawHost = import.meta.env.DEV ? configuredDeviceHost(import.meta.env) : getRuntimeDeviceHost();
   const token = import.meta.env.VITE_API_TOKEN?.trim() || '';
 
   return {
@@ -87,15 +69,7 @@ export function getApiBaseUrl(): string {
   if (import.meta.env.DEV)
     return '/swp';
 
-  const configured = getDeviceHost();
-  if (configured && configured.toLowerCase() !== '/swp')
-    return configured;
-
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-  if (hostname)
-    return normalizeDeviceHost(hostname);
-
-  return normalizeDeviceHost('192.168.96.104');
+  return deploymentEndpoints(getDeviceHost()).apiBase;
 }
 
 export function isDeviceRuntimeConfigured(): boolean {
@@ -105,27 +79,25 @@ export function isDeviceRuntimeConfigured(): boolean {
   if (import.meta.env.DEV)
     return true;
 
-  return !!getApiBaseUrl();
+  return !!getDeviceHost();
 }
 
 export function assertDeviceRuntimeConfigured(): void {
   if (!getApiToken())
     throw new Error('请配置 VITE_API_TOKEN（SWP 接口鉴权 token）');
 
-  if (!import.meta.env.DEV && !getApiBaseUrl())
-    throw new Error('请配置 VITE_DEVICE_HOST（后端地址）');
+  if (!import.meta.env.DEV && !getDeviceHost())
+    throw new Error('请配置 config.json 的 deviceHost（后端地址）');
 }
 
 /** 从 host 推导文件资源端口（9704），供 initFileUrlPrefix 失败时兜底 */
 export function deriveFileHostFromDeviceHost(): string {
   const host = getDeviceHost() || (!import.meta.env.DEV ? getApiBaseUrl() : '');
-  if (!host || host.toLowerCase() === '/swp')
+  if (!host)
     return '';
 
   try {
-    const url = new URL(host.replace(/\/swp\/?$/i, ''));
-    url.port = '9704';
-    return url.origin;
+    return deploymentEndpoints(host).fileOrigin;
   }
   catch {
     return '';

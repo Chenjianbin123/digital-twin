@@ -7,6 +7,7 @@
 import { createApp, defineAsyncComponent, h, computed, ref } from 'vue';
 import { createPinia } from 'pinia';
 import { useTwinStore } from '/src/stores/twin-store.ts';
+import { startSwpEventPoller, stopSwpEventPoller } from '/src/services/swp-event-poller.ts';
 import NurseStationPanel from '/src/components/NurseStationPanel.vue';
 import { buildNurseStationViewModel } from '/src/core/nurse-station-view-model.ts';
 import { summarizeArea } from '/src/core/area-summary.ts';
@@ -28,14 +29,19 @@ if (inspection) area.rooms = [5, 4, 2].map((count, index) => ({
   sickroomCode: `TEST-${index}`, sickroomName: ['合成测试病房（较长名称）', '0111房', '0107房'][index],
   beds: Array.from({ length: count }, (_, bedIndex) => ({ bedCode: `TEST-${index}-${bedIndex}`, isOccupied: bedIndex < 3 })),
 }));
-const sync = { phase: 'ready', lastSyncedAt: '2026-09-21T08:00:00Z', error: null, warning: null };
+const sync = { phase: 'ready', lastSyncedAt: new Date().toISOString(), error: null, warning: null };
 if (clinical) area.rooms[0].doorStaff = { deptDirectorName: '合成医生', areaHeadNurseName: '合成护士' };
 const clinicalHistory = Array.from({length:3}, (_,i) => ({id:`synthetic-history-${i}`,time:'14:24:20',category:'call',roomName:'合成病区',bedName:'',label:'正常呼叫'}));
 const app = createApp({ setup() {
   const theme = ref('light'), empty = ref(false), wallboard = ref(false), alerts = ref(false), handled = ref(false);
   const taskOverrides = ref({}), partial = ref(false);
+  const warnings = ref([]);
   const chartMetrics = ref({}), chartHealth = ref('ready');
   const clinicalSource = ref('remote'), clinicalSync = ref('ready');
+  const clinicalError = ref(null);
+  const syncTimestamp = ref(sync.lastSyncedAt);
+  const pageCoverage = ref([]);
+  const fixtureAreaId = ref(999999), inspectionAssociation = ref(undefined);
   const inspectionStates = ref(['no-record', 'no-record', 'no-record']);
   const events = Array.from({ length: reference ? 400 : 12 }, (_, i) => ({
     id: `fixture-${i}`, source: 'swp-call', areaId: 999999, taskType: 'call', severity: i === 1 ? 'high' : 'critical',
@@ -50,7 +56,7 @@ const app = createApp({ setup() {
     store.swpEventSync = sync; store.swpResponseSync = sync;
   }
   const vm = computed(() => {
-    const model = buildNurseStationViewModel({ areaId: 999999, area, roomSummaries: summarizeArea(area.rooms), swpEvents: empty.value ? [] : events,
+    const model = buildNurseStationViewModel({ areaId: fixtureAreaId.value, area, roomSummaries: summarizeArea(area.rooms), swpEvents: empty.value ? [] : events,
       inspectionRoomSummaries: inspection ? area.rooms.map((room, index) => ({
         roomIndex: index, roomCode: room.sickroomCode, roomName: room.sickroomName,
         state: inspectionStates.value[index], stateLabel: { normal: '已巡视', due: '待关注', overdue: '巡视超时', 'no-record': '暂无记录' }[inspectionStates.value[index]],
@@ -59,20 +65,32 @@ const app = createApp({ setup() {
       alertTasks: empty.value ? [] : events.map((event, i) => ({ id: event.id, source: event.source, type: reference ? (i < 200 ? 'call' : 'infusion') : charts ? (i < 6 ? 'call' : i < 10 ? 'infusion' : 'offline') : 'call',
         severity: event.severity, status: 'pending', title: event.title, description: event.description,
         startedAt: new Date(event.timestampMs).toISOString(), canLocate: false, actionText: '定位' })),
-      swpEventSync: clinical ? {...sync,phase:clinicalSync.value} : sync, swpResponseSync: clinical ? {...sync,phase:clinicalSync.value} : sync, inspectionSync: sync, wardDataStatus: clinical ? chartHealth.value : 'ready', wardDataSyncedAtMs: Date.now() });
+      swpEventSync: clinical ? {...sync,phase:clinicalSync.value,error:clinicalError.value,lastSyncedAt:syncTimestamp.value} : sync, swpResponseSync: clinical ? {...sync,phase:clinicalSync.value,error:clinicalError.value,lastSyncedAt:syncTimestamp.value} : sync, inspectionSync: {...sync,phase:clinicalSync.value,error:clinicalError.value,lastSyncedAt:syncTimestamp.value}, wardDataStatus: clinical ? chartHealth.value : 'ready', wardDataSyncedAtMs: Date.now() });
     if (handled.value && model.alertTasks[0]) model.alertTasks[0].status = 'handling';
+    model.swpEventSync = { ...model.swpEventSync, coverage: pageCoverage.value };
+    model.inspectionSync = { ...model.inspectionSync, association: inspectionAssociation.value };
     model.alertTasks.forEach((task, index) => Object.assign(task, taskOverrides.value[index]));
     if (charts) {
       Object.assign(model.metrics, chartMetrics.value);
       model.dataFreshnessItems.find(item => item.key === 'ward').status = chartHealth.value;
-      model.dataHealth.canDeclareNormal = chartHealth.value === 'ready';
-      model.realtime.status = chartHealth.value;
-      model.realtime.label = { ready: '实时数据', error: '同步异常', loading: '同步中', warning: '部分同步', stale: '数据已延迟' }[chartHealth.value];
     }
     if (partial.value) model.realtime = { ...model.realtime, status: 'warning', label: '部分同步', detail: '病区数据部分同步，已有数值请核对' };
     return model;
   });
   window.commandFixture = { setTheme: value => theme.value = value, setEmpty: value => empty.value = value,
+    startEventPolling: async () => {
+      const store = useTwinStore();
+      store.selectedAreaId = 999999;
+      store.area = {areaName:'合成刷新病区',areaCode:'SYNTHETIC',deptName:'测试',rooms:[]};
+      await startSwpEventPoller(store,600000,600000);
+    },
+    stopEventPolling: stopSwpEventPoller,
+    setWarnings: value => warnings.value = value,
+    setClinicalError: value => clinicalError.value = value,
+    setSyncTimestamp: value => syncTimestamp.value = value,
+    setPageCoverage: value => pageCoverage.value = value,
+    setAreaId: value => fixtureAreaId.value = value,
+    setInspectionAssociation: value => inspectionAssociation.value = value,
     setClinicalSource: value => clinicalSource.value = value, setClinicalSync: value => clinicalSync.value = value,
     setChartMetrics: value => chartMetrics.value = value, setChartHealth: value => chartHealth.value = value,
     setHandled: value => handled.value = value, setPartial: value => partial.value = value,
@@ -80,7 +98,7 @@ const app = createApp({ setup() {
     setTask: (index, patch) => taskOverrides.value = { ...taskOverrides.value, [index]: { ...taskOverrides.value[index], ...patch } }, events: [] };
   return () => integrated ? h(Workspace, { theme: theme.value, operatorName: '测试操作员', operatorRole: '测试' }) : h('main', { class: 'digital-twin fixture-root', 'data-theme': theme.value }, [
     h('aside', { class: 'fixture-panel' }, [h(NurseStationPanel, { viewModel: vm.value, dataSource: clinicalSource.value, statusHistory: clinical && !empty.value ? clinicalHistory : [],
-      wallboard: wallboard.value, callAlertsEnabled: alerts.value,
+      wallboard: wallboard.value, callAlertsEnabled: alerts.value, dataWarnings: warnings.value,
       onSetWallboard: value => wallboard.value = value, onSetCallAlertsEnabled: value => alerts.value = value,
       onLocateAlert: id => window.commandFixture.events.push(['locate', id]),
       onAcknowledgeAlert: id => window.commandFixture.events.push(['acknowledge', id]),

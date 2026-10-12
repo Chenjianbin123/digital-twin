@@ -46,23 +46,22 @@ function createBed() {
   };
 }
 
-test('rejects old ParserV3 templates', () => {
-  assert.throws(
-    () => parseTemplateInfo({
-      id: 1,
-      analyzeType: '1',
-      templateContent: JSON.stringify({
-        width: 1024,
-        height: 600,
-        isNew: false,
-        data: [{ type: 'text', left: 10, top: 10, width: 100, height: 30 }],
-      }),
+test('migrates legacy flat templates even when isNew is false', () => {
+  const parsed = parseTemplateInfo({
+    id: 1,
+    analyzeType: '1',
+    templateContent: JSON.stringify({
+      width: 1024,
+      height: 600,
+      isNew: false,
+      data: [{ type: 'text', left: 10, top: 10, width: 100, height: 30 }],
     }),
-    /暂不支持旧模板/,
-  );
+  });
+  assert.equal(parsed.document?.schemaVersion, 4);
+  assert.equal(parsed.document?.meta.migratedFrom, 'v1');
 });
 
-test('normalizes root pixel coordinates and resolves comma-separated bed paths', () => {
+test('official migration retains root pixel bounds and comma-separated bed paths', () => {
   const parsed = parseTemplateInfo({
     id: 1,
     analyzeType: '1',
@@ -72,7 +71,7 @@ test('normalizes root pixel coordinates and resolves comma-separated bed paths',
       isNew: true,
       data: [{
         id: 'card ',
-        type: 'element',
+        type: 'parentobject',
         left: 100,
         top: 50,
         width: 400,
@@ -90,16 +89,16 @@ test('normalizes root pixel coordinates and resolves comma-separated bed paths',
     }),
   });
 
-  assert.equal(parsed.nodes[0].id, 'card');
-  assert.equal(parsed.nodes[0].left, '10.000');
-  assert.equal(parsed.nodes[0].top, '10.000');
-  const child = Array.isArray(parsed.nodes[0].children)
-    ? parsed.nodes[0].children[0]
-    : undefined;
-  assert.equal(resolveNodeText(child as { key?: string }, buildBedTemplateData(createBed())), '床头患者');
+  const region = parsed.document!.pages[0].regions[0];
+  assert.equal(region.widget.id, 'card');
+  assert.deepEqual(region.editor?.bounds, { x: 100, y: 50, w: 400, h: 200 });
+  assert.equal(region.widget.kind, 'container.stack');
+  const child = region.widget.children![0];
+  assert.equal(child.content?.path, 'bedSickInfoVo,sickName');
+  assert.equal(resolveNodeText({ key: child.content?.path }, buildBedTemplateData(createBed())), '床头患者');
 });
 
-test('keeps interactive nodes in the parsed AST for non-bed renderers', () => {
+test('official migration retains legacy element identity', () => {
   const parsed = parseTemplateInfo({
     id: 1,
     analyzeType: '1',
@@ -119,7 +118,7 @@ test('keeps interactive nodes in the parsed AST for non-bed renderers', () => {
     }),
   });
 
-  assert.equal(parsed.nodes[0].id, 'button1');
+  assert.equal(parsed.document?.pages[0].regions[0].widget.id, 'button1');
 });
 
 test('repairs over-escaped inline svg metadata from legacy mock templates', () => {
@@ -131,6 +130,6 @@ test('repairs over-escaped inline svg metadata from legacy mock templates', () =
     analyzeType: '1',
     templateContent: raw,
   });
-  assert.ok(parsed.nodes.length > 0);
-  assert.ok(parsed.nodes.some(node => node.id === 'qrcode'));
+  assert.equal(parsed.document?.schemaVersion, 4);
+  assert.ok(parsed.document?.pages[0].regions.some(region => region.widget.id === 'qrcode'));
 });

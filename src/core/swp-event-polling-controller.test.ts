@@ -150,6 +150,37 @@ test('reports current-area failures without discarding the last good snapshot', 
   controller.stop();
 });
 
+test('ignores a late failure from a replaced area snapshot without delaying its next refresh', async () => {
+  const store = makeStore();
+  let rejectSnapshot!: (error: Error) => void;
+  let loadCount = 0;
+  const controller = createSwpEventPollingController({
+    loadSnapshot: async () => {
+      loadCount += 1;
+      if (loadCount === 1)
+        return new Promise<SwpEventSnapshot>((_resolve, reject) => { rejectSnapshot = reject; });
+      return makeSnapshot();
+    },
+    schedule: () => 1,
+    cancelSchedule: () => {},
+    now: () => new Date('2026-09-30T00:00:00Z'),
+  });
+
+  try {
+    const pending = controller.start(store);
+    store.area = makeArea('一病区刷新快照');
+    rejectSnapshot(new Error('旧快照请求失败'));
+    assert.equal(await pending, false);
+    assert.deepEqual(store.failures, [], 'a stale failure must not mark the refreshed area as failed');
+    assert.equal(await controller.refreshNow(), true, 'a stale failure must not create a retry cooldown');
+    assert.equal(loadCount, 2);
+    assert.equal(store.snapshots.length, 1);
+  }
+  finally {
+    controller.stop();
+  }
+});
+
 test('backs off repeated failed requests and resumes normal polling after recovery', async () => {
   const store = makeStore();
   let currentMs = 1_000;
@@ -249,4 +280,77 @@ test('uses a 60-second active polling interval by default', async () => {
   assert.equal(await controller.start(store), true);
   assert.equal(scheduledInterval, 60_000);
   controller.stop();
+});
+
+test('a scoped manual refresh cannot query another ward or bypass failure backoff', async () => {
+  const store = makeStore();
+  let calls = 0;
+  const controller = createSwpEventPollingController({
+    loadSnapshot: async () => { calls += 1; throw new Error('synthetic failure'); },
+    schedule: () => 1, cancelSchedule: () => {}, now: () => new Date(1000),
+  });
+  try {
+    await controller.start(store);
+    assert.equal(await controller.refreshNow(9), false);
+    assert.equal(await controller.refreshNow(8), false);
+    assert.equal(calls, 1);
+  }
+  finally { controller.stop(); }
+});
+
+test('detailed refresh distinguishes unavailable, busy, changed scope, partial success and failure backoff', async () => {
+  const store = makeStore();
+  let currentMs = 1000;
+  let release!: (snapshot: SwpEventSnapshot) => void;
+  let mode: 'pending' | 'partial' | 'failed' | 'ready' = 'pending';
+  let loads = 0;
+  const controller = createSwpEventPollingController({
+    loadSnapshot: async () => {
+      loads++;
+      if (mode === 'pending') return new Promise(resolve => { release = resolve; });
+      if (mode === 'failed') throw Error('synthetic');
+      return { ...makeSnapshot(), warning: mode === 'partial' ? 'partial page' : undefined };
+    },
+    schedule: () => 1, cancelSchedule: () => {}, now: () => new Date(currentMs),
+  });
+  try {
+    assert.equal((await controller.refreshDetailed(8)).status, 'unavailable');
+    const initial = controller.start(store);
+    assert.equal((await controller.refreshDetailed(8)).status, 'busy');
+    assert.equal((await controller.refreshDetailed(9)).status, 'scope-changed');
+    release(makeSnapshot()); await initial;
+    mode = 'partial';
+    assert.equal((await controller.refreshDetailed(8)).status, 'partial');
+    mode = 'failed';
+    const failure = await controller.refreshDetailed(8);
+    assert.equal(failure.status, 'failed');
+    assert.equal(failure.retryAt, 61000);
+    const before = loads;
+    assert.deepEqual(await controller.refreshDetailed(8), { status: 'backoff', retryAt: 61000 });
+    assert.equal(loads, before);
+    currentMs = 61000; mode = 'ready';
+    assert.equal((await controller.refreshDetailed(8)).status, 'ready');
+    mode = 'pending';
+    const old = controller.refreshDetailed(8);
+    store.area = makeArea('新资料'); release(makeSnapshot());
+    assert.equal((await old).status, 'scope-changed');
+  }
+  finally { controller.stop(); }
+});
+
+test('detailed refresh respects partial status added by the store while applying a snapshot', async () => {
+  const store = makeStore();
+  store.swpEventSync = {phase:'ready'};
+  const applySnapshot = store.applySwpEventSnapshot.bind(store);
+  store.applySwpEventSnapshot = (id, snapshot) => {
+    const applied = applySnapshot(id, snapshot);
+    store.swpEventSync = {phase:'partial'};
+    return applied;
+  };
+  const controller = createSwpEventPollingController({ loadSnapshot: async () => makeSnapshot(), schedule: () => 1, cancelSchedule: () => {} });
+  try {
+    await controller.start(store);
+    assert.equal((await controller.refreshDetailed(8)).status, 'partial');
+  }
+  finally { controller.stop(); }
 });

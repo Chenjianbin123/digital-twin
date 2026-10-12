@@ -1,3 +1,4 @@
+import { swpAlarmLabel } from './swp-alarm-label.ts';
 import type {
   NormalizedSwpEvent,
   SwpAlarmRecord,
@@ -17,6 +18,7 @@ interface NormalizeSwpEventsOptions {
   areaId: number;
   calls: SwpCallRecord[];
   alarms: SwpAlarmRecord[];
+  eventStatus?: '0' | '1';
 }
 
 type LocationRecord = Pick<
@@ -35,12 +37,14 @@ function normalizedBedName(value: unknown): string {
   return normalized;
 }
 
-function isActiveEvent(status: SwpIdentifier | undefined): boolean {
+export function readSwpEventStatus(status: unknown): '0' | '1' | null {
+  // Processing state is authoritative; timestamps do not override it.
+  if (typeof status !== 'string' && typeof status !== 'number') return null;
   const value = text(status);
-  return !value || value === '0';
+  return value === '0' || value === '1' ? value : null;
 }
 
-function belongsToArea(recordAreaId: SwpIdentifier | undefined, areaId: number): boolean {
+export function belongsToArea(recordAreaId: SwpIdentifier | undefined, areaId: number): boolean {
   const value = text(recordAreaId);
   return !value || value === String(areaId);
 }
@@ -519,7 +523,7 @@ function normalizeAlarm(
   const timestampMs = parseTimestamp(record.alarmStartTime);
   const alarmCodeOrLabel = text(record.alarmType);
   const hasReadableAlarmLabel = !!alarmCodeOrLabel && !/^\d+$/.test(alarmCodeOrLabel);
-  const alarmTitle = hasReadableAlarmLabel ? alarmCodeOrLabel : '输液报警';
+  const alarmTitle = swpAlarmLabel(alarmCodeOrLabel);
   return {
     id: `swp:alarm:${areaId}:${stableSourceId('alarm', record)}`,
     source: 'swp-alarm',
@@ -545,10 +549,10 @@ function normalizeAlarm(
 export function normalizeSwpEvents(options: NormalizeSwpEventsOptions): NormalizedSwpEvent[] {
   const events = [
     ...options.calls
-      .filter(record => isActiveEvent(record.eventStatus) && belongsToArea(record.areaId, options.areaId))
+      .filter(record => readSwpEventStatus(record.eventStatus) === (options.eventStatus ?? '0') && belongsToArea(record.areaId, options.areaId))
       .map(record => normalizeCall(record, options.area, options.areaId)),
     ...options.alarms
-      .filter(record => isActiveEvent(record.eventStatus) && belongsToArea(record.areaId, options.areaId))
+      .filter(record => readSwpEventStatus(record.eventStatus) === (options.eventStatus ?? '0') && belongsToArea(record.areaId, options.areaId))
       .map(record => normalizeAlarm(record, options.area, options.areaId)),
   ];
   const unique = new Map<string, NormalizedSwpEvent>();

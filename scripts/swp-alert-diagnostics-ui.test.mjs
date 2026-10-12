@@ -9,7 +9,8 @@ test('SWP alert cards expose concise nurse-facing information', () => {
   assert.match(panel, /task\.startedAt/);
   assert.match(panel, /formatTaskOccurredAt/);
   assert.doesNotMatch(panel, /请在管理机或话机接听/);
-  assert.match(panel, /呼叫中/);
+  assert.match(panel, /if \(isDisplayOnlySwpCall\(task\)\)\s*return '待处理'/);
+  assert.doesNotMatch(panel, /呼叫中/);
   assert.doesNotMatch(panel, /task\.isSuspectedStale/);
   assert.doesNotMatch(panel, /疑似历史未结束/);
   assert.doesNotMatch(panel, /缺少房间\/床位编码/);
@@ -29,6 +30,6 @@ test('active SWP calls cannot be locally resolved from the alert card', () => {
 });
 
 test('nurse station distinguishes stale event data from live event data', () => {
-  assert.match(nurseStationPanel, /当前显示最近一次数据/);
-  assert.match(nurseStationPanel, /呼叫数据已同步/);
+  assert.match(nurseStationPanel, /nursingInformationNotice/);
+  assert.match(nurseStationPanel, /NURSING_STATUS_LABELS/);
 });

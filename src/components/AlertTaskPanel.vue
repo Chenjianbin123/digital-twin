@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, useId } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useId, watch } from 'vue';
+import NurseTaskFilters from '@/components/dashboard/NurseTaskFilters.vue';
+import { matchesNurseTask, type TaskEvidenceFilter } from '@/core/nurse-task-filter';
 import { taskDisplayTitle, taskPriorityLabel } from '@/core/task-presentation';
 import DashSectionHeader from '@/components/dashboard/DashSectionHeader.vue';
+import SidebarSectionToggle from '@/components/dashboard/SidebarSectionToggle.vue';
 import TaskTimelineTime from '@/components/dashboard/TaskTimelineTime.vue';
 import NurseWorkspaceIcon from '@/components/dashboard/NurseWorkspaceIcon.vue';
 import {
@@ -11,8 +14,10 @@ import {
   type AlertTask,
 } from '@/core/alert-workflow';
 import type { AlertAckRecordMap } from '@/core/alert-ack';
+import type { DataStatus } from '@/core/data-status';
+import { buildAlertQueuePresentation } from '@/core/alert-queue-presentation';
 
-type AlertTaskFilter = 'active' | 'handling' | 'all';
+import { alertProgress, type AlertTaskFilter } from '@/core/alert-progress';
 
 const props = withDefaults(defineProps<{
   tasks: AlertTask[];
@@ -24,12 +29,18 @@ const props = withDefaults(defineProps<{
   syncedAt?: string | null;
   filter?: AlertTaskFilter;
   ackRecords?: AlertAckRecordMap;
+  dataStatus?: DataStatus;
+  dataSupported?: boolean;
+  collapsible?: boolean;
+  compactNotice?: boolean;
 }>(), {
   title: '待处理告警',
   maxItems: 5,
   compact: false,
   filter: 'active',
   ackRecords: () => ({}),
+  dataStatus: 'loading',
+  dataSupported: true,
 });
 
 const emit = defineEmits<{
@@ -40,18 +51,24 @@ const emit = defineEmits<{
 }>();
 
 const showAllTasks = ref(false);
+const collapsed = ref(false);
 const filterTabsId = useId();
 const filterOptions: Array<{ key: AlertTaskFilter; label: string }> = [
-  { key: 'active', label: '未处理' },
-  { key: 'handling', label: '处理中' },
+  { key: 'active', label: '待处理' },
+  { key: 'confirmed', label: '已关注' },
+  { key: 'handling', label: '已提交' },
   { key: 'all', label: '全部' },
 ];
 const taskCounts = computed(() => ({
   active: props.tasks.filter(task => task.status === 'pending').length,
-  handling: props.tasks.filter(task => task.status === 'handling').length,
+  confirmed: props.tasks.filter(task => alertProgress(task, props.ackRecords) === 'confirmed').length,
+  handling: props.tasks.filter(task => alertProgress(task, props.ackRecords) === 'handling').length,
   all: props.tasks.length,
 }));
 const category = ref("all");
+const locationQuery = ref('');
+const evidenceFilter = ref<TaskEvidenceFilter>('all');
+watch([locationQuery, evidenceFilter], () => { showAllTasks.value = false; });
 const categories = [{ key: "call", label: "患者呼叫" }, { key: "infusion", label: "输液待办" }, { key: "other", label: "其他待办" }] as const;
 function categoryOf(task: AlertTask) { return task.type === "call" || task.type === "infusion" ? task.type : "other"; }
 const categoryCounts = computed(() => categories.map(item => ({ ...item, count: props.tasks.filter(task => task.status === "pending" && categoryOf(task) === item.key).length })));
@@ -65,19 +82,26 @@ function elapsed(task: AlertTask) {
   return `${minutes}分钟`;
 }
 const statusTasks = computed(() => {
-  if (props.filter === 'handling')
-    return props.tasks.filter(task => task.status === 'handling');
   if (props.filter === 'all')
     return props.tasks;
-  return props.tasks.filter(task => task.status === 'pending');
+  return props.tasks.filter(task => alertProgress(task, props.ackRecords) === props.filter);
 });
 const filteredTasks = computed(() => {
   if (!props.commandQueue) return statusTasks.value;
   const rank = { critical: 0, high: 1, medium: 2 };
-  return statusTasks.value.filter(task => category.value === 'all' || categoryOf(task) === category.value)
+  return statusTasks.value.filter(task => (category.value === 'all' || categoryOf(task) === category.value)
+    && matchesNurseTask(task, locationQuery.value, evidenceFilter.value))
     .sort((a, b) => rank[a.severity] - rank[b.severity] || (Date.parse(a.startedAt ?? '') || Infinity) - (Date.parse(b.startedAt ?? '') || Infinity));
 });
 const hasExpandableTasks = computed(() => filteredTasks.value.length > props.maxItems);
+const queuePresentation = computed(() => buildAlertQueuePresentation({
+  status: props.dataStatus, supported: props.dataSupported,
+  taskCount: props.tasks.length,
+  filter: props.filter, categoryFiltered: category.value !== 'all' || !!locationQuery.value.trim() || evidenceFilter.value !== 'all',
+}));
+const compactNoticeLabel = computed(() => !props.dataSupported ? '暂不可用' : ({
+  loading: '更新中', warning: '信息不完整', error: '暂未更新', stale: '更新延迟', ready: '',
+})[props.dataStatus]);
 const visibleTasks = computed(() =>
   showAllTasks.value ? filteredTasks.value : filteredTasks.value.slice(0, props.maxItems),
 );
@@ -154,10 +178,10 @@ function waitingClass(task: AlertTask) {
 
 function syncLabel(taskId: string) {
   const state = props.ackRecords[taskId]?.syncState;
-  if (state === 'synced') return '已同步';
-  if (state === 'failed') return '同步失败';
-  if (state === 'local') return '本地保存';
-  return state === 'pending' ? '同步中' : '';
+  if (state === 'synced') return '记录已提交';
+  if (state === 'failed') return '记录未提交，请联系值班人员确认';
+  if (state === 'local') return '仅在本工作台确认关注';
+  return state === 'pending' ? '记录提交中' : '';
 }
 
 function isDisplayOnlySwpCall(task: AlertTask) {
@@ -173,7 +197,7 @@ function isSourceManagedTask(task: AlertTask) {
 }
 
 function handlingActionText() {
-  return '处理中';
+  return '记录处理';
 }
 
 function canMarkHandling(task: AlertTask) {
@@ -182,14 +206,6 @@ function canMarkHandling(task: AlertTask) {
 
 function canAcknowledge(task: AlertTask) {
   return isSourceManagedTask(task) && task.status !== 'handling';
-}
-
-function acknowledgeActionText(task: AlertTask) {
-  if (task.type === 'call')
-    return '确认响应';
-  if (task.type === 'vital')
-    return '确认关注';
-  return '确认知悉';
 }
 
 function filterTabId(filter: AlertTaskFilter) {
@@ -219,17 +235,13 @@ function handleFilterKeydown(event: KeyboardEvent, currentIndex: number) {
 }
 
 function taskStatusText(task: AlertTask) {
-  if (task.status === 'handling' && isSourceManagedTask(task)) {
-    if (task.type === 'call')
-      return '已响应';
-    if (task.type === 'vital')
-      return '已关注';
-    return '已知悉';
-  }
+  if (alertProgress(task, props.ackRecords) === 'confirmed') return '本工作台已确认关注';
+  if (alertProgress(task, props.ackRecords) === 'handling') return '处理记录已提交';
+  if (task.retained) return '上次记录 · 状态待确认';
   if (isDisplayOnlySwpCall(task))
-    return '呼叫中';
+    return '待处理';
   if (isVitalWarning(task))
-    return '预警中';
+    return '未处理预警';
   if (task.source === 'swp-inspection')
     return '待巡视';
   if (task.status !== 'handling')
@@ -245,17 +257,27 @@ function taskStatusText(task: AlertTask) {
       'alert-task-panel--compact': compact,
       'alert-task-panel--workspace': workspace,
       'alert-task-panel--command-queue': commandQueue,
+      'sidebar-section--collapsed': collapsible && collapsed,
     }"
   >
     <div class="alert-task-panel__heading">
       <svg v-if="compact" class="alert-task-panel__heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M12 5v5m0 3v.1" /></svg>
-      <DashSectionHeader :title="title" :count="filteredTasks.length" />
+      <DashSectionHeader :title="title" :count="queuePresentation.countsKnown ? filteredTasks.length : undefined">
+        <template v-if="collapsible || compactNotice" #actions>
+          <span v-if="compactNotice && queuePresentation.notice" class="alert-task-panel__sync-badge" :title="`${queuePresentation.notice}；${queuePresentation.detail}`" role="status">{{ compactNoticeLabel }}</span>
+          <SidebarSectionToggle v-if="collapsible" v-model="collapsed" :label="title" :controls="`${filterTabsId}-content`" />
+        </template>
+      </DashSectionHeader>
     </div>
 
+    <p v-if="collapsible && collapsed" class="sidebar-section-summary" role="status">
+      已获取待处理 {{ queuePresentation.countsKnown ? taskCounts.active : '—' }} 项<template v-if="queuePresentation.notice"> · {{ queuePresentation.notice }}</template>
+    </p>
+    <div :id="`${filterTabsId}-content`" v-show="!collapsible || !collapsed" class="sidebar-section-body">
     <div v-if="commandQueue" class="queue-categories" aria-label="按待办类型筛选">
       <button v-for="item in categoryCounts" :key="item.key" type="button" :aria-pressed="category === item.key" @click="selectCategory(item.key)">
         <NurseWorkspaceIcon :name="item.key" />
-        <span>{{ item.label }}<strong>{{ item.count }}</strong></span>
+        <span>{{ item.label }}<strong>{{ queuePresentation.countsKnown ? item.count : '--' }}</strong></span>
       </button>
     </div>
     <div class="alert-task-panel__toolbar">
@@ -274,14 +296,16 @@ function taskStatusText(task: AlertTask) {
           @click="emit('update:filter', option.key)"
           @keydown="handleFilterKeydown($event, optionIndex)"
         >
-          {{ option.label }}
-          <strong>{{ taskCounts[option.key] }}</strong>
+          <span class="alert-task-panel__filter-label">{{ option.label }}</span>
+          <strong>{{ queuePresentation.countsKnown ? taskCounts[option.key] : '--' }}</strong>
         </button>
       </div>
-      <span class="alert-task-panel__summary">
-        未处理 {{ taskCounts.active }} · 处理中 {{ taskCounts.handling }}
+      <span v-if="queuePresentation.countsKnown" class="alert-task-panel__summary">
+        当前列表：待处理 {{ taskCounts.active }} · 已关注 {{ taskCounts.confirmed }} · 已提交 {{ taskCounts.handling }}
       </span>
     </div>
+
+    <NurseTaskFilters v-if="commandQueue" v-model:query="locationQuery" v-model:evidence="evidenceFilter" :count="filteredTasks.length" />
 
     <div
       :id="`${filterTabsId}-panel`"
@@ -289,9 +313,12 @@ function taskStatusText(task: AlertTask) {
       :aria-labelledby="filterTabId(filter)"
       tabindex="0"
     >
-      <div v-if="!visibleTasks.length" class="alert-task-panel__empty">
-        <strong>{{ filter === 'handling' ? '暂无处理中的事项' : filter === 'all' ? '暂无告警事项' : '暂无待处理告警' }}</strong>
-        <span>系统会自动汇总呼叫、生命体征、环境、设备和输液异常</span>
+      <div v-if="!compactNotice && queuePresentation.notice && visibleTasks.length" class="alert-task-panel__notice" role="status">
+        <strong>{{ queuePresentation.notice }}</strong><span>{{ queuePresentation.detail }}</span>
+      </div>
+      <div v-if="!visibleTasks.length" class="alert-task-panel__empty" role="status">
+        <strong>{{ queuePresentation.emptyTitle }}</strong>
+        <span>{{ queuePresentation.detail }}</span>
       </div>
 
       <div v-if="commandQueue && visibleTasks.length" class="queue-list-heading"><strong>重点待办</strong><span>按优先级 · 等待时间排序</span></div>
@@ -322,7 +349,7 @@ function taskStatusText(task: AlertTask) {
             <span
               v-if="commandQueue || isDisplayOnlySwpCall(task) || isVitalWarning(task)"
               class="alert-task__signal"
-              :aria-label="isVitalWarning(task) ? '生命体征预警信号' : '活动呼叫信号'"
+              :aria-label="isVitalWarning(task) ? '未处理体征预警' : '未处理呼叫记录'"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="isVitalWarning(task)" d="M3 12h4l3-7 4 14 3-7h4" /><path v-else-if="commandQueue && task.type === 'infusion'" d="M7 5h10v11a5 5 0 0 1-10 0ZM12 2v3m0 16v3M7 10h10" /><path v-else d="m5 3 4 1 1 5-3 2a15 15 0 0 0 6 6l2-3 5 1 1 4c-1 5-8 2-12-2S2 6 5 3Z" /></svg>
             </span>
@@ -334,7 +361,8 @@ function taskStatusText(task: AlertTask) {
           </div>
           <p v-if="!workspace">{{ task.description }}</p>
           <p v-else class="alert-task__subtitle">{{ task.description || task.title }}<span v-if="task.canLocate === false"> · 位置待匹配</span></p>
-          <details v-if="workspace" class="alert-task__details"><summary>事件详情</summary><p>{{ task.title }}</p><p>{{ task.description }}</p><small v-if="task.canLocate === false">当前事件尚未匹配到模型中的位置。</small></details>
+          <p v-if="task.retained" class="alert-task__recovery-tip">状态待确认：当前显示上次记录，请核对是否仍需处理。</p>
+          <details v-if="workspace" class="alert-task__details"><summary>事件详情</summary><p>{{ task.title }}</p><p>{{ task.description }}</p><small v-if="task.canLocate === false">暂无法确定房床位置，请核对后前往。</small></details>
           <div class="alert-task__meta">
             <span v-if="!workspace && task.roomName && task.canLocate !== false">{{ task.roomName }}</span>
             <span v-if="!workspace && task.bedName && task.canLocate !== false">{{ formatBedLabel(task.bedName) }}</span>
@@ -349,6 +377,7 @@ function taskStatusText(task: AlertTask) {
             <span :class="{ 'alert-task__meta-live': isDisplayOnlySwpCall(task) }">
               {{ taskStatusText(task) }}
             </span>
+            <span v-if="task.retained && ['confirmed', 'handling'].includes(alertProgress(task, ackRecords))">上次记录 · 状态待确认</span>
           </div>
           <div v-if="ackRecords[task.id]" class="alert-task__ack">
             <span>{{ ackRecords[task.id].operator }}</span>
@@ -363,7 +392,7 @@ function taskStatusText(task: AlertTask) {
           class="alert-task__actions"
           :class="{
             'alert-task__actions--empty':
-              task.canLocate === false && !canMarkHandling(task),
+              task.canLocate === false && !canMarkHandling(task) && !isSourceManagedTask(task),
           }"
         >
           <button
@@ -388,17 +417,18 @@ function taskStatusText(task: AlertTask) {
             class="alert-task__ghost alert-task__ghost--handling"
             @click="emit('acknowledge', task.id)"
           >
-            {{ acknowledgeActionText(task) }}
+            确认关注
           </button>
           <span
-            v-if="(isDisplayOnlySwpCall(task) || isVitalWarning(task)) && task.canLocate === false"
+            v-if="task.canLocate === false"
             class="alert-task__unlocated"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 4a7 7 0 0 1 11 6c0 2-1 4-2 6M5 7a7 7 0 0 0 0 5c1 4 7 9 7 9l3-3M3 3l18 18" /></svg>
             暂无法定位
           </span>
+          <span v-if="commandQueue && task.canLocate === false" class="alert-task__recovery-tip">房床位置待确认，请核对后前往。</span>
           <span v-if="isSourceManagedTask(task)" class="alert-task__recovery-tip">
-            后端状态恢复后自动结束
+            确认关注不代表已到场或已处理，请继续核对处理结果。
           </span>
           <span v-if="!isSourceManagedTask(task) && task.status === 'handling'" class="alert-task__recovery-tip">
             等待状态恢复后自动结束
@@ -419,11 +449,19 @@ function taskStatusText(task: AlertTask) {
         <span class="alert-task-panel__more-arrow" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" :class="{ 'is-expanded': showAllTasks }"><path d="M4 10h12m-5-5 5 5-5 5" /></svg></span>
       </button>
     </div>
-    <div v-if="commandQueue" class="queue-sync">{{ syncedAt || '暂无同步记录' }}</div>
+    <div v-if="commandQueue" class="queue-sync">{{ syncedAt || '暂无更新记录' }}</div>
+    </div>
   </section>
 </template>
 
 <style scoped lang="scss">
+@container (max-width: 420px) {
+  .alert-task-panel .alert-task-panel__filters {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
 .command-more-label { display: none; }
 .queue-categories { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
 .queue-categories button { display:flex; align-items:center; gap:8px; padding:12px; border:1px solid #b7d7e4; border-radius:8px; background:#e9f5fa; color:#285369; cursor:pointer; }
@@ -433,7 +471,8 @@ function taskStatusText(task: AlertTask) {
 .queue-list-heading { display:flex; justify-content:space-between; gap:8px; margin:14px 0; }
 .queue-list-heading span { font-size:12px; }
 .queue-sync { margin-top:16px; padding-top:12px; border-top:1px solid #78aac333; font-size:12px; opacity:.8; }
-:global(.digital-twin[data-theme='light'] .queue-wait) { display:none; }
+.queue-wait { display:block; }
+.alert-task-panel__notice { display:grid; gap:6px; margin:12px 0; padding:12px; border:1px solid currentColor; border-radius:8px; color:var(--clinical-warn, var(--text-primary)); font-size:14px; line-height:1.6; }
 
 .alert-task-panel {
   position: relative;

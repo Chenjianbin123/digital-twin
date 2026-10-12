@@ -40,6 +40,7 @@ function checkAndRecordAlert(store: TwinStore, roomIndex: number, env: DoorEnvPa
     lastAlertSummary.set(roomIndex, alert.summary);
     store.pushHistory({
       category: 'env',
+      roomCode: room.sickroomCode,
       bedCode: '',
       bedName: '-',
       label: alert.summary,

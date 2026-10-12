@@ -63,7 +63,7 @@
   &__brand-points span { display: flex; gap: 10px; align-items: center; }
   &__brand-points span::before { content: ''; width: 5px; height: 5px; border: 1px solid #80d8d6; transform: rotate(45deg); }
 
-  // 右侧登录栏：内容压缩适配视口，卡片本身不出现内部滑块。
+  // 常规登录保持紧凑；故障详情展开时允许卡片滚动，避免恢复操作落在视口外。
   &__rail {
     position: absolute;
     top: 108px;
@@ -86,6 +86,12 @@
     background: linear-gradient(135deg, rgba(49, 105, 122, .32), rgba(8, 30, 45, .92) 44%, rgba(8, 36, 48, .94)), rgba(5, 23, 35, .65);
     backdrop-filter: blur(22px);
     box-shadow: 0 24px 80px rgba(0, 8, 18, .5), inset 0 1px 0 rgba(209, 255, 255, .25);
+    &:has(.api-diagnostics[open]), &:has(.swp-login__message) {
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: var(--login-line) transparent;
+    }
     &::before {
       content: '';
       position: absolute;

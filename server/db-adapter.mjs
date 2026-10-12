@@ -205,6 +205,7 @@ async function getTemplate(id) {
              template_name templateName,
              template_content templateContent,
              analyze_type analyzeType,
+             system_type systemType,
              template_type templateType,
              main_color mainColor
       FROM swp_template_info

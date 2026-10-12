@@ -1,4 +1,5 @@
 import type { AlertTaskStatus } from '@/core/alert-workflow';
+import { runtimeStorageKey } from './runtime-config.ts';
 
 export interface AlertAckRecord {
   taskId: string;
@@ -20,7 +21,7 @@ export function getDefaultAlertOperator() {
 
 export function loadAlertAckRecords(): AlertAckRecordMap {
   try {
-    const raw = window.localStorage.getItem(ALERT_ACK_STORAGE_KEY);
+    const raw = window.localStorage.getItem(runtimeStorageKey(ALERT_ACK_STORAGE_KEY));
     if (!raw)
       return {};
     const parsed = JSON.parse(raw) as AlertAckRecordMap;
@@ -32,7 +33,7 @@ export function loadAlertAckRecords(): AlertAckRecordMap {
 }
 
 export function saveAlertAckRecords(records: AlertAckRecordMap) {
-  window.localStorage.setItem(ALERT_ACK_STORAGE_KEY, JSON.stringify(records));
+  window.localStorage.setItem(runtimeStorageKey(ALERT_ACK_STORAGE_KEY), JSON.stringify(records));
 }
 
 export function removeAlertAckRecord(

@@ -1,6 +1,8 @@
 import { md5Hex } from '@/core/md5';
+import { assertRemoteRequestsAllowed } from '@/core/data-source';
 import { getDataSource } from '@/api/door-device';
 import { apiUrl, postJson } from '@/api/http-client';
+import { ApiError, httpFailureKind, normalizeApiFailure } from '@/core/api-failure';
 import type { AuthUser } from '@/types/auth';
 
 const LOGIN_PATH = 'system/sysUser/login';
@@ -34,22 +36,32 @@ async function postDatabaseAuth<T>(
   body: unknown,
   token?: string,
 ): Promise<T> {
+  assertRemoteRequestsAllowed();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
-  const payload = await response.json() as DatabaseAuthResponse<T>;
-  if (!response.ok || payload.error)
-    throw new Error(payload.error || `数据库认证接口异常：HTTP ${response.status}`);
-  if (payload.data === undefined)
-    throw new Error('数据库认证接口返回为空');
-  return payload.data;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6_000);
+  try {
+    const response = await fetch(url, {
+      method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal,
+    });
+    if (!response.ok) throw new ApiError(httpFailureKind(response.status), response.status);
+    let payload: DatabaseAuthResponse<T>;
+    try { payload = await response.json() as DatabaseAuthResponse<T>; }
+    catch (error) {
+      if (controller.signal.aborted) throw error;
+      throw new ApiError('invalid-response');
+    }
+    if (!payload || typeof payload !== 'object') throw new ApiError('invalid-response');
+    if (payload.error) throw new ApiError('business');
+    if (payload.data === undefined) throw new ApiError('invalid-response');
+    return payload.data;
+  }
+  catch (error) { throw normalizeApiFailure(error); }
+  finally { clearTimeout(timer); }
 }
 
 export async function loginSwpUser(credentials: LoginCredentials): Promise<AuthUser> {

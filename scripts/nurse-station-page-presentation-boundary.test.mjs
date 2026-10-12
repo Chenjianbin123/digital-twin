@@ -26,7 +26,10 @@ assert.match(areaScene, /\['wardStatus', \['Screen_Work_02', 'Monitor_UI_02_02'\
 assert.match(areaScene, /\['bedMonitor', \['Screen_Work_03', 'Monitor_Frame_03'\]\]/);
 assert.match(areaScene, /\['deviceHealth', \['Screen_Work_04', 'Monitor_Frame_04'\]\]/);
 assert.match(areaScene, /\['clock', \['Clock_Display', 'Clock_Frame', '时钟'\]\]/);
-assert.match(areaScene, /ctx\.font = '700 124px ui-monospace/);
+assert.match(areaScene, /return createReferenceClockTexture\(new Date\(\), target\)/);
+const referenceClock = await readFile(new URL('../src/core/reference-nurse-station.ts', import.meta.url), 'utf8');
+assert.match(referenceClock, /export function createReferenceClockTexture/);
+assert.match(referenceClock, /ctx\.fillText\(/);
 
 // Keep the scene bright and neutral enough for an on-site hospital display.
 assert.match(visualScene, /&__ambient[\s\S]*?opacity: 0\.28;/);

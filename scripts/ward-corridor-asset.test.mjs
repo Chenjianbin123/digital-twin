@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { wardCorridorSceneConfig } from '../src/config/ward-corridor-scene.ts';
 
 async function load(name) {
   const bytes = await readFile(new URL('../public/models/hospital-corridor/' + name, import.meta.url));
@@ -10,7 +11,8 @@ async function load(name) {
 }
 
 test('active corridor asset preserves door, screen and bound mesh contracts', async () => {
-  const { json } = await load('3-v4.glb');
+  const name = wardCorridorSceneConfig.model.url.split('?')[0].split('/').at(-1);
+  const { json } = await load(name);
   const names = json.nodes.map(node => node.name);
   for (let i = 1; i <= 10; i++) {
     assert.equal(names.filter(name => name === '门' + i).length, 1);

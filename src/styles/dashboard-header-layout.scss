@@ -2,13 +2,14 @@
 @mixin render {
   .digital-twin { --dashboard-header-space: 80px; }
   @media (min-width: 2200px) { .digital-twin { --dashboard-header-space: 92px; } }
-  @media (max-width: 1099px) { .digital-twin { --dashboard-header-space: 120px; } }
-  @media (max-width: 767px) { .digital-twin { --dashboard-header-space: 180px; } }
+  // Reserve the complete grid, padding and borders so the second/third row stays inside the frame.
+  @media (max-width: 1099px) { .digital-twin { --dashboard-header-space: 144px; } }
+  @media (max-width: 767px) { .digital-twin { --dashboard-header-space: 200px; } }
+  .digital-twin.digital-twin--title-only { --dashboard-header-space: 80px; }
   .digital-twin .digital-twin__main .digital-twin__scene .ward-overview {
     top: calc(var(--dashboard-header-space) + 8px) !important;
   }
   .digital-twin .nurse-station-visual__info,
-  .digital-twin .dash-left,
   .digital-twin .corridor-tools,
   .digital-twin .digital-twin__locate-banner,
   .digital-twin .digital-twin__locate-notice {

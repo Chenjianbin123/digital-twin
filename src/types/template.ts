@@ -1,3 +1,5 @@
+import type { TP4Document } from '@uneven/tpl-runtime';
+
 export interface TemplateNode {
   type?: string;
   title?: string;
@@ -52,12 +54,17 @@ export interface SwpTemplateInfo {
   templateName?: string;
   templateContent: string;
   templateJson?: unknown;
+  /** 后台编译产物，不可代替 TP4 templateContent 传给运行时。 */
+  runtimeBundle?: string;
+  systemType?: string;
   analyzeType?: string;
   templateType?: string;
   mainColor?: string;
 }
 
 export interface ParsedTemplate {
+  /** 新模板由官方运行时解释；缺省时保留存量 Canvas 兼容路径。 */
+  document?: TP4Document;
   width: number;
   height: number;
   isNew: boolean;

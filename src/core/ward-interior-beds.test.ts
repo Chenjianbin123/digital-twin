@@ -1,9 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isWardBedInfusing, selectOccupiedWardBeds, wardInteriorRoomKey } from './ward-interior-beds.ts';
+import { isWardBedInfusing, selectOccupiedWardBeds, selectWardBeds, wardInteriorRoomKey } from './ward-interior-beds.ts';
 import type { TwinBedEntity, TwinWardEntity } from '../types/twin.ts';
 const bed = (code: string, occupied = true): TwinBedEntity => ({ bedCode: code, bedName: code, deviceCode: code, position: { x: 0, z: 0 }, isOccupied: occupied, isOnline: true });
 const room = (beds: TwinBedEntity[], id = 'R'): TwinWardEntity => ({ sickroomId: id, sickroomCode: id, sickroomName: id, deviceCode: id, beds });
+
+test('physical beds include vacant beds without fabricating patient occupancy', () => {
+  const value = room([bed('3', false), bed('1'), bed('2', false)]);
+  const selected = selectWardBeds(value);
+  assert.deepEqual(selected.beds.map(b => b.bedCode), ['1', '2', '3']);
+  assert.equal(selected.occupiedCount, 1);
+  assert.equal(selected.invalidCount, 0);
+  assert.deepEqual(selectWardBeds(room([bed('A', false), bed('A'), bed('')])).beds, []);
+  assert.equal(selectWardBeds(room([])).beds.length, 0);
+});
 test('occupancy drives display, stable ordering does not mutate API lists', () => {
   const value = room([bed('10'), bed('2'), bed('1', false)]);
   assert.deepEqual(selectOccupiedWardBeds(value).beds.map(b => b.bedCode), ['2', '10']);

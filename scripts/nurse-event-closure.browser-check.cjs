@@ -1,0 +1,31 @@
+async page => {
+  const assert=(value,message)=>{if(!value)throw Error(message);};
+  const errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('http://127.0.0.1:5173/scripts/fixtures/nurse-event-closure.html');
+  await page.setViewportSize({width:1440,height:1200});
+  const state=page.getByTestId('closure-state');
+  await page.waitForFunction(()=>document.querySelector('[data-testid="closure-state"]').textContent.includes('已同步'));
+  assert((await state.innerText()).includes('当前事件 0'),'initial queue not empty');
+  await page.getByRole('button',{name:'加入合成未处理事件',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('[data-testid="closure-state"]').textContent.includes('当前事件 2'));
+  await page.getByRole('tab',{name:'待办',exact:true}).click();
+  assert((await page.locator('.alert-task:visible').allTextContents()).some(text=>text.includes('闭环合成呼叫')),'call not displayed');
+  assert((await page.locator('.alert-task:visible').allTextContents()).some(text=>text.includes('异常离线报警')),'alarm name not displayed');
+  await page.screenshot({path:'output/playwright/closure-pending-light.png'});
+  await page.getByRole('button',{name:'合成后台标记已处理',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('[data-testid="closure-state"]').textContent.includes('当前事件 0'));
+  assert(await page.locator('.alert-task:visible').count()===0,'processed events remained in UI');
+  assert((await state.innerText()).includes('任务 0'),'task count did not clear');
+  await page.screenshot({path:'output/playwright/closure-processed-light.png'});
+  await page.getByRole('button',{name:'切换验收主题',exact:true}).click();
+  await page.setViewportSize({width:320,height:1400});
+  await page.getByRole('button',{name:'加入合成未处理事件',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('[data-testid="closure-state"]').textContent.includes('当前事件 2'));
+  await page.getByRole('button',{name:'合成后台标记已处理',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('[data-testid="closure-state"]').textContent.includes('当前事件 0'));
+  assert(await page.locator('.alert-task:visible').count()===0,'dark processed events remained');
+  await page.screenshot({path:'output/playwright/closure-processed-dark-320.png'});
+  assert(!errors.length,errors.join(';'));
+  return {passed:true,apiToUi:true,pendingToProcessed:true,lightDesktop:true,dark320:true,realBackendWrites:0};
+}

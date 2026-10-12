@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, reactive, ref, useId, watch } from 'vue';
+import { attentionRoomCodes, filterCorridorRooms, resolveHistoryRoom, type CorridorRoomFilter } from '@/core/corridor-room-browser';
+import SidebarSectionToggle from '@/components/dashboard/SidebarSectionToggle.vue';
 import AlertTaskPanel from '@/components/AlertTaskPanel.vue';
 import DoorStaffCards from '@/components/DoorStaffCards.vue';
 import DashSectionHeader from '@/components/dashboard/DashSectionHeader.vue';
 import NurseDetailIcon from '@/components/dashboard/NurseDetailIcon.vue';
+import WardCorridorCharts from '@/components/dashboard/WardCorridorCharts.vue';
 import StatusHistory from '@/components/StatusHistory.vue';
 import { resolveBedStatus } from '@/core/bed-status';
 import type { AlertAckRecordMap } from '@/core/alert-ack';
 import type { RoomSummary } from '@/core/area-summary';
+import type { DataStatus } from '@/core/data-status';
 import { formatBedLabel, type AlertTask } from '@/core/alert-workflow';
 import type { InspectionRoomSummary } from '@/types/inspection';
 import { displayPatientName } from '@/utils/mask-patient';
@@ -20,6 +24,9 @@ const props = defineProps<{
   focusedRoomIndex?: number;
   showBackToStation?: boolean;
   alertTasks?: AlertTask[];
+  alertDataStatus?: DataStatus;
+  wardDataStatus?: DataStatus;
+  inspectionDataStatus?: DataStatus;
   alertAckRecords?: AlertAckRecordMap;
   inspectionRoomSummaries?: InspectionRoomSummary[];
 }>();
@@ -34,7 +41,44 @@ const emit = defineEmits<{
   resolveAlert: [taskId: string];
 }>();
 
-const alertFilter = ref<'active' | 'handling' | 'all'>('active');
+const alertFilter = ref<'active' | 'confirmed' | 'handling' | 'all'>('active');
+const sectionId = useId();
+const collapsed = reactive({ personnel: false, reminders: false, rooms: false });
+const roomQuery = ref('');
+const roomFilter = ref<CorridorRoomFilter>('all');
+const roomsBody = ref<HTMLElement | null>(null);
+const attentionCodes = computed(() => attentionRoomCodes(props.area, props.alertTasks ?? []));
+const visibleRooms = computed(() => filterCorridorRooms(props.roomSummaries, props.area, roomQuery.value, roomFilter.value, attentionCodes.value));
+const roomFilters = [
+  { value: 'all', label: '全部' },
+  { value: 'vacant', label: '有空床' },
+  { value: 'attention', label: '有异常' },
+] as const;
+
+function resetRoomSearch() {
+  roomQuery.value = '';
+  roomFilter.value = 'all';
+}
+
+watch(() => props.area?.areaCode, resetRoomSearch);
+
+async function locateHistory(id: string) {
+  const entry = props.statusHistory.find(item => item.id === id);
+  const index = entry ? resolveHistoryRoom(entry, props.area) : null;
+  if (index === null || !props.roomSummaries.some(room => room.roomIndex === index && room.sickroomCode === props.area?.rooms[index]?.sickroomCode))
+    return;
+  const areaCode = props.area?.areaCode;
+  const roomCode = props.area?.rooms[index]?.sickroomCode;
+  resetRoomSearch();
+  collapsed.rooms = false;
+  emit('focusRoom', index);
+  await nextTick();
+  if (props.area?.areaCode !== areaCode || props.area?.rooms[index]?.sickroomCode !== roomCode)
+    return;
+  const card = roomsBody.value?.querySelector<HTMLElement>(`[data-room-index="${index}"]`);
+  card?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  card?.querySelector<HTMLButtonElement>('.room-card__name')?.focus({ preventScroll: true });
+}
 
 const areaStats = computed(() => {
   if (!props.area)
@@ -68,23 +112,12 @@ const areaStats = computed(() => {
 
   const occupancyRate = totalBeds > 0 ? Math.round((occupied / totalBeds) * 100) : 0;
   const vitalTasks = (props.alertTasks ?? []).filter(task => task.type === 'vital');
-  const nonStableBedKeys = new Set(
-    props.area.rooms.flatMap(room => room.beds
-      .filter(bed => bed.isCalling || resolveBedStatus(bed).state === 'infusing')
-      .map(bed => `${room.sickroomCode}:${bed.bedCode}`)),
-  );
-  for (const task of vitalTasks) {
-    if (task.roomCode && task.bedCode)
-      nonStableBedKeys.add(`${task.roomCode}:${task.bedCode}`);
-  }
-  const stableOccupied = Math.max(0, occupied - nonStableBedKeys.size);
   const vitalWarnings = vitalTasks.length;
 
   return {
     roomCount: props.area.rooms.length,
     totalBeds,
     occupied,
-    stableOccupied,
     empty: totalBeds - occupied,
     calling,
     infusing,
@@ -117,25 +150,6 @@ function vitalWarningValue(task: AlertTask) {
   const value = [task.vitalValue, task.vitalUnit].filter(Boolean).join('');
   return value ? `${metric} ${value}` : metric;
 }
-
-const bedMonitorRows = computed(() => {
-  const stats = areaStats.value;
-  if (!stats)
-    return [];
-  const total = Math.max(stats.totalBeds, 1);
-  return [
-    { key: 'stable', label: '在床稳定', tag: '常规', unit: '床', count: stats.stableOccupied, tone: 'cyan' },
-    { key: 'infusing', label: '输液中', tag: '输液', unit: '床', count: stats.infusing, tone: 'orange' },
-    { key: 'calling', label: '呼叫中', tag: '呼叫', unit: '床', count: stats.calling, tone: 'pink' },
-    { key: 'vital', label: '体征预警', tag: '体征', unit: '项', count: stats.vitalWarnings, tone: 'red' },
-    { key: 'empty', label: '空床', tag: '空床', unit: '床', count: stats.empty, tone: 'slate' },
-  ]
-    .filter(row => row.count > 0)
-    .map(row => ({
-      ...row,
-      percent: Math.min(100, Math.round((row.count / total) * 100)),
-    }));
-});
 
 const personnelStats = computed(() => {
   const doctors = new Set<string>();
@@ -216,37 +230,29 @@ function inspectionTime(value: string | null | undefined) {
       class="corridor-alerts"
       v-model:filter="alertFilter"
       :tasks="alertTasks ?? []"
+      :data-status="alertDataStatus"
       :ack-records="alertAckRecords"
       title="异常闭环"
       :max-items="4"
       compact
+      compact-notice
+      collapsible
       @locate="emit('locateAlert', $event)"
       @mark-handling="emit('markAlertHandling', $event)"
       @acknowledge="emit('acknowledgeAlert', $event)"
       @resolve="emit('resolveAlert', $event)"
     />
 
-    <section v-if="bedMonitorRows.length" class="dash-section">
-      <div class="ward-clinical-heading"><NurseDetailIcon name="beds" /><DashSectionHeader title="床位监测" /></div>
-      <ul class="monitor-list">
-        <li v-for="row in bedMonitorRows" :key="row.key" class="monitor-row" :class="`monitor-row--${row.tone}`">
-          <div class="monitor-row__left">
-            <span class="monitor-row__count">{{ row.label }} <em>{{ row.count }}</em> {{ row.unit }}</span>
-            <div class="monitor-row__bar">
-              <i :style="{ width: `${Math.max(row.percent, row.count > 0 ? 8 : 0)}%` }" />
-            </div>
-          </div>
-          <div class="monitor-row__right">
-            <span class="monitor-row__percent">{{ row.percent }}%</span>
-            <span class="monitor-row__tag">{{ row.tag }}</span>
-          </div>
-        </li>
-      </ul>
-    </section>
+    <WardCorridorCharts
+      :rooms="roomSummaries"
+      :inspections="inspectionRoomSummaries ?? []"
+      :ward-data-status="wardDataStatus"
+      :inspection-data-status="inspectionDataStatus"
+    />
 
-    <section v-if="personnelStats.length" class="dash-section">
-      <div class="ward-clinical-heading"><NurseDetailIcon name="arrived" /><DashSectionHeader title="人员构成" /></div>
-      <div class="person-grid">
+    <section v-if="personnelStats.length" class="dash-section" :class="{ 'sidebar-section--collapsed': collapsed.personnel }">
+      <div class="ward-clinical-heading"><NurseDetailIcon name="arrived" /><DashSectionHeader title="人员构成"><template #actions><SidebarSectionToggle v-model="collapsed.personnel" label="人员构成" :controls="`${sectionId}-personnel`" /></template></DashSectionHeader></div>
+      <div :id="`${sectionId}-personnel`" v-show="!collapsed.personnel" class="person-grid">
         <article v-for="item in personnelStats" :key="item.key" class="person-card" :class="`person-card--${item.tone}`">
           <span class="person-card__ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <template v-if="item.key === 'door'"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M9 6h6v6H9zm2 12h2"/></template>
@@ -259,20 +265,43 @@ function inspectionTime(value: string | null | undefined) {
       </div>
     </section>
 
-    <section v-if="areaStats && (areaStats.calling || areaStats.vitalWarnings || areaStats.infusing || areaStats.offline)" class="dash-section dash-section--alerts">
+    <section v-if="areaStats && (areaStats.calling || areaStats.vitalWarnings || areaStats.infusing || areaStats.offline)" class="dash-section dash-section--alerts" :class="{ 'sidebar-section--collapsed': collapsed.reminders }">
+      <div class="ward-clinical-heading"><NurseDetailIcon name="beds" /><DashSectionHeader title="床位提醒"><template #actions><SidebarSectionToggle v-model="collapsed.reminders" label="床位提醒" :controls="`${sectionId}-reminders`" /></template></DashSectionHeader></div>
+      <div :id="`${sectionId}-reminders`" v-show="!collapsed.reminders" class="sidebar-bed-reminders">
       <span v-if="areaStats.calling" class="alert-chip alert-chip--call">呼叫 {{ areaStats.calling }} 床</span>
       <span v-if="areaStats.vitalWarnings" class="alert-chip alert-chip--vital">生命体征预警 {{ areaStats.vitalWarnings }} 项</span>
       <span v-if="areaStats.infusing" class="alert-chip alert-chip--infuse">输液 {{ areaStats.infusing }} 床</span>
       <span v-if="areaStats.offline" class="alert-chip alert-chip--offline">离线 {{ areaStats.offline }} 床</span>
+      </div>
     </section>
 
-    <section v-if="roomSummaries.length" class="dash-section dash-section--rooms">
-      <div class="ward-clinical-heading"><NurseDetailIcon name="environment" /><DashSectionHeader title="病房详情" :count="roomSummaries.length" /></div>
+    <section v-if="roomSummaries.length" class="dash-section dash-section--rooms" :class="{ 'sidebar-section--collapsed': collapsed.rooms }">
+      <div class="ward-clinical-heading"><NurseDetailIcon name="environment" /><DashSectionHeader title="病房详情" :count="roomSummaries.length"><template #actions><SidebarSectionToggle v-model="collapsed.rooms" label="病房详情" :controls="`${sectionId}-rooms`" /></template></DashSectionHeader></div>
 
-      <div class="room-list">
+      <div :id="`${sectionId}-rooms`" ref="roomsBody" v-show="!collapsed.rooms">
+        <div class="corridor-room-search">
+          <label :for="`${sectionId}-room-search`">查找病房 / 床位</label>
+          <div class="corridor-room-search__input">
+            <input :id="`${sectionId}-room-search`" v-model="roomQuery" type="search" placeholder="输入房号、床号或编码" autocomplete="off" @keydown.esc.stop="resetRoomSearch" />
+            <button type="button" :disabled="!roomQuery && roomFilter === 'all'" @click="resetRoomSearch">重置</button>
+          </div>
+          <div class="corridor-room-search__filters" role="group" aria-label="病房筛选">
+            <button v-for="filter in roomFilters" :key="filter.value" type="button" :aria-pressed="roomFilter === filter.value" @click="roomFilter = filter.value">{{ filter.label }}</button>
+          </div>
+          <div class="corridor-room-search__summary" role="status" aria-label="病房查找结果">
+            <span class="corridor-room-search__result"><i aria-hidden="true" />显示 <strong>{{ visibleRooms.length }}</strong><span>/ {{ roomSummaries.length }} 间</span></span>
+            <span v-if="roomFilter === 'attention'" class="corridor-room-search__scope" aria-label="异常筛选范围">
+              <span v-for="label in ['呼叫', '设备', '环境', '已关联告警']" :key="label" class="corridor-room-search__tag">{{ label }}</span>
+            </span>
+          </div>
+          <p v-if="roomFilter === 'attention' && ((alertDataStatus && alertDataStatus !== 'ready') || (wardDataStatus && wardDataStatus !== 'ready'))" class="corridor-room-search__notice">病区信息不完整，请结合现场情况确认是否仍有待办。</p>
+        </div>
+        <p v-if="!visibleRooms.length" class="corridor-room-search__empty">未找到符合条件的病房，请调整关键词或重置筛选。</p>
+        <div class="room-list">
         <article
-          v-for="summary in roomSummaries"
+          v-for="summary in visibleRooms"
           :key="summary.sickroomCode"
+          :data-room-index="summary.roomIndex"
           class="room-card"
           :class="[
             `room-card--${summary.priority}`,
@@ -341,7 +370,9 @@ function inspectionTime(value: string | null | undefined) {
             <template v-if="getRoom(summary.roomIndex)">
               <div class="room-card__bed-heading"><strong>床位状态</strong><span>列表展示 · {{ getRoom(summary.roomIndex)!.beds.length }} 床</span></div>
               <p v-if="!getRoom(summary.roomIndex)!.beds.length" class="room-card__empty">暂无床位数据</p>
-              <ul v-else class="room-card__beds">
+              <div v-else class="room-card__bed-table">
+              <div class="room-card__bed-columns" aria-hidden="true"><span>床位</span><span>患者</span><span>状态</span></div>
+              <ul class="room-card__beds room-card__beds--rows" :aria-label="`${summary.sickroomName}床位状态`">
                 <li
                   v-for="bed in getRoom(summary.roomIndex)!.beds"
                   :key="bed.bedCode"
@@ -352,11 +383,12 @@ function inspectionTime(value: string | null | undefined) {
                   ]"
                   :style="{ '--bed-accent': bedStatusColor(bed) }"
                 >
-                  <span class="bed-chip__no">{{ bed.bedName }}</span>
-                  <span class="bed-chip__state">{{ bedStatusLabel(bed) }}</span>
-                  <span class="bed-chip__patient">{{ patientDisplay(bed) }}</span>
+                  <span class="bed-chip__no"><span class="bed-chip__field-label">床位：</span>{{ bed.bedName }}</span>
+                  <span class="bed-chip__patient" :class="{ 'bed-chip__patient--named': bed.isOccupied && !!bed.sickInfo?.sickName?.trim() }"><span class="bed-chip__field-label">患者：</span>{{ patientDisplay(bed) }}</span>
+                  <span class="bed-chip__state"><span class="bed-chip__field-label">状态：</span>{{ bedStatusLabel(bed) }}</span>
                 </li>
               </ul>
+              </div>
               <details class="room-card__team" @click.stop>
                 <summary><span>医护团队</span><span class="room-card__team-hint">查看人员 <i aria-hidden="true" /></span></summary>
                 <DoorStaffCards :staff="getRoom(summary.roomIndex)!.doorStaff" primary-only compact />
@@ -368,14 +400,52 @@ function inspectionTime(value: string | null | undefined) {
             </button>
           </div>
         </article>
+        </div>
       </div>
     </section>
 
-    <StatusHistory :history="statusHistory" />
+    <StatusHistory :history="statusHistory" :area="area" browsable collapsible @locate="locateHistory" />
   </div>
 </template>
 
 <style scoped lang="scss">
+.corridor-room-search {
+  display: grid; gap: 8px; margin-bottom: 12px; color: var(--sidebar-ink); font-size: var(--sidebar-font-body, 16px);
+  > label { font-weight: 600; }
+  &__input { display: flex; gap: 8px; min-width: 0; }
+  input { flex: 1; width: 0; min-width: 0; padding: 8px 12px; }
+  input, button { min-height: 36px; font: inherit; color: var(--sidebar-ink); background: var(--sidebar-inset); border: 1px solid var(--sidebar-line); border-radius: 8px; }
+  button { padding: 6px 12px; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  input::placeholder { color: var(--sidebar-muted); }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--sidebar-accent); outline-offset: 2px; }
+  button:not(:disabled):hover, button[aria-pressed='true'] { color: var(--sidebar-accent); border-color: var(--sidebar-accent); background: color-mix(in srgb, var(--sidebar-accent) 12%, var(--sidebar-inset)); }
+  button[aria-pressed='true'] { font-weight: 700; }
+  &__filters { display: flex; flex-wrap: wrap; gap: 8px; }
+  &__summary, &__scope { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+  &__summary { padding-top: 4px; font-size: var(--sidebar-font-caption, 14px); line-height: 1.5; }
+  &__result, &__tag { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 2px 8px; border: 1px solid var(--sidebar-line); border-radius: 5px; background: color-mix(in srgb, var(--sidebar-inset) 80%, transparent); color: var(--sidebar-muted); box-sizing: border-box; }
+  &__result { color: var(--sidebar-accent); border-color: color-mix(in srgb, var(--sidebar-accent) 45%, var(--sidebar-line)); background: color-mix(in srgb, var(--sidebar-accent) 9%, var(--sidebar-inset)); }
+  &__result > i { width: 4px; height: 4px; margin-right: 2px; border-radius: 1px; background: currentColor; transform: rotate(45deg); }
+  &__result strong { font-size: inherit; font-weight: 700; font-variant-numeric: tabular-nums; }
+  &__result > span { color: var(--sidebar-muted); font-variant-numeric: tabular-nums; }
+  &__tag { border-color: color-mix(in srgb, var(--sidebar-line) 80%, transparent); }
+  p { margin: 0; font-size: var(--sidebar-font-caption, 14px); color: var(--sidebar-muted); overflow-wrap: anywhere; }
+  &__notice { padding: 8px; border-left: 2px solid var(--sidebar-accent); background: var(--sidebar-inset); }
+  &__empty { margin: 12px 0; padding: 16px; border: 1px dashed var(--sidebar-line); border-radius: 8px; color: var(--sidebar-muted); font-size: var(--sidebar-font-body, 16px); }
+}
+@media (pointer: coarse) { .corridor-room-search :is(input, button) { min-height: 44px; } }
+.dash-section--alerts > .ward-clinical-heading { flex-basis: 100%; width: 100%; }
+.sidebar-bed-reminders { display: flex; flex-wrap: wrap; gap: 8px; }
+.bed-chip__field-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .area-dashboard {
   height: 100%;
   padding: 16px 18px 20px;
@@ -472,7 +542,7 @@ function inspectionTime(value: string | null | undefined) {
 
   .alert-task-panel__filters {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
   }
 
@@ -726,94 +796,6 @@ function inspectionTime(value: string | null | undefined) {
       color: rgba(180, 230, 255, 0.95);
     }
   }
-}
-
-.monitor-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.monitor-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 11px 12px;
-  background: rgba(7, 22, 39, 0.22);
-  border: 1px solid rgba(77, 208, 255, 0.14);
-  border-radius: 8px;
-
-  &__left {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__count {
-    display: block;
-    margin-bottom: 6px;
-    font-size: dash-font(11);
-    color: rgba(180, 205, 230, 0.9);
-
-    em {
-      font-style: normal;
-      font-weight: 800;
-      font-size: dash-font(14);
-      color: #f7fbfd;
-      margin: 0 2px;
-    }
-  }
-
-  &__bar {
-    height: 6px;
-    border-radius: 999px;
-    background: rgba(4, 18, 36, 0.85);
-    border: 1px solid rgba(77, 208, 255, 0.12);
-    overflow: hidden;
-
-    i {
-      display: block;
-      height: 100%;
-      border-radius: inherit;
-      transition: width 0.35s ease;
-      box-shadow: 0 0 10px rgba(77, 208, 255, 0.35);
-    }
-  }
-
-  &__right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-
-  &__percent {
-    font-size: dash-font(13);
-    font-weight: 700;
-    color: #4deaff;
-    font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 10px rgba(77, 208, 255, 0.45);
-  }
-
-  &__tag {
-    padding: 2px 8px;
-    font-size: dash-font(10);
-    font-weight: 600;
-    border-radius: 3px;
-    border: 1px solid rgba(77, 208, 255, 0.35);
-    color: rgba(220, 240, 255, 0.95);
-    background: rgba(0, 100, 170, 0.28);
-  }
-
-  &--cyan i { background: linear-gradient(90deg, #006699, #4deaff); }
-  &--orange i { background: linear-gradient(90deg, #e65100, #ffb74d); }
-  &--pink i { background: linear-gradient(90deg, #c2185b, #f48fb1); }
-  &--red i { background: linear-gradient(90deg, #a5163e, #ff6f91); }
-  &--slate i { background: linear-gradient(90deg, #37474f, #78909c); }
 }
 
 .person-grid {

@@ -6,10 +6,13 @@ const [panel, station] = await Promise.all([
   readFile(new URL('../src/components/NurseStationPanel.vue', import.meta.url), 'utf8'),
 ]);
 
-assert.match(panel, /type AlertTaskFilter = ['"]active['"] \| ['"]handling['"] \| ['"]all['"]/);
+const progress = await readFile(new URL('../src/core/alert-progress.ts', import.meta.url), 'utf8');
+assert.match(progress, /type AlertTaskFilter = 'active' \| 'confirmed' \| 'handling' \| 'all'/);
+assert.match(panel, /alertProgress\(task, props.ackRecords\)/);
 assert.match(panel, /filter\?:\s*AlertTaskFilter/);
 assert.match(panel, /未处理/);
-assert.match(panel, /处理中/);
+assert.match(panel, /已关注/);
+assert.match(panel, /已提交/);
 assert.match(panel, /全部/);
 assert.match(panel, /filteredTasks/);
 assert.match(panel, /isSourceManagedTask/);

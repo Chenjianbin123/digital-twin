@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>走廊模型 · 独立验收</title>
+  <style>
+    :root { color-scheme: light; --ink: #153b4c; --line: #a7c6cf; --surface: #f2f7f8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--surface); font: 14px/1.5 "Microsoft YaHei", sans-serif; }
+    header { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+    h1 { font-size: 18px; margin: 0; }
+    p { margin: 0; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; }
+    button, select { min-height: 40px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: #fff; font: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 3px solid #087da4; outline-offset: 2px; }
+    #scene { height: calc(100dvh - 166px); min-height: 340px; position: relative; }
+    #status { padding: 8px 16px; }
+    .note { color: #49646f; font-size: 12px; }
+    @media (max-width: 767px) { #scene { height: 62dvh; } header { padding: 12px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>病房走廊 · Blender 模型验收</h1><p class="note">正式模型与渲染配置 / 合成房间与模板 / 不访问医院接口</p></div>
+    <nav aria-label="模型预览操作">
+      <button id="overview">全景</button>
+      <button id="left">左侧门口屏</button>
+      <button id="right">右侧门口屏</button>
+      <label>模板 <select id="template"><option value="portrait">竖屏 9:16</option><option value="landscape">横屏 16:9</option><option value="missing">未配置</option><option value="failed">请求失败</option></select></label>
+      <button id="reverse">打乱房间顺序</button>
+      <button id="empty">清空 / 恢复</button>
+      <button id="theme">深浅主题</button>
+    </nav>
+  </header>
+  <div id="scene" aria-label="可拖动旋转的走廊三维模型"></div>
+  <p id="status" role="status" aria-live="polite">正在加载模型…</p>
+  <script type="module" src="./corridor-reference-preview.js"></script>
+</body>
+</html>

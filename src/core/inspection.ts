@@ -1,5 +1,8 @@
 import type { AlertAckState, AlertTask } from './alert-workflow.ts';
+import { locateInspection } from './inspection-location.ts';
+import { inspectionAssociationIssue } from './inspection-association-issues.ts';
 import type {
+  InspectionAssociation,
   InspectionRoomState,
   InspectionRoomSummary,
   InspectionState,
@@ -46,47 +49,43 @@ function stateLabel(state: InspectionRoomState, source = ''): string {
   return source || '状态待确认';
 }
 
-function findLocation(record: SwpInspectionRecord, area: TwinAreaEntity) {
-  const sickroomId = text(record.sickroomId);
-  const sickroomCode = text(record.sickroomCode);
-  const bedCode = text(record.bedCode);
-  let roomIndex = area.rooms.findIndex(room =>
-    (sickroomId && text(room.sickroomId) === sickroomId)
-    || (sickroomCode && text(room.sickroomCode) === sickroomCode),
-  );
-
-  if (roomIndex < 0 && bedCode) {
-    const matches = area.rooms
-      .map((room, index) => ({
-        index,
-        matched: room.beds.some(bed => text(bed.bedCode) === bedCode),
-      }))
-      .filter(item => item.matched);
-    if (matches.length === 1)
-      roomIndex = matches[0].index;
-  }
-
-  const room = area.rooms[roomIndex];
-  if (!room)
-    return null;
-  const bed = bedCode
-    ? room.beds.find(item => text(item.bedCode) === bedCode)
-    : undefined;
-  if (bedCode && !bed)
-    return null;
-  return { roomIndex, room, bed };
+function preferInspectionRecord(previous: NormalizedInspectionRecord | undefined, incoming: NormalizedInspectionRecord) {
+  if (!previous) return incoming;
+  if (Number.isFinite(previous.timestampMs) && Number.isFinite(incoming.timestampMs) && previous.timestampMs !== incoming.timestampMs)
+    return incoming.timestampMs > previous.timestampMs ? incoming : previous;
+  // Equal/missing times do not prove recovery. Preserve the state that needs attention.
+  const attention: Record<InspectionState, number> = { overdue: 3, due: 2, unknown: 1, normal: 0 };
+  return attention[incoming.state] > attention[previous.state] ? incoming : previous;
 }
 
 export function normalizeInspectionRecords(
   records: SwpInspectionRecord[],
   area: TwinAreaEntity,
 ): NormalizedInspectionRecord[] {
+  return associateInspectionRecords(records, area).records;
+}
+
+export function associateInspectionRecords(
+  records: SwpInspectionRecord[],
+  area: TwinAreaEntity,
+  areaId?: number,
+): { records: NormalizedInspectionRecord[]; association: InspectionAssociation } {
   const latest = new Map<string, NormalizedInspectionRecord>();
+  const association: InspectionAssociation = { received: records.length, matched: 0, unmatched: 0, issues: [] };
+  const issueGroups = new Map<string, InspectionAssociation['issues'][number]>();
 
   records.forEach((record, index) => {
-    const location = findLocation(record, area);
-    if (!location)
+    const location = locateInspection(record, area, areaId);
+    if ('reason' in location) {
+      association.unmatched += 1;
+      const issue = inspectionAssociationIssue(record, area, location.reason!);
+      const key = JSON.stringify([issue.roomName, issue.bedName, issue.reason]);
+      const existing = issueGroups.get(key);
+      if (existing) existing.count = (existing.count ?? 1) + 1;
+      else issueGroups.set(key, issue);
       return;
+    }
+    association.matched += 1;
     const occurredAt = text(record.swipeTime || record.swipeDate || record.createTime);
     const timestampMs = parseTime(occurredAt);
     const sourceState = text(record.swipeState);
@@ -128,12 +127,12 @@ export function normalizeInspectionRecords(
           }
         : {}),
     };
-    const current = latest.get(key);
-    if (!current || normalized.timestampMs > current.timestampMs)
-      latest.set(key, normalized);
+    latest.set(key, preferInspectionRecord(latest.get(key), normalized));
   });
 
-  return [...latest.values()].sort((a, b) => b.timestampMs - a.timestampMs);
+  association.issues = [...issueGroups.values()].slice(0, 20);
+  association.omittedIssueCount = association.unmatched - association.issues.reduce((sum, issue) => sum + (issue.count ?? 1), 0);
+  return { records: [...latest.values()].sort((a, b) => b.timestampMs - a.timestampMs), association };
 }
 
 function resolveRoomState(records: NormalizedInspectionRecord[]): InspectionRoomState {
@@ -146,6 +145,15 @@ function resolveRoomState(records: NormalizedInspectionRecord[]): InspectionRoom
   if (records.some(item => item.state === 'normal'))
     return 'normal';
   return 'unknown';
+}
+
+export function mergeInspectionRecords(previous: NormalizedInspectionRecord[], incoming: NormalizedInspectionRecord[]): NormalizedInspectionRecord[] {
+  const latest = new Map<string, NormalizedInspectionRecord>();
+  for (const record of [...previous, ...incoming]) {
+    const key = JSON.stringify([record.roomCode, record.bedCode ?? null]);
+    latest.set(key, preferInspectionRecord(latest.get(key), record));
+  }
+  return [...latest.values()].sort((a, b) => b.timestampMs - a.timestampMs).slice(0, 2000);
 }
 
 export function summarizeInspectionRooms(

@@ -31,17 +31,17 @@ function duration(task: AlertTask) {
       >{{ tasks.length }} 条记录</span>
     </header>
     <p v-if="status !== 'ready'" role="status">{{ wardDataNotice(status) }}；当前呼叫状态待核对。</p>
-    <p v-else-if="!tasks.length">最近一次同步未发现本病房活动呼叫。</p>
-    <p v-if="sync?.lastSyncedAt" class="ward-call-list__time">呼叫源最近成功同步：{{ timeLabel(sync.lastSyncedAt) }}</p>
+    <p v-else-if="!tasks.length">当前记录中暂无本病房待处理呼叫。</p>
+    <p v-if="sync?.lastSyncedAt" class="ward-call-list__time">呼叫记录最近更新：{{ timeLabel(sync.lastSyncedAt) }}</p>
     <ul v-if="tasks.length">
       <li v-for="task in tasks" :key="task.id">
-        <div><strong>{{ task.bedName || '床位待匹配' }}</strong><span>{{ status === 'ready' ? '来源仍报告呼叫' : '上次呼叫记录' }}</span></div>
+        <div><strong>{{ task.bedName || '床位待匹配' }}</strong><span>{{ status === 'ready' && !task.retained ? '待处理' : '上次记录 · 状态待确认' }}</span></div>
         <small>发生：{{ timeLabel(task.startedAt) }} · {{ duration(task) }}</small>
         <button type="button" :disabled="!canLocateRoomCall(task, ward)" @click="$emit('locate', task.id)">定位床位</button>
-        <small v-if="!canLocateRoomCall(task, ward)">床位无法唯一匹配，请核对设备绑定。</small>
+        <small v-if="!canLocateRoomCall(task, ward)">床位位置待确认，请核对后前往。</small>
       </li>
     </ul>
-    <p v-if="tasks.length" class="ward-call-list__note">解除以呼叫来源系统为准。当前接口未提供可绑定的接手记录，不能据此判断是否已有护士处理。</p>
+    <p v-if="tasks.length" class="ward-call-list__note">待处理记录不一定仍在呼叫，请核对现场情况；确认关注不代表已处理。</p>
   </section>
 </template>
 <style scoped lang="scss">

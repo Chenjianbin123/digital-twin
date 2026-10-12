@@ -10,14 +10,15 @@ const viewModel = readFileSync(
   new URL('../src/core/nurse-station-view-model.ts', import.meta.url),
   'utf8',
 );
+const statusConsole = readFileSync(new URL('../src/components/dashboard/NurseStatusConsole.vue', import.meta.url), 'utf8');
 
 test('nurse station hero uses Chinese labels for visible status prompts', () => {
-  assert.match(panel, /class="station-hero__eyebrow">护士站工作台<\/span>/);
-  assert.match(panel, /viewModel\.realtime\.status !== 'ready'[\s\S]*?viewModel\.realtime\.detail/);
-  assert.match(viewModel, /ready: '实时数据'/);
-  assert.match(panel, /displayedStationState.label/);
+  assert.match(panel, /<GlassWorkspaceTitle title="护士站工作台"/);
+  assert.match(statusConsole, /viewModel\.realtime\.label/);
+  assert.match(viewModel, /ready: '信息已更新'/);
+  assert.match(statusConsole, /status.eventLabel/);
   assert.match(panel, /护士站工作区/);
-  assert.match(panel, /workspace-status/);
+  assert.doesNotMatch(panel, /NurseStatusConsole/);
   assert.doesNotMatch(panel, /NURSE COMMAND|LIVE DATA|ACTION REQUIRED|REVIEW REQUIRED|SYSTEM ONLINE/);
 });
 test('nurse station hero labels stay on one line', () => {

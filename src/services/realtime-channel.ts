@@ -15,8 +15,8 @@ let events: EventSource | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let runGeneration = 0;
 
-function getRealtimeUrl() {
-  return import.meta.env.VITE_REALTIME_URL?.trim() || '';
+function getRealtimeUrl(): string {
+  return '';
 }
 
 function scopedRealtimeUrl(url: string, areaId: number) {

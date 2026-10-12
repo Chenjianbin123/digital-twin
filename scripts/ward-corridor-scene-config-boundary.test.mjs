@@ -8,6 +8,7 @@ test('病房走廊场景参数集中在独立配置文件中', async () => {
   const config = await projectFile('src/config/ward-corridor-scene.ts');
 
   assert.match(config, /export const wardCorridorSceneConfig/);
+  assert.match(config, /corridor-reference-v2\.glb\?v=20260929-refined/);
   assert.match(config, /3-v4\.glb\?v=20260827-3v1-model-v1/);
   assert.match(config, /rotationX: 0/);
   assert.match(config, /slotCount: 10/);
@@ -55,7 +56,7 @@ test('病房走廊核心模块均消费统一配置', async () => {
   assert.match(scene, /this\.corridorTheme/);
   assert.match(model, /polishHospitalCorridorMaterials/);
   assert.match(scene, /polishHospitalCorridorMaterials/);
-  assert.match(scene, /PCFSoftShadowMap/);
+  assert.match(scene, /PCFShadowMap/);
   assert.match(scene, /fitCorridorKeyShadow/);
   assert.match(scene, /configureCorridorShadowCasters/);
 });

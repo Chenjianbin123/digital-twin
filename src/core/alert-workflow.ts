@@ -30,6 +30,7 @@ export interface AlertFocusState {
 }
 
 export interface AlertTask {
+  retained?: boolean;
   id: string;
   type: AlertTaskType;
   severity: AlertTaskSeverity;
@@ -353,6 +354,7 @@ export function collectSwpAlertTasks(
       continue;
     tasks.push({
       id: event.id,
+      ...(event.retained ? { retained: true } : {}),
       type: event.taskType,
       severity: event.severity,
       status,

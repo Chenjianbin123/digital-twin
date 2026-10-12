@@ -5,15 +5,12 @@ import type { TwinSceneType, WardInteriorView } from '@/types/twin';
 const props = defineProps<{
   sceneType: TwinSceneType;
   wardInteriorView?: WardInteriorView;
-  isSimulating?: boolean;
-  dataSource?: 'mock' | 'remote' | 'database';
   compact?: boolean;
 }>();
 
 const emit = defineEmits<{
   setSceneType: [type: TwinSceneType];
   setWardInteriorView: [view: WardInteriorView];
-  toggleSimulation: [];
 }>();
 
 const sceneItems = computed(() => [
@@ -66,16 +63,6 @@ const interiorItems = computed(() => [
       </button>
     </div>
 
-    <button
-      v-if="props.dataSource === 'mock'"
-      type="button"
-      class="dash-bottom__sim"
-      :class="{ 'dash-bottom__sim--on': props.isSimulating }"
-      @click="emit('toggleSimulation')"
-    >
-      <span class="dash-bottom__icon dash-bottom__icon--sim" aria-hidden="true" />
-      <span class="dash-bottom__label">模拟推送</span>
-    </button>
   </nav>
 </template>
 

@@ -79,8 +79,8 @@ export function useWorkspaceBootstrap(
         progress.value = Math.max(progress.value, 86);
         sceneError.value = scene.value.state === 'component-error'
           ? '页面资源加载失败，请检查网络后刷新页面'
-          : scene.value.state === 'fallback' ? '护士站模型加载失败，请重试' : null;
-        phase.value = sceneError.value ?? '加载护士站模型与准备首帧';
+          : scene.value.state === 'fallback' ? '医院场景加载失败，请重试' : null;
+        phase.value = sceneError.value ?? '加载医院场景与准备首帧';
         return;
       }
       waitingForScene.value = false;

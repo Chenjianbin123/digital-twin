@@ -283,6 +283,14 @@
     color: #d7f4f8;
   }
 }
+// Keep the shared title size: narrow sidebars give the mode action its own row.
+@container nurse-panel (max-width: 440px) {
+ .nurse-panel.nurse-workspace .station-hero {
+  .station-hero__overview-head { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .station-hero__eyebrow { white-space: normal; overflow-wrap: anywhere; }
+  .station-hero__wallboard-toggle { justify-self: end; max-width: 100%; }
+ }
+}
 @container nurse-panel (max-width: 380px) {
  .nurse-panel.nurse-workspace .station-hero {
   margin: 8px 8px 0;

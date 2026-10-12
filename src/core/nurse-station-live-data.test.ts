@@ -82,14 +82,14 @@ test('builds a current-shift handoff summary from active clinical tasks and sync
 
   assert.deepEqual(builder(tasks, { phase: 'partial', lastSyncedAt: null, error: null, warning: '部分失败' }), {
     level: 'attention',
-    title: '本班需重点交接',
+    title: '当前重点事项',
     items: [
       '生命体征预警 1 项',
-      '未结束呼叫 1 项',
+      '呼叫待办 1 项',
       '设备异常 1 项',
       '环境异常病房 1 间',
       '输液待巡视 1 床',
-      '实时数据部分同步，请结合管理机或话机确认',
+      '目前仅有部分记录，请结合管理机或话机确认',
     ],
   });
 });
@@ -100,10 +100,10 @@ test('reports a clear handoff state when there are no active tasks', () => {
   if (typeof builder !== 'function')
     return;
 
-  assert.deepEqual(builder([], { phase: 'ready', lastSyncedAt: '2026-08-25T10:00:00', error: null, warning: null }), {
+  assert.deepEqual(builder([], { phase: 'ready', lastSyncedAt: '2026-08-25T10:00:00', error: null, warning: null }, Date.parse('2026-08-25T10:00:00')), {
     level: 'normal',
-    title: '本班暂无重点交接',
-    items: ['当前无未结束呼叫、设备异常、环境异常或输液巡视事项', '实时数据已同步'],
+    title: '当前无重点事项',
+    items: ['当前记录中暂无待交接事项', '信息已更新'],
   });
 });
 
@@ -134,6 +134,7 @@ test('separates offline and low-battery devices for nurse station巡检', () => 
     status: '304',
   };
   area.rooms[0].beds[1].isOccupied = true;
+  area.rooms[0].beds[1].isOnline = true;
   area.rooms[0].beds[1].statusBarInfo = {
     bedCode: '601-2',
     deviceCode: 'bed-2',
@@ -144,6 +145,22 @@ test('separates offline and low-battery devices for nurse station巡检', () => 
 
   assert.equal(result.offlineDeviceCount, 1);
   assert.equal(result.lowBatteryDeviceCount, 1);
+  assert.equal(result.deviceOnline, 1, 'low battery is still online, unlike an offline terminal');
   assert.equal(result.offlineBedCount, 2);
   assert.equal(result.state.message, '1 台设备离线，1 台设备低电量');
+});
+
+test('old successful sync cannot describe handoff data as current', () => {
+  const summary = liveDataModule.buildShiftHandoffSummary([], { phase: 'ready', lastSyncedAt: '2026-09-28T08:00:00Z', error: null, warning: null }, Date.parse('2026-09-28T08:06:00Z'));
+  assert.equal(summary.level, 'attention');
+  assert.match(summary.items.join(' '), /暂未更新/);
+  assert.doesNotMatch(summary.items.join(' '), /信息已更新/);
+});
+
+test('unconfirmed configured devices cannot produce an all-normal station state', () => {
+  const area = makeArea();
+  area.rooms[0].beds[0].isCalling = false;
+  const live = buildNurseStationLiveData(area, [], 21);
+  assert.equal(live.state.level, 'attention');
+  assert.match(live.state.message, /在线状态未确认/);
 });

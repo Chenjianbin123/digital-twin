@@ -4,6 +4,7 @@ export const AUTH_TOKEN_KEY = 'TokenKey';
 export const AUTH_USER_KEY = 'DIGITAL_TWIN_AUTH_USER';
 export const AUTH_ROLE_KEY = 'DIGITAL_TWIN_AUTH_ROLE';
 export const AUTH_EXPIRED_EVENT = 'digital-twin:auth-expired';
+const AUTH_DEPLOYMENT_KEY = 'DIGITAL_TWIN_AUTH_DEPLOYMENT';
 
 function resolveStorage(storage?: Storage): Storage | null {
   if (storage)
@@ -88,4 +89,14 @@ export function clearAuthSession(storage?: Storage): void {
   target.removeItem(AUTH_TOKEN_KEY);
   target.removeItem(AUTH_USER_KEY);
   target.removeItem(AUTH_ROLE_KEY);
+}
+
+/** 同一前端站点切换医院后，旧会话不得发送到新医院。 */
+export function bindAuthSessionToDeployment(apiBase: string, storage?: Storage): void {
+  const target = resolveStorage(storage);
+  if (!target)
+    return;
+  if (target.getItem(AUTH_DEPLOYMENT_KEY) !== apiBase)
+    clearAuthSession(target);
+  target.setItem(AUTH_DEPLOYMENT_KEY, apiBase);
 }

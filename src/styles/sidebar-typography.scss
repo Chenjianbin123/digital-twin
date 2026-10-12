@@ -1,18 +1,26 @@
-// 三个场景共用文字等级；不放大 3D 屏幕、装饰英文或已有的大号指标。
+@use './sidebar-type-tokens' as type;
+
+// Final typography boundary after scene/theme styles. Keep colors and layouts local.
 @mixin render {
-  .digital-twin[data-theme] :is(.nurse-panel.nurse-workspace, .digital-twin__panel.digital-twin__panel--overlay) {
-    --sidebar-font-body: clamp(16px, calc(12px + .25vw), 18px);
-    --sidebar-font-caption: clamp(14px, calc(10px + .25vw), 16px);
-    --sidebar-font-heading: clamp(18px, calc(14px + .25vw), 20px);
-    font-size: var(--sidebar-font-body);
+  @include type.render;
+  .digital-twin[data-theme] :is(.nurse-panel.nurse-workspace, .digital-twin__panel.digital-twin__panel--overlay .ward-command-workspace.ward-clinical.ward-clinical) {
+    font-family: var(--sidebar-font-family);
+    font-size: var(--sidebar-font-body) !important;
+    line-height: var(--sidebar-line-body);
+    :is(button, select) { font-family: inherit; }
+    :is(.station-hero__eyebrow, .ward-command-identity h2) {
+      font-size: var(--sidebar-font-title) !important;
+      font-weight: var(--sidebar-weight-title) !important;
+      line-height: var(--sidebar-line-title) !important;
+    }
 
     :is(.station-section-title, .dash-head__title, .queue-list-heading strong,
         .handoff-card h3, .data-health h3, .inspection-overview h3,
         .ward-call-list header > strong, .door-staff-cards__title,
         .status-history h3, .ward-care-summary h4, .vitals-card h4) {
       font-size: var(--sidebar-font-heading) !important;
-      font-weight: 700;
-      line-height: 1.5;
+      font-weight: var(--sidebar-weight-heading) !important;
+      line-height: var(--sidebar-line-heading) !important;
     }
 
     :is(.handoff-card li, .data-health li > span, .data-health__freshness-item > span,
@@ -21,7 +29,7 @@
         .ward-call-list li, .ward-info-panel__subtitle, .ward-bed-nav select,
         .nurse-panel__details > summary, .bed-detail-section__title) {
       font-size: var(--sidebar-font-body) !important;
-      line-height: 1.65;
+      line-height: var(--sidebar-line-body) !important;
     }
     .data-health li > span, .data-health__freshness-item > span { font-weight: 650; }
 
@@ -45,7 +53,7 @@
         .staff-role-card__role, .staff-role-card__hint, .staff-role-card__badge,
         .status-history li) {
       font-size: var(--sidebar-font-caption) !important;
-      line-height: 1.6;
+      line-height: var(--sidebar-line-caption) !important;
     }
 
     :is(.station-hero__alert-toggle, .station-hero__wallboard-toggle,
@@ -54,18 +62,74 @@
         .ward-bed-nav button, .area-dashboard__back-station) {
       font-size: var(--sidebar-font-caption) !important;
     }
-    .alert-task__head strong { font-size: var(--sidebar-font-heading) !important; }
-    .alert-task__subtitle, .alert-task__main > p { font-size: var(--sidebar-font-body) !important; line-height: 1.65; }
+    .alert-task__head strong { font-size: var(--sidebar-font-heading) !important; font-weight: var(--sidebar-weight-heading) !important; line-height: var(--sidebar-line-heading) !important; }
+    .alert-task__subtitle, .alert-task__main > p { font-size: var(--sidebar-font-body) !important; line-height: var(--sidebar-line-body) !important; }
     .alert-task__meta span { font-size: var(--sidebar-font-caption) !important; }
     .queue-categories button > span:not(.nurse-workspace-icon) { font-size: var(--sidebar-font-caption) !important; }
+
+    // Clinical section titles and comparable metric/team cards share semantic levels.
+    :is(.handoff-card h3, .data-health h3, .surface-panel .dash-head__title,
+        .ward-clinical-heading, .door-staff-cards__title, .ward-call-list header > strong,
+        .ward-info-panel__env h3, .hospital-intro__name, .inspection-card__head strong) {
+      font-size: var(--sidebar-font-section) !important;
+      font-weight: var(--sidebar-weight-heading) !important;
+      line-height: var(--sidebar-line-heading) !important;
+    }
+    :is(.env-grid .env-card > span, .stat-chip__label, .hospital-intro__metric-label,
+        .ward-command-metrics dt, .env-label, .vitals-grid small) {
+      font-size: var(--sidebar-font-label) !important;
+      line-height: var(--sidebar-line-caption) !important;
+      font-weight: var(--sidebar-weight-body) !important;
+    }
+    :is(.env-card > strong, .stat-chip__val, .hospital-intro__metric-value,
+        .ward-command-metrics dd, .person-card__value) {
+      font-size: var(--sidebar-font-metric) !important;
+      font-weight: var(--sidebar-weight-heading) !important;
+      line-height: var(--sidebar-line-metric) !important;
+      overflow-wrap: anywhere;
+    }
+    :is(.env-card small, .ward-command-metrics dd small, .hospital-intro__metric-value small) {
+      font-size: var(--sidebar-font-label) !important;
+      line-height: var(--sidebar-line-caption) !important;
+    }
+    :is(.clinical-staff li span, .staff-role-card__badge, .staff-role-card__role) {
+      font-size: var(--sidebar-font-role) !important;
+      font-weight: var(--sidebar-weight-body) !important;
+      line-height: var(--sidebar-line-caption) !important;
+    }
+    :is(.clinical-staff li strong, .staff-role-card__name, .room-card__name) {
+      font-size: var(--sidebar-font-name) !important;
+      font-weight: var(--sidebar-weight-heading) !important;
+      line-height: var(--sidebar-line-heading) !important;
+    }
+    :is(.bed-chip__no, .bed-chip__patient, .ward-call-list li > div strong,
+        .bed-detail-section__title, .patient-info dd, .status-history .label, .feed__text) {
+      font-size: var(--sidebar-font-body) !important;
+      line-height: var(--sidebar-line-body) !important;
+    }
+    :is(.ward-command-context, .ward-call-list p, .ward-call-list small,
+        .ward-info-panel__inspection p, .ward-care-summary > p, .patient-info dt,
+        .inspection-card__head span, .inspection-card__head small, .inspection-card__foot,
+        .staff-role-card__hint, .door-staff-cards__subhead, .vitals-card__note,
+        .alert-task__time, .alert-task__recovery-tip, .alert-task__unlocated,
+        .status-history .time, .status-history .category, .status-history .room, .status-history .bed) {
+      font-size: var(--sidebar-font-caption) !important;
+      line-height: var(--sidebar-line-caption) !important;
+    }
     .ward-bed-nav { container: ward-bed-navigation / inline-size; }
 
-    // 同步说明独占一行，字号增大后不与右侧状态争抢空间。
-    .data-health li { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
-    .data-health li > small { grid-column: 1 / -1; text-align: left; }
+    // 数据健康的图标、正文、状态列由 clinical-overview 负责，字号层不重排网格。
     .data-health__freshness-item { min-width: 0; }
     .data-health__freshness-item > small { white-space: normal; overflow-wrap: anywhere; }
     .data-health :is(li > span, li > small, li > strong, .data-health__freshness-item > span) { min-width: 0; overflow-wrap: anywhere; }
+  }
+
+  // Enlarged text must not let the fixed header consume the mobile/short panel.
+  @media (max-width: 1023px), (max-height: 800px) {
+    .digital-twin[data-theme] .nurse-panel.nurse-workspace > .station-hero {
+      max-height: 52%; overflow-y: auto !important; scrollbar-width: thin;
+      flex-shrink: 0;
+    }
   }
 
   @container ward-bed-navigation (max-width: 400px) {

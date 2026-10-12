@@ -3,6 +3,7 @@ import { computed } from 'vue';
 
 const props = defineProps<{
   theme?: 'light' | 'dark';
+  titleOnly?: boolean;
   areaName?: string;
   deptName?: string;
   envTemp?: string;
@@ -21,7 +22,6 @@ const emit = defineEmits<{
   toggleTheme: [];
   refresh: [];
   openAreaSwitch: [];
-  logout: [];
 }>();
 
 const dataStatusLabel = computed(() => ({
@@ -30,9 +30,9 @@ const dataStatusLabel = computed(() => ({
 </script>
 
 <template>
-  <header class="dash-header" :data-header-theme="theme || 'dark'">
+  <header class="dash-header" :class="{ 'dash-header--title-only': titleOnly }" :data-header-theme="theme || 'dark'">
 
-    <div class="dash-header__side dash-header__side--left">
+    <div v-if="!titleOnly" class="dash-header__side dash-header__side--left">
       <div class="dash-header__area-cluster" :class="{ 'dash-header__area-cluster--compact': compact }">
         <button
           v-if="areaName"
@@ -55,10 +55,10 @@ const dataStatusLabel = computed(() => ({
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v5a5 5 0 0 0 10 0V3M3 3h4m6 0h4M10 13v3a5 5 0 0 0 10 0v-3"/><circle cx="20" cy="10" r="2"/></svg>
             <span>{{ deptName }}</span>
           </span>
-          <span v-if="deptName && dataSource" class="dash-header__dot" aria-hidden="true" />
-          <span v-if="dataSource" class="dash-header__tag" :class="`dash-header__tag--${dataSource}`">
+          <span v-if="deptName && dataSource && dataSource !== 'mock'" class="dash-header__dot" aria-hidden="true" />
+          <span v-if="dataSource && dataSource !== 'mock'" class="dash-header__tag" :class="`dash-header__tag--${dataSource}`">
             <i aria-hidden="true" />
-            {{ dataSource === 'remote' ? '实时' : dataSource === 'database' ? '数据库' : '模拟' }}
+            {{ dataSource === 'remote' ? '实时' : '数据库' }}
           </span>
           <span v-if="dataStatus" class="dash-header__data-status" :class="`dash-header__data-status--${dataStatus}`" role="status">
             <svg v-if="['warning', 'error', 'stale'].includes(dataStatus)" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5m0 3v.5"/></svg>
@@ -70,11 +70,13 @@ const dataStatusLabel = computed(() => ({
     </div>
 
     <div class="dash-header__center">
-      <svg class="dash-header__plate" viewBox="0 0 640 96" preserveAspectRatio="none" aria-hidden="true">
-        <path class="dash-header__plate-surface" d="M32 1H608L639 30V70L613 95H27L1 70V30Z"/>
-        <path class="dash-header__plate-inset" d="M35 7H605L632 33M8 34 35 7M8 65v3l23 21h578l23-21v-3"/>
-        <path class="dash-header__plate-accent" d="M1 70 27 95h95m396 0h95l26-25M235 94l6-4h158l6 4"/>
+      <svg class="dash-header__plate" viewBox="0 0 720 76" preserveAspectRatio="none" aria-hidden="true">
+        <path class="dash-header__plate-surface" d="M22 1H698L719 20V56L698 75H22L1 56V20Z"/>
+        <path class="dash-header__plate-inset" d="M28 7H692L712 24M8 24 28 7M8 52 28 69H692L712 52"/>
+        <path class="dash-header__plate-accent" d="M1 44V56L22 75H124M596 75H698L719 56V44M302 75H418"/>
+        <path class="dash-header__plate-trace" pathLength="1000" d="M22 1H698L719 20V56L698 75H22L1 56V20Z"/>
       </svg>
+      <span class="dash-header__sweep" aria-hidden="true" />
       <div class="dash-header__title-wrap">
         <span class="dash-header__wing dash-header__wing--left" aria-hidden="true" />
         <div class="dash-header__title-stack">
@@ -102,12 +104,13 @@ const dataStatusLabel = computed(() => ({
           <svg v-else viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
           <span>{{ theme === 'light' ? '深色' : '浅色' }}</span>
         </button>
-        <slot name="actions" />
-        <div v-if="operatorName" class="dash-header__operator" :title="`${operatorName}${operatorRole ? ` · ${operatorRole}` : ''}`">
+        <slot v-if="!titleOnly" name="actions" />
+        <div v-if="!titleOnly && operatorName" class="dash-header__operator" :title="`${operatorName}${operatorRole ? ` · ${operatorRole}` : ''}`">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2Z"/></svg>
           <strong>{{ operatorName }}</strong>
         </div>
         <button
+          v-if="!titleOnly"
           type="button"
           class="dash-header__refresh"
           :disabled="isLoading || isAreaSwitching"
@@ -117,16 +120,6 @@ const dataStatusLabel = computed(() => ({
         >
           <svg class="dash-header__action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M20 12a8 8 0 1 0-2 6M20 7l-3-3"/></svg>
           <span class="dash-header__action-label">刷新</span>
-        </button>
-        <button
-          type="button"
-          class="dash-header__logout"
-          aria-label="退出登录"
-          title="退出登录"
-          @click="emit('logout')"
-        >
-          <svg class="dash-header__action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H4v16h6M9 12h12m-4-4 4 4-4 4"/></svg>
-          <span class="dash-header__action-label">退出</span>
         </button>
       </div>
     </div>

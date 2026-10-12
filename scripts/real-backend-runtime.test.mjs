@@ -11,9 +11,10 @@ const bottomNav = readFileSync(new URL('../src/components/dashboard/DashboardBot
 const toolbar = readFileSync(new URL('../src/components/WardToolbar.vue', import.meta.url), 'utf8');
 const areaInfoPanel = readFileSync(new URL('../src/components/AreaInfoPanel.vue', import.meta.url), 'utf8');
 
-test('runtime defaults to the real SWP backend at 192.168.96.104', () => {
+test('runtime defaults to remote data but requires an explicitly configured server', () => {
   assert.match(dataSource, /return value === 'mock' \|\| value === 'database' \? value : 'remote';/);
-  assert.match(viteConfig, /deviceHost\?\.trim\(\) \|\| 'http:\/\/192\.168\.96\.104'/);
+  assert.match(viteConfig, /configuredDeviceHost\(env\)/);
+  assert.doesNotMatch(viteConfig, /192\.168\.96\.104/);
 });
 
 test('real runtime services use polling or configured realtime without starting simulators', () => {

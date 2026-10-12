@@ -9,6 +9,8 @@ import NurseDetailIcon from '@/components/dashboard/NurseDetailIcon.vue';
 import { wardField, wardDataNotice } from '@/core/ward-presentation';
 import { wardBedPatientKey } from '@/core/ward-data-binding';
 import type { DataStatus } from '@/core/data-status';
+import type { DataSource } from '@/core/data-source';
+import { formatEnvironmentSyncText } from '@/core/environment-state';
 
 import { displayPatientName, maskSickName } from '@/utils/mask-patient';
 
@@ -32,6 +34,7 @@ const props = defineProps<{
 
   selectedStatus: BedStatusMeta | null;
   dataStatus?: DataStatus;
+  dataSource?: DataSource;
   callTasks?: AlertTask[];
   callSync?: SwpEventSyncState;
 
@@ -191,16 +194,9 @@ function inspectionTime(value: string | null | undefined) {
 
 
 const { now: envNow } = useLiveClock();
-const envSyncText = computed(() => {
-  const sync = props.ward?.envSync;
-  if (!sync) return '更新时间未知';
-  const time = sync.lastSuccessAt
-    ? new Date(sync.lastSuccessAt).toLocaleTimeString('zh-CN', { hour12: false }) : null;
-  if (sync.failed) return time ? `更新失败 · 上次接收 ${time}，仅供参考` : '暂未获取环境数据';
-  if (sync.lastSuccessAt && envNow.value.getTime() - sync.lastSuccessAt >= 60_000)
-    return `数据已过期 · 上次接收 ${time}，仅供参考`;
-  return time ? `最近接收 ${time}` : '等待环境数据';
-});
+const envSyncText = computed(() => formatEnvironmentSyncText(
+  props.ward ?? {}, Math.max(envNow.value.getTime(), Date.now()), props.dataSource ?? 'remote',
+));
 
 const envItems = computed(() => {
 
@@ -262,9 +258,9 @@ function isSourceManagedTask(task: AlertTask) {
 
 function taskStatusText(task: AlertTask) {
   if (isVitalWarning(task))
-    return '预警中';
+    return '未处理预警';
   if (isDisplayOnlySwpCall(task))
-    return '呼叫中';
+    return '未处理';
   if (task.source === 'swp-inspection')
     return '待巡视';
   if (task.status !== 'handling')
@@ -395,7 +391,7 @@ function alertTime(value?: string) {
           等待状态恢复后自动结束
         </span>
         <span v-if="isVitalWarning(activeAlertTask)">
-          后端状态恢复后自动结束
+          处理结果更新后自动移出待办
         </span>
       </div>
     </section>
@@ -504,7 +500,7 @@ function alertTime(value?: string) {
           <strong>{{ wardField(selectedBed.latestVitals.recordTime) }}</strong>
         </span>
         </div>
-        <p class="vitals-card__note">最新体征记录来自真实数据源；是否预警以当前后端预警事件为准。</p>
+        <p class="vitals-card__note">体征读数与预警提示分别更新，请结合现场情况确认。</p>
       </section>
 
       <p v-else-if="selectedBed.isOccupied" class="empty-bed-tip">暂无体征记录，等待数据同步。</p>
@@ -614,7 +610,7 @@ function alertTime(value?: string) {
           </span>
         </li>
       </ul>
-      <p v-else>暂无巡视记录，等待真实巡视数据同步。</p>
+      <p v-else>暂无巡视记录，请结合现场情况确认。</p>
       <div class="inspection-card__foot">
         最近巡视记录仅展示最新 3 条；现场产生新记录后状态自动更新。
       </div>
@@ -641,7 +637,7 @@ function alertTime(value?: string) {
     >
 
       <h3 class="ward-clinical-heading"><NurseDetailIcon name="environment" />环境数据</h3>
-      <p class="env-label">{{ envSyncText }}</p>
+      <p v-if="envSyncText" class="env-label">{{ envSyncText }}</p>
 
       <div class="ward-info-panel__env-grid">
 

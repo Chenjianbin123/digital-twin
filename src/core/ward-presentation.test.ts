@@ -8,9 +8,9 @@ test('missing ward fields do not become confirmed negative findings', () => {
   assert.equal(wardField('青霉素'), '青霉素');
 });
 test('stale, failed and partial data remain explicit in patient details', () => {
-  assert.match(wardDataNotice('error'), /上次数据/);
-  assert.match(wardDataNotice('stale'), /过期/);
-  assert.match(wardDataNotice('warning'), /未完整/);
-  assert.match(wardDataNotice('loading'), /正在同步/);
+  assert.match(wardDataNotice('error'), /暂未更新.*现场/);
+  assert.match(wardDataNotice('stale'), /更新延迟/);
+  assert.match(wardDataNotice('warning'), /尚不完整/);
+  assert.match(wardDataNotice('loading'), /正在更新/);
   assert.equal(wardDataNotice('ready'), '');
 });

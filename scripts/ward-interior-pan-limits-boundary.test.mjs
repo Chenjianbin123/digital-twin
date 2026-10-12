@@ -22,7 +22,7 @@ test('病房内优先用外壳/灯网格钳制，缺失时回退房间平移限�
   assert.match(scene, /clampPointToWardInteriorBounds\(this\.controls\.target/);
   assert.match(scene, /clampPointToWardInteriorBounds\(this\.camera\.position/);
   assert.match(scene, /this\.clampWardInteriorPanTarget\(\);/);
-  assert.match(scene, /this\.enforceWardInteriorControlBounds\(\);\s*\/\/ window\.clearTimeout\(this\.cameraViewLogTimer\);/);
+  assert.match(scene, /private onControlsChange = \(\) => \{\s*if \(this\.enforcingControlBounds\)\s*return;\s*this\.enforceWardInteriorControlBounds\(\);/);
   assert.match(scene, /this\.controls\.update\(\);\s*this\.enforceWardInteriorControlBounds\(\);/);
   assert.match(scene, /this\.controls\.target\.lerpVectors\(this\.cameraTransition\.fromTarget, this\.cameraTransition\.toTarget, t\);\s*this\.enforceWardInteriorControlBounds\(\);/);
 });

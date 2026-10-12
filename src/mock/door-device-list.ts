@@ -1,5 +1,5 @@
 import type { ApiResponse, DoorDeviceInfo } from '@/types/ward';
-import { ROOM_903, ROOM_904, ROOMS_301_310 } from './room-factory';
+import { ROOM_903, ROOM_904, ROOMS_301_310 } from './room-factory.ts';
 
 /** 结构对齐 medical-device-v2/src/api-client/src/mock/door/device-list.ts */
 const ROOM_901: DoorDeviceInfo = {

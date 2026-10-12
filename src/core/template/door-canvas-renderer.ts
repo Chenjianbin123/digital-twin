@@ -18,6 +18,8 @@ import type { ParsedTemplate, TemplateNode } from '@/types/template';
 import { drawTemplateImagePlaceholder } from '@/core/template/template-display-state';
 import type { TwinWardEntity } from '@/types/twin';
 import { getFileUrlPrefix } from '@/utils/file-prefix';
+import { resolveLocalAsset } from '@/core/local-asset';
+import { resolveDataSource } from '@/core/data-source';
 
 const DEFAULT_WIDTH = 960;
 
@@ -116,6 +118,7 @@ function drawRoundedRect(
 }
 
 function resolveImageUrl(src?: string): string | null {
+  if (resolveDataSource() === 'mock') return resolveLocalAsset(src) || null;
   if (!src || !src.trim())
     return null;
   const trimmed = src.trim();

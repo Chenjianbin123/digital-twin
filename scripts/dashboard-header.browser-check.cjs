@@ -8,7 +8,7 @@ async page => {
   const results = [];
   for (const theme of ['light', 'dark']) {
     await page.evaluate(t => window.headerFixture.setTheme(t), theme);
-    for (const width of [2560,1920,1774,1440,1280,1100,1024,768,600,375,320]) {
+    for (const width of [2560,1920,1774,1440,1280,1279,1100,1099,1024,768,767,600,400,375,320]) {
       await page.setViewportSize({width, height:900});
       for (const long of [false,true]) {
         await page.evaluate(v => window.headerFixture.setLong(v), long);
@@ -25,10 +25,12 @@ async page => {
           const statusStyle = getComputedStyle(root.querySelector('.dash-header__data-status'));
           const overflow = [...root.querySelectorAll('button,.dash-header__dept,.dash-header__operator,.dash-header__tag,.dash-header__data-status,.dash-header__title')].filter(el=>el.checkVisibility()).filter(el=>{const r=bounds(el);return r.left<outer.left-1||r.right>outer.right+1||r.bottom>outer.bottom+1;}).map(el=>el.className);
           const controlsOverlap = innerWidth>=1100 && [...root.querySelectorAll('.dash-header__side button,.dash-header__dept,.dash-header__operator,.dash-header__tag,.dash-header__data-status')].filter(el=>el.checkVisibility()).some(el=>{const r=bounds(el);return el.closest('.dash-header__side--left')?r.right>center.left+1:r.left<center.right-1;});
-          return {overflow,controlsOverlap,center,left,right,icon,title,controlSize:parseFloat(controlStyle.fontSize),controlWeight:controlStyle.fontWeight,controlHeight:parseFloat(controlStyle.height),statusSize:parseFloat(statusStyle.fontSize),titleSize:parseFloat(titleStyle.fontSize),titleShadow:titleStyle.textShadow,titleColor:titleStyle.color,headerBottom:outer.bottom};
+          const safeTop = parseFloat(getComputedStyle(root.closest('.digital-twin')).getPropertyValue('--dashboard-header-space'));
+          return {overflow,controlsOverlap,center,left,right,icon,title,safeTop,controlSize:parseFloat(controlStyle.fontSize),controlWeight:controlStyle.fontWeight,controlHeight:parseFloat(controlStyle.height),statusSize:parseFloat(statusStyle.fontSize),titleSize:parseFloat(titleStyle.fontSize),titleShadow:titleStyle.textShadow,titleColor:titleStyle.color,headerBottom:outer.bottom};
         });
         assert(!info.overflow.length, `${theme}/${width}/${long}: overflow ${info.overflow}`);
         assert(!info.controlsOverlap, `${theme}/${width}/${long}: controls overlap title`);
+        assert(info.headerBottom <= info.safeTop, `${theme}/${width}: header exceeds workspace safe area`);
         assert(info.controlSize >= 13 && info.controlSize <= 14 && info.controlWeight === '500', `${theme}/${width}: control typography overridden`);
         assert(info.controlHeight >= 40 && info.statusSize >= 12, `${theme}/${width}: controls or status too small`);
         assert(info.icon.right < info.title.left, `${theme}/${width}: brand icon overlaps title`);

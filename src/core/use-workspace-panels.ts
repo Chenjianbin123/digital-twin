@@ -12,7 +12,7 @@ export function useWorkspacePanels(
   const view = computed<PanelView>(() =>
     scene.value === 'ward-interior' && interiorView.value === 'plan' ? 'plan' : scene.value);
   const panelsVisible = computed({
-    get: () => preferences.value[view.value] ?? view.value !== 'plan',
+    get: () => preferences.value[view.value] ?? true,
     set: (visible: boolean) => { preferences.value[view.value] = visible; },
   });
   watch(scope, () => { preferences.value = {}; }, { flush: 'sync' });

@@ -66,3 +66,61 @@ test('failed rendering is retryable with the same data', async () => {
   await cache.update('door', 'same', async () => ({ dispose() {} }), () => { applied = true; });
   assert.equal(applied, true);
 });
+
+test('unchanged screens render again when their configured TTL expires', async () => {
+  let now = 100;
+  let renders = 0;
+  const cache = new WardCorridorScreenCache({ ttlMs: 50, now: () => now });
+  const render = async () => { renders++; return { dispose() {} }; };
+  await cache.update('door', 'same', render, () => {});
+  now = 149;
+  await cache.update('door', 'same', render, () => {});
+  assert.equal(renders, 1);
+  now = 150;
+  await cache.update('door', 'same', render, () => {});
+  assert.equal(renders, 2);
+});
+
+test('screen TTL starts after rendering succeeds', async () => {
+  let now = 0;
+  let renders = 0;
+  let finish!: () => void;
+  const cache = new WardCorridorScreenCache({ ttlMs: 50, now: () => now });
+  const first = cache.update('door', 'same', () => {
+    renders++;
+    return new Promise<{ dispose(): void }>((resolve) => {
+      finish = () => resolve({ dispose() {} });
+    });
+  }, () => {});
+  now = 100;
+  finish();
+  await first;
+  const render = async () => { renders++; return { dispose() {} }; };
+  now = 149;
+  await cache.update('door', 'same', render, () => {});
+  assert.equal(renders, 1);
+  now = 150;
+  await cache.update('door', 'same', render, () => {});
+  assert.equal(renders, 2);
+});
+
+test('in-flight rendering stays coalesced even when it takes longer than the TTL', async () => {
+  let now = 0;
+  let renders = 0;
+  let applied = 0;
+  let finish!: () => void;
+  const cache = new WardCorridorScreenCache({ ttlMs: 50, now: () => now });
+  const render = () => {
+    renders++;
+    return new Promise<{ dispose(): void }>((resolve) => {
+      finish = () => resolve({ dispose() {} });
+    });
+  };
+  const first = cache.update('door', 'same', render, () => { applied++; });
+  now = 200;
+  await cache.update('door', 'same', render, () => { applied++; });
+  assert.equal(renders, 1);
+  finish();
+  await first;
+  assert.equal(applied, 1);
+});

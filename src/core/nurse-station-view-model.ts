@@ -20,6 +20,8 @@ import type {
   SwpResponseMetrics,
 } from '../types/swp-events.ts';
 import type { TwinAreaEntity } from '../types/twin.ts';
+import type { DataSource } from './data-source.ts';
+import { buildEnvironmentSummary, resolveEnvironmentStatus, type EnvironmentSummary } from './environment-state.ts';
 
 export interface NurseStationRoomSummary extends RoomSummary {
   vitalWarningCount: number;
@@ -42,6 +44,7 @@ export interface NurseStationRealtimeStatus {
 }
 
 export interface NurseStationViewModel {
+  areaId?: number | null;
   area: TwinAreaEntity;
   roomSummaries: NurseStationRoomSummary[];
   alertTasks: AlertTask[];
@@ -52,6 +55,7 @@ export interface NurseStationViewModel {
   inspectionRoomSummaries: InspectionRoomSummary[];
   inspectionSync: InspectionSyncState;
   metrics: NurseStationMetrics;
+  environment: EnvironmentSummary;
   state: NurseStationLiveData['state'];
   shiftHandoff: ShiftHandoffSummary;
   dataHealth: DataHealthSummary;
@@ -60,6 +64,7 @@ export interface NurseStationViewModel {
 }
 
 export interface BuildNurseStationViewModelInput {
+  dataSource?: DataSource;
   areaId?: number | null;
   area: TwinAreaEntity;
   roomSummaries: readonly RoomSummary[];
@@ -73,6 +78,7 @@ export interface BuildNurseStationViewModelInput {
   inspectionSync?: InspectionSyncState;
   wardDataStatus?: DataStatus;
   wardDataSyncedAtMs?: number | null;
+  nowMs?: number;
 }
 
 const EMPTY_SYNC: SwpEventSyncState = {
@@ -136,19 +142,19 @@ function buildRealtimeStatus(
           ? 'loading'
           : 'ready';
   const label: Record<DataStatus, string> = {
-    ready: '实时数据',
-    loading: '数据同步中',
-    warning: '部分同步',
-    stale: '数据已延迟',
-    error: '数据同步异常',
+    ready: '信息已更新',
+    loading: '信息更新中',
+    warning: '信息不完整',
+    stale: '信息更新延迟',
+    error: '信息暂未更新',
   };
   const affectedSources = freshnessItems
     .filter(item => item.status !== 'ready')
     .map(item => item.label)
     .join('、');
   const detail = status === 'ready'
-    ? '病区、呼叫、响应与巡视数据均已同步'
-    : `${affectedSources || '数据源'}${label[status]}`;
+    ? '病区、呼叫、响应与巡视信息已更新'
+    : `${affectedSources || '信息'}${label[status]}`;
   const syncTimestamps = freshnessItems
     .map(item => item.syncedAt)
     .filter((value): value is string => value != null)
@@ -170,7 +176,17 @@ function buildRealtimeStatus(
 export function buildNurseStationViewModel(
   input: BuildNurseStationViewModelInput,
 ): NurseStationViewModel {
-  const alertTasks = [...(input.alertTasks ?? [])];
+  const nowMs = input.nowMs ?? Date.now();
+  const environment = buildEnvironmentSummary(input.area.rooms, nowMs, input.dataSource);
+  const envStatuses = new Map(input.area.rooms.map(room => [String(room.sickroomCode),
+    resolveEnvironmentStatus(room, nowMs, input.dataSource)]));
+  const needsEnvVerification = (roomCode: string) => {
+    const status = envStatuses.get(roomCode);
+    return status !== 'fresh' && status !== 'demo' && status !== 'snapshot';
+  };
+  const alertTasks = (input.alertTasks ?? []).map(task => task.type === 'env' && !task.source && needsEnvVerification(task.roomCode)
+    ? { ...task, retained: true, title: '环境异常待核实', description: `${task.description}；当前环境数据未确认，请核对现场读数` }
+    : task);
   const currentEvents = (input.swpEvents ?? []).filter(event =>
     input.areaId == null || event.areaId === input.areaId,
   );
@@ -210,12 +226,14 @@ export function buildNurseStationViewModel(
     }
   }
   for (const task of alertTasks) {
+    if (task.retained) continue;
     if (task.type === 'call')
       addCall(task.roomCode, task.bedCode, task.id);
     else if (task.type === 'vital')
       addVital(task.roomCode, task.id);
   }
   for (const event of currentEvents) {
+    if (event.retained) continue;
     const roomCode = event.location?.roomCode ?? '';
     if (event.taskType === 'call')
       addCall(roomCode, event.location?.bedCode, event.id);
@@ -231,6 +249,10 @@ export function buildNurseStationViewModel(
       stripStatusPart(summary.statusText, '呼叫').join(' · '),
       '生命体征预警',
     );
+    if (summary.envAlertLevel !== 'normal' && needsEnvVerification(roomCode)) {
+      const index = statusParts.findIndex(part => part === '环境异常' || part === '环境预警');
+      if (index >= 0) statusParts[index] = '环境异常待核实';
+    }
     if (vitalWarningCount)
       statusParts.unshift(`生命体征预警 ${vitalWarningCount}`);
     if (callingCount)
@@ -254,6 +276,7 @@ export function buildNurseStationViewModel(
     input.area,
     roomSummaries,
     input.configuredDeviceCount,
+    environment,
   );
   const state: NurseStationLiveData['state'] = vitalKeys.size
     ? {
@@ -267,7 +290,9 @@ export function buildNurseStationViewModel(
           label: '紧急响应',
           message: `${callKeys.size} 项患者呼叫，请优先处置`,
         }
-      : baseLive.state;
+      : alertTasks.some(task => task.retained) || currentEvents.some(event => event.retained)
+        ? { level: 'attention', label: '记录状态待确认', message: '有上次保留的记录，请核对是否仍需处理' }
+        : baseLive.state;
   const live: NurseStationLiveData = {
     ...baseLive,
     callingCount: callKeys.size,
@@ -293,37 +318,40 @@ export function buildNurseStationViewModel(
   const swpResponseSync = input.swpResponseSync ?? EMPTY_SYNC;
   const inspectionSync = input.inspectionSync ?? EMPTY_SYNC;
   const dataHealth = buildDataHealthSummary({
+    nowMs: input.nowMs,
     wardStatus: input.wardDataStatus ?? 'loading',
     eventSync: swpEventSync,
   });
   const dataFreshnessItems = buildDataFreshnessItems({
+    nowMs: input.nowMs,
     wardStatus: input.wardDataStatus ?? 'loading',
     wardSyncedAtMs: input.wardDataSyncedAtMs,
     eventSync: swpEventSync,
     responseSync: swpResponseSync,
     inspectionSync,
   });
-  const displayedState = state.level === 'normal' && !dataHealth.canDeclareNormal
+  const displayedState = (state.level === 'normal' || state.label === '环境数据待核实') && !dataHealth.canDeclareNormal
     ? {
         level: 'attention' as const,
-        label: '数据需复核',
-        message: '数据未完全同步，暂不能判断病区运行正常',
+        label: '信息需核对',
+        message: '信息尚不完整，请核对现场情况',
       }
     : state;
-  const shiftHandoff = buildShiftHandoffSummary(alertTasks, swpEventSync);
+  const shiftHandoff = buildShiftHandoffSummary(alertTasks, swpEventSync, input.nowMs);
   const displayedShiftHandoff: ShiftHandoffSummary = dataHealth.canDeclareNormal || alertTasks.length > 0
     ? shiftHandoff
     : {
         level: 'attention',
-        title: '交班数据需复核',
+        title: '交班信息需核对',
         items: [
-          '数据未完全同步，暂不能确认本班无待交接事项',
+          '信息尚不完整，请核对是否仍有待交接事项',
           '请结合管理机、话机和现场设备确认',
         ],
       };
 
   return {
     area: input.area,
+    areaId: input.areaId,
     roomSummaries,
     alertTasks,
     swpEvents: currentEvents,
@@ -333,6 +361,7 @@ export function buildNurseStationViewModel(
     inspectionRoomSummaries: [...(input.inspectionRoomSummaries ?? [])],
     inspectionSync,
     metrics,
+    environment,
     state: displayedState,
     shiftHandoff: displayedShiftHandoff,
     dataHealth,

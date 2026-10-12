@@ -46,5 +46,10 @@ test('returns urgent state for active calls and attention for device faults', ()
   assert.equal(buildNurseStationMetrics(createArea([{ calling: true }]), 2, 0).state.level, 'urgent');
   assert.equal(buildNurseStationMetrics(createArea([{ status: '304' }]), 2, 0).state.level, 'attention');
   assert.equal(buildNurseStationMetrics(createArea([{ status: '9' }]), 2, 0).offlineBeds, 1);
-  assert.equal(buildNurseStationMetrics(createArea([{ online: true }]), 2, 0).state.level, 'normal');
+  const missingEnvironment = createArea([{ online: true }]);
+  assert.equal(buildNurseStationMetrics(missingEnvironment, 2, 0).state.level, 'attention');
+  assert.match(buildNurseStationMetrics(missingEnvironment, 2, 0).state.label, /环境数据待核实/);
+  missingEnvironment.rooms[0].doorEnvData = { temp: '24℃' };
+  missingEnvironment.rooms[0].envSync = { lastSuccessAt: Date.now(), failed: false };
+  assert.equal(buildNurseStationMetrics(missingEnvironment, 2, 0).state.level, 'normal');
 });

@@ -1,0 +1,29 @@
+{
+  "presentation": "Real-time 3D geometry exported from native Blender sources",
+  "flow": ["exterior", "floor", "nurse-station"],
+  "assets": {
+    "exterior": {
+      "model": "hospital-exterior-v3.glb",
+      "metadata": "exterior-3d.json",
+      "environment": "hospital-daylight.exr",
+      "environmentLicense": "hospital-daylight-license.txt",
+      "backgroundContextIncluded": true,
+      "projection": "reference Blender perspective camera",
+      "target": "floor"
+    },
+    "floor": {
+      "model": "hospital-floor-v4.glb",
+      "metadata": "floor-3d.json",
+      "target": "nurse-station"
+    },
+    "nurse-station": {
+      "model": "../smart-ward-nurse-station/nurse-station-silver-v2.glb"
+    }
+  },
+  "interaction": "Every clinical building floor uses 3D mesh raycast within source window floor ranges; no exterior prompt or highlight. Nurse station retains its projected keyboard-accessible marker.",
+  "themes": ["light", "dark"],
+  "themeGeometryShared": true,
+  "surveyed": false,
+  "wardBinding": "current selected area; no building-floor API mapping is available",
+  "referenceImagesUsedAtRuntime": false
+}

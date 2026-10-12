@@ -1,0 +1,51 @@
+{
+  "source": "output\\hospital-floor-reference-v4\\hospital-floor-reference-v4.blend",
+  "sourceSha256": "3e908e4cdb9108ddf5cf227c2b140b68eeda9c86ccfcc002f72f336a59694068",
+  "asset": "hospital-floor-v4.glb",
+  "triangles": 1883013,
+  "drawMeshes": 45,
+  "bytes": 13946072,
+  "cameraPosition": [
+    14.0,
+    33.0,
+    28.0
+  ],
+  "cameraDirection": [
+    0.31000304222106934,
+    0.720757007598877,
+    0.6200061440467834
+  ],
+  "focusBounds": [
+    [
+      -12.75,
+      -0.25,
+      -8.25
+    ],
+    [
+      12.75,
+      2.8400001525878906,
+      8.25
+    ]
+  ],
+  "navigationBounds": [
+    [
+      -3.2799999713897705,
+      0.0949999988079071,
+      -1.8111053705215454
+    ],
+    [
+      3.2799999713897705,
+      2.731920003890991,
+      1.1868714094161987
+    ]
+  ],
+  "anchor": [
+    0.0,
+    2.422252655029297,
+    -1.4705346822738647
+  ],
+  "skippedBackgroundObjects": 0,
+  "rooms": 8,
+  "beds": 16,
+  "originalPreserved": true
+}

@@ -19,7 +19,7 @@ assert.match(header, /已过期/);
 assert.match(store, /dataPhase/);
 assert.match(dataStatus, /buildDataHealthSummary/);
 assert.match(dataStatus, /床位与患者/);
-assert.match(viewModel, /数据未完全同步，暂不能判断病区运行正常/);
-assert.match(viewModel, /暂不能确认本班无待交接事项/);
+assert.match(viewModel, /信息尚不完整，请核对现场情况/);
+assert.match(viewModel, /信息尚不完整，请核对是否仍有待交接事项/);
 
 console.log('Data status boundary checks passed.');

@@ -1,3 +1,16 @@
+.dash-header.dash-header--title-only {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  justify-items: center;
+  .dash-header__center { grid-column: 1; grid-row: 1; width: min(760px, calc(100% - 120px)); min-width: 0; }
+  .dash-header__side--right { position: absolute; grid-area: auto; right: 12px; top: 50%; transform: translateY(-50%); }
+  @media (max-width: 767px) {
+    .dash-header__center { width: calc(100% - 64px); }
+    .dash-header__title { font-size: clamp(12px, 3.5vw, 18px); }
+    .dash-header__brand-icon { width: 20px; height: 20px; }
+    .dash-header__side--right { right: 8px; }
+  }
+}
 // Header owns both palettes. Global dashboard themes must not override its controls.
 .dash-header {
   --hdr-paper: #142b3c;
@@ -162,3 +175,101 @@
   .dash-header svg.dash-header__brand-icon { width: 24px; height: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { .dash-header button { transition: none; } }
+
+// Make room for the slotted assistant without pushing controls into the centered title.
+@media (max-width: 1700px) {
+  .dash-header:has(.ai-assistant-entry) .dash-header__action-label { display: none; }
+  .dash-header:has(.ai-assistant-entry) .dash-header__operator { max-width: 86px; }
+}
+
+// 标题独立居中，字号与装饰随视口收缩，不占用主题切换按钮的位置。
+.dash-header.dash-header--title-only {
+  --hdr-title-shadow: 0 1px 1px var(--hdr-shadow);
+  background: linear-gradient(90deg, var(--hdr-paper), color-mix(in srgb, var(--hdr-paper) 92%, var(--hdr-accent)) 50%, var(--hdr-paper));
+  border-top-color: color-mix(in srgb, var(--hdr-accent) 45%, var(--hdr-line));
+  box-shadow: inset 0 1px 0 var(--hdr-highlight), 0 4px 14px var(--hdr-shadow);
+  &::before, &::after {
+    content: ''; position: absolute; top: 50%; height: 1px;
+    width: max(0px, calc(50% - 410px)); pointer-events: none;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--hdr-accent) 35%, transparent));
+  }
+  &::before { left: 28px; }
+  &::after { right: 28px; transform: rotate(180deg); }
+  .dash-header__center { margin: -10px 0 -4px; }
+  .dash-header__plate { filter: drop-shadow(0 3px 5px var(--hdr-shadow)); }
+  .dash-header__plate-inset { opacity: .24; }
+  .dash-header__plate-accent { stroke-width: 1.5; }
+  .dash-header__center { animation: header-title-enter 650ms cubic-bezier(.2, .7, .3, 1) backwards; }
+  .dash-header__plate-trace {
+    fill: none; stroke: var(--hdr-accent); stroke-width: 3;
+    stroke-linecap: round; stroke-dasharray: 120 380; opacity: 1;
+    filter: drop-shadow(0 0 3px var(--hdr-accent));
+    animation: header-border-flow 5.4s linear infinite;
+  }
+  .dash-header__sweep {
+    position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    clip-path: polygon(3% 0, 97% 0, 100% 25%, 100% 75%, 97% 100%, 3% 100%, 0 75%, 0 25%);
+    &::before {
+      content: ''; position: absolute; inset: 0 auto 0 0; width: 28%;
+      background: linear-gradient(110deg, transparent 12%, color-mix(in srgb, var(--hdr-accent) 28%, transparent) 50%, transparent 88%);
+      animation: header-sweep 5.8s ease-in-out infinite;
+    }
+  }
+  &::before, &::after { animation: header-line-breathe 3.8s ease-in-out infinite; }
+  .dash-header__title-wrap { padding: 8px 30px; }
+  .dash-header__title-stack { gap: 5px; }
+  .dash-header__kicker { font-size: 9px; font-weight: 500; letter-spacing: .28em; opacity: .85; }
+  .dash-header__brand { gap: 12px; }
+  .dash-header__title {
+    font-size: clamp(24px, 1.2vw, 32px); font-weight: 700;
+    line-height: 1.2; letter-spacing: .08em; white-space: nowrap;
+  }
+  svg.dash-header__brand-icon {
+    box-sizing: border-box; width: 36px; height: 36px; padding: 4px;
+    border: 1px solid color-mix(in srgb, var(--hdr-accent) 25%, transparent);
+    border-radius: 9px; background: color-mix(in srgb, var(--hdr-accent) 7%, var(--hdr-plate));
+    filter: none;
+    animation: header-icon-breathe 3.8s ease-in-out infinite;
+  }
+  @media (max-width: 1099px) {
+    .dash-header__title { font-size: 23px; letter-spacing: .045em; }
+    .dash-header__brand { gap: 8px; }
+    .dash-header__center { margin-top: -8px; }
+  }
+  @media (max-width: 767px) {
+    .dash-header__title-wrap { padding: 6px 12px; }
+    .dash-header__title { font-size: clamp(12px, 3.6vw, 21px); letter-spacing: .02em; }
+    .dash-header__kicker { font-size: 7px; letter-spacing: .16em; }
+    .dash-header__title-stack { gap: 4px; }
+    .dash-header__brand { gap: 6px; }
+    svg.dash-header__brand-icon { width: 23px; height: 23px; padding: 2px; border-radius: 6px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &::before, &::after, .dash-header__center, .dash-header__plate-trace, svg.dash-header__brand-icon { animation: none; }
+    .dash-header__plate-trace { opacity: 0; }
+    .dash-header__sweep { display: none; }
+  }
+}
+
+@keyframes header-title-enter {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes header-border-flow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -1000; }
+}
+@keyframes header-line-breathe {
+  0%, 100% { opacity: .45; }
+  50% { opacity: .9; }
+}
+@keyframes header-icon-breathe {
+  0%, 100% { box-shadow: 0 0 0 transparent; }
+  50% { box-shadow: 0 0 14px color-mix(in srgb, var(--hdr-accent) 55%, transparent), inset 0 0 8px color-mix(in srgb, var(--hdr-accent) 22%, transparent); }
+}
+@keyframes header-sweep {
+  0% { transform: translateX(-130%); opacity: 0; }
+  12% { opacity: 1; }
+  75% { transform: translateX(420%); opacity: 1; }
+  100% { transform: translateX(420%); opacity: 0; }
+}

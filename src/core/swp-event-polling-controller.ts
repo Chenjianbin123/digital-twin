@@ -1,11 +1,21 @@
-import type { NormalizedSwpEvent, SwpEventSource } from '../types/swp-events.ts';
+import type { NormalizedSwpEvent, SwpEventSource, SwpEventSyncState } from '../types/swp-events.ts';
 import type { TwinAreaEntity } from '../types/twin.ts';
 import { createBrowserPollingVisibility, type PollingVisibility } from './polling-visibility.ts';
 
 export const DEFAULT_SWP_EVENT_INTERVAL_MS = 60_000;
 
+export interface SwpEventRefreshResult {
+  status: 'ready' | 'partial' | 'busy' | 'backoff' | 'scope-changed' | 'unavailable' | 'failed';
+  retryAt?: number;
+}
+function didApply(result: SwpEventRefreshResult) {
+  return result.status === 'ready' || result.status === 'partial';
+}
+
 export interface SwpEventSnapshot {
+  coverage?: SwpEventSyncState['coverage'];
   events: NormalizedSwpEvent[];
+  resolvedEventIds?: string[];
   refreshedSources?: SwpEventSource[];
   warning?: string;
   syncedAt?: string;
@@ -14,6 +24,7 @@ export interface SwpEventSnapshot {
 export interface SwpEventPollingStore {
   selectedAreaId: number | null;
   area: TwinAreaEntity | null;
+  swpEventSync?: Pick<SwpEventSyncState, 'phase'>;
   beginSwpEventSync: (expectedAreaId: number) => boolean;
   applySwpEventSnapshot: (expectedAreaId: number, snapshot: SwpEventSnapshot) => boolean;
   failSwpEventSync: (expectedAreaId: number, message: string) => boolean;
@@ -39,7 +50,8 @@ interface PollingRun {
 
 export interface SwpEventPollingController {
   start: (store: SwpEventPollingStore, intervalMs?: number) => Promise<boolean>;
-  refreshNow: () => Promise<boolean>;
+  refreshNow: (expectedAreaId?: number) => Promise<boolean>;
+  refreshDetailed: (expectedAreaId?: number) => Promise<SwpEventRefreshResult>;
   stop: () => void;
 }
 
@@ -82,22 +94,23 @@ export function createSwpEventPollingController(
       && !!run.store.area;
   }
 
-  async function refresh(run: PollingRun | null): Promise<boolean> {
-    if (!run || !isCurrent(run) || run.refreshing)
-      return false;
+  async function refresh(run: PollingRun | null): Promise<SwpEventRefreshResult> {
+    if (!run) return { status: 'unavailable' };
+    if (!isCurrent(run)) return { status: 'scope-changed' };
+    if (run.refreshing) return { status: 'busy' };
     if (now().getTime() < run.retryAfterMs)
-      return false;
+      return { status: 'backoff', retryAt: run.retryAfterMs };
     if (!run.store.beginSwpEventSync(run.areaId))
-      return false;
+      return { status: 'unavailable' };
     const area = run.store.area;
     if (!area)
-      return false;
+      return { status: 'unavailable' };
 
     run.refreshing = true;
     try {
       const snapshot = await dependencies.loadSnapshot(run.areaId, area);
       if (!isCurrent(run) || run.store.area !== area)
-        return false;
+        return { status: 'scope-changed' };
       const applied = run.store.applySwpEventSnapshot(run.areaId, {
         ...snapshot,
         syncedAt: now().toISOString(),
@@ -106,11 +119,14 @@ export function createSwpEventPollingController(
         run.failureStreak = 0;
         run.retryAfterMs = 0;
       }
-      return applied;
+      if (!applied) return { status: 'scope-changed' };
+      const partial = run.store.swpEventSync?.phase === 'partial'
+        || snapshot.warning || snapshot.coverage?.some(page => !page.complete);
+      return { status: partial ? 'partial' : 'ready' };
     }
     catch (error) {
-      if (!isCurrent(run))
-        return false;
+      if (!isCurrent(run) || run.store.area !== area)
+        return { status: 'scope-changed' };
       run.store.failSwpEventSync(
         run.areaId,
         error instanceof Error ? error.message : 'SWP 事件同步失败',
@@ -121,7 +137,7 @@ export function createSwpEventPollingController(
         run.intervalMs * (2 ** Math.min(run.failureStreak, 2)),
       );
       run.retryAfterMs = now().getTime() + retryDelayMs;
-      return false;
+      return { status: 'failed', retryAt: run.retryAfterMs };
     }
     finally {
       if (activeRun === run)
@@ -167,12 +183,19 @@ export function createSwpEventPollingController(
         void refresh(run);
     });
     schedulePolling(run);
-    return refresh(run);
+    return didApply(await refresh(run));
+  }
+
+  function refreshDetailed(expectedAreaId?: number): Promise<SwpEventRefreshResult> {
+    if (activeRun && expectedAreaId != null && activeRun.areaId !== expectedAreaId)
+      return Promise.resolve({ status: 'scope-changed' });
+    return refresh(activeRun);
   }
 
   return {
     start,
-    refreshNow: () => refresh(activeRun),
+    refreshNow: async expectedAreaId => didApply(await refreshDetailed(expectedAreaId)),
+    refreshDetailed,
     stop,
   };
 }

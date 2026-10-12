@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import { renderTemplateToCanvas } from '@/core/template/canvas-renderer';
+import { buildBedRuntimeData } from '@/core/template/runtime-data';
 import { displayPatientName } from '@/utils/mask-patient';
 import type { ParsedTemplate } from '@/types/template';
 import type { BedStatusMeta, TwinBedEntity } from '@/types/twin';
@@ -104,7 +105,11 @@ export async function renderBedTerminalTexture(
   status: BedStatusMeta,
 ): Promise<THREE.CanvasTexture> {
   void status;
-  const canvas = await renderTemplateToCanvas(bed, template, { outputWidth: 512 });
+  const canvas = template.document
+    ? await (await import('./runtime-renderer')).renderRuntimeToCanvas(template.document, buildBedRuntimeData(bed), {
+      deviceType: 'bed', outputWidth: 512, calling: bed.isCalling,
+    })
+    : await renderTemplateToCanvas(bed, template, { outputWidth: 512 });
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.needsUpdate = true;

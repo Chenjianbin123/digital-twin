@@ -150,9 +150,9 @@ try {
       const b = templates.loadParsedTemplate(3);
       await pause(120);
       assert.equal(ready, false);
-      release([{ paramKey: 'FILE_FRONT_URL_HEAD', paramValue: 'https://resources.test/' }]);
+      release([{ paramKey: 'FILE_FRONT_URL_HEAD', paramValue: 'http://files.test:9704/resources/' }]);
       await pending; await Promise.all([a, b]);
-      assert.equal(resolveFileUrl('/swp_upload/test.png'), 'https://resources.test/swp_upload/test.png');
+      assert.equal(resolveFileUrl('/swp_upload/test.png'), 'http://files.test:9704/resources/swp_upload/test.png');
       assert.equal(requests.filter(path => path.includes('querySwpTemplateInfoById')).length, 1);
       assert.equal(requests.filter(path => path.includes('querySysParamKeyValueByParamKeys')).length, 1);
     });
@@ -169,11 +169,11 @@ try {
       prefixReply = () => new Promise(resolve => { release = resolve; });
       const old = prefix.initFileUrlPrefix();
       prefix.clearFileUrlPrefix();
-      prefixReply = async () => [{ paramKey: 'FILE_FRONT_URL_HEAD', paramValue: 'https://new.test' }];
+      prefixReply = async () => [{ paramKey: 'FILE_FRONT_URL_HEAD', paramValue: 'http://files.test:9704/new' }];
       await prefix.initFileUrlPrefix();
-      release([{ paramKey: 'FILE_FRONT_URL_HEAD', paramValue: 'https://old.test' }]);
+      release([{ paramKey: 'FILE_FRONT_URL_HEAD', paramValue: 'http://files.test:9704/old' }]);
       await old;
-      assert.equal(prefix.getFileUrlPrefix(), 'https://new.test');
+      assert.equal(prefix.getFileUrlPrefix(), 'http://files.test:9704/new');
     });
   }
 } finally {

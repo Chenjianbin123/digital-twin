@@ -4,6 +4,7 @@ import type { RoomSummary } from '@/core/area-summary';
 import { buildMainStaffList } from '@/core/door-staff';
 import { renderDoorTemplateToCanvas } from '@/core/template/door-canvas-renderer';
 import { buildDoorTemplateData } from '@/core/template/door-data-mapper';
+import { buildDoorRuntimeData } from '@/core/template/runtime-data';
 import {
   getContainedDoorTemplateRect,
   getDoorTargetCanvasSize,
@@ -371,7 +372,12 @@ export async function renderDoorTerminalTexture(
 ): Promise<THREE.CanvasTexture> {
   const data = buildDoorTemplateData(room, summary, areaMeta);
     const layout = resolveDoorScreenLayout(room, template);
-    const sourceCanvas = await renderDoorTemplateToCanvas(data, template, {
+    const sourceCanvas = template.document
+      ? await (await import('./runtime-renderer')).renderRuntimeToCanvas(template.document, buildDoorRuntimeData(room, data), {
+        deviceType: 'door', outputWidth: layout.canvasWidth, outputHeight: layout.canvasHeight,
+        calling: room.beds.some(bed => bed.isCalling),
+      })
+      : await renderDoorTemplateToCanvas(data, template, {
       room,
       isHorizontal: layout.isHorizontal,
       outputWidth: layout.canvasWidth,

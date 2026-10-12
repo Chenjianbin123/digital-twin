@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>环境刷新 · 合成数据验收</title><link rel="icon" href="data:,">
+<style>body{margin:0} .digital-twin.fixture{box-sizing:border-box;max-width:1100px;height:auto;min-height:100vh;overflow:visible;margin:auto;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px}.fixture>section{min-width:0}.fixture .fixture-panel{position:static;inset:auto;width:auto;max-width:none;height:auto}.fixture .ward-info-panel{padding:0!important}@media(max-width:760px){.digital-twin.fixture{grid-template-columns:1fr;padding:8px}}</style>
+<div id="app"></div>
+<script type="module">
+import { createApp, h, computed, ref } from 'vue';
+import WardInfoPanel from '/src/components/WardInfoPanel.vue';
+import WardCommandWorkspace from '/src/components/dashboard/WardCommandWorkspace.vue';
+import NurseStationPanel from '/src/components/NurseStationPanel.vue';
+import { summarizeArea } from '/src/core/area-summary.ts';
+import { analyzeEnvAlert } from '/src/core/env-alert.ts';
+import { buildNurseStationViewModel } from '/src/core/nurse-station-view-model.ts';
+import '/src/styles/global.scss';
+import '/src/styles/dashboard-theme.scss';
+
+const source = ref('remote'), state = ref('mixed'), theme = ref('light');
+const area = computed(() => ({ areaCode:'ENV-TEST', areaName:'合成环境验收病区', deptName:'测试', rooms:[24,26,32].map((temp,index) => ({
+  sickroomId:String(index+1), sickroomCode:`ROOM-${index+1}`, sickroomName:`合成病房${index+1}`, deviceCode:`door-${index+1}`, isOnline:true, beds:[],
+  doorEnvData:{temp:`${temp}℃`,relativeHumid:`${50+index*10}%`,noiseLevel:'40dB',airQuality:'良'},
+  ...(state.value === 'unknown' ? {} : {envSync:{lastSuccessAt:Date.now()-(state.value==='stale'||state.value==='mixed'&&index===2?301000:0),failed:state.value==='failed'}}),
+})) }));
+const vm = computed(() => {
+  const snapshot = area.value;
+  const now = Date.now(), sync={phase:'ready',lastSyncedAt:new Date(now).toISOString(),error:null,warning:null};
+  return buildNurseStationViewModel({area:snapshot,roomSummaries:summarizeArea(snapshot.rooms),dataSource:source.value,
+    nowMs:now,wardDataStatus:'ready',wardDataSyncedAtMs:now,swpEventSync:sync,swpResponseSync:sync,inspectionSync:sync});
+});
+window.environmentFixture={setState:value=>state.value=value,setSource:value=>source.value=value,setTheme:value=>theme.value=value};
+createApp({setup:()=>()=>h('main',{class:'fixture digital-twin','data-theme':theme.value},[
+  h('section',{id:'ward-fixture',class:'digital-twin__panel digital-twin__panel--overlay fixture-panel'},[
+    h(WardCommandWorkspace,{kind:'room',title:'病房护理工作台',subtitle:'合成数据验收',metrics:[]},{default:()=>[
+      h('div',{class:'ward-command-layout'},[h(WardInfoPanel,{area:area.value,ward:area.value.rooms[0],selectedBed:null,selectedStatus:null,
+        dataSource:source.value,dataStatus:'ready',envAlert:analyzeEnvAlert(area.value.rooms[0].doorEnvData),statusHistory:[]})]),
+    ]}),
+  ]),
+  h('section',{id:'station-fixture'},[h(NurseStationPanel,{viewModel:vm.value,dataSource:source.value})]),
+])}).mount('#app');
+</script>
+</html>

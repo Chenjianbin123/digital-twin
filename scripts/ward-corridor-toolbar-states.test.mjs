@@ -14,14 +14,16 @@ try {
     const html = await renderToString(createSSRApp(Toolbar, {
       area: { rooms }, summaries: [], layout, focusedRoomIndex: -1, panelsVisible: false,
     }));
-    assert.ok(html.includes(`已接入 ${count} 间病房`));
+    assert.ok(html.includes(`${count} 间病房`));
+    assert.ok(html.includes('aria-label="病房走廊导航"'));
+    assert.equal(html.includes('查找病房'), count > 1);
     assert.ok(html.includes('分组示意，非实际位置'));
     if (!count) assert.ok(html.includes('当前病区暂无已接入门口机'));
     if (count === 1) {
       assert.ok(html.includes('定位门口屏'));
       assert.ok(html.includes('进入病房'));
       assert.ok(html.includes('门口机离线'));
-      assert.ok(!html.includes('收起房号'));
+      assert.ok(!html.includes('收起列表'));
       assert.ok(!html.includes('<nav'));
     }
     assert.equal(html.includes('下一组'), count > 10);

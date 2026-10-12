@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>银白护士站 · Blender 模型验收</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: light; --ink: #193d4e; --line: #a8c1ca; --surface: #f3f7f8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--surface); font: 14px/1.5 "Microsoft YaHei", sans-serif; }
+    header { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0; font-size: 18px; }
+    p { margin: 0; }
+    .note { color: #4d6470; font-size: 12px; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; }
+    button, .file-label { min-height: 44px; padding: 10px 12px; background: white; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font: inherit; cursor: pointer; }
+    button[aria-pressed="true"] { background: #164b60; color: white; }
+    button:disabled { cursor: wait; opacity: .65; }
+    :focus-visible, .file-label:focus-within { outline: 3px solid #087da4; outline-offset: 2px; }
+    .file-label { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; }
+    #video-file { width: 235px; max-width: 100%; min-width: 0; font: inherit; }
+    #scene { height: calc(100dvh - 165px); min-height: 350px; }
+    #scene canvas { display: block; width: 100%; height: 100%; }
+    footer { padding: 8px 16px; }
+    #retry[hidden] { display: none; }
+    @media (max-width: 767px) { #scene { height: 62dvh; } header { padding: 12px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>护士站 · 银白科技版</h1><p class="note">实际 GLB / 独立预览 / 屏幕为演示内容 / 未替换正式场景</p></div>
+    <nav aria-label="预览视角">
+      <button data-view="front" disabled aria-pressed="true">参考全景</button>
+      <button data-view="detail" disabled aria-pressed="false">柜台细节</button>
+      <button data-view="staff" disabled aria-pressed="false">护士操作位</button>
+      <button data-view="wall" disabled aria-pressed="false">墙挂电视</button>
+      <button id="demo" disabled>播放合成视频</button>
+      <button id="stop" disabled>停止视频</button>
+    </nav>
+    <label class="file-label">本地视频 <input id="video-file" type="file" accept="video/*" disabled></label>
+  </header>
+  <div id="scene" aria-label="护士站三维预览，可拖动旋转或使用方向键"></div>
+  <footer><p id="status" role="status" aria-live="polite">正在加载模型…</p><p id="video-status" class="note">视频仅在本机播放，不上传。空格聚焦按钮后可操作。</p><button id="retry" hidden>重新加载</button></footer>
+  <script type="module" src="./nurse-silver-preview.js"></script>
+</body>
+</html>

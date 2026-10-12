@@ -16,6 +16,7 @@ const props = defineProps<{
   areaId: number | null;
   roomSummaries?: RoomSummary[];
   focusedRoomIndex?: number;
+  focusRequestKey?: number;
   configuredDeviceCount?: number;
   sceneType?: TwinSceneType;
   modelKind?: 'station' | 'corridor';
@@ -252,15 +253,13 @@ watch(() => props.nurseStationViewModel, (viewModel) => {
   scene?.setNurseStationViewModel(viewModel ? toRaw(viewModel) : null);
 });
 
-watch(() => props.focusedRoomIndex, (index, prev) => {
+watch(() => [props.focusedRoomIndex, props.focusRequestKey] as const, ([index], [prev]) => {
   if (index === undefined || index < 0) {
     if (prev !== undefined && prev >= 0)
       scene?.resetToNurseStationView();
     return;
   }
   if (areaPhase.value === 'station')
-    return;
-  if (index === prev)
     return;
   if (props.active === false)
     return;

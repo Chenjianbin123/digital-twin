@@ -5,6 +5,8 @@ import { drawTemplateImagePlaceholder } from './template-display-state.ts';
 import type { TwinBedEntity } from '../../types/twin.ts';
 import type { NursingLabelItem } from '../../types/ward.ts';
 import { getFileUrlPrefix } from '../../utils/file-prefix.ts';
+import { resolveLocalAsset } from '../local-asset.ts';
+import { resolveDataSource } from '../data-source.ts';
 
 export interface RenderOptions {
   outputWidth?: number;
@@ -51,6 +53,7 @@ function parseBorderRadius(value: string | undefined, remPx: number): number {
 }
 
 function resolveImageUrl(src?: string): string | null {
+  if (resolveDataSource() === 'mock') return resolveLocalAsset(src) || null;
   if (!src || !src.trim())
     return null;
   const trimmed = src.trim();

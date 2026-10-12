@@ -11,6 +11,7 @@ defineProps<{
     <h2 class="dash-head__title">{{ title }}</h2>
     <span v-if="count != null" class="dash-head__count">{{ count }}</span>
     <span class="dash-head__line" aria-hidden="true" />
+    <slot name="actions" />
   </header>
 </template>
 

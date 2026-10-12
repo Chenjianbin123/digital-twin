@@ -1,4 +1,5 @@
 import type { HospitalInfo } from '@/types/hospital';
+import { assertRemoteRequestsAllowed } from '@/core/data-source';
 import type { SwpTemplateInfo } from '@/types/template';
 import type { StatusHistoryEntry, TwinAreaEntity } from '@/types/twin';
 import { AUTH_EXPIRED_EVENT, clearAuthSession, getSessionToken } from '@/core/auth-session';
@@ -46,6 +47,7 @@ function expireDatabaseAuthentication(message: string): void {
 }
 
 async function getAdapterJson<T>(path: string): Promise<T> {
+  assertRemoteRequestsAllowed();
   const token = getSessionToken();
   const res = await fetch(`${getAdapterBaseUrl()}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
